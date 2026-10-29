@@ -4,8 +4,8 @@
 //   flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY dari docker/.env>
 //   flutter run -d <emulator> --dart-define=OLT_SOCIAL_ANON_KEY=...
 // Opsional: --dart-define=OLT_SOCIAL_URL=http://192.168.1.10:8000 (HP fisik).
-import 'dart:io' show Platform;
-
+// Web: make web-example, lalu buka http://localhost:8081 (?user=sari_invest = langsung login).
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:olt_social/olt_social.dart';
 
@@ -13,11 +13,26 @@ import 'fake_olt_auth.dart';
 
 const _anonKey = String.fromEnvironment('OLT_SOCIAL_ANON_KEY');
 const _urlOverride = String.fromEnvironment('OLT_SOCIAL_URL');
+const _dummyOltOverride = String.fromEnvironment('OLT_DUMMY_WS_URL');
 
-/// Emulator Android menjangkau localhost PC lewat 10.0.2.2.
-String get socialUrl => _urlOverride.isNotEmpty
-    ? _urlOverride
-    : (Platform.isAndroid ? 'http://10.0.2.2:8000' : 'http://localhost:8000');
+/// Alamat API sosial:
+/// * web: host yang sama dengan halaman, port 8000;
+/// * emulator Android: localhost PC lewat 10.0.2.2;
+/// * Windows: localhost.
+String get socialUrl {
+  if (_urlOverride.isNotEmpty) return _urlOverride;
+  if (kIsWeb) return 'http://${Uri.base.host}:8000';
+  return defaultTargetPlatform == TargetPlatform.android ? 'http://10.0.2.2:8000' : 'http://localhost:8000';
+}
+
+/// Web: `?user=<username|id>` langsung login sebagai user seed itu (token mock),
+/// supaya beberapa tab browser bisa dipakai sebagai user berbeda saat testing.
+String? get autoLoginUser => kIsWeb ? Uri.base.queryParameters['user'] : null;
+
+/// WebSocket OLT dummy (make up DUMMY_OLT=1): host yang sama dengan [socialUrl], port 8090.
+String get dummyOltWsUrl => _dummyOltOverride.isNotEmpty
+    ? _dummyOltOverride
+    : Uri.parse(socialUrl).replace(scheme: 'ws', port: 8090, path: '/ws').toString();
 
 void main() => runApp(const ExampleApp());
 

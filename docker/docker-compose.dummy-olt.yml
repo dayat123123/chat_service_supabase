@@ -1,0 +1,58 @@
+# Override development/testing: auth-bridge memverifikasi token ke OLT DUMMY
+# (services/dummy-olt) lewat jalur WebSocket yang sama dengan produksi.
+# Yang berubah hanya KONFIGURASI auth-bridge (OLT_WS_*), bukan kodenya.
+#
+#   make up DUMMY_OLT=1          Windows: .\make.ps1 up -DummyOlt
+#   make down DUMMY_OLT=1        (ikut menghentikan dummy-olt)
+#
+# JANGAN dipakai di produksi (Makefile menolak DUMMY_OLT bersama PROD).
+
+services:
+  dummy-olt:
+    container_name: olt-dummy-olt
+    build:
+      context: ../services/dummy-olt
+    image: olt-social/dummy-olt:0.1.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # internal: dijangkau auth-bridge; public: port host untuk app contoh / curl.
+    networks: [internal, public]
+    ports:
+      - ${KONG_HTTP_BIND:-127.0.0.1}:${DUMMY_OLT_PORT:-8090}:8090/tcp
+    environment:
+      PORT: 8090
+      DUMMY_OLT_SECRET: ${DUMMY_OLT_SECRET:-dummy-olt-dev-secret-jangan-dipakai-di-produksi}
+      DUMMY_OLT_TOKEN_TTL: ${DUMMY_OLT_TOKEN_TTL:-24h}
+      DUMMY_OLT_ACCEPT_MOCK_TOKENS: ${DUMMY_OLT_ACCEPT_MOCK_TOKENS:-true}
+      DUMMY_OLT_SLOW_DELAY: ${DUMMY_OLT_SLOW_DELAY:-8s}
+    healthcheck:
+      # Image distroless: binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/dummy-olt", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+
+  # Pemetaan protokol login OLT dummy -> adapter WebSocket auth-bridge.
+  # Saat format OLT asli tersedia, cukup ganti nilai-nilai ini (di docker/.env).
+  auth-bridge:
+    depends_on:
+      dummy-olt:
+        condition: service_healthy
+    environment:
+      OLT_MODE: websocket
+      OLT_WS_URL: ws://dummy-olt:8090/ws
+      OLT_WS_LOGIN_TEMPLATE: '{"type":"login","method":"token","payload":{"token":"{{token}}"}}'
+      OLT_WS_RESPONSE_MATCH_PATH: type
+      OLT_WS_RESPONSE_MATCH_VALUE: login_result
+      OLT_WS_SUCCESS_PATH: status
+      OLT_WS_SUCCESS_VALUE: OK
+      OLT_WS_ERROR_MESSAGE_PATH: error.message
+      OLT_WS_USER_ID_PATH: data.user.id
+      OLT_WS_USERNAME_PATH: data.user.username
+      OLT_WS_EMAIL_PATH: data.user.email
+      OLT_WS_DISPLAY_NAME_PATH: data.user.full_name

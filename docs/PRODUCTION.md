@@ -149,6 +149,7 @@ Mengganti `JWT_SECRET` akan **membatalkan `ANON_KEY`, `SERVICE_ROLE_KEY`, dan se
 **Keamanan**
 - [ ] `docker/.env` berisi rahasia hasil `make gen-keys`, tidak di-commit, dan hanya bisa dibaca root/deployer (`chmod 600`).
 - [ ] `APP_ENV=production` dan `AUTH_BRIDGE_OLT_MODE=websocket`, sudah diuji dengan token OLT asli.
+- [ ] OLT dummy tidak berjalan: `DUMMY_OLT` tidak diset, `OLT_WS_URL` mengarah ke server OLT asli, dan container `olt-dummy-olt` tidak ada.
 - [ ] `make up PROD=1`: Kong hanya di `127.0.0.1`, Studio tidak bisa diakses dari internet (cek bahwa `https://domain/` mengembalikan 404).
 - [ ] Firewall hanya membuka 22/80/443. Akses SSH memakai key, tanpa password.
 - [ ] `SERVICE_ROLE_KEY` tidak ada di app Flutter. App hanya memakai `ANON_KEY`.

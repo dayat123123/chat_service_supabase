@@ -32,14 +32,19 @@ Future<T> _waitFor<T>(Stream<T> stream, bool Function(T) test, {Duration timeout
 void main() {
   late OltSocial budi;
   late OltSocial sari;
+  late OltSocial Function(String token) user;
+  final created = <OltSocial>[];
 
   setUpAll(() async {
     if (!_enabled) return;
     final env = _dockerEnv();
     final url = Platform.environment['OLT_SOCIAL_URL'] ?? env['SUPABASE_PUBLIC_URL'] ?? 'http://localhost:8000';
     final anonKey = Platform.environment['OLT_SOCIAL_ANON_KEY'] ?? env['ANON_KEY']!;
-    OltSocial user(String token) =>
-        OltSocial.create(supabaseUrl: url, anonKey: anonKey, oltTokenProvider: () async => token);
+    user = (token) {
+      final social = OltSocial.create(supabaseUrl: url, anonKey: anonKey, oltTokenProvider: () async => token);
+      created.add(social);
+      return social;
+    };
     budi = user('mock:1001:budi_santoso');
     sari = user('mock:1002:sari_invest');
     await budi.ensureSignedIn();
@@ -47,9 +52,9 @@ void main() {
   });
 
   tearDownAll(() async {
-    if (!_enabled) return;
-    await budi.dispose();
-    await sari.dispose();
+    for (final social in created) {
+      await social.dispose();
+    }
   });
 
   final skip = _enabled ? null : 'Set OLT_SOCIAL_IT=1 untuk menjalankan integration test';
@@ -77,13 +82,23 @@ void main() {
 
   test('komentar baru diterima realtime oleh pemilik post', () async {
     final post = await budi.feed.createPost(body: r'Integration test $BBCA');
+    final seen = <String>{};
+    final sub = budi.comments.watchComments(post.id).listen(seen.add);
     try {
-      final events = budi.comments.watchComments(post.id);
-      final received = _waitFor(events, (_) => true);
-      await Future<void>.delayed(const Duration(seconds: 2)); // tunggu channel tersambung
-      final comment = await sari.comments.createComment(postId: post.id, body: 'Komentar realtime');
-      expect(await received, comment.id);
+      // Langganan realtime yang baru dibuka (mis. stack baru start) butuh waktu
+      // siap: kirim komentar ulang sampai event pertamanya diterima.
+      String? received;
+      for (var attempt = 0; attempt < 5 && received == null; attempt++) {
+        final comment = await sari.comments.createComment(postId: post.id, body: 'Komentar realtime $attempt');
+        final deadline = DateTime.now().add(const Duration(seconds: 3));
+        while (DateTime.now().isBefore(deadline) && !seen.contains(comment.id)) {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+        if (seen.contains(comment.id)) received = comment.id;
+      }
+      expect(received, isNotNull, reason: 'event komentar realtime tidak pernah diterima');
     } finally {
+      await sub.cancel();
       await budi.feed.deletePost(post.id);
     }
   }, skip: skip);
@@ -134,18 +149,24 @@ void main() {
   }, skip: skip);
 
   test('rate limit server dipetakan ke OltSocialErrorKind.rateLimited', () async {
-    final roomId = await budi.chat.getOrCreateDirectRoom(sari.currentUser!.id);
+    // User terpisah: kuota pesan Budi/Sari (dipakai tes & E2E lain) tidak ikut habis,
+    // sehingga suite bisa diulang tanpa menunggu satu menit.
+    final rina = user('mock:1004:rina_saham');
+    final dewi = user('mock:1005:dewi_cuan');
+    final dewiUser = await dewi.ensureSignedIn();
+    await rina.ensureSignedIn();
+    final roomId = await rina.chat.getOrCreateDirectRoom(dewiUser.id);
     final ids = <String>[];
     try {
       for (var i = 0; i < 40; i++) {
-        ids.add((await budi.chat.sendMessage(roomId, body: 'spam $i', clientId: const Uuid().v4())).id);
+        ids.add((await rina.chat.sendMessage(roomId, body: 'spam $i', clientId: const Uuid().v4())).id);
       }
       fail('rate limit tidak terpicu');
     } on OltSocialException catch (e) {
       expect(e.kind, OltSocialErrorKind.rateLimited);
     } finally {
       for (final id in ids) {
-        await budi.chat.deleteMessage(id);
+        await rina.chat.deleteMessage(id);
       }
     }
   }, skip: skip);

@@ -56,6 +56,10 @@ void main() {
       scrollable: find.descendant(of: find.byType(OltStreamFeed), matching: find.byType(Scrollable)).first,
     );
 
+    // Pastikan seluruh kartu terlihat (bukan hanya sebagian) sebelum diketuk.
+    await tester.ensureVisible(seedPost.first);
+    await tester.pump(const Duration(milliseconds: 300));
+
     // Desktop: detail post terbuka di panel kanan.
     await tester.tap(seedPost.first);
     await pumpUntilFound(tester, find.textContaining('Divergence itu maksudnya'));

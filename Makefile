@@ -2,18 +2,26 @@
 # Windows tanpa make: pakai .\make.ps1 <target> dengan target yang sama.
 
 # PROD=1 menambahkan Caddy (HTTPS) di depan Kong, untuk VPS.
-COMPOSE := docker compose -f docker/docker-compose.yml $(if $(PROD),-f docker/docker-compose.prod.yml)
+# DUMMY_OLT=1 menjalankan OLT dummy dan auth-bridge mode websocket (development/testing).
+ifneq ($(and $(PROD),$(DUMMY_OLT)),)
+$(error DUMMY_OLT tidak boleh dipakai bersama PROD)
+endif
+COMPOSE := docker compose -f docker/docker-compose.yml $(if $(PROD),-f docker/docker-compose.prod.yml) \
+           $(if $(DUMMY_OLT),-f docker/docker-compose.dummy-olt.yml)
+DUMMY_COMPOSE := docker compose -f docker/docker-compose.yml -f docker/docker-compose.dummy-olt.yml
 TOOLS   := $(COMPOSE) run --rm tools
 ENV     := docker/.env
 GO_IMG  := golang:1.24.5-alpine3.22
+WEB_IMG := caddy:2.10.2-alpine
 PKG     := packages/olt_social
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
-        e2e-windows license-audit smoke backup restore gen-keys psql check-env
+        e2e-windows web-example license-audit smoke backup restore gen-keys psql check-env \
+        dummy-token smoke-dummy test-dummy-olt test-flutter-it-dummy e2e-windows-dummy
 
 help: ## Tampilkan daftar target
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-13s %s\n", $$1, $$2}'
 
 check-env:
 	@test -f $(ENV) || { echo "docker/.env belum ada. Jalankan: make gen-keys"; exit 1; }
@@ -43,7 +51,7 @@ migrate: check-env ## Jalankan migrasi baru di supabase/migrations
 seed: check-env ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt ## Tes backend (pgTAP + Go)
 
 test-db: check-env ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -76,8 +84,36 @@ test-flutter-it: check-env ## Integration test package Flutter ke stack lokal (b
 	cd $(PKG) && OLT_SOCIAL_IT=1 flutter test test/integration
 
 e2e-windows: check-env ## E2E app example di Windows (butuh Flutter SDK + Visual Studio)
-	cd $(PKG)/example && flutter test integration_test -d windows \
+	cd $(PKG)/example && flutter test integration_test/app_test.dart -d windows \
 	  --dart-define=OLT_SOCIAL_ANON_KEY=$$(grep '^ANON_KEY=' $(CURDIR)/$(ENV) | cut -d= -f2)
+
+web-example: check-env ## App example versi web di http://localhost:8081 (?user=sari_invest), butuh Flutter SDK
+	cd $(PKG)/example && flutter build web --release --no-web-resources-cdn --pwa-strategy=none \
+	  --dart-define=OLT_SOCIAL_ANON_KEY=$$(grep '^ANON_KEY=' $(CURDIR)/$(ENV) | cut -d= -f2)
+	@# Server statis untuk build/web; container lama diganti. Stop: docker rm -f olt-web-example
+	@docker rm -f olt-web-example >/dev/null 2>&1 || true
+	docker run -d --name olt-web-example --restart unless-stopped -p 127.0.0.1:8081:8081 \
+	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8081
+	@echo "App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)"
 
 license-audit: ## Audit lisensi dependensi runtime Flutter (tolak GPL/AGPL)
 	cd $(PKG) && dart run tool/license_audit.dart
+
+# --- OLT dummy (development/testing) -------------------------------------------------
+
+dummy-token: check-env ## Token sesi OLT dummy: make dummy-token U=budi_santoso [TTL=1h]
+	@$(DUMMY_COMPOSE) run --rm --no-deps -T dummy-olt token $(or $(U),budi_santoso) $(if $(TTL),-ttl $(TTL))
+
+smoke-dummy: check-env ## Smoke test auth-bridge mode websocket vs OLT dummy (butuh up DUMMY_OLT=1)
+	$(DUMMY_COMPOSE) run --rm tools smoke-dummy
+
+test-dummy-olt: ## Unit test OLT dummy (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/dummy-olt:/src" -w /src $(GO_IMG) go test ./...
+
+test-flutter-it-dummy: check-env ## Integration test Flutter: login lewat OLT dummy (butuh up DUMMY_OLT=1)
+	cd $(PKG) && OLT_SOCIAL_IT_DUMMY=1 flutter test test/integration/dummy_olt_integration_test.dart
+
+e2e-windows-dummy: check-env ## E2E app example: form login OLT dummy (butuh up DUMMY_OLT=1)
+	cd $(PKG)/example && flutter test integration_test/dummy_olt_login_test.dart -d windows \
+	  --dart-define=OLT_DUMMY_E2E=true \
+	  --dart-define=OLT_SOCIAL_ANON_KEY=$$(grep '^ANON_KEY=' $(CURDIR)/$(ENV) | cut -d= -f2)

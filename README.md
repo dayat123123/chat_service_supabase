@@ -13,7 +13,8 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`docker/`](docker/) | Supabase self-hosted (image di-pin) + auth-bridge + Caddy (produksi), satu `docker compose` |
 | [`supabase/`](supabase/) | Migrasi SQL bernomor, seed development, tes pgTAP |
 | [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token login OLT menjadi JWT Supabase (tanpa login dua kali) |
-| [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows & Android |
+| [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri) untuk menguji auth-bridge mode websocket. Hanya development/testing |
+| [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
 | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS, backup/restore, update versi, moderasi, checklist produksi |
 
@@ -86,6 +87,7 @@ make smoke           # 21 cek end-to-end lewat Kong
 | Studio | `http://localhost:8000`, login dengan `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` dari `docker/.env` |
 | Emulator Android | `http://10.0.2.2:8000` |
 | HP fisik di LAN | Set `KONG_HTTP_BIND=0.0.0.0`, lalu pakai `http://<IP-PC>:8000` |
+| App contoh versi web (`make web-example`) | `http://localhost:8081` |
 
 Jalankan app contoh: lihat [packages/olt_social/example/README.md](packages/olt_social/example/README.md).
 
@@ -94,7 +96,27 @@ cd packages/olt_social/example
 flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY dari docker/.env>
 ```
 
+Untuk testing beberapa user sekaligus, jalankan juga versi web: `make web-example` (Windows: `.\make.ps1 web-example`). Buka `http://localhost:8081/?user=sari_invest` untuk langsung masuk sebagai Sari. Tiap tab browser bisa menjadi user berbeda, jadi chat dan notifikasi realtime bisa dicoba antara tab dengan tab, atau tab dengan app Windows.
+
 Login dev memakai **token mock**. Contohnya `mock:1001:budi_santoso`, yang sama dengan user seed Budi. User lain: `1002 sari_invest`, `1003 andi_trader`, `1004 rina_saham`, `1005 dewi_cuan`, dan `1006 olt_official`.
+
+### Testing dengan OLT dummy (token sendiri)
+
+Selama format login OLT asli belum tersedia, [`services/dummy-olt`](services/dummy-olt/) berperan sebagai server WebSocket OLT tiruan. Ia menerbitkan token sesinya sendiri, dan auth-bridge memverifikasinya lewat **mode `websocket`**, jalur yang sama dengan produksi.
+
+- **Tidak ada kode yang diubah.** Auth-bridge, package Flutter, dan database tetap sama; yang berbeda hanya konfigurasi `OLT_WS_*` di [`docker/docker-compose.dummy-olt.yml`](docker/docker-compose.dummy-olt.yml).
+- **Token mock lama tetap diterima** dalam mode ini, sehingga semua tes lama juga berjalan lewat jalur websocket.
+
+```bash
+make up DUMMY_OLT=1                 # Windows: .\make.ps1 up -DummyOlt
+make smoke-dummy                    # 16 skenario (login, exchange, token ditolak, timeout OLT, ...)
+make dummy-token U=sari_invest      # cetak token OLT dummy;  Windows: .\make.ps1 dummy-token -User sari_invest
+make down DUMMY_OLT=1 && make up    # kembali ke mode mock
+```
+
+Semua akun dummy memakai password `olt12345`. Akun 1001–1006 sama dengan user seed; daftar lengkapnya (termasuk akun ditangguhkan dan simulasi OLT lambat) ada di [services/dummy-olt/README.md](services/dummy-olt/README.md).
+
+Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + password → token OLT dummy → fitur sosial.
 
 ## Target Makefile / make.ps1
 
@@ -103,17 +125,24 @@ Login dev memakai **token mock**. Contohnya `mock:1001:budi_santoso`, yang sama 
 | `up` / `down` / `ps` / `logs` | Kelola stack (`logs s=auth-bridge` atau `-Service auth-bridge` untuk satu service) |
 | `reset` | **Hapus volume DB & storage**, lalu naik ulang dari nol |
 | `migrate` / `seed` | Jalankan migrasi baru / isi data dummy (idempoten) |
-| `test` | `test-db` + `test-bridge` |
+| `test` | `test-db` + `test-bridge` + `test-dummy-olt` |
 | `test-db` | 141 tes pgTAP: skema, RLS, parser, thread, reaksi, feed, chat, moderasi, realtime/storage |
 | `test-bridge` | Unit test Go auth-bridge (di container) |
 | `smoke` | 21 cek end-to-end lewat Kong (exchange, RLS, RPC, storage) |
 | `test-flutter` | `flutter analyze` + unit/widget test package |
 | `test-flutter-it` | Integration test Flutter ke stack: realtime, channel private, presence, rate limit |
 | `e2e-windows` | E2E app contoh di Windows (login → feed → thread → komentar/chat dengan Enter) |
+| `web-example` | Build app contoh untuk web, sajikan di `http://localhost:8081` (`?user=<username>` langsung login) |
 | `license-audit` | Audit lisensi dependensi runtime Flutter (tolak GPL/AGPL/LGPL/MPL) |
 | `backup` / `restore` | Backup DB + file storage ke `backups/`; restore: `make restore FILE=... CONFIRM=yes` |
 | `gen-keys` | Buat `docker/.env` + rahasia (`FORCE=1` / `-Force` untuk menimpa) |
 | `psql` | psql ke DB sebagai `postgres` |
+| `up DUMMY_OLT=1` / `-DummyOlt` | Stack + OLT dummy, auth-bridge mode websocket (tidak bisa digabung dengan `PROD=1`) |
+| `dummy-token` | Token OLT dummy: `U=<user> [TTL=1h]` / `-User <user> [-Ttl 1h]` |
+| `smoke-dummy` | 16 skenario auth-bridge mode websocket vs OLT dummy |
+| `test-dummy-olt` | Unit test Go OLT dummy (di container) |
+| `test-flutter-it-dummy` | Integration test Flutter dengan token hasil login WebSocket OLT dummy |
+| `e2e-windows-dummy` | E2E app contoh: form login OLT dummy |
 
 Produksi memakai `make up PROD=1`, yang menambahkan Caddy HTTPS dan menutup Studio dari internet. Lihat [docs/PRODUCTION.md](docs/PRODUCTION.md).
 

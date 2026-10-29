@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'dummy_olt_client.dart';
 import 'home_page.dart';
+import 'main.dart' show autoLoginUser, dummyOltWsUrl;
 
 /// Tiruan modul login OLT. Di aplikasi OLT asli, token didapat dari login
-/// WebSocket OLT (username/email + password atau token). Di sini dipakai token
-/// mock `mock:<olt_user_id>:<username>` yang diterima auth-bridge mode mock.
+/// WebSocket OLT (username/email + password atau token). Di sini token berasal dari:
+/// * token mock `mock:<olt_user_id>:<username>` (auth-bridge mode mock), atau
+/// * login ke OLT dummy lewat WebSocket (auth-bridge mode websocket,
+///   `make up DUMMY_OLT=1`).
 class FakeOltAuth {
   FakeOltAuth(this.currentToken);
 
@@ -33,16 +37,46 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool _busy = false;
+  final _identifier = TextEditingController(text: 'budi_santoso');
+  final _password = TextEditingController(text: 'olt12345');
 
-  Future<void> _login(String id, String username) async {
+  @override
+  void initState() {
+    super.initState();
+    // Web: http://localhost:8081/?user=sari_invest langsung masuk sebagai Sari.
+    final wanted = autoLoginUser;
+    final match = demoUsers.where((u) => u.$1 == wanted || u.$2 == wanted).firstOrNull;
+    if (match != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _login(match.$1, match.$2));
+    }
+  }
+
+  @override
+  void dispose() {
+    _identifier.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login(String id, String username) => _proceed(() async => FakeOltAuth('mock:$id:$username'));
+
+  /// Login ke OLT dummy lewat WebSocket (seperti aplikasi OLT), lalu pakai tokennya.
+  Future<void> _loginDummyOlt() => _proceed(() async {
+    final session = await DummyOltClient(dummyOltWsUrl).loginWithPassword(_identifier.text, _password.text);
+    return FakeOltAuth(session.token);
+  });
+
+  Future<void> _proceed(Future<FakeOltAuth> Function() oltLogin) async {
     setState(() => _busy = true);
-    final auth = FakeOltAuth('mock:$id:$username');
+    final FakeOltAuth auth;
     try {
+      auth = await oltLogin();
       await widget.onSignedIn(auth);
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal masuk ke OLT Social: $e')));
+        final message = e is DummyOltException ? 'Login OLT gagal: ${e.message}' : 'Gagal masuk ke OLT Social: $e';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
       return;
     }
@@ -84,6 +118,44 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               if (_busy) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
+              const SizedBox(height: 24),
+              Card.outlined(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Login OLT dummy (WebSocket)', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Token asli dari OLT dummy, diverifikasi auth-bridge mode websocket. '
+                        'Butuh stack: make up DUMMY_OLT=1. Semua akun dummy: password olt12345.',
+                        style: theme.textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _identifier,
+                        enabled: !_busy,
+                        decoration: const InputDecoration(labelText: 'Username / email', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _password,
+                        enabled: !_busy,
+                        obscureText: true,
+                        onSubmitted: (_) => _loginDummyOlt(),
+                        decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+                      ),
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        onPressed: _busy ? null : _loginDummyOlt,
+                        icon: const Icon(Icons.lan_outlined),
+                        label: const Text('Masuk via OLT dummy'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

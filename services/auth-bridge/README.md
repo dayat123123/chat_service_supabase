@@ -60,6 +60,8 @@ Token berformat `mock:<olt_user_id>:<username>[:<nama tampilan>]`, contohnya `mo
 
 ### `websocket` (produksi)
 
+Untuk mencoba mode ini tanpa server OLT asli, jalankan `make up DUMMY_OLT=1`. Perintah ini memakai server OLT tiruan [`services/dummy-olt`](../dummy-olt/) dan hanya mengubah konfigurasi di bawah; kode auth-bridge tetap sama.
+
 Format protokol login OLT dibuat bisa dikonfigurasi. Isi variabel berikut di `docker/.env` sesuai payload OLT.
 
 Contoh: OLT mengirim `{"type":"login_result","status":"OK","user":{"id":1001,"username":"budi","email":"b@x.id","full_name":"Budi S"}}` sebagai jawaban dari request `{"type":"login","method":"token","payload":{"token":"..."}}`:
