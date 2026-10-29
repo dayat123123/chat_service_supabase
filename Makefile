@@ -28,7 +28,10 @@ STACK         := olt-social
 TOOLS         := $(COMPOSE) run --rm tools
 ENV           := docker/.env
 SECRETS       := docker/secrets
-GO_IMG        := golang:1.24.5-alpine3.22@sha256:daae04ebad0c21149979cd8e9db38f565ecefd8547cf4a591240dc1972cf1399
+# Build lokal tanpa attestation (berisi timestamp): build ulang tanpa perubahan
+# menghasilkan ID image yang sama, jadi `up --build` tidak me-restart container.
+export BUILDX_NO_DEFAULT_ATTESTATIONS := 1
+GO_IMG        := golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb
 TOOLS_IMG     := olt-social/tools:0.1.0
 ALPINE_IMG    := alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
 WEB_IMG       := caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d

@@ -14,11 +14,16 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
+	"olt-social/auth-bridge/internal/breaker"
 	"olt-social/auth-bridge/internal/config"
 	"olt-social/auth-bridge/internal/exchange"
+	"olt-social/auth-bridge/internal/metrics"
 	"olt-social/auth-bridge/internal/olt"
 	"olt-social/auth-bridge/internal/postgrest"
 	"olt-social/auth-bridge/internal/ratelimit"
@@ -48,55 +53,173 @@ func run(cfg config.Config, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	reg := metrics.NewRegistry()
+
 	verifier, err := newVerifier(cfg)
 	if err != nil {
 		return err
 	}
+	brk := breaker.New(cfg.BreakerThreshold, cfg.BreakerCooldown)
+	reg.GaugeFunc("olt_auth_bridge_olt_breaker_open",
+		"1 bila circuit breaker ke server OLT terbuka (verifikasi baru langsung ditolak)",
+		func() float64 {
+			if brk.State() == breaker.Open {
+				return 1
+			}
+			return 0
+		})
+
 	issuer := token.NewIssuer(cfg.JWTSecret, cfg.JWTTTL, cfg.JWTIssuer)
 	store := postgrest.NewClient(cfg.PostgRESTURL, issuer)
 
-	handler := server.New(server.Options{
+	deps := newSharedState(cfg, log, reg)
+	defer deps.close()
+
+	s := server.New(server.Options{
 		Log:            log,
-		Resolver:       exchange.NewService(verifier, store, cfg.VerifyCacheTTL),
+		Resolver:       exchange.NewService(olt.WithBreaker(verifier, brk), store, deps.cache, cfg.VerifyCacheTTL),
 		Issuer:         issuer,
-		Limiter:        ratelimit.New(cfg.RateLimitPerMinute, time.Minute),
+		Limiter:        deps.ipLimiter,
+		UserLimiter:    deps.userLimiter,
 		TrustedProxies: cfg.TrustedProxies,
 		OLTMode:        string(cfg.OLT.Mode),
-	}).Handler()
+		ReadyChecks: append([]server.ReadyCheck{
+			{Name: "postgrest", Check: store.Ping},
+			{Name: "olt", Optional: true, Check: func(context.Context) error {
+				if brk.State() == breaker.Open {
+					return errors.New("circuit breaker terbuka")
+				}
+				return nil
+			}},
+		}, deps.readyChecks...),
+		Metrics: server.NewMetrics(reg),
+	})
 
-	srv := &http.Server{
+	servers := []*http.Server{{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
-		Handler:           handler,
+		Handler:           s.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      cfg.OLT.Timeout + 15*time.Second,
 		IdleTimeout:       60 * time.Second,
+	}}
+	if cfg.OpsPort > 0 {
+		servers = append(servers, &http.Server{
+			Addr:              fmt.Sprintf(":%d", cfg.OpsPort),
+			Handler:           s.OpsHandler(reg.Handler()),
+			ReadHeaderTimeout: 5 * time.Second,
+			ReadTimeout:       10 * time.Second,
+			WriteTimeout:      10 * time.Second,
+			IdleTimeout:       60 * time.Second,
+		})
 	}
 
-	errCh := make(chan error, 1)
-	go func() {
-		log.Info("auth-bridge berjalan",
-			"port", cfg.Port, "app_env", cfg.AppEnv, "olt_mode", cfg.OLT.Mode,
-			"jwt_ttl_s", cfg.JWTTTL.Seconds(), "cache_ttl_s", cfg.VerifyCacheTTL.Seconds())
-		if cfg.OLT.Mode == config.OLTModeMock {
-			log.Warn("OLT_MODE=mock: token dummy diterima. Jangan dipakai di produksi.")
-		}
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			errCh <- err
-		}
-		close(errCh)
-	}()
+	log.Info("auth-bridge berjalan",
+		"port", cfg.Port, "ops_port", cfg.OpsPort, "app_env", cfg.AppEnv, "olt_mode", cfg.OLT.Mode,
+		"jwt_ttl_s", cfg.JWTTTL.Seconds(), "cache_ttl_s", cfg.VerifyCacheTTL.Seconds(),
+		"valkey", cfg.ValkeyAddr != "")
+	if cfg.OLT.Mode == config.OLTModeMock {
+		log.Warn("OLT_MODE=mock: token dummy diterima. Jangan dipakai di produksi.")
+	}
 
+	errCh := make(chan error, len(servers))
+	for _, srv := range servers {
+		go func() {
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				errCh <- fmt.Errorf("listen %s: %w", srv.Addr, err)
+			}
+		}()
+	}
+
+	var runErr error
 	select {
-	case err := <-errCh:
-		return err
+	case runErr = <-errCh:
 	case <-ctx.Done():
+		log.Info("menerima sinyal stop, shutdown...")
 	}
 
-	log.Info("menerima sinyal stop, shutdown...")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	errs := []error{runErr}
+	for _, srv := range servers {
+		errs = append(errs, srv.Shutdown(shutdownCtx))
+	}
+	return errors.Join(errs...)
+}
+
+// sharedState adalah state yang dibagi antar replika: rate limit & cache
+// verifikasi. Dengan Valkey, semua replika memakai kuota & cache yang sama;
+// tanpa Valkey (development), state disimpan per instance.
+type sharedState struct {
+	ipLimiter   server.RateLimiter
+	userLimiter server.RateLimiter
+	cache       exchange.Cache
+	readyChecks []server.ReadyCheck
+	close       func()
+}
+
+func newSharedState(cfg config.Config, log *slog.Logger, reg *metrics.Registry) sharedState {
+	if cfg.ValkeyAddr == "" {
+		log.Warn("VALKEY_ADDR kosong: rate limit & cache in-memory per instance (hanya untuk development satu replika)")
+		return sharedState{
+			ipLimiter:   ratelimit.New(cfg.RateLimitPerMinute, time.Minute),
+			userLimiter: ratelimit.New(cfg.RateLimitPerUserPerMinute, time.Minute),
+			cache:       exchange.NewMemoryCache(),
+			close:       func() {},
+		}
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr:         cfg.ValkeyAddr,
+		Password:     cfg.ValkeyPassword,
+		DB:           cfg.ValkeyDB,
+		DialTimeout:  2 * time.Second,
+		ReadTimeout:  500 * time.Millisecond,
+		WriteTimeout: 500 * time.Millisecond,
+		PoolTimeout:  time.Second,
+	})
+
+	errorsTotal := reg.Counter("olt_auth_bridge_valkey_errors_total",
+		"Error Valkey (rate limit memakai fallback in-memory, cache dilewati)", "op")
+	warn := throttled(time.Minute)
+	onError := func(op string) func(error) {
+		return func(err error) {
+			errorsTotal.Inc(op)
+			warn(func() { log.Warn("valkey bermasalah, memakai fallback", "op", op, "error", err.Error()) })
+		}
+	}
+
+	const rlPrefix = "bridge:rl:exchange:" // + "ip:<ip>" / "user:<olt_user_id>"
+	ipLimiter := ratelimit.NewValkey(client, rlPrefix, cfg.RateLimitPerMinute, time.Minute)
+	ipLimiter.OnError = onError("ratelimit")
+	userLimiter := ratelimit.NewValkey(client, rlPrefix, cfg.RateLimitPerUserPerMinute, time.Minute)
+	userLimiter.OnError = onError("ratelimit")
+	cache := exchange.NewValkeyCache(client, "bridge:verify:")
+	cache.OnError = onError("cache")
+
+	return sharedState{
+		ipLimiter:   ipLimiter,
+		userLimiter: userLimiter,
+		cache:       cache,
+		readyChecks: []server.ReadyCheck{{Name: "valkey", Optional: true, Check: func(ctx context.Context) error {
+			return client.Ping(ctx).Err()
+		}}},
+		close: func() { _ = client.Close() },
+	}
+}
+
+// throttled menjalankan fn paling sering sekali per interval, agar gangguan
+// dependensi tidak membanjiri log (metrik tetap menghitung setiap kejadian).
+func throttled(every time.Duration) func(fn func()) {
+	var last atomic.Int64
+	return func(fn func()) {
+		now := time.Now().UnixNano()
+		prev := last.Load()
+		if now-prev < int64(every) || !last.CompareAndSwap(prev, now) {
+			return
+		}
+		fn()
+	}
 }
 
 func newVerifier(cfg config.Config) (olt.Verifier, error) {

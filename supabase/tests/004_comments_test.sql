@@ -116,9 +116,9 @@ reset role;
 -- carol sudah menulis 2 komentar dalam semenit terakhir.
 update private.rate_limits set max_count = 2 where action = 'comment';
 select tests.authenticate_as(:'carol');
-select throws_ok(
+select throws_like(
   $$select create_comment('a2000000-0000-4000-8000-000000000002', null, 'satu menit terlalu banyak')$$,
-  'PT429', 'rate_limited', 'Rate limit komentar per menit berlaku');
+  '%"PT429"%"rate_limited"%', 'Rate limit komentar per menit berlaku');
 
 select * from finish();
 rollback;

@@ -3,6 +3,8 @@ package olt
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -67,7 +69,8 @@ func (v *WebSocketVerifier) Verify(ctx context.Context, token string) (User, err
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
 	}()
 
-	msg, err := json.Marshal(substituteToken(v.template, token))
+	vars := strings.NewReplacer(config.TokenPlaceholder, token, config.RequestIDPlaceholder, newRequestID())
+	msg, err := json.Marshal(substitute(v.template, vars))
 	if err != nil {
 		return User{}, fmt.Errorf("susun pesan login: %w", err)
 	}
@@ -120,27 +123,39 @@ func (v *WebSocketVerifier) parseLoginResponse(doc any) (User, error) {
 	return u, nil
 }
 
-// substituteToken mengganti placeholder {{token}} di semua nilai string template.
-// Bekerja pada struktur JSON (bukan teks), sehingga token tidak bisa menyuntikkan JSON.
-func substituteToken(node any, token string) any {
+// substitute mengganti placeholder ({{token}}, {{request_id}}) di semua nilai
+// string template. Bekerja pada struktur JSON (bukan teks), sehingga token
+// tidak bisa menyuntikkan JSON; Replacer berjalan satu kali sehingga isi token
+// tidak ikut diganti ulang.
+func substitute(node any, vars *strings.Replacer) any {
 	switch n := node.(type) {
 	case map[string]any:
 		out := make(map[string]any, len(n))
 		for k, val := range n {
-			out[k] = substituteToken(val, token)
+			out[k] = substitute(val, vars)
 		}
 		return out
 	case []any:
 		out := make([]any, len(n))
 		for i, val := range n {
-			out[i] = substituteToken(val, token)
+			out[i] = substitute(val, vars)
 		}
 		return out
 	case string:
-		return strings.ReplaceAll(n, config.TokenPlaceholder, token)
+		return vars.Replace(n)
 	default:
 		return n
 	}
+}
+
+// newRequestID membuat UUID v4 acak untuk field request_id Protokol v1.
+func newRequestID() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	b[6] = b[6]&0x0f | 0x40
+	b[8] = b[8]&0x3f | 0x80
+	h := hex.EncodeToString(b[:])
+	return h[0:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:32]
 }
 
 func decodeJSON(data []byte) (any, bool) {

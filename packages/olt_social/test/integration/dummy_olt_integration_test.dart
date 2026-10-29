@@ -109,7 +109,8 @@ void main() {
     await sari.ensureSignedIn();
 
     final roomId = await sari.chat.getOrCreateDirectRoom(budiUser.id);
-    final sent = await sari.chat.sendMessage(roomId, body: 'Halo dari token OLT dummy', clientId: const Uuid().v4());
+    final clientId = const Uuid().v4();
+    final sent = await sari.chat.sendMessage(roomId, body: 'Halo dari token OLT dummy $clientId', clientId: clientId);
     expect(sent.sender?.username, 'sari_invest');
     final inbox = await budi.chat.getMessages(roomId, limit: 5);
     expect(inbox.items.map((m) => m.id), contains(sent.id));

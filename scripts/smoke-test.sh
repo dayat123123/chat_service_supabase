@@ -2,7 +2,7 @@
 # Smoke test end-to-end lewat Kong, meniru client Flutter:
 # exchange token mock -> JWT -> RPC/REST -> storage.
 # Butuh stack berjalan, seed terpasang, dan AUTH_BRIDGE_OLT_MODE=mock.
-# Data yang dibuat (1 post) di-soft-delete di akhir.
+# Data yang dibuat (1 post) di-soft-delete di akhir; user uji ban dihapus.
 set -uo pipefail
 
 BASE="${SUPABASE_URL:-http://kong:8000}"
@@ -38,6 +38,29 @@ check "token OLT tidak valid -> 401" '[ "$code" = 401 ]'
 code=$(req -X POST "$BASE/bridge/v1/exchange" -H 'Content-Type: application/json' \
   -d '{"token":"mock:1001:budi_santoso"}')
 check "exchange tanpa apikey ditolak Kong -> 401" '[ "$code" = 401 ]'
+
+# User di-ban: user sekali pakai dibuat lewat exchange, di-ban langsung di DB,
+# lalu dihapus lagi (sanksi ikut terhapus lewat cascade).
+sql() { psql -U postgres -X -q -t -A -v ON_ERROR_STOP=1 -c "$1"; }
+BAN_OLT_ID="99$(date +%s)$((RANDOM % 1000))"
+code=$(req -X POST "$BASE/bridge/v1/exchange" -H "apikey: $ANON_KEY" \
+  -H 'Content-Type: application/json' -d "{\"token\":\"mock:$BAN_OLT_ID:smoke_ban\"}")
+BAN_JWT=$(json .access_token)
+BAN_ID=$(json .user.id)
+if [ "$code" = 200 ] && sql "insert into private.user_sanctions (user_id, kind, reason, ends_at)
+    values ('$BAN_ID', 'ban', 'smoke test', now() + interval '10 minutes')" > /dev/null; then
+  # Token berbeda (nama tampilan) agar tidak dilayani cache verifikasi.
+  code=$(req -X POST "$BASE/bridge/v1/exchange" -H "apikey: $ANON_KEY" \
+    -H 'Content-Type: application/json' -d "{\"token\":\"mock:$BAN_OLT_ID:smoke_ban:Smoke Ban\"}")
+  check "exchange user yang di-ban -> 403 user_banned" '[ "$code" = 403 ] && [ "$(json .error)" = user_banned ]'
+  code=$(req "$BASE/rest/v1/rpc/get_feed?p_scope=global&p_limit=1" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $BAN_JWT")
+  check "JWT lama user yang di-ban ditolak PostgREST -> 403" '[ "$code" = 403 ]'
+else
+  check "siapkan user di-ban (exchange + sanksi)" 'false'
+fi
+if [ -n "$BAN_ID" ] && [ "$BAN_ID" != null ]; then
+  sql "delete from public.profiles where id = '$BAN_ID'" > /dev/null || echo "PERINGATAN: user uji $BAN_ID gagal dihapus" >&2
+fi
 
 AUTH=(-H "apikey: $ANON_KEY" -H "Authorization: Bearer $JWT")
 JSON=(-H 'Content-Type: application/json')

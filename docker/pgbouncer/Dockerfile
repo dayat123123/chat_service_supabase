@@ -9,5 +9,7 @@ RUN apk add --no-cache pgbouncer=1.24.0-r0 \
 COPY entrypoint.sh /usr/local/bin/pgbouncer-entrypoint.sh
 
 USER 10001:10001
-EXPOSE 6432
+# Port 6432. Sengaja tanpa EXPOSE: BuildKit menulis alamat pointer ke riwayat
+# instruksi EXPOSE, sehingga ID image berubah di setiap build dan container
+# ikut di-restart setiap `up --build`.
 ENTRYPOINT ["/bin/sh", "/usr/local/bin/pgbouncer-entrypoint.sh"]

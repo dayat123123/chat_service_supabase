@@ -62,4 +62,42 @@ begin
 end;
 $$;
 
+-- Seperti authenticate_as, dengan klaim JWT tambahan (mis. {"aal":"aal2"} atau {"iat": ...}).
+create or replace function tests.authenticate_with(p_user_id uuid, p_extra jsonb)
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims',
+    (jsonb_build_object('sub', p_user_id, 'role', 'authenticated', 'aud', 'authenticated') || p_extra)::text, true);
+end;
+$$;
+
+-- Admin uji: akun GoTrue terpisah (bukan profil sosial) dengan peran tertentu.
+-- Harus dipanggil saat role masih postgres. Login: tests.authenticate_admin(id).
+create or replace function tests.create_admin(p_role text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  insert into private.admin_users (user_id, role, display_name) values (v_id, p_role, p_role);
+  return v_id;
+end;
+$$;
+
+create or replace function tests.authenticate_admin(p_admin_id uuid, p_aal text default 'aal2')
+returns void
+language plpgsql
+as $$
+begin
+  perform tests.authenticate_with(p_admin_id, jsonb_build_object('aal', p_aal));
+end;
+$$;
+
 grant execute on all functions in schema tests to anon, authenticated;

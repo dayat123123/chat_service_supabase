@@ -44,9 +44,14 @@ void main() {
     await tester.pumpWidget(const ExampleApp());
     await pumpUntilFound(tester, find.text('Budi Santoso'));
 
-    // Login OLT (mock) -> auth-bridge -> JWT Supabase.
+    // Login OLT (mock) -> auth-bridge -> JWT Supabase. Feed tampil dengan minimal
+    // satu kartu post. Isi teratas berubah-ubah (post baru dari tes lain), jadi
+    // tidak menunggu post tertentu.
     await tester.tap(find.text('Budi Santoso'));
-    await pumpUntilFound(tester, find.textContaining(r'$ANTM'));
+    await pumpUntilFound(
+      tester,
+      find.descendant(of: find.byType(OltStreamFeed), matching: find.byIcon(Icons.mode_comment_outlined)),
+    );
 
     // Post seed tertua ada di bawah; scroll feed (memicu infinite scroll bila perlu).
     final seedPost = find.textContaining('tembus resistance');

@@ -42,7 +42,8 @@ ACME_EMAIL=ops@domain.com
 SUPABASE_PUBLIC_URL=https://social-api.domain.com
 API_EXTERNAL_URL=https://social-api.domain.com/auth/v1
 OLT_WS_URL=wss://<server-olt>/<path>
-# OLT_WS_* lain: sesuaikan dengan format login OLT (services/auth-bridge/README.md)
+# OLT_WS_* lain: kosongkan bila OLT memakai Protokol v1 (docs/market-integration.md);
+# isi hanya bila formatnya berbeda (services/auth-bridge/README.md)
 ```
 
 ```bash
@@ -127,16 +128,50 @@ make up PROFILE=single
 
 ## 5. Moderasi
 
-> Studio mati secara default di profil single. Nyalakan dengan `make admin-up PROFILE=single` dan akses lewat SSH tunnel (bagian 2). Tahap 2 menambahkan RPC dan UI moderator sehingga Studio tidak lagi dibutuhkan.
+### 5.1 Lewat API admin
 
-| Kebutuhan | Cara |
+Moderasi dijalankan lewat fungsi di schema `admin_api`. Panel admin web (F1) memakai fungsi-fungsi ini.
+
+**Login admin.**
+- Admin memakai akun GoTrue terpisah, bukan akun OLT, dan wajib 2FA TOTP (klaim `aal2`).
+- Peran disimpan di `private.admin_users`.
+
+**Peran:**
+
+| Peran | Boleh |
 |---|---|
-| Antrean laporan | Studio → SQL: `select * from private.report_queue;` (target paling sering dilaporkan di atas) |
-| Hapus konten | `select delete_post('<id>');` / `delete_comment` / `delete_message`. Dijalankan sebagai service_role / Studio; isi asli diarsipkan di `private.content_archive` |
-| Tutup laporan | `update reports set status = 'resolved', resolution_note = '...', resolved_at = now() where target_id = '<id>';` |
-| Kata terlarang | `insert into banned_words (word, action) values ('kata', 'mask');`. `mask` mengganti kata dengan `***`, `block` menolak konten (HTTP 422). Hanya huruf kecil/angka/spasi |
-| Ubah rate limit | `update private.rate_limits set max_count = 10 where action = 'post';`. Action: `post`, `comment`, `message`, `reaction`, `follow`, `report` |
-| Akun resmi | `update profiles set is_verified = true where username = 'olt_official';` |
+| `viewer` | Lihat antrean dan detail user, tanpa data pribadi |
+| `room_moderator` | Tindak laporan pesan di room yang ditugaskan |
+| `moderator` | Tindak semua laporan, beri sanksi, cabut sesi |
+| `compliance_admin` | Semua hak moderator, ditambah kata terlarang, `trust_level`, verifikasi, dokumen S&K, menunjuk moderator, baca audit log, ubah pengaturan |
+| `super_admin` | Semua hak di atas, ditambah menunjuk admin lain, arsip regulator, dan *legal hold* |
+
+**Fungsi:**
+
+| Kebutuhan | Fungsi |
+|---|---|
+| Antrean laporan (prioritas) | `admin_api.report_queue(p_status, p_limit)` |
+| Tindak konten | `admin_api.resolve_target(type, id, 'remove' \| 'hide' \| 'approve' \| 'restore' \| 'dismiss', alasan)` |
+| Sanksi bertingkat | `admin_api.sanction_user(user_id, alasan)`. Tanpa `p_kind`, tangga dipakai: peringatan → mute 1 jam → mute 24 jam → ban 7 hari → ban permanen |
+| Cabut sanksi / sesi | `admin_api.revoke_sanction(id, alasan)` / `admin_api.revoke_user_sessions(user_id, alasan)` |
+| Detail user | `admin_api.user_detail(user_id)`. Email hanya untuk compliance/super, dan setiap aksesnya dicatat |
+| Kata terlarang | `admin_api.upsert_banned_word(kata, 'mask' \| 'block')` / `admin_api.delete_banned_word(kata)` |
+| Trust & verifikasi | `admin_api.set_trust_level(user_id, 0..3, alasan)` / `admin_api.set_verified(user_id, true, alasan)` |
+| Syarat & Ketentuan | `admin_api.publish_legal_document('terms', judul, isi)`. User wajib menyetujui ulang versi baru |
+| Pengaturan | `admin_api.update_setting(key, value)`. Contoh: `retention.archive_days`, `rate_limit.new_account_factor` |
+| Arsip regulator | `admin_api.archive(...)` / `admin_api.set_legal_hold(id, true, alasan)` (super_admin) |
+| Audit log | `admin_api.audit_log(limit)`: semua aksi admin tercatat dan tidak bisa diubah/dihapus |
+
+### 5.2 Darurat lewat SQL (sebelum panel admin F1 siap)
+
+Studio berjalan sebagai `postgres`, bukan akun admin `aal2`, sehingga tidak bisa memakai `admin_api`. Nyalakan Studio dengan `make admin-up PROFILE=single` (lihat bagian 2). Setiap tindakan darurat **wajib dicatat manual** di `private.admin_audit_log`.
+
+| Kebutuhan | SQL |
+|---|---|
+| Sembunyikan konten | `update posts set moderation_status = 'hidden', moderated_at = now() where id = '<id>';` (juga `comments`, `messages`) |
+| Mute / ban | `insert into private.user_sanctions (user_id, kind, reason, ends_at) values ('<user>', 'ban', '...', null);` |
+| Cabut sesi | `select private.revoke_sessions('<user>', 'alasan');` |
+| Ubah rate limit | `update private.rate_limits set max_count = 10 where action = 'post' and window_seconds = 60;` |
 
 ## 6. Rotasi kunci
 
@@ -157,11 +192,20 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
   - Header, token, dan password tidak pernah ditulis ke log.
 - **Rotasi log:** semua container memakai rotasi json-file 10 MB × 5 file.
 - **Health:** `make ps PROFILE=single`. Semua service punya healthcheck; service `migrate` dan `volume-init` harus `Exited (0)`.
+- **auth-bridge (port ops internal 9100).** Port ini tidak dipublikasikan dan tidak lewat Kong; akses dari jaringan Docker:
+
+  ```bash
+  docker compose -f docker/compose.yml -f docker/compose.prod.yml run --rm --entrypoint sh tools \
+    -c 'curl -s http://auth-bridge:9100/readyz; curl -s http://auth-bridge:9100/metrics | grep ^olt_'
+  ```
+
+  - `/readyz` bernilai `degraded` bila Valkey bermasalah (rate limit jatuh ke per-instance) atau circuit breaker OLT terbuka.
+  - Metrik dan alert yang disarankan ada di [services/auth-bridge/README.md](../services/auth-bridge/README.md#port-ops-internal).
 - **Yang perlu dipantau:**
   - disk (volume `db-data`, `storage-data`, folder `backups/`)
   - koneksi Postgres (PgBouncer membatasi maks 80 koneksi server)
   - error 5xx dan 429 di log Traefik/Kong
-  - error `olt_unavailable` di auth-bridge (server OLT bermasalah)
+  - error `olt_unavailable` di auth-bridge (server OLT bermasalah), `olt_auth_bridge_olt_breaker_open = 1`, dan kenaikan `olt_auth_bridge_valkey_errors_total`
 
 ## 8. Checklist sebelum rilis
 
@@ -176,7 +220,8 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 - [ ] Studio mati (`make admin-down PROFILE=single`), dan port admin hanya terikat ke `127.0.0.1`.
 - [ ] Firewall hanya membuka 22/80/443. Akses SSH memakai key, tanpa password.
 - [ ] `SERVICE_ROLE_KEY` tidak ada di app Flutter. App hanya memakai `ANON_KEY`.
-- [ ] `make test-db` lulus. Tes ini antara lain memeriksa RLS aktif di semua tabel, anon tanpa akses, dan `olt_user_id` tidak terbaca.
+- [ ] `make test-db` lulus. Tes ini antara lain memeriksa RLS aktif di semua tabel, anon tanpa akses, `olt_user_id` tidak terbaca, peran admin, dan audit log yang tidak bisa diubah.
+- [ ] `retention.archive_days` (arsip regulator) sudah ditetapkan bersama tim legal. Default sementara: 5 tahun.
 
 **Data & operasional**
 - [ ] Cron backup aktif, salinan offsite tersedia, restore sudah diuji.

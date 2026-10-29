@@ -13,7 +13,7 @@ func TestUserTokenClaims(t *testing.T) {
 	iss := NewIssuer(secret, 15*time.Minute, "olt-auth-bridge")
 	iss.now = func() time.Time { return now }
 
-	tok, exp, err := iss.UserToken(User{ID: "uuid-1", OLTUserID: "1001", Username: "budi", Email: "b@x.id"})
+	tok, exp, err := iss.UserToken(User{ID: "uuid-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,8 +26,7 @@ func TestUserTokenClaims(t *testing.T) {
 		t.Fatal(err)
 	}
 	for key, want := range map[string]any{
-		"sub": "uuid-1", "role": "authenticated", "aud": "authenticated",
-		"iss": "olt-auth-bridge", "email": "b@x.id",
+		"sub": "uuid-1", "role": "authenticated", "aud": "authenticated", "iss": "olt-auth-bridge",
 	} {
 		if claims[key] != want {
 			t.Errorf("claim %s = %v, want %v", key, claims[key], want)
@@ -36,9 +35,14 @@ func TestUserTokenClaims(t *testing.T) {
 	if claims["exp"].(float64) != float64(now.Add(15*time.Minute).Unix()) {
 		t.Errorf("claim exp salah: %v", claims["exp"])
 	}
-	meta := claims["app_metadata"].(map[string]any)
-	if meta["olt_user_id"] != "1001" {
-		t.Errorf("app_metadata.olt_user_id = %v", meta["olt_user_id"])
+	// Klaim minimal: tidak ada data pribadi di JWT.
+	for _, key := range []string{"email", "user_metadata", "phone"} {
+		if _, ok := claims[key]; ok {
+			t.Errorf("claim %s tidak boleh ada", key)
+		}
+	}
+	if meta := claims["app_metadata"].(map[string]any); len(meta) != 1 || meta["provider"] != "olt" {
+		t.Errorf("app_metadata harus hanya provider: %v", meta)
 	}
 }
 

@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:olt_social/olt_social.dart';
 import 'package:olt_social_example/main.dart';
 
 const _enabled = bool.fromEnvironment('OLT_DUMMY_E2E');
@@ -42,7 +43,9 @@ void main() {
     await tester.enterText(password, 'olt12345');
     await tester.ensureVisible(button);
     await tester.tap(button);
-    await pumpUntilFound(tester, find.textContaining(r'$ANTM'));
+    // Feed sosial tampil. Isi feed berubah-ubah (post baru dari tes lain), jadi
+    // tidak menunggu post tertentu.
+    await pumpUntilFound(tester, find.byType(OltStreamFeed));
 
     // Identitas sosial = user seed Sari.
     await tester.tap(find.text('Profil').first);

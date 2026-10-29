@@ -88,7 +88,9 @@ void main() {
   }, skip: skip);
 
   test('komentar baru diterima realtime oleh pemilik post', () async {
-    final post = await budi.feed.createPost(body: r'Integration test $BBCA');
+    // Teks unik per run: server menolak konten sama >= 3x dalam 5 menit.
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final post = await budi.feed.createPost(body: 'Integration test \$BBCA $stamp');
     final seen = <String>{};
     final sub = budi.comments.watchComments(post.id).listen(seen.add);
     try {
@@ -96,7 +98,7 @@ void main() {
       // siap: kirim komentar ulang sampai event pertamanya diterima.
       String? received;
       for (var attempt = 0; attempt < 5 && received == null; attempt++) {
-        final comment = await sari.comments.createComment(postId: post.id, body: 'Komentar realtime $attempt');
+        final comment = await sari.comments.createComment(postId: post.id, body: 'Komentar realtime $stamp-$attempt');
         final deadline = DateTime.now().add(const Duration(seconds: 3));
         while (DateTime.now().isBefore(deadline) && !seen.contains(comment.id)) {
           await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -123,7 +125,7 @@ void main() {
       final clientId = const Uuid().v4();
       final received = _waitFor(sariEvents, (e) => e is MessageUpserted && e.message.clientId == clientId);
       await Future<void>.delayed(const Duration(seconds: 1));
-      final sent = await budi.chat.sendMessage(roomId, body: 'Halo dari integration test', clientId: clientId);
+      final sent = await budi.chat.sendMessage(roomId, body: 'Halo dari integration test $clientId', clientId: clientId);
       final event = await received as MessageUpserted;
       expect(event.message.id, sent.id);
       await notified;

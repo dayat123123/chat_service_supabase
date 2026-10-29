@@ -82,22 +82,14 @@ Kode error yang mungkin muncul: `BAD_REQUEST`, `INVALID_CREDENTIALS`, `ACCOUNT_S
 
 ## Pemetaan ke auth-bridge
 
-Isi `docker/compose.dummy-olt.yml` di bawah ini adalah konfigurasi lengkap adapter auth-bridge untuk protokol di atas. Saat format OLT asli tersedia, cukup ganti nilainya di `docker/.env`; kode tidak perlu disentuh.
+Default adapter auth-bridge sama dengan Protokol v1 ([docs/market-integration.md](../../docs/market-integration.md)), dan login dummy mengikuti protokol itu. Karena itu `docker/compose.dummy-olt.yml` hanya mengisi dua nilai, persis seperti yang dilakukan di produksi:
 
 ```dotenv
 AUTH_BRIDGE_OLT_MODE=websocket
 OLT_WS_URL=ws://dummy-olt:8090/ws
-OLT_WS_LOGIN_TEMPLATE={"type":"login","method":"token","payload":{"token":"{{token}}"}}
-OLT_WS_RESPONSE_MATCH_PATH=type            # lewati welcome/heartbeat
-OLT_WS_RESPONSE_MATCH_VALUE=login_result
-OLT_WS_SUCCESS_PATH=status
-OLT_WS_SUCCESS_VALUE=OK
-OLT_WS_ERROR_MESSAGE_PATH=error.message
-OLT_WS_USER_ID_PATH=data.user.id
-OLT_WS_USERNAME_PATH=data.user.username
-OLT_WS_EMAIL_PATH=data.user.email
-OLT_WS_DISPLAY_NAME_PATH=data.user.full_name
 ```
+
+Pesan `welcome` dan `heartbeat` dilewati karena auth-bridge hanya membaca pesan `type = login_result`. Status gagal dummy (`FAILED`) tetap terbaca sebagai login ditolak, karena auth-bridge menganggap semua status selain `OK` gagal. Penyelarasan penuh dummy ke Protokol v1 (field `v`, status `ERROR`, kode error v1) dikerjakan di F1, bersama `quote`, `instruments`, dan `holdings`.
 
 ## Konfigurasi
 

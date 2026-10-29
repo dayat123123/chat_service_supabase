@@ -1,6 +1,7 @@
 # Tambahan profil dev: auth-bridge memverifikasi token ke OLT DUMMY
 # (services/dummy-olt) lewat jalur WebSocket yang sama dengan produksi.
-# Yang berubah hanya KONFIGURASI auth-bridge (OLT_WS_*), bukan kodenya.
+# Yang berubah hanya KONFIGURASI auth-bridge (OLT_MODE + OLT_WS_URL), bukan kodenya:
+# dummy berbicara Protokol v1, sama dengan default auth-bridge, persis seperti produksi.
 #
 #   make up DUMMY_OLT=1          Windows: .\make.ps1 up -DummyOlt
 #   make down DUMMY_OLT=1        (ikut menghentikan dummy-olt)
@@ -11,7 +12,7 @@ services:
   dummy-olt:
     build:
       context: ../services/dummy-olt
-    image: olt-social/dummy-olt:0.1.0
+    image: olt-social/dummy-olt:0.1.1
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -42,8 +43,7 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 64M, pids: 64}
 
-  # Pemetaan protokol login OLT dummy -> adapter WebSocket auth-bridge.
-  # Saat format OLT asli tersedia, cukup ganti nilai-nilai ini (di docker/.env).
+  # Cukup URL: format pesan memakai default Protokol v1 (OLT_WS_* kosong).
   auth-bridge:
     depends_on:
       dummy-olt:
@@ -51,13 +51,3 @@ services:
     environment:
       OLT_MODE: websocket
       OLT_WS_URL: ws://dummy-olt:8090/ws
-      OLT_WS_LOGIN_TEMPLATE: '{"type":"login","method":"token","payload":{"token":"{{token}}"}}'
-      OLT_WS_RESPONSE_MATCH_PATH: type
-      OLT_WS_RESPONSE_MATCH_VALUE: login_result
-      OLT_WS_SUCCESS_PATH: status
-      OLT_WS_SUCCESS_VALUE: OK
-      OLT_WS_ERROR_MESSAGE_PATH: error.message
-      OLT_WS_USER_ID_PATH: data.user.id
-      OLT_WS_USERNAME_PATH: data.user.username
-      OLT_WS_EMAIL_PATH: data.user.email
-      OLT_WS_DISPLAY_NAME_PATH: data.user.full_name

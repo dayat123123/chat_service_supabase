@@ -53,14 +53,22 @@ SQL
     continue
   fi
 
-  echo "migrate: menjalankan $version"
+  # Baris "-- olt:run-as=supabase_admin" di awal file: jalankan sebagai superuser.
+  # Hanya untuk perubahan yang butuh superuser (role bawaan Supabase, tenant
+  # Realtime); objek baru tetap dibuat di migrasi biasa (pemilik: postgres).
+  run_as="$PGUSER" label=""
+  if head -n 5 "$file" | grep -qx -- '-- olt:run-as=supabase_admin'; then
+    run_as=supabase_admin label=" (sebagai supabase_admin)"
+  fi
+
+  echo "migrate: menjalankan $version$label"
   # File migrasi dan pencatatannya berada dalam satu transaksi yang sama.
   {
     echo "set client_min_messages = warning;"
     cat "$file"
     printf '\ninsert into olt_internal.schema_migrations (version, checksum) values (%s, %s);\n' \
       "'$version'" "'$checksum'"
-  } | psql_q --single-transaction -f -
+  } | PGUSER="$run_as" psql_q --single-transaction -f -
   applied=$((applied + 1))
 done
 

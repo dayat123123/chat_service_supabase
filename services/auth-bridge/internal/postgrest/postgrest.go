@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"net/http"
 	"time"
 
@@ -20,17 +21,21 @@ type ServiceTokenSource interface {
 
 // Client adalah klien PostgREST minimal untuk auth-bridge.
 type Client struct {
-	baseURL string
-	tokens  ServiceTokenSource
-	http    *http.Client
+	baseURL  string
+	tokens   ServiceTokenSource
+	http     *http.Client
+	attempts int
+	backoff  time.Duration
 }
 
 // NewClient membuat Client untuk baseURL (mis. http://rest:3000).
 func NewClient(baseURL string, tokens ServiceTokenSource) *Client {
 	return &Client{
-		baseURL: baseURL,
-		tokens:  tokens,
-		http:    &http.Client{Timeout: 5 * time.Second},
+		baseURL:  baseURL,
+		tokens:   tokens,
+		http:     &http.Client{Timeout: 5 * time.Second},
+		attempts: 3,
+		backoff:  100 * time.Millisecond,
 	}
 }
 
@@ -76,15 +81,37 @@ func (c *Client) Ping(ctx context.Context) error {
 	return nil
 }
 
+// rpc memanggil RPC dengan retry (backoff + jitter) untuk gangguan sementara:
+// error jaringan dan status 5xx. RPC yang dipanggil auth-bridge idempoten.
 func (c *Client) rpc(ctx context.Context, fn string, body []byte, out any) error {
+	var err error
+	for attempt := 0; attempt < c.attempts; attempt++ {
+		if attempt > 0 {
+			backoff := c.backoff << (attempt - 1)
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("rpc %s: %w (error terakhir: %v)", fn, ctx.Err(), err)
+			case <-time.After(backoff + time.Duration(rand.Int64N(int64(backoff)/2+1))):
+			}
+		}
+		var retry bool
+		retry, err = c.rpcOnce(ctx, fn, body, out)
+		if err == nil || !retry {
+			return err
+		}
+	}
+	return err
+}
+
+func (c *Client) rpcOnce(ctx context.Context, fn string, body []byte, out any) (retry bool, err error) {
 	tok, err := c.tokens.ServiceToken()
 	if err != nil {
-		return fmt.Errorf("service token: %w", err)
+		return false, fmt.Errorf("service token: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/rpc/"+fn, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return false, err
 	}
 	req.Header.Set("Authorization", "Bearer "+tok)
 	req.Header.Set("Content-Type", "application/json")
@@ -92,21 +119,21 @@ func (c *Client) rpc(ctx context.Context, fn string, body []byte, out any) error
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("rpc %s: %w", fn, err)
+		return ctx.Err() == nil, fmt.Errorf("rpc %s: %w", fn, err)
 	}
 	defer resp.Body.Close()
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return fmt.Errorf("rpc %s: baca respons: %w", fn, err)
+		return true, fmt.Errorf("rpc %s: baca respons: %w", fn, err)
 	}
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("rpc %s: status %d: %s", fn, resp.StatusCode, truncate(data, 300))
+		return resp.StatusCode >= 500, fmt.Errorf("rpc %s: status %d: %s", fn, resp.StatusCode, truncate(data, 300))
 	}
 	if err := json.Unmarshal(data, out); err != nil {
-		return fmt.Errorf("rpc %s: decode respons: %w", fn, err)
+		return false, fmt.Errorf("rpc %s: decode respons: %w", fn, err)
 	}
-	return nil
+	return false, nil
 }
 
 func nullable(s string) any {

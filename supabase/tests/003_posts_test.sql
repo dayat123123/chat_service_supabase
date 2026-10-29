@@ -57,9 +57,10 @@ select isnt(
 select lives_ok(
   $$insert into posts (author_id, body) select auth.uid(), 'post ' || g from generate_series(1, 4) g$$,
   'Hingga 5 post per menit diizinkan');
-select throws_ok(
+-- HTTP 429: body tetap {"code":"PT429","message":"rate_limited"} + header Retry-After.
+select throws_like(
   $$insert into posts (author_id, body) values (auth.uid(), 'post ke-6')$$,
-  'PT429', 'rate_limited', 'Post ke-6 dalam satu menit ditolak');
+  '%"PT429"%"rate_limited"%Coba lagi dalam%', 'Post ke-6 dalam satu menit ditolak');
 
 -- Blokir menyembunyikan post dua arah.
 reset role;

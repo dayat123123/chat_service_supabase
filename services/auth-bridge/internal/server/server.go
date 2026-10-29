@@ -1,7 +1,15 @@
 // Package server berisi HTTP handler auth-bridge.
 //
-//	GET  /health    status service
+// Port publik (diteruskan Kong di /bridge/v1/):
+//
+//	GET  /health    status service (dipakai healthcheck Docker)
 //	POST /exchange  {"token":"<token OLT>"} -> JWT Supabase
+//
+// Port ops (internal, tidak diteruskan Kong):
+//
+//	GET  /metrics   metrik Prometheus
+//	GET  /livez     proses hidup
+//	GET  /readyz    dependensi siap
 package server
 
 import (
@@ -19,6 +27,7 @@ import (
 	"time"
 
 	"olt-social/auth-bridge/internal/exchange"
+	"olt-social/auth-bridge/internal/metrics"
 	"olt-social/auth-bridge/internal/olt"
 	"olt-social/auth-bridge/internal/token"
 )
@@ -40,12 +49,48 @@ type RateLimiter interface {
 
 // Options adalah dependensi Server.
 type Options struct {
-	Log            *slog.Logger
-	Resolver       Resolver
-	Issuer         TokenIssuer
+	Log      *slog.Logger
+	Resolver Resolver
+	Issuer   TokenIssuer
+	// Limiter membatasi /exchange per IP klien; UserLimiter per user OLT
+	// (diperiksa setelah token terverifikasi). UserLimiter boleh nil.
 	Limiter        RateLimiter
+	UserLimiter    RateLimiter
 	TrustedProxies []netip.Prefix
 	OLTMode        string
+	// ReadyChecks dijalankan berurutan oleh /readyz. Boleh kosong.
+	ReadyChecks []ReadyCheck
+	// Metrics boleh nil (tidak mencatat metrik).
+	Metrics *Metrics
+}
+
+// ReadyCheck adalah satu pemeriksaan /readyz. Kegagalan pemeriksaan Optional
+// hanya dilaporkan "degraded" (layanan tetap jalan dengan fallback) dan tidak
+// membuat instance dianggap tidak siap: kalau Valkey mati, semua replika akan
+// gagal bersamaan, dan menariknya dari rotasi justru memadamkan layanan.
+type ReadyCheck struct {
+	Name     string
+	Check    func(context.Context) error
+	Optional bool
+}
+
+// Metrics adalah metrik HTTP & exchange yang dicatat handler.
+type Metrics struct {
+	Requests  *metrics.CounterVec   // label: path, status
+	Duration  *metrics.HistogramVec // label: path
+	Exchanges *metrics.CounterVec   // label: result
+}
+
+// NewMetrics mendaftarkan metrik server ke registry.
+func NewMetrics(r *metrics.Registry) *Metrics {
+	return &Metrics{
+		Requests: r.Counter("olt_auth_bridge_http_requests_total", "Jumlah request HTTP", "path", "status"),
+		Duration: r.Histogram("olt_auth_bridge_http_request_duration_seconds", "Durasi request HTTP",
+			[]float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}, "path"),
+		Exchanges: r.Counter("olt_auth_bridge_exchanges_total",
+			"Hasil exchange token (ok, cached, invalid_token, olt_unavailable, banned, rate_limited_ip, rate_limited_user, error)",
+			"result"),
+	}
 }
 
 // Server menyatukan dependensi handler HTTP.
@@ -58,7 +103,7 @@ func New(opts Options) *Server {
 	return &Server{opts: opts}
 }
 
-// Handler mengembalikan router HTTP lengkap dengan middleware.
+// Handler mengembalikan router HTTP publik lengkap dengan middleware.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.handleHealth)
@@ -66,8 +111,54 @@ func (s *Server) Handler() http.Handler {
 	return s.withRequestID(s.withRecover(s.withLogging(mux)))
 }
 
+// OpsHandler mengembalikan router port ops: /metrics, /livez, /readyz.
+// Tidak dicatat ke log/metrik per request (di-scrape berkala).
+func (s *Server) OpsHandler(metricsHandler http.Handler) http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", metricsHandler)
+	mux.HandleFunc("GET /livez", s.handleLive)
+	mux.HandleFunc("GET /readyz", s.handleReady)
+	return s.withRecover(mux)
+}
+
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "olt_mode": s.opts.OLTMode})
+}
+
+func (s *Server) handleLive(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// handleReady memeriksa dependensi: 200 "ready"/"degraded", atau 503
+// "not_ready" bila pemeriksaan wajib gagal. Detail error hanya ke log.
+func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+	status, state, checks := http.StatusOK, "ready", map[string]string{}
+	for _, c := range s.opts.ReadyChecks {
+		err := c.Check(ctx)
+		switch {
+		case err == nil:
+			checks[c.Name] = "ok"
+		case c.Optional:
+			checks[c.Name] = "degraded"
+			if state == "ready" {
+				state = "degraded"
+			}
+			s.logger(r).Warn("readiness: dependensi opsional bermasalah", "check", c.Name, "error", err.Error())
+		default:
+			checks[c.Name] = "fail"
+			status, state = http.StatusServiceUnavailable, "not_ready"
+			s.logger(r).Warn("readiness gagal", "check", c.Name, "error", err.Error())
+		}
+	}
+	writeJSON(w, status, map[string]any{"status": state, "checks": checks})
+}
+
+func (s *Server) countExchange(result string) {
+	if s.opts.Metrics != nil {
+		s.opts.Metrics.Exchanges.Inc(result)
+	}
 }
 
 type exchangeRequest struct {
@@ -84,7 +175,9 @@ type exchangeResponse struct {
 
 func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	ip := s.clientIP(r)
-	if ok, retry := s.opts.Limiter.Allow(ip); !ok {
+	if ok, retry := s.opts.Limiter.Allow("ip:" + ip); !ok {
+		s.countExchange("rate_limited_ip")
+		s.logger(r).Warn("rate limit exchange (IP)", "client_ip", ip)
 		w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
 		writeError(w, http.StatusTooManyRequests, "rate_limited", "Terlalu banyak permintaan, coba lagi nanti")
 		return
@@ -105,31 +198,50 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	id, cached, err := s.opts.Resolver.Resolve(r.Context(), req.Token)
 	switch {
 	case errors.Is(err, olt.ErrInvalidToken):
+		s.countExchange("invalid_token")
 		s.logger(r).Info("exchange ditolak", "reason", err.Error(), "client_ip", ip)
 		writeError(w, http.StatusUnauthorized, "invalid_token", "Sesi OLT tidak valid, silakan login ulang")
 		return
 	case errors.Is(err, olt.ErrUnavailable):
+		s.countExchange("olt_unavailable")
 		s.logger(r).Warn("server OLT tidak tersedia", "error", err.Error())
 		writeError(w, http.StatusServiceUnavailable, "olt_unavailable", "Server OLT sedang tidak dapat dihubungi")
 		return
+	case errors.Is(err, exchange.ErrBanned):
+		s.countExchange("banned")
+		s.logger(r).Info("exchange ditolak: user di-ban", "user_id", id.Profile.ID)
+		writeError(w, http.StatusForbidden, "user_banned", "Akun Anda diblokir dari fitur sosial")
+		return
 	case err != nil:
+		s.countExchange("error")
 		s.logger(r).Error("exchange gagal", "error", err.Error())
 		writeError(w, http.StatusBadGateway, "exchange_failed", "Gagal menyiapkan sesi sosial")
 		return
 	}
 
-	jwt, exp, err := s.opts.Issuer.UserToken(token.User{
-		ID:        id.Profile.ID,
-		OLTUserID: id.Profile.OLTUserID,
-		Username:  id.Profile.Username,
-		Email:     id.Email,
-	})
+	if s.opts.UserLimiter != nil {
+		if ok, retry := s.opts.UserLimiter.Allow("user:" + id.Profile.OLTUserID); !ok {
+			s.countExchange("rate_limited_user")
+			s.logger(r).Warn("rate limit exchange (user)", "user_id", id.Profile.ID)
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Seconds())+1))
+			writeError(w, http.StatusTooManyRequests, "rate_limited", "Terlalu banyak permintaan, coba lagi nanti")
+			return
+		}
+	}
+
+	jwt, exp, err := s.opts.Issuer.UserToken(token.User{ID: id.Profile.ID})
 	if err != nil {
+		s.countExchange("error")
 		s.logger(r).Error("gagal menandatangani JWT", "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "internal_error", "Terjadi kesalahan")
 		return
 	}
 
+	if cached {
+		s.countExchange("cached")
+	} else {
+		s.countExchange("ok")
+	}
 	s.logger(r).Info("exchange berhasil", "user_id", id.Profile.ID, "cached", cached)
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, exchangeResponse{
@@ -143,7 +255,9 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 
 // clientIP mengambil IP klien. X-Forwarded-For hanya dipercaya bila request
 // datang dari proxy tepercaya (Kong/Traefik); diambil IP paling kanan yang
-// bukan proxy tepercaya.
+// bukan proxy tepercaya. Bila semua hop tepercaya (klien di jaringan privat,
+// mis. dev atau service internal), dipakai hop valid paling kiri, bukan IP
+// proxy, agar klien-klien itu tidak berbagi satu kuota rate limit.
 func (s *Server) clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -153,6 +267,7 @@ func (s *Server) clientIP(r *http.Request) string {
 	if err != nil || !s.trusted(remote) {
 		return host
 	}
+	client := host
 	hops := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
 	for i := len(hops) - 1; i >= 0; i-- {
 		addr, err := netip.ParseAddr(strings.TrimSpace(hops[i]))
@@ -162,8 +277,9 @@ func (s *Server) clientIP(r *http.Request) string {
 		if !s.trusted(addr) {
 			return addr.String()
 		}
+		client = addr.String()
 	}
-	return host
+	return client
 }
 
 func (s *Server) trusted(addr netip.Addr) bool {
@@ -225,9 +341,15 @@ func (s *Server) withLogging(next http.Handler) http.Handler {
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 
+		path := metricPath(r.URL.Path)
+		if m := s.opts.Metrics; m != nil {
+			m.Requests.Inc(path, strconv.Itoa(rec.status))
+			m.Duration.Observe(time.Since(start).Seconds(), path)
+		}
+
 		// Healthcheck Docker berjalan tiap beberapa detik; jangan banjiri log.
 		level := slog.LevelInfo
-		if r.URL.Path == "/health" && rec.status == http.StatusOK {
+		if path == "/health" && rec.status == http.StatusOK {
 			level = slog.LevelDebug
 		}
 		s.logger(r).Log(r.Context(), level, "http request",
@@ -238,6 +360,15 @@ func (s *Server) withLogging(next http.Handler) http.Handler {
 			"client_ip", s.clientIP(r),
 		)
 	})
+}
+
+// metricPath membatasi label path ke rute yang dikenal (kardinalitas rendah).
+func metricPath(p string) string {
+	switch p {
+	case "/exchange", "/health":
+		return p
+	}
+	return "other"
 }
 
 func (s *Server) logger(r *http.Request) *slog.Logger {

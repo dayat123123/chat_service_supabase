@@ -23,6 +23,8 @@ services:
       APP_ENV: development
       LOG_LEVEL: ${AUTH_BRIDGE_LOG_LEVEL:-debug}
       OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-mock}
+      # Tes & hot reload memakai user yang sama berulang kali. Produksi: 10.
+      RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-60}
 
 configs:
   traefik-routes-dev:

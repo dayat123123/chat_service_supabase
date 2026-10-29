@@ -235,6 +235,8 @@ services:
       PGRST_JWT_SECRET: "@/run/secrets/jwt_secret"
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+      # Setiap request: tolak user yang di-ban dan JWT yang sesinya sudah dicabut (0013).
+      PGRST_DB_PRE_REQUEST: private.check_request
     command: ["postgrest"]
     healthcheck:
       test: ["CMD", "postgrest", "--ready"]
@@ -571,7 +573,7 @@ services:
     <<: *base
     build:
       context: ./pgbouncer
-    image: olt-social/pgbouncer:1.24.0-2
+    image: olt-social/pgbouncer:1.24.0-3
     networks: [data]
     depends_on:
       db:
@@ -703,7 +705,7 @@ services:
     <<: *base
     build:
       context: ../services/auth-bridge
-    image: olt-social/auth-bridge:0.2.0
+    image: olt-social/auth-bridge:0.3.0
     # egress: koneksi WebSocket ke server OLT. data: Valkey.
     networks: [app, data, egress]
     depends_on:
@@ -711,10 +713,14 @@ services:
         condition: service_completed_successfully
       rest:
         condition: service_healthy
+      valkey:
+        condition: service_healthy
     stop_grace_period: 20s
-    secrets: [jwt_secret]
+    secrets: [jwt_secret, valkey_password]
     environment:
       PORT: 8080
+      # Port internal /metrics, /livez, /readyz (tidak dipublikasikan, tidak lewat Kong).
+      OPS_PORT: 9100
       # Secure by default: production. Profil dev menimpa ke development.
       APP_ENV: production
       LOG_LEVEL: ${AUTH_BRIDGE_LOG_LEVEL:-info}
@@ -723,9 +729,16 @@ services:
       JWT_TTL: ${AUTH_BRIDGE_JWT_TTL:-900}
       # Upsert profil lewat PostgREST internal (RPC khusus service_role).
       POSTGREST_URL: http://rest:3000
+      # Rate limit & cache verifikasi dibagi semua replika lewat Valkey.
+      VALKEY_ADDR: valkey:6379
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
       VERIFY_CACHE_TTL: ${AUTH_BRIDGE_CACHE_TTL:-60}
       RATE_LIMIT_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE:-30}
+      RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-10}
+      BREAKER_FAILURE_THRESHOLD: ${AUTH_BRIDGE_BREAKER_FAILURE_THRESHOLD:-5}
+      BREAKER_COOLDOWN: ${AUTH_BRIDGE_BREAKER_COOLDOWN:-30}
       OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-websocket}
+      # Kosong = default Protokol v1 (docs/market-integration.md).
       OLT_WS_URL: ${OLT_WS_URL:-}
       OLT_WS_TIMEOUT: ${OLT_WS_TIMEOUT:-5}
       OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}

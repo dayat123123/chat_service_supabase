@@ -100,12 +100,12 @@ services:
       <<: *deploy
       replicas: 2
   auth-bridge:
-    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.2.0
+    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.3.0
     deploy:
       <<: *deploy
       replicas: 2
   pgbouncer:
-    image: ${REGISTRY}/olt-social/pgbouncer:1.24.0-2
+    image: ${REGISTRY}/olt-social/pgbouncer:1.24.0-3
     deploy:
       <<: *deploy
       replicas: 2

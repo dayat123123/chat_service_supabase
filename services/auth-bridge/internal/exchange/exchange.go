@@ -1,27 +1,34 @@
 // Package exchange menyatukan langkah tukar token: verifikasi token OLT,
 // turunkan id user Supabase, lalu buat/perbarui profil. Hasilnya di-cache
-// singkat agar tidak membebani server OLT maupun database.
+// singkat (Valkey, dibagi semua replika) agar tidak membebani server OLT
+// maupun database.
 package exchange
 
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"olt-social/auth-bridge/internal/identity"
 	"olt-social/auth-bridge/internal/olt"
 )
 
+// ErrBanned: user diblokir dari fitur sosial (sanksi ban aktif).
+var ErrBanned = errors.New("user diblokir dari fitur sosial")
+
 // Profile adalah baris profiles hasil upsert (bentuk JSON dari RPC upsert_olt_profile).
+// Banned/BanEndsAt hanya dibaca dari RPC; tidak pernah ikut terkirim ke client.
 type Profile struct {
-	ID          string  `json:"id"`
-	OLTUserID   string  `json:"olt_user_id"`
-	Username    string  `json:"username"`
-	DisplayName *string `json:"display_name"`
-	AvatarURL   *string `json:"avatar_url"`
-	IsVerified  bool    `json:"is_verified"`
+	ID          string     `json:"id"`
+	OLTUserID   string     `json:"olt_user_id"`
+	Username    string     `json:"username"`
+	DisplayName *string    `json:"display_name"`
+	AvatarURL   *string    `json:"avatar_url"`
+	IsVerified  bool       `json:"is_verified"`
+	Banned      bool       `json:"banned,omitempty"`
+	BanEndsAt   *time.Time `json:"ban_ends_at,omitempty"`
 }
 
 // ProfileInput adalah data untuk upsert profil.
@@ -38,39 +45,29 @@ type ProfileStore interface {
 	UpsertProfile(ctx context.Context, in ProfileInput) (Profile, error)
 }
 
-// Identity adalah hasil exchange yang siap dijadikan JWT.
+// Identity adalah hasil exchange yang siap dijadikan JWT. Sengaja tanpa email:
+// JWT berisi klaim minimal, dan cache tidak menyimpan data pribadi.
 type Identity struct {
-	Profile Profile
-	Email   string
+	Profile Profile `json:"profile"`
+}
+
+// Cache menyimpan Identity per hash token OLT selama ttl.
+type Cache interface {
+	Get(ctx context.Context, key [32]byte) (Identity, bool)
+	Set(ctx context.Context, key [32]byte, id Identity, ttl time.Duration)
 }
 
 // Service menjalankan exchange token OLT dengan cache berbasis hash token.
 type Service struct {
 	verifier olt.Verifier
 	store    ProfileStore
+	cache    Cache
 	ttl      time.Duration
-	maxItems int
-	now      func() time.Time
-
-	mu    sync.Mutex
-	cache map[[32]byte]cacheEntry
 }
 
-type cacheEntry struct {
-	identity Identity
-	expires  time.Time
-}
-
-// NewService membuat Service. ttl <= 0 mematikan cache.
-func NewService(verifier olt.Verifier, store ProfileStore, ttl time.Duration) *Service {
-	return &Service{
-		verifier: verifier,
-		store:    store,
-		ttl:      ttl,
-		maxItems: 10_000,
-		now:      time.Now,
-		cache:    make(map[[32]byte]cacheEntry),
-	}
+// NewService membuat Service. ttl <= 0 atau cache nil mematikan cache.
+func NewService(verifier olt.Verifier, store ProfileStore, cache Cache, ttl time.Duration) *Service {
+	return &Service{verifier: verifier, store: store, cache: cache, ttl: ttl}
 }
 
 // Resolve memverifikasi token OLT dan memastikan profilnya ada.
@@ -78,8 +75,10 @@ func NewService(verifier olt.Verifier, store ProfileStore, ttl time.Duration) *S
 func (s *Service) Resolve(ctx context.Context, oltToken string) (id Identity, cached bool, err error) {
 	// Token tidak pernah disimpan apa adanya; hanya hash-nya yang jadi kunci cache.
 	key := sha256.Sum256([]byte(oltToken))
-	if hit, ok := s.lookup(key); ok {
-		return hit, true, nil
+	if s.enabled() {
+		if hit, ok := s.cache.Get(ctx, key); ok {
+			return hit, true, nil
+		}
 	}
 
 	user, err := s.verifier.Verify(ctx, oltToken)
@@ -97,41 +96,15 @@ func (s *Service) Resolve(ctx context.Context, oltToken string) (id Identity, ca
 	if err != nil {
 		return Identity{}, false, fmt.Errorf("upsert profil: %w", err)
 	}
+	if profile.Banned {
+		return Identity{Profile: profile}, false, ErrBanned
+	}
 
-	id = Identity{Profile: profile, Email: user.Email}
-	s.remember(key, id)
+	id = Identity{Profile: profile}
+	if s.enabled() {
+		s.cache.Set(ctx, key, id, s.ttl)
+	}
 	return id, false, nil
 }
 
-func (s *Service) lookup(key [32]byte) (Identity, bool) {
-	if s.ttl <= 0 {
-		return Identity{}, false
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	e, ok := s.cache[key]
-	if !ok || !s.now().Before(e.expires) {
-		return Identity{}, false
-	}
-	return e.identity, true
-}
-
-func (s *Service) remember(key [32]byte, id Identity) {
-	if s.ttl <= 0 {
-		return
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	now := s.now()
-	if len(s.cache) >= s.maxItems {
-		for k, e := range s.cache {
-			if !now.Before(e.expires) {
-				delete(s.cache, k)
-			}
-		}
-		if len(s.cache) >= s.maxItems {
-			clear(s.cache) // jarang terjadi; cache hanya optimasi
-		}
-	}
-	s.cache[key] = cacheEntry{identity: id, expires: now.Add(s.ttl)}
-}
+func (s *Service) enabled() bool { return s.cache != nil && s.ttl > 0 }

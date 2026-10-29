@@ -24,8 +24,12 @@ const (
 	OLTModeWebSocket OLTMode = "websocket"
 )
 
-// TokenPlaceholder diganti dengan token OLT di template pesan login WebSocket.
-const TokenPlaceholder = "{{token}}"
+const (
+	// TokenPlaceholder diganti dengan token OLT di template pesan login WebSocket.
+	TokenPlaceholder = "{{token}}"
+	// RequestIDPlaceholder diganti dengan id unik per request (UUID v4).
+	RequestIDPlaceholder = "{{request_id}}"
+)
 
 // Config adalah seluruh konfigurasi runtime auth-bridge.
 type Config struct {
@@ -38,15 +42,30 @@ type Config struct {
 	PostgRESTURL       string
 	VerifyCacheTTL     time.Duration
 	RateLimitPerMinute int
-	TrustedProxies     []netip.Prefix
-	OLT                OLTConfig
+	// RateLimitPerUserPerMinute membatasi exchange per user OLT (setelah token
+	// terverifikasi), selain batas per IP.
+	RateLimitPerUserPerMinute int
+	TrustedProxies            []netip.Prefix
+	// Valkey dipakai bersama semua replika untuk rate limit & cache verifikasi.
+	// Kosong = in-memory per instance (hanya untuk development satu replika).
+	ValkeyAddr     string
+	ValkeyPassword string
+	ValkeyDB       int
+	// Circuit breaker ke server OLT.
+	BreakerThreshold int
+	BreakerCooldown  time.Duration
+	// OpsPort menyajikan /metrics, /livez, /readyz di port internal yang tidak
+	// diteruskan Kong. 0 = mati.
+	OpsPort int
+	OLT     OLTConfig
 }
 
 // OLTConfig mengatur verifikasi token ke server OLT.
 //
-// Format pesan login WebSocket OLT dibuat dapat dikonfigurasi karena belum
-// dibakukan: request dibangun dari template JSON, dan field respons dibaca
-// lewat path bertitik (mis. "data.user.id", indeks array: "items.0.id").
+// Default-nya mengikuti Protokol v1 (docs/market-integration.md), sehingga di
+// produksi cukup mengisi OLT_WS_URL. Bila format OLT berbeda, request dibangun
+// dari template JSON dan field respons dibaca lewat path bertitik
+// (mis. "data.user.id", indeks array: "items.0.id").
 type OLTConfig struct {
 	Mode               OLTMode
 	WebSocketURL       string
@@ -74,29 +93,39 @@ func Load() (Config, error) {
 	var errs []error
 
 	cfg := Config{
-		Port:               intEnv("PORT", 8080, &errs),
-		AppEnv:             strings.ToLower(envOr("APP_ENV", "development")),
-		JWTSecret:          secretEnv("JWT_SECRET", &errs),
-		JWTTTL:             secondsEnv("JWT_TTL", 900, &errs),
-		JWTIssuer:          envOr("JWT_ISSUER", "olt-auth-bridge"),
-		PostgRESTURL:       strings.TrimRight(envOr("POSTGREST_URL", "http://rest:3000"), "/"),
-		VerifyCacheTTL:     secondsEnv("VERIFY_CACHE_TTL", 60, &errs),
-		RateLimitPerMinute: intEnv("RATE_LIMIT_PER_MINUTE", 30, &errs),
+		Port:                      intEnv("PORT", 8080, &errs),
+		AppEnv:                    strings.ToLower(envOr("APP_ENV", "development")),
+		JWTSecret:                 secretEnv("JWT_SECRET", &errs),
+		JWTTTL:                    secondsEnv("JWT_TTL", 900, &errs),
+		JWTIssuer:                 envOr("JWT_ISSUER", "olt-auth-bridge"),
+		PostgRESTURL:              strings.TrimRight(envOr("POSTGREST_URL", "http://rest:3000"), "/"),
+		VerifyCacheTTL:            secondsEnv("VERIFY_CACHE_TTL", 60, &errs),
+		RateLimitPerMinute:        intEnv("RATE_LIMIT_PER_MINUTE", 30, &errs),
+		RateLimitPerUserPerMinute: intEnv("RATE_LIMIT_PER_USER_PER_MINUTE", 10, &errs),
+		ValkeyAddr:                os.Getenv("VALKEY_ADDR"),
+		ValkeyPassword:            secretEnv("VALKEY_PASSWORD", &errs),
+		ValkeyDB:                  intEnvMin("VALKEY_DB", 0, 0, &errs),
+		BreakerThreshold:          intEnv("BREAKER_FAILURE_THRESHOLD", 5, &errs),
+		BreakerCooldown:           secondsEnv("BREAKER_COOLDOWN", 30, &errs),
+		OpsPort:                   intEnvMin("OPS_PORT", 9100, 0, &errs),
 		OLT: OLTConfig{
-			Mode:               OLTMode(strings.ToLower(envOr("OLT_MODE", string(OLTModeMock)))),
-			WebSocketURL:       os.Getenv("OLT_WS_URL"),
-			Timeout:            secondsEnv("OLT_WS_TIMEOUT", 5, &errs),
-			Origin:             os.Getenv("OLT_WS_ORIGIN"),
-			LoginTemplate:      envOr("OLT_WS_LOGIN_TEMPLATE", `{"action":"login","method":"token","token":"{{token}}"}`),
-			ResponseMatchPath:  os.Getenv("OLT_WS_RESPONSE_MATCH_PATH"),
-			ResponseMatchValue: os.Getenv("OLT_WS_RESPONSE_MATCH_VALUE"),
-			SuccessPath:        envOr("OLT_WS_SUCCESS_PATH", "success"),
-			SuccessValue:       envOr("OLT_WS_SUCCESS_VALUE", "true"),
-			ErrorMessagePath:   envOr("OLT_WS_ERROR_MESSAGE_PATH", "message"),
-			UserIDPath:         envOr("OLT_WS_USER_ID_PATH", "data.user_id"),
-			UsernamePath:       envOr("OLT_WS_USERNAME_PATH", "data.username"),
-			EmailPath:          envOr("OLT_WS_EMAIL_PATH", "data.email"),
-			DisplayNamePath:    envOr("OLT_WS_DISPLAY_NAME_PATH", "data.name"),
+			Mode:         OLTMode(strings.ToLower(envOr("OLT_MODE", string(OLTModeMock)))),
+			WebSocketURL: os.Getenv("OLT_WS_URL"),
+			Timeout:      secondsEnv("OLT_WS_TIMEOUT", 5, &errs),
+			Origin:       os.Getenv("OLT_WS_ORIGIN"),
+			// Default = Protokol v1. Satu koneksi per login, jadi respons cukup
+			// dicocokkan lewat type.
+			LoginTemplate: envOr("OLT_WS_LOGIN_TEMPLATE",
+				`{"v":1,"type":"login","request_id":"{{request_id}}","method":"token","payload":{"token":"{{token}}"}}`),
+			ResponseMatchPath:  envOr("OLT_WS_RESPONSE_MATCH_PATH", "type"),
+			ResponseMatchValue: envOr("OLT_WS_RESPONSE_MATCH_VALUE", "login_result"),
+			SuccessPath:        envOr("OLT_WS_SUCCESS_PATH", "status"),
+			SuccessValue:       envOr("OLT_WS_SUCCESS_VALUE", "OK"),
+			ErrorMessagePath:   envOr("OLT_WS_ERROR_MESSAGE_PATH", "error.message"),
+			UserIDPath:         envOr("OLT_WS_USER_ID_PATH", "data.user.id"),
+			UsernamePath:       envOr("OLT_WS_USERNAME_PATH", "data.user.username"),
+			EmailPath:          envOr("OLT_WS_EMAIL_PATH", "data.user.email"),
+			DisplayNamePath:    envOr("OLT_WS_DISPLAY_NAME_PATH", "data.user.full_name"),
 		},
 	}
 
@@ -108,6 +137,12 @@ func Load() (Config, error) {
 	}
 	if _, err := url.ParseRequestURI(cfg.PostgRESTURL); err != nil {
 		errs = append(errs, fmt.Errorf("POSTGREST_URL tidak valid: %w", err))
+	}
+	if cfg.IsProduction() && cfg.ValkeyAddr == "" {
+		errs = append(errs, errors.New("VALKEY_ADDR wajib diisi saat APP_ENV=production (rate limit & cache harus dibagi antar replika)"))
+	}
+	if cfg.OpsPort == cfg.Port {
+		errs = append(errs, errors.New("OPS_PORT tidak boleh sama dengan PORT"))
 	}
 
 	proxies, err := parsePrefixes(envOr("TRUSTED_PROXIES", "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"))
@@ -144,9 +179,6 @@ func validateWebSocket(o OLTConfig) []error {
 	}
 	if o.UserIDPath == "" {
 		errs = append(errs, errors.New("OLT_WS_USER_ID_PATH wajib diisi"))
-	}
-	if (o.ResponseMatchPath == "") != (o.ResponseMatchValue == "") {
-		errs = append(errs, errors.New("OLT_WS_RESPONSE_MATCH_PATH dan _VALUE harus diisi bersamaan"))
 	}
 	return errs
 }
@@ -190,10 +222,15 @@ func secretEnv(key string, errs *[]error) string {
 }
 
 func intEnv(key string, def int, errs *[]error) int {
+	return intEnvMin(key, def, 1, errs)
+}
+
+// intEnvMin membaca bilangan bulat >= floor.
+func intEnvMin(key string, def, floor int, errs *[]error) int {
 	v := envOr(key, strconv.Itoa(def))
 	n, err := strconv.Atoi(v)
-	if err != nil || n <= 0 {
-		*errs = append(*errs, fmt.Errorf("%s harus bilangan bulat positif, dapat %q", key, v))
+	if err != nil || n < floor {
+		*errs = append(*errs, fmt.Errorf("%s harus bilangan bulat >= %d, dapat %q", key, floor, v))
 		return def
 	}
 	return n

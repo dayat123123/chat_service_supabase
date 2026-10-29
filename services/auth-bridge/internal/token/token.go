@@ -58,12 +58,10 @@ func mac(input string, secret []byte) []byte {
 	return h.Sum(nil)
 }
 
-// User adalah data yang dimasukkan ke JWT user.
+// User adalah data yang dimasukkan ke JWT user. Klaim sengaja minimal (tanpa
+// email, olt_user_id, atau username): JWT bisa dibaca siapa pun yang memegangnya.
 type User struct {
-	ID        string
-	OLTUserID string
-	Username  string
-	Email     string
+	ID string
 }
 
 // Issuer menerbitkan JWT user (role authenticated) dan JWT service_role internal.
@@ -88,22 +86,13 @@ func (i *Issuer) UserToken(u User) (string, time.Time, error) {
 	now := i.now()
 	exp := now.Add(i.ttl)
 	claims := map[string]any{
-		"iss":  i.issuer,
-		"sub":  u.ID,
-		"aud":  "authenticated",
-		"role": "authenticated",
-		"iat":  now.Unix(),
-		"exp":  exp.Unix(),
-		"app_metadata": map[string]any{
-			"provider":    "olt",
-			"olt_user_id": u.OLTUserID,
-		},
-		"user_metadata": map[string]any{
-			"username": u.Username,
-		},
-	}
-	if u.Email != "" {
-		claims["email"] = u.Email
+		"iss":          i.issuer,
+		"sub":          u.ID,
+		"aud":          "authenticated",
+		"role":         "authenticated",
+		"iat":          now.Unix(),
+		"exp":          exp.Unix(),
+		"app_metadata": map[string]any{"provider": "olt"},
 	}
 	tok, err := Sign(claims, i.secret)
 	return tok, exp, err

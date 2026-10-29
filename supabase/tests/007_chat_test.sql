@@ -104,9 +104,9 @@ reset role;
 update private.rate_limits set max_count = 1 where action = 'message';
 select tests.authenticate_as(:'carol');
 select lives_ok(format($$select send_message(%L, 'Pesan pertama')$$, :'stock_room'), 'Pesan pertama terkirim');
-select throws_ok(
+select throws_like(
   format($$select send_message(%L, 'Pesan kedua')$$, :'stock_room'),
-  'PT429', 'rate_limited', 'Rate limit pesan berlaku');
+  '%"PT429"%"rate_limited"%', 'Rate limit pesan berlaku');
 
 select * from finish();
 rollback;

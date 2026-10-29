@@ -15,7 +15,23 @@ Dasar audit:
 | Tahap | Status |
 |---|---|
 | 1. Infrastruktur | ✅ Selesai 29 Okt 2026 (rincian di bawah) |
-| 2–7 | Belum dimulai |
+| 2. Database (+ fondasi data F1) | ✅ Selesai 29 Okt 2026 (rincian di bawah) |
+| 3. auth-bridge | ✅ Selesai 29 Okt 2026 (rincian di bawah) |
+| F1, 4–5, 6, F2–F5, 7 | Belum dimulai |
+
+**Urutan kerja** (gabungan addendum produksi dan [PROMPT-FEATURES.md](PROMPT-FEATURES.md), ditetapkan 29 Okt 2026):
+1. **Tahap 2** (DB), diperluas dengan fondasi data F1: role admin + 2FA, sanksi, audit log, arsip & legal hold, persetujuan T&C.
+2. **Tahap 3** (auth-bridge).
+3. **F1** (service & panel admin).
+4. **Tahap 4–5** (Flutter).
+5. **Tahap 6** (hardening & observabilitas semua service), lalu go-live.
+6. **F2–F5.**
+7. **Tahap 7** (multi-node).
+
+**Penyesuaian akibat urutan ini:**
+- Panel admin (`apps/admin`) menggantikan rencana "UI moderasi di package".
+- Dashboard analitik memakai Perses atau panel admin, bukan Grafana (AGPL).
+- Integrasi OLT memakai satu protokol: [market-integration.md](market-integration.md).
 
 **Tahap 1: yang dikerjakan**
 - **Profil.** `docker/compose.yml` (dasar) ditambah `compose.dev.yml`, `compose.prod.yml`, `stack.cluster.yml` (kerangka), dan `compose.dummy-olt.yml` (tambahan dev). Pemilihan lewat `make up PROFILE=dev|single|cluster`.
@@ -46,6 +62,118 @@ Dasar audit:
   - 429 saat burst lalu pulih, 413 untuk body > 256 KB, 400 untuk `%2F`;
   - header keamanan lengkap dan redirect HTTP → HTTPS;
   - TLS 1.1 ditolak, path non-API 404, Studio hanya lewat port admin.
+
+**Tahap 2: yang dikerjakan** (migrasi `0012`–`0017`)
+- **Rate limit berlapis (0012).**
+  - Beberapa jendela per aksi (post 5/menit + 50/hari), dengan aksi baru: buat room, upload, ekspor data.
+  - `trust_level`: akun baru ×0,5, akun tepercaya ×2.
+  - HTTP 429 membawa `Retry-After`, body tetap kompatibel dengan app lama, dan pelanggaran dicatat ke log.
+  - Batas dan pengaturan bisa diubah tanpa deploy (`private.settings`).
+- **Moderasi & admin (0013).**
+  - Status konten `visible` / `held` / `hidden` diterapkan lewat RLS, sehingga tidak bocor lewat Realtime.
+  - Admin memakai akun terpisah dengan 2FA (`aal2`), dalam 5 peran.
+  - API admin (`admin_api`) mencakup antrean berprioritas, tindak konten, sanksi bertingkat, ban, pencabutan sesi, trust/verifikasi, kata terlarang, pengaturan, dan arsip regulator dengan *legal hold*.
+  - Audit log tidak bisa diubah, dan akses ke data pribadi dicatat.
+  - Pre-request PostgREST menolak user yang di-ban dan JWT yang sesinya dicabut.
+- **Integritas konten (0014).**
+  - `client_id` idempoten untuk post (RPC baru `create_post`) dan komentar (`create_comment` kompatibel dengan versi lama).
+  - Validasi: karakter kontrol; maksimal 3 link, 10 mention, dan 10 kode saham.
+  - Anti-duplikat: konten sama ke-3 dalam 5 menit ditolak.
+  - User yang di-mute tidak bisa mengirim konten.
+  - Syarat & Ketentuan (`legal_documents`, `user_consents`) wajib disetujui, ditegakkan di server.
+- **Privasi (0015).**
+  - Mute user/kata/saham disaring di `get_feed`.
+  - `delete_my_account`: konten diarsipkan untuk regulator, profil dianonimkan, sesi dicabut.
+  - `export_my_data`.
+  - `upsert_olt_profile`: akun baru mulai di trust 0, akun yang dihapus dibuat ulang bersih, status ban ikut dikembalikan.
+  - Retensi dan promosi akun baru dijalankan `pg_cron` (sekali per cluster).
+- **Role DB (0016, superuser).**
+  - Batas koneksi dan `idle_in_transaction` untuk role bawaan.
+  - `service_role` `statement_timeout` 15 dtk.
+  - Role monitoring `olt_monitor`.
+  - Runner migrasi kini mendukung penanda `-- olt:run-as=supabase_admin`.
+- **Perbaikan (0017).** Izin pre-request untuk `service_role`. Tanpa izin ini exchange token gagal; masalahnya terdeteksi lewat uji HTTP lalu diperbaiki.
+
+**Tahap 2: verifikasi**
+- **pgTAP 255** (141 lama + 114 baru, file 010–014).
+- **Uji HTTP:**
+  - 429 + `Retry-After: 59`;
+  - JWT yang sesinya dicabut ditolak dengan 401, JWT baru diterima.
+- **Regresi:**
+  - smoke 21/21, smoke-dummy 16/16, dan tes Go;
+  - Flutter: analyze, 44 unit/widget, integration 7 + 4;
+  - E2E Windows 2.
+- **Teks tes dibuat unik** di integration/E2E, supaya tidak tertolak aturan anti-duplikat.
+
+**Tahap 2: dilanjutkan di tahap lain**
+- **Tahap 3.** ✅ auth-bridge menolak exchange untuk user yang di-ban (`403 user_banned`, dari field `banned` milik `upsert_olt_profile`).
+- **F1.**
+  - `admin_api` diekspos lewat PostgREST (`PGRST_DB_SCHEMAS`) + filter header di Traefik.
+  - Panel admin.
+  - Worker `storage_cleanup_queue` (file akun yang dihapus).
+  - Notifikasi untuk konten `held` (`held` disetel service `moderation`).
+- **Tahap 4–5.** Flutter:
+  - `create_post` / `create_comment` dengan `client_id`;
+  - pesan error baru (`user_muted`, `consent_required`, `duplicate_content`, `too_many_*`, `session_revoked`);
+  - UI persetujuan S&K, mute, hapus/ekspor akun.
+- **Tahap 6.**
+  - Batas payload Realtime 64 KB: seeding self-host Realtime v2.143.3 membuat ulang tenant di setiap start dengan default 3000 KB, jadi perlu pengelolaan tenant sendiri.
+  - Login role `olt_monitor` untuk exporter.
+  - `retention.archive_days` (default sementara 5 tahun) ditetapkan legal.
+- **Catatan uji lokal.** Batas `/exchange` auth-bridge (30/menit per IP) bisa terpicu bila banyak tes dijalankan beruntun dari satu IP. ✅ Tahap 3: batas kini di Valkey. Tes dari container `tools` dan dari host memakai kuota terpisah. Batas per user di profil dev 60/menit.
+
+**Tahap 3: yang dikerjakan** (auth-bridge 0.3.0)
+- **State bersama di Valkey.**
+  - Rate limit sliding window (Lua + sorted set): 30/menit per IP dan 10/menit per user OLT (profil dev 60).
+  - Cache hasil verifikasi per hash token (60 dtk). Token tidak pernah disimpan.
+  - Bila Valkey mati: rate limit memakai limiter in-memory, cache dilewati, error dihitung di metrik, dan log dibatasi sekali per menit.
+  - `VALKEY_ADDR` wajib saat `APP_ENV=production`.
+- **Circuit breaker ke OLT.**
+  - Terbuka setelah 5 kegagalan berturut-turut, lalu cooldown 30 dtk dan satu request uji (half-open).
+  - Token yang ditolak OLT dihitung sukses. Request yang dibatalkan klien tidak dihitung.
+- **Retry PostgREST**: maksimal 3 kali dengan backoff eksponensial + jitter, khusus error jaringan/5xx.
+- **User di-ban** → `403 user_banned`, tidak di-cache.
+- **JWT minimal**: tanpa email, username, dan `olt_user_id`.
+- **Port ops internal 9100** (tidak lewat Kong, tidak dipublikasikan):
+  - `/metrics`: format Prometheus, tanpa dependensi luar;
+  - `/livez`;
+  - `/readyz`: PostgREST wajib; Valkey dan breaker OLT opsional (gagal → `degraded`, bukan `not_ready`, supaya semua replika tidak ditarik bersamaan).
+- **Default adapter OLT = Protokol v1** (`request_id` UUID per login). Produksi cukup mengisi `OLT_WS_URL`. Profil OLT dummy kini juga hanya mengisi `OLT_MODE` + `OLT_WS_URL`.
+- **IP klien.** Bila semua hop X-Forwarded-For berupa IP privat, dipakai hop paling kiri. Sebelumnya dipakai IP Kong, sehingga semua klien internal berbagi satu kuota.
+- **Toolchain Go 1.24.5 → 1.27.3.** Go 1.24 sudah tidak menerima patch keamanan, dan go-redis butuh Go ≥ 1.26. Dependensi baru:
+  - `go-redis` v9.23.0 (BSD-2-Clause);
+  - `miniredis` (MIT), khusus tes.
+- **Build image deterministik.** Sebelumnya `up --build` me-restart PgBouncer, auth-bridge, dll. di setiap `up`, walau tidak ada yang berubah. Dua penyebab dan perbaikannya:
+  1. Bug BuildKit menulis alamat pointer di riwayat `EXPOSE`. Perbaikan: `EXPOSE` dihapus dari Dockerfile.
+  2. Provenance attestation berisi timestamp. Perbaikan: `BUILDX_NO_DEFAULT_ATTESTATIONS=1` di Makefile dan make.ps1. Opsi compose `provenance: false` tidak berefek di Compose 2.39.
+
+  Sekarang `up` kedua tidak membuat ulang container apa pun.
+
+**Tahap 3: verifikasi**
+- **Unit test Go:**
+  - breaker (termasuk request uji yang dibatalkan);
+  - limiter dan cache Valkey (miniredis, dibagi antar instance, fallback);
+  - metrik;
+  - server: ban, batas per user, readiness, metrik, IP klien;
+  - retry PostgREST;
+  - default Protokol v1.
+- **Uji langsung di stack:**
+  - `/livez`, `/readyz`, `/metrics` → 404 lewat Kong; port 9100 tidak terbuka ke host;
+  - key Valkey berupa hash;
+  - X-Forwarded-For palsu dari host dibuang Traefik;
+  - OLT dummy dimatikan: 5× `503` (±4 dtk), lalu `503` dalam 0,2 dtk (breaker terbuka), readiness `degraded`, `olt_breaker_open 1`;
+  - OLT hidup lagi: setelah cooldown, exchange `200`, breaker tertutup, readiness `ready`.
+- **Regresi:**
+  - pgTAP 255;
+  - smoke 23/23 (+2: exchange user di-ban → 403; JWT lama user di-ban ditolak PostgREST), smoke-dummy 16/16;
+  - Flutter: analyze, 44 unit/widget, integration 7 + 4, E2E Windows 2.
+- **E2E `app_test`** tidak lagi menunggu post seed `$ANTM` muncul di urutan teratas feed (rapuh setelah ada post baru), cukup kartu post pertama.
+
+**Tahap 3: dilanjutkan di tahap lain**
+- **F1.** OLT dummy diselaraskan penuh ke Protokol v1 (field `v`, status `ERROR`, kode error v1), bersama `quote`, `instruments`, dan `holdings`. auth-bridge sudah kompatibel karena semua status selain `OK` dianggap gagal.
+- **Tahap 6.**
+  - Prometheus men-scrape `auth-bridge:9100/metrics`, dengan alert untuk breaker terbuka, lonjakan `valkey_errors_total`, dan rasio 429.
+  - Provenance/SBOM dibuat di CI saat image di-push ke registry, bukan di build lokal.
 
 **Tahap 1: sengaja ditunda**
 - **WAL archiving** → Tahap 6, bersama WAL-G. Image DB perlu ditambah WAL-G.

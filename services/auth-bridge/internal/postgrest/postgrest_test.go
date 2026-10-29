@@ -6,7 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"olt-social/auth-bridge/internal/exchange"
 )
@@ -52,5 +54,56 @@ func TestUpsertProfileError(t *testing.T) {
 	_, err := NewClient(srv.URL, staticToken("t")).UpsertProfile(context.Background(), exchange.ProfileInput{ID: "u"})
 	if err == nil || !strings.Contains(err.Error(), "username_unavailable") {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestRPCRetriesTransientErrors(t *testing.T) {
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if calls.Add(1) < 3 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte(`{"id":"u-1","olt_user_id":"1001","username":"budi","is_verified":false}`))
+	}))
+	defer srv.Close()
+
+	c := NewClient(srv.URL, staticToken("t"))
+	c.backoff = time.Millisecond
+	p, err := c.UpsertProfile(context.Background(), exchange.ProfileInput{ID: "u-1", OLTUserID: "1001"})
+	if err != nil || p.ID != "u-1" {
+		t.Fatalf("profile=%+v err=%v", p, err)
+	}
+	if calls.Load() != 3 {
+		t.Fatalf("calls = %d, want 3 (2x 503 lalu sukses)", calls.Load())
+	}
+}
+
+func TestRPCDoesNotRetryClientErrorsAndGivesUp(t *testing.T) {
+	cases := map[string]struct {
+		status int
+		want   int32
+	}{
+		"4xx tidak di-retry":          {http.StatusConflict, 1},
+		"5xx berhenti setelah 3 kali": {http.StatusBadGateway, 3},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			var calls atomic.Int32
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				calls.Add(1)
+				w.WriteHeader(c.status)
+			}))
+			defer srv.Close()
+
+			client := NewClient(srv.URL, staticToken("t"))
+			client.backoff = time.Millisecond
+			if _, err := client.UpsertProfile(context.Background(), exchange.ProfileInput{ID: "u"}); err == nil {
+				t.Fatal("harus gagal")
+			}
+			if calls.Load() != c.want {
+				t.Fatalf("calls = %d, want %d", calls.Load(), c.want)
+			}
+		})
 	}
 }

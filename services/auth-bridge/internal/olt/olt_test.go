@@ -164,3 +164,48 @@ func TestWebSocketVerifierUnreachable(t *testing.T) {
 		t.Fatalf("err = %v, want ErrUnavailable", err)
 	}
 }
+
+// Konfigurasi default (hanya OLT_WS_URL diisi) harus berbicara Protokol v1.
+func TestWebSocketVerifierProtocolV1Defaults(t *testing.T) {
+	ids := make(chan string, 2)
+	srv := fakeOLT(t, func(conn *websocket.Conn, login map[string]any) {
+		payload, _ := login["payload"].(map[string]any)
+		if login["v"] != float64(1) || login["type"] != "login" || login["method"] != "token" || payload["token"] != "tok-1" {
+			t.Errorf("pesan login bukan Protokol v1: %v", login)
+		}
+		id, _ := login["request_id"].(string)
+		ids <- id
+		_ = conn.WriteJSON(map[string]any{"v": 1, "type": "welcome"})
+		_ = conn.WriteJSON(map[string]any{
+			"v": 1, "type": "login_result", "request_id": id, "status": "OK",
+			"data": map[string]any{"token": "x", "user": map[string]any{
+				"id": "1001", "username": "budi_santoso", "email": "budi@example.com", "full_name": "Budi Santoso"}},
+		})
+	})
+
+	t.Setenv("JWT_SECRET", "test-secret-yang-panjangnya-lebih-dari-32-karakter")
+	t.Setenv("OLT_MODE", "websocket")
+	t.Setenv("OLT_WS_URL", "ws"+strings.TrimPrefix(srv.URL, "http"))
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, err := NewWebSocketVerifier(cfg.OLT)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		u, err := v.Verify(context.Background(), "tok-1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := User{ID: "1001", Username: "budi_santoso", Email: "budi@example.com", DisplayName: "Budi Santoso"}
+		if u != want {
+			t.Fatalf("user = %+v, want %+v", u, want)
+		}
+	}
+	first, second := <-ids, <-ids
+	if len(first) != 36 || first == second {
+		t.Fatalf("request_id harus UUID unik per request: %q %q", first, second)
+	}
+}

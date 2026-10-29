@@ -4,8 +4,9 @@ select plan(11);
 
 select tables_are('public', array[
   'banned_words', 'blocks', 'chat_members', 'chat_rooms', 'comments', 'follows',
-  'messages', 'notifications', 'post_mentions', 'post_stocks', 'posts', 'profiles',
-  'reactions', 'reports', 'stock_watchers', 'stocks'
+  'legal_documents', 'messages', 'muted_keywords', 'muted_stocks', 'mutes', 'notifications',
+  'post_mentions', 'post_stocks', 'posts', 'profiles', 'reactions', 'reports',
+  'stock_watchers', 'stocks', 'user_consents'
 ], 'Tabel public sesuai skema');
 
 select is(
@@ -47,7 +48,7 @@ select has_index('public', 'comments', 'comments_path_gist_idx', 'Index GiST pad
 select has_index('public', 'comments', 'comments_post_path_idx', 'Index (post_id, path) pada comments');
 
 select is(
-  (select count(*)::int from private.rate_limits where action in ('post', 'comment')),
+  (select count(distinct action)::int from private.rate_limits where action in ('post', 'comment')),
   2, 'Rate limit post & komentar terkonfigurasi');
 
 select * from finish();

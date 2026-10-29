@@ -19,6 +19,8 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
 | [`docs/production-audit.md`](docs/production-audit.md) | Audit terhadap addendum produksi + status per tahap |
+| [`docs/market-integration.md`](docs/market-integration.md) | Rencana integrasi data pasar & portofolio OLT (menunggu info tim OLT) |
+| [`docs/PROMPT.md`](docs/PROMPT.md), [`PROMPT-PRODUCTION.md`](docs/PROMPT-PRODUCTION.md), [`PROMPT-FEATURES.md`](docs/PROMPT-FEATURES.md) | Spesifikasi proyek: dasar, produksi, dan fitur lanjutan |
 
 ## Arsitektur
 
@@ -69,10 +71,36 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 - `olt_user_id` dan email tidak bisa dibaca user lain.
 - Helper `security definer` berada di schema `private`, yang tidak di-expose oleh PostgREST.
 
-**Rate limit & moderasi di DB.**
-- Batas default: post 5/menit, komentar 20/menit, pesan 30/menit, reaksi 120/menit, laporan 10/jam. Semuanya bisa diubah di `private.rate_limits` tanpa migrasi.
-- Kata terlarang di-*mask* atau di-*block*.
-- Konten yang dihapus diarsipkan untuk audit moderasi.
+**Rate limit & integritas konten di DB.**
+- **Batas default:**
+  - post 5/menit dan 50/hari, komentar 20/menit, pesan 30/menit, like 60/menit;
+  - follow 30/jam, laporan 10/jam, buat room 10/jam;
+  - upload 50/hari, ekspor data 3/hari.
+- **Penyesuaian per akun:** akun baru (`trust_level` 0, 24 jam pertama) mendapat setengahnya, dan akun tepercaya (`trust_level` ≥ 2) dua kalinya.
+- **Respons 429** membawa header `Retry-After`, dan setiap pelanggaran dicatat ke log.
+- **Mengubah tanpa migrasi:** batas ada di `private.rate_limits`, pengaturan lain di `private.settings`.
+- **Validasi server:**
+  - karakter kontrol ditolak;
+  - maksimal 3 link, 10 mention, dan 10 kode saham per konten;
+  - konten sama ≥ 3x dalam 5 menit ditolak.
+- **Idempotensi:** post, komentar, dan pesan memakai `client_id`, jadi kirim ulang tidak membuat data ganda.
+- **Syarat & Ketentuan:** wajib disetujui (versi terbaru) sebelum posting, berkomentar, atau chat.
+
+**Moderasi & admin.**
+- **Status konten** `visible` / `held` / `hidden`: konten yang tidak `visible` hanya terlihat penulisnya, termasuk lewat Realtime.
+- **Kata terlarang** di-*mask* atau di-*block*.
+- **Admin:**
+  - Memakai akun terpisah dengan 2FA (`aal2`).
+  - Ada 5 peran: `super_admin`, `compliance_admin`, `moderator`, `room_moderator`, `viewer`.
+  - Semua aksi lewat schema `admin_api`.
+  - Audit log tidak bisa diubah maupun dihapus.
+- **Sanksi bertingkat** (peringatan → mute → ban). Ban dan pencabutan sesi langsung menolak JWT yang masih aktif, lewat pre-request PostgREST.
+- **Arsip regulator:** konten yang dihapus diarsipkan, dengan retensi dan *legal hold*.
+
+**Privasi (UU PDP).**
+- **Mute** user, kata, atau saham; penyaringannya dilakukan di server.
+- **Akun:** `delete_my_account` dan `export_my_data`.
+- **Retensi otomatis** lewat `pg_cron`, dan akses ke data pribadi dicatat.
 
 **Realtime.**
 - `postgres_changes` (tunduk RLS) untuk `messages`, `posts`, `comments`, `reactions`, `notifications`.
@@ -124,7 +152,7 @@ Login dev memakai **token mock**. Contohnya `mock:1001:budi_santoso`, yang sama 
 
 Selama format login OLT asli belum tersedia, [`services/dummy-olt`](services/dummy-olt/) berperan sebagai server WebSocket OLT tiruan. Ia menerbitkan token sesinya sendiri, dan auth-bridge memverifikasinya lewat **mode `websocket`**, jalur yang sama dengan produksi.
 
-- **Tidak ada kode yang diubah.** Auth-bridge, package Flutter, dan database tetap sama; yang berbeda hanya konfigurasi `OLT_WS_*` di [`docker/compose.dummy-olt.yml`](docker/compose.dummy-olt.yml).
+- **Tidak ada kode yang diubah.** Auth-bridge, package Flutter, dan database tetap sama; yang berbeda hanya `OLT_MODE` dan `OLT_WS_URL` di [`docker/compose.dummy-olt.yml`](docker/compose.dummy-olt.yml). Dummy berbicara Protokol v1, sama dengan default auth-bridge.
 - **Token mock lama tetap diterima** dalam mode ini, sehingga semua tes lama juga berjalan lewat jalur websocket.
 
 ```bash
@@ -146,7 +174,7 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `reset` | **Hapus volume DB & storage**, lalu naik ulang dari nol. Wajib `CONFIRM=yes` (Windows `-Yes`) |
 | `migrate` / `seed` | Jalankan migrasi baru / isi data dummy (idempoten) |
 | `test` | `test-db` + `test-bridge` + `test-dummy-olt` |
-| `test-db` | 141 tes pgTAP: skema, RLS, parser, thread, reaksi, feed, chat, moderasi, realtime/storage |
+| `test-db` | 255 tes pgTAP: skema, RLS, parser, thread, reaksi, feed, chat, moderasi, realtime/storage, rate limit, integritas konten, admin & sanksi, privasi, role |
 | `test-bridge` | Unit test Go auth-bridge (di container) |
 | `smoke` | 21 cek end-to-end lewat Kong (exchange, RLS, RPC, storage) |
 | `test-flutter` | `flutter analyze` + unit/widget test package |
@@ -209,7 +237,7 @@ Dasarnya adalah `docker/docker-compose.yml` resmi `supabase/supabase`, commit `6
 | meta | `supabase/postgres-meta:v0.100.0` |
 | studio | `supabase/studio:2026.10.12-sha-3699278` |
 | functions | `supabase/edge-runtime:v1.77.4` |
-| auth-bridge | build lokal `golang:1.24.5-alpine3.22` → `distroless/static-debian12:nonroot` (keduanya di-pin digest) |
+| auth-bridge | build lokal `golang:1.27.3-alpine3.24` → `distroless/static-debian12:nonroot` (keduanya di-pin digest) |
 | migrate / tools | build lokal `alpine:3.22.7` (psql 17, pg_prove 3.37 di-pin, curl, jq) |
 
 **Perbedaan dari compose resmi:**
