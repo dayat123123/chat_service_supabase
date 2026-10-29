@@ -1,0 +1,67 @@
+# Konfigurasi dinamis Traefik yang sama di semua profil: middleware & upstream.
+# Router ada di file profil (dev.yml / prod.yml). Nilai batas diambil dari
+# environment service traefik (lihat compose.yml) dan bisa diubah tanpa ubah kode.
+http:
+  middlewares:
+    # Rate limit per IP: rata-rata EDGE_RATE_AVERAGE req/detik, burst EDGE_RATE_BURST.
+    rate-limit:
+      rateLimit:
+        average: {{ env "EDGE_RATE_AVERAGE" | default "100" }}
+        burst: {{ env "EDGE_RATE_BURST" | default "200" }}
+        period: 1s
+        sourceCriterion:
+          ipStrategy:
+            depth: 0
+
+    # Maksimum koneksi WebSocket Realtime bersamaan per IP.
+    ws-limit:
+      inFlightReq:
+        amount: {{ env "EDGE_WS_PER_IP" | default "20" }}
+        sourceCriterion:
+          ipStrategy:
+            depth: 0
+
+    # Batas ukuran body request (413 bila terlampaui).
+    body-api:
+      buffering:
+        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_API" | default "262144" }}
+        memRequestBodyBytes: 262144
+    body-upload:
+      buffering:
+        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_UPLOAD" | default "10485760" }}
+        memRequestBodyBytes: 1048576
+
+    # Header keamanan untuk respons API (JSON, gambar, WebSocket).
+    security-headers:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        contentSecurityPolicy: "default-src 'none'; frame-ancestors 'none'"
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+
+    # Header keamanan untuk halaman web (Studio): Next.js butuh script & style inline.
+    security-headers-ui:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: same-origin
+        contentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: wss: https:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+
+    # HSTS hanya untuk HTTPS (profil single/cluster).
+    hsts:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+
+  services:
+    kong:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: http://kong:8000

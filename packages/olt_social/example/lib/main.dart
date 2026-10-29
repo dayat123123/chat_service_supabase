@@ -1,7 +1,7 @@
 // Contoh aplikasi host yang meniru integrasi olt_social ke OLT.
 //
 // Jalankan stack Docker (make up && make seed), lalu:
-//   flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY dari docker/.env>
+//   flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>
 //   flutter run -d <emulator> --dart-define=OLT_SOCIAL_ANON_KEY=...
 // Opsional: --dart-define=OLT_SOCIAL_URL=http://192.168.1.10:8000 (HP fisik).
 // Web: make web-example, lalu buka http://localhost:8081 (?user=sari_invest = langsung login).
@@ -132,7 +132,7 @@ class _MissingConfigPage extends StatelessWidget {
         padding: EdgeInsets.all(24),
         child: Text(
           'OLT_SOCIAL_ANON_KEY belum diisi.\n\n'
-          'Jalankan dengan:\nflutter run --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY dari docker/.env>',
+          'Jalankan dengan:\nflutter run --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>',
           textAlign: TextAlign.center,
         ),
       ),

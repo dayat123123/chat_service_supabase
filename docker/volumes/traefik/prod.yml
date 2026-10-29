@@ -1,0 +1,69 @@
+# Router profil single (dan cluster): HTTPS di entrypoint `websecure`.
+#
+# Ke internet hanya dibuka path yang dipakai app OLT: REST/RPC, Realtime,
+# Storage, Edge Functions, dan auth-bridge. /auth/v1 (GoTrue tidak dipakai
+# client), /graphql/v1, /pg, dan Studio TIDAK dipublikasikan; path lain 404.
+#
+# Entrypoint `admin` (semua path, termasuk Studio) hanya di-bind ke 127.0.0.1
+# server; akses lewat WireGuard atau SSH tunnel. Lihat docs/PRODUCTION.md.
+http:
+  routers:
+    realtime:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/realtime/v1`)
+      service: kong
+      middlewares: [ws-limit, rate-limit, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 100
+
+    storage-upload:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/storage/v1`) && (Method(`POST`) || Method(`PUT`))
+      service: kong
+      middlewares: [rate-limit, body-upload, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 95
+
+    storage:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/storage/v1`)
+      service: kong
+      middlewares: [rate-limit, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 90
+
+    api:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/bridge/v1`))
+      service: kong
+      middlewares: [rate-limit, body-api, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 80
+
+    admin:
+      entryPoints: [admin]
+      rule: PathPrefix(`/`)
+      service: kong
+      middlewares: [security-headers-ui]
+      priority: 1
+
+tls:
+  options:
+    default:
+      minVersion: VersionTLS12
+      sniStrict: {{ env "TLS_SNI_STRICT" | default "true" }}
+      cipherSuites:
+        - TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+        - TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+      curvePreferences:
+        - X25519
+        - CurveP256
+        - CurveP384

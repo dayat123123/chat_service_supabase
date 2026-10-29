@@ -142,7 +142,7 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 }
 
 // clientIP mengambil IP klien. X-Forwarded-For hanya dipercaya bila request
-// datang dari proxy tepercaya (Kong/Caddy); diambil IP paling kanan yang
+// datang dari proxy tepercaya (Kong/Traefik); diambil IP paling kanan yang
 // bukan proxy tepercaya.
 func (s *Server) clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)

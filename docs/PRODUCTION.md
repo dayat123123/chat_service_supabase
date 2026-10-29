@@ -1,20 +1,25 @@
 # Panduan Produksi
 
-Panduan ini menjelaskan cara menjalankan OLT Social di VPS Ubuntu: deploy, keamanan, backup, update, moderasi, dan checklist sebelum rilis.
+Panduan ini menjelaskan cara menjalankan OLT Social di VPS Ubuntu dengan profil **`single`** (produksi 1 server): deploy, rahasia, backup, update, moderasi, dan checklist sebelum rilis. Pindah ke banyak node: [scaling.md](scaling.md).
 
 ## 1. Arsitektur produksi
 
 ```
-Internet ──443──▶ Caddy (TLS Let's Encrypt)
-                   │ hanya path API: /auth/v1 /rest/v1 /realtime/v1 /storage/v1
-                   │ /functions/v1 /graphql/v1 /bridge/v1   (lainnya 404)
-                   ▼
-                 Kong 127.0.0.1:8000 ──▶ PostgREST, Realtime, Storage, GoTrue,
-                   ▲                      Edge Functions, auth-bridge ──▶ WebSocket OLT
-       SSH tunnel ─┘ (Studio, hanya admin)          │
-                                                  Postgres 17 (tanpa port publik,
-                                                  network internal tanpa internet)
+Internet ──80──▶ Traefik ── redirect ke HTTPS
+Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per IP,
+                 │        batas body & koneksi WebSocket, security headers)
+                 │ hanya path API: /rest/v1 /realtime/v1 /storage/v1
+                 │ /functions/v1 /bridge/v1      (lainnya 404, termasuk /auth/v1 & Studio)
+                 ▼
+               Kong ──▶ PostgREST, Storage, Edge Functions ──▶ PgBouncer ──▶ Postgres 17
+                 │      Realtime ─────────────────────────────────────────▶ Postgres
+                 │      auth-bridge ──▶ WebSocket OLT        Valkey (rate limit, cache)
+ 127.0.0.1:8000 ─┘ entrypoint admin: Studio & semua path (SSH tunnel / WireGuard)
 ```
+
+- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik, auth-bridge, dan Edge Functions yang tersambung ke network `egress`.
+- Semua container read-only, non-root (kecuali entrypoint Postgres), `cap_drop: ALL`, `no-new-privileges`, dan punya batas CPU/memori/pids.
+- Rahasia hanya dari Docker secrets di `docker/secrets/`.
 
 ## 2. Deploy pertama
 
@@ -26,43 +31,50 @@ sudo ufw allow OpenSSH && sudo ufw allow 80/tcp && sudo ufw allow 443 && sudo uf
 
 # 2. Kode & rahasia
 git clone <repo> olt-social && cd olt-social
-make gen-keys                     # membuat docker/.env dengan rahasia acak
+make gen-secrets                 # docker/secrets/ (rahasia acak) + docker/.env
 ```
 
-Edit `docker/.env`:
+Edit `docker/.env` (tidak berisi rahasia):
 
 ```dotenv
 PROXY_DOMAIN=social-api.domain.com
+ACME_EMAIL=ops@domain.com
 SUPABASE_PUBLIC_URL=https://social-api.domain.com
 API_EXTERNAL_URL=https://social-api.domain.com/auth/v1
-APP_ENV=production
-AUTH_BRIDGE_OLT_MODE=websocket
 OLT_WS_URL=wss://<server-olt>/<path>
 # OLT_WS_* lain: sesuaikan dengan format login OLT (services/auth-bridge/README.md)
 ```
 
 ```bash
-# 3. Jalankan (Caddy otomatis meminta sertifikat; DNS A-record harus sudah mengarah ke VPS)
-make up PROD=1
-make seed            # OPSIONAL: hanya untuk staging. Di produksi isi stocks lewat sync_stocks.
+# 3. Jalankan (Traefik otomatis meminta sertifikat; DNS A-record harus sudah mengarah ke VPS)
+make up PROFILE=single
+make seed PROFILE=single   # OPSIONAL: hanya untuk staging. Di produksi isi stocks lewat sync_stocks.
+make anon-key              # ANON_KEY untuk build app OLT
 ```
 
 Catatan:
-- **Mode mock tidak bisa dipakai di produksi.** Dengan `APP_ENV=production`, auth-bridge menolak start bila `AUTH_BRIDGE_OLT_MODE=mock`.
-- **Membuka Studio:**
-  1. Buat SSH tunnel: `ssh -L 8000:127.0.0.1:8000 user@vps`.
-  2. Buka `http://localhost:8000` di browser.
-  3. Login memakai `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD`.
-- **Sinkronisasi daftar saham dari sistem OLT** (pakai `SERVICE_ROLE_KEY`, hanya dari server):
+- **Uji sertifikat dulu.** Uji dengan `ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory` agar tidak kena rate limit Let's Encrypt. Setelah berhasil, hapus baris itu, lalu hapus volume `olt-social_traefik-acme`.
+- **Mode mock tidak bisa dipakai.** Profil single selalu menjalankan auth-bridge dengan `APP_ENV=production`, dan auth-bridge menolak start bila `AUTH_BRIDGE_OLT_MODE=mock`. Default profil single adalah `websocket`.
+- **Rahasia ada di `docker/secrets/`.** Folder ini harus `chmod 700` dan dimiliki deployer. Isinya tidak pernah masuk `.env`, image, atau `docker inspect`.
+- **Membuka Studio** (default mati):
+  1. Nyalakan Studio: `make admin-up PROFILE=single`.
+  2. Buat SSH tunnel: `ssh -L 8000:127.0.0.1:8000 user@vps`.
+  3. Buka `http://localhost:8000` di browser.
+  4. Login dengan `DASHBOARD_USERNAME` dan password di `docker/secrets/dashboard_password`.
+  5. Setelah selesai: `make admin-down PROFILE=single`.
+- **Sinkronisasi daftar saham dari sistem OLT.** Ini memakai service key, jadi hanya dijalankan dari server lewat port admin:
 
   ```bash
-  curl -X POST https://social-api.domain.com/rest/v1/rpc/sync_stocks \
+  SERVICE_ROLE_KEY=$(cat docker/secrets/service_role_key)
+  curl -X POST http://127.0.0.1:8000/rest/v1/rpc/sync_stocks \
     -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
     -H 'Content-Type: application/json' \
     -d '{"p_stocks":[{"code":"BBCA","name":"Bank Central Asia Tbk","sector":"Financials"}]}'
   ```
 
 ## 3. Backup & restore
+
+> Tahap 6 menggantinya dengan WAL-G (point-in-time recovery) + restic terenkripsi di luar server. Lihat [production-audit.md](production-audit.md).
 
 `make backup` melakukan dua hal:
 - **Database:** `pg_dump` format custom ke `backups/olt-<UTC>.dump`. Arsip diverifikasi bisa dibaca dengan `pg_restore --list`. Dump lebih tua dari `BACKUP_KEEP_DAYS` (default 14 hari) dihapus otomatis.
@@ -71,20 +83,20 @@ Catatan:
 Jadwal harian (`crontab -e` di VPS):
 
 ```cron
-0 2 * * * cd /home/ubuntu/olt-social && make backup >> backups/backup.log 2>&1
+0 2 * * * cd /home/ubuntu/olt-social && make backup PROFILE=single >> backups/backup.log 2>&1
 30 2 * * * rclone sync /home/ubuntu/olt-social/backups remote:olt-social-backups   # salinan di luar VPS
 ```
 
 Restore:
 
 ```bash
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml stop
-docker compose -f docker/docker-compose.yml start db
-make restore FILE=olt-20261029-020000.dump CONFIRM=yes
-# file storage:
+make down PROFILE=single
+docker compose -f docker/compose.yml -f docker/compose.prod.yml up -d --wait db
+make restore PROFILE=single FILE=olt-20261029-020000.dump CONFIRM=yes
+# file storage (Storage berjalan sebagai uid 1000):
 docker run --rm -v olt-social_storage-data:/data -v "$PWD/backups:/backup" alpine:3.22.7 \
-  sh -c 'rm -rf /data/* && tar xzf /backup/storage-20261029-020000.tar.gz -C /data'
-make up PROD=1
+  sh -c 'rm -rf /data/* && tar xzf /backup/storage-20261029-020000.tar.gz -C /data && chown -R 1000:1000 /data'
+make up PROFILE=single
 ```
 
 **Uji restore secara berkala**, minimal bulanan, di VPS staging.
@@ -92,20 +104,19 @@ make up PROD=1
 ## 4. Update versi
 
 1. Baca `docker/versions.md` dan CHANGELOG di [supabase/supabase/docker](https://github.com/supabase/supabase/tree/master/docker).
-2. Ubah tag image di `docker/docker-compose.yml`. Tag harus selalu di-pin; jangan pernah memakai `latest`.
+2. Ubah image di `docker/compose.yml` dengan tag **dan** digest baru. Digest multi-arch didapat dengan `docker buildx imagetools inspect <image:tag>`. Jangan pernah memakai `latest`.
 3. Uji di lokal atau staging:
 
    ```bash
-   make reset && make seed && make test && make smoke && make test-flutter-it
+   make reset CONFIRM=yes && make seed && make test && make smoke && make test-flutter-it
    ```
 
 4. Di produksi, backup dulu, lalu:
 
    ```bash
-   make backup
+   make backup PROFILE=single
    git pull
-   docker compose -f docker/docker-compose.yml -f docker/docker-compose.prod.yml pull
-   make up PROD=1        # service `migrate` menjalankan migrasi baru secara otomatis
+   make up PROFILE=single   # service `migrate` menjalankan migrasi baru secara otomatis
    ```
 
 5. Upgrade major Postgres (misalnya 17 → 18) butuh `pg_upgrade` dan tidak tercakup langkah di atas.
@@ -115,6 +126,8 @@ make up PROD=1
 - Uji setiap perubahan skema dengan `make test-db`.
 
 ## 5. Moderasi
+
+> Studio mati secara default di profil single. Nyalakan dengan `make admin-up PROFILE=single` dan akses lewat SSH tunnel (bagian 2). Tahap 2 menambahkan RPC dan UI moderator sehingga Studio tidak lagi dibutuhkan.
 
 | Kebutuhan | Cara |
 |---|---|
@@ -127,40 +140,49 @@ make up PROD=1
 
 ## 6. Rotasi kunci
 
-Mengganti `JWT_SECRET` akan **membatalkan `ANON_KEY`, `SERVICE_ROLE_KEY`, dan semua JWT user**:
-1. Jalankan `make gen-keys FORCE=1` di staging untuk mendapat nilai baru, atau buat manual dengan `scripts/gen-keys.sh`.
-2. Perbarui `JWT_SECRET`, `ANON_KEY`, dan `SERVICE_ROLE_KEY` di `docker/.env` produksi. **Jangan** ubah `POSTGRES_PASSWORD`, karena itu butuh `ALTER ROLE` manual.
-3. Jalankan `make up PROD=1`.
-4. Rilis app OLT dengan `ANON_KEY` baru. Siapkan masa transisi bila versi app lama masih dipakai.
+> Prosedur lengkap dengan masa transisi akan ditulis di `docs/operations.md` (Tahap 6).
+
+Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan semua JWT user**:
+1. Di staging, hapus file `docker/secrets/jwt_secret`, `anon_key`, dan `service_role_key`, lalu jalankan `make gen-secrets`. Ketiganya dibuat ulang dengan pasangan yang cocok.
+2. Salin ketiga file itu ke `docker/secrets/` produksi. **Jangan** buat ulang `postgres_password` (`make gen-secrets FORCE=1` akan membuatnya ulang), karena itu butuh `ALTER ROLE` manual.
+3. Jalankan `make up PROFILE=single`.
+4. Rilis app OLT dengan `ANON_KEY` baru. `ANON_KEY` tertanam di app yang sudah terpasang, jadi siapkan masa transisi bila versi app lama masih dipakai.
 
 ## 7. Monitoring & log
 
-- **Log:** `make logs s=auth-bridge`. Log auth-bridge berupa JSON (`request_id`, `user_id`, `status`, `duration_ms`). Token dan password tidak pernah ditulis ke log.
+> Prometheus, log terpusat, dan alert ditambahkan di Tahap 6.
+
+- **Log:** `make logs PROFILE=single s=auth-bridge`.
+  - Log Traefik (akses) dan auth-bridge berupa JSON. Log auth-bridge memuat `request_id`, `user_id`, `status`, dan `duration_ms`.
+  - Header, token, dan password tidak pernah ditulis ke log.
 - **Rotasi log:** semua container memakai rotasi json-file 10 MB × 5 file.
-- **Health:** `docker compose ps`. Semua service punya healthcheck; service `migrate` harus `Exited (0)`.
+- **Health:** `make ps PROFILE=single`. Semua service punya healthcheck; service `migrate` dan `volume-init` harus `Exited (0)`.
 - **Yang perlu dipantau:**
   - disk (volume `db-data`, `storage-data`, folder `backups/`)
-  - koneksi Postgres
-  - error 5xx dan 429 di log Kong
+  - koneksi Postgres (PgBouncer membatasi maks 80 koneksi server)
+  - error 5xx dan 429 di log Traefik/Kong
   - error `olt_unavailable` di auth-bridge (server OLT bermasalah)
 
 ## 8. Checklist sebelum rilis
 
+> Tahap 6 memindahkan checklist ini ke `docs/production-checklist.md` dan melengkapinya sesuai addendum.
+
 **Keamanan**
-- [ ] `docker/.env` berisi rahasia hasil `make gen-keys`, tidak di-commit, dan hanya bisa dibaca root/deployer (`chmod 600`).
-- [ ] `APP_ENV=production` dan `AUTH_BRIDGE_OLT_MODE=websocket`, sudah diuji dengan token OLT asli.
-- [ ] OLT dummy tidak berjalan: `DUMMY_OLT` tidak diset, `OLT_WS_URL` mengarah ke server OLT asli, dan container `olt-dummy-olt` tidak ada.
-- [ ] `make up PROD=1`: Kong hanya di `127.0.0.1`, Studio tidak bisa diakses dari internet (cek bahwa `https://domain/` mengembalikan 404).
+- [ ] `docker/secrets/` berisi rahasia hasil `make gen-secrets`, tidak di-commit, dan folder hanya bisa dibuka deployer (`chmod 700`).
+- [ ] `docker/.env` tidak berisi rahasia; `PROXY_DOMAIN` dan `ACME_EMAIL` terisi.
+- [ ] `OLT_WS_URL` mengarah ke server OLT asli, sudah diuji dengan token OLT asli.
+- [ ] OLT dummy tidak berjalan (`docker ps` tidak menampilkan `dummy-olt`).
+- [ ] `https://domain/` dan `https://domain/auth/v1/health` mengembalikan 404. `http://domain/` di-redirect ke HTTPS.
+- [ ] Studio mati (`make admin-down PROFILE=single`), dan port admin hanya terikat ke `127.0.0.1`.
 - [ ] Firewall hanya membuka 22/80/443. Akses SSH memakai key, tanpa password.
 - [ ] `SERVICE_ROLE_KEY` tidak ada di app Flutter. App hanya memakai `ANON_KEY`.
-- [ ] Signup GoTrue tetap mati (`DISABLE_SIGNUP=true`, `ENABLE_EMAIL_SIGNUP=false`).
 - [ ] `make test-db` lulus. Tes ini antara lain memeriksa RLS aktif di semua tabel, anon tanpa akses, dan `olt_user_id` tidak terbaca.
 
 **Data & operasional**
 - [ ] Cron backup aktif, salinan offsite tersedia, restore sudah diuji.
 - [ ] Daftar saham tersinkron (`sync_stocks`). Daftar kata terlarang dan rate limit sudah ditinjau tim compliance.
 - [ ] Prosedur moderasi (bagian 5) sudah disosialisasikan.
-- [ ] DNS dan sertifikat HTTPS valid (Caddy otomatis memperbarui).
+- [ ] DNS dan sertifikat HTTPS valid (Traefik memperbarui otomatis).
 
 **Aplikasi**
 - [ ] App OLT memakai URL HTTPS produksi. Build release Android tidak mengizinkan cleartext.

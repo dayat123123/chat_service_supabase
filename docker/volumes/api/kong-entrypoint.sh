@@ -58,4 +58,23 @@ awk '{
 # Remove empty key-auth credentials (unconfigured opaque keys)
 sed -i '/^[[:space:]]*- key:[[:space:]]*$/d' "$KONG_DECLARATIVE_CONFIG"
 
+# OLT: origin CORS dari CORS_ALLOWED_ORIGINS (dipisah koma), dipasang ke setiap
+# plugin `cors`. "*" = semua origin (development). Kosong = tidak ada origin web
+# yang diizinkan; app native tidak mengirim Origin sehingga tidak terpengaruh.
+# Kong selalu mengirim satu origin literal, jadi origin lain ditolak browser.
+cors_origins="${CORS_ALLOWED_ORIGINS:-}"
+[ -n "$cors_origins" ] || cors_origins="https://cors-disabled.invalid"
+cors_yaml="[$(printf '%s' "$cors_origins" | awk -F, '{
+  for (i = 1; i <= NF; i++) { gsub(/^ +| +$/, "", $i); printf "%s\"%s\"", (i > 1 ? "," : ""), $i }
+}')]"
+awk -v origins="$cors_yaml" '{
+  print
+  if ($0 ~ /^ *- name: cors *$/) {
+    match($0, /^ */); indent = substr($0, 1, RLENGTH)
+    print indent "  config:"
+    print indent "    origins: " origins
+  }
+}' "$KONG_DECLARATIVE_CONFIG" > "$KONG_DECLARATIVE_CONFIG.tmp"
+mv "$KONG_DECLARATIVE_CONFIG.tmp" "$KONG_DECLARATIVE_CONFIG"
+
 exec /entrypoint.sh kong docker-start

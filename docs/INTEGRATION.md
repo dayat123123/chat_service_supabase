@@ -145,9 +145,9 @@ Bungkus widget sosial dengan `OltSocialScope` dan berikan implementasi palsu `Ol
 
 | Gejala | Penyebab / solusi |
 |---|---|
-| Emulator Android tidak bisa terhubung | Gunakan `http://10.0.2.2:8000`, bukan `localhost`. Untuk HP fisik: `KONG_HTTP_BIND=0.0.0.0` + IP PC |
+| Emulator Android tidak bisa terhubung | Gunakan `http://10.0.2.2:8000`, bukan `localhost`. Untuk HP fisik: `EDGE_HTTP_BIND=0.0.0.0` + IP PC |
 | `Cleartext HTTP traffic not permitted` | Build debug: tambahkan `usesCleartextTraffic` di manifest debug. Produksi: gunakan HTTPS |
 | Selalu "Sesi berakhir" | `oltTokenProvider` mengembalikan null/token kedaluwarsa, atau auth-bridge masih mode `mock` sementara app mengirim token asli (cek `docker compose logs auth-bridge`) |
 | "Server OLT sedang tidak dapat dihubungi" | auth-bridge gagal menghubungi `OLT_WS_URL` dalam `OLT_WS_TIMEOUT` |
-| Realtime tidak masuk | Pastikan port 443/8000 meneruskan WebSocket (Caddy sudah). Cek `docker compose logs realtime` |
+| Realtime tidak masuk | Pastikan port 443/8000 meneruskan WebSocket (Traefik sudah). Cek `docker compose logs realtime` |
 | "Terlalu cepat" | Rate limit server (post 5/menit, komentar 20/menit, pesan 30/menit). Ubah lewat `private.rate_limits` |

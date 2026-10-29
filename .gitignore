@@ -3,6 +3,8 @@
 *.env
 !.env.example
 docker/.env.old
+# Docker secrets (make gen-secrets), termasuk cadangan .env lama
+docker/secrets/
 
 # Docker volume lokal (jika ada bind mount)
 docker/volumes/db/data/

@@ -1,0 +1,848 @@
+# OLT Social - definisi dasar stack, dipakai SEMUA profil.
+#
+#   dev     : compose.yml + compose.dev.yml   (+ compose.dummy-olt.yml)   laptop developer
+#   single  : compose.yml + compose.prod.yml                               produksi 1 server
+#   cluster : compose.yml + stack.cluster.yml (docker stack deploy)        Docker Swarm
+#
+# Pakai lewat Makefile / make.ps1 di root repo:  make up [PROFILE=dev|single]
+#
+# Diturunkan dari docker-compose resmi supabase/supabase (folder docker, commit
+# 6a421fe, 2026-10-29). Analytics (Logflare), Vector, dan Supavisor tidak disertakan.
+#
+# Prinsip (docs/PROMPT-PRODUCTION.md):
+# - Image, nama service, dan nama env SAMA di semua profil; profil hanya mengubah
+#   konfigurasi. Semua image di-pin tag + digest.
+# - Rahasia hanya dari Docker secrets (docker/secrets/, dibuat `make gen-secrets`).
+#   Env berisi placeholder {{secret:nama}} yang diisi volumes/olt/with-secrets.sh.
+# - Hanya Traefik yang membuka port (diatur di file profil). Network dipisah:
+#     edge   Traefik <-> Kong
+#     app    Kong <-> service API, dan antar service aplikasi
+#     data   Postgres, PgBouncer, Valkey, dan kliennya
+#     egress hanya untuk service yang butuh internet atau port di host
+# - Aplikasi konek ke Postgres lewat PgBouncer. Pengecualian: Realtime (replikasi
+#   logis) dan migrate/tools (operasi DB sebagai superuser).
+# - Hardening: non-root bila image mendukung, read-only + tmpfs, cap_drop ALL,
+#   no-new-privileges, batas CPU/memori/pids, healthcheck, log dirotasi.
+
+name: olt-social
+
+x-base: &base
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+
+  # --- Edge ------------------------------------------------------------------
+
+  traefik:
+    <<: *base
+    image: traefik:v3.7.15@sha256:0f6150202bc1fed72a7bd2107460eaa510e5b8a905f3fdb5b84f2c8619c33368
+    user: "65532:65532"
+    networks: [edge, egress]
+    depends_on:
+      kong:
+        condition: service_healthy
+    stop_grace_period: 30s
+    tmpfs:
+      # Body request/response yang di-buffer middleware `buffering`.
+      - /tmp:size=256m,mode=1777
+    configs:
+      - source: traefik-common
+        target: /etc/traefik/dynamic/common.yml
+    environment:
+      TRAEFIK_GLOBAL_CHECKNEWVERSION: "false"
+      TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE: "false"
+      TRAEFIK_LOG_LEVEL: ${TRAEFIK_LOG_LEVEL:-INFO}
+      TRAEFIK_LOG_FORMAT: json
+      TRAEFIK_ACCESSLOG: "true"
+      TRAEFIK_ACCESSLOG_FORMAT: json
+      # Header tidak pernah dicatat (bisa berisi token).
+      TRAEFIK_ACCESSLOG_FIELDS_HEADERS_DEFAULTMODE: drop
+      TRAEFIK_PROVIDERS_FILE_DIRECTORY: /etc/traefik/dynamic
+      TRAEFIK_PROVIDERS_FILE_WATCH: "true"
+      # Ping (healthcheck) & metrik Prometheus hanya di port internal 8082.
+      TRAEFIK_ENTRYPOINTS_PING_ADDRESS: ":8082"
+      TRAEFIK_ENTRYPOINTS_PING_HTTP_ALIASHEADERSSTRATEGY: delete
+      TRAEFIK_PING: "true"
+      TRAEFIK_PING_ENTRYPOINT: ping
+      TRAEFIK_METRICS_PROMETHEUS: "true"
+      TRAEFIK_METRICS_PROMETHEUS_ENTRYPOINT: ping
+      TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":8000"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_MAXHEADERBYTES: "32768"
+      # Header yang namanya alias header lain (X_Forwarded_For) dibuang; karakter
+      # path ter-encode yang bisa disalahartikan backend ditolak.
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_ALIASHEADERSSTRATEGY: delete
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDNULLCHARACTER: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDBACKSLASH: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDSLASH: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDHASH: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDQUESTIONMARK: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDSEMICOLON: "false"
+      TRAEFIK_ENTRYPOINTS_WEB_TRANSPORT_RESPONDINGTIMEOUTS_READTIMEOUT: 60s
+      TRAEFIK_ENTRYPOINTS_WEB_TRANSPORT_RESPONDINGTIMEOUTS_IDLETIMEOUT: 180s
+      TRAEFIK_ENTRYPOINTS_WEB_TRANSPORT_LIFECYCLE_GRACETIMEOUT: 20s
+      TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_DIALTIMEOUT: 5s
+      # Edge Functions boleh berjalan hingga ~150 detik (idle timeout runtime).
+      TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_RESPONSEHEADERTIMEOUT: 170s
+      # Batas edge (docs/PROMPT-PRODUCTION.md bagian 3), dipakai volumes/traefik/common.yml.
+      EDGE_RATE_AVERAGE: ${EDGE_RATE_AVERAGE:-100}
+      EDGE_RATE_BURST: ${EDGE_RATE_BURST:-200}
+      EDGE_WS_PER_IP: ${EDGE_WS_PER_IP:-20}
+      EDGE_BODY_MAX_API: ${EDGE_BODY_MAX_API:-262144}
+      EDGE_BODY_MAX_UPLOAD: ${EDGE_BODY_MAX_UPLOAD:-10485760}
+    healthcheck:
+      # Tanpa flag: memakai konfigurasi statis dari env (ping di :8082).
+      test: ["CMD", "traefik", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 256M, pids: 256}
+
+  kong:
+    <<: *base
+    image: kong/kong:3.9.3@sha256:9a2ae6699a2ce0d60592eb176555d3594a22782c20cc6557a61ff3a7e8b559a3
+    networks: [edge, app]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    stop_grace_period: 30s
+    tmpfs:
+      # KONG_PREFIX (nginx.conf, pid, socket) dan config deklaratif hasil substitusi.
+      - /tmp:size=64m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+      - source: kong-config
+        target: /home/kong/temp.yml
+      - source: kong-entrypoint
+        target: /home/kong/kong-entrypoint.sh
+    secrets: [anon_key, service_role_key, dashboard_password]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "/bin/sh", "/home/kong/kong-entrypoint.sh"]
+    environment:
+      KONG_DATABASE: "off"
+      KONG_PREFIX: /tmp/kong
+      KONG_DECLARATIVE_CONFIG: /tmp/kong.yml
+      KONG_ROUTER_FLAVOR: expressions
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_DNS_VALID_TTL: 5
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function
+      # Default nginx = 1 worker per core host; dibatasi agar memori terkendali.
+      KONG_NGINX_WORKER_PROCESSES: ${KONG_WORKER_PROCESSES:-2}
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_PROXY_ACCESS_LOG: /dev/stdout combined
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ACCESS_LOG: "off"
+      # IP klien asli dari X-Forwarded-For, hanya bila datang dari Traefik (network edge).
+      KONG_TRUSTED_IPS: ${EDGE_SUBNET:-10.250.250.0/24}
+      KONG_REAL_IP_HEADER: X-Forwarded-For
+      KONG_REAL_IP_RECURSIVE: "on"
+      SUPABASE_ANON_KEY: "{{secret:anon_key}}"
+      SUPABASE_SERVICE_KEY: "{{secret:service_role_key}}"
+      SUPABASE_PUBLISHABLE_KEY: ""
+      SUPABASE_SECRET_KEY: ""
+      ANON_KEY_ASYMMETRIC: ""
+      SERVICE_ROLE_KEY_ASYMMETRIC: ""
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-supabase}
+      DASHBOARD_PASSWORD: "{{secret:dashboard_password}}"
+      # Kosong = tidak ada origin web yang diizinkan (secure by default). Dev: "*".
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: {cpus: "2", memory: "${KONG_MEMORY:-1G}", pids: 256}
+
+  # --- API Supabase ----------------------------------------------------------
+
+  auth:
+    <<: *base
+    image: supabase/gotrue:v2.197.0@sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b
+    networks: [app, data]
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [jwt_secret, postgres_password]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh"]
+    command: ["auth"]
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:{{secret:postgres_password}}@${DB_POOLER_HOST:-pgbouncer}:${DB_POOLER_PORT:-6432}/${POSTGRES_DB:-postgres}
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
+      # User OLT tidak signup lewat GoTrue; JWT diterbitkan auth-bridge.
+      GOTRUE_DISABLE_SIGNUP: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "false"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_SMS_AUTOCONFIRM: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY:-3600}
+      GOTRUE_JWT_SECRET: "{{secret:jwt_secret}}"
+      GOTRUE_JWT_ISSUER: ${API_EXTERNAL_URL}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M, pids: 128}
+
+  rest:
+    <<: *base
+    image: postgrest/postgrest:v14.18@sha256:c7cd7e265a85b05248abf53f4473fcec7e327c282d0bd0cf60f1551996d09fcf
+    networks: [app, data]
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    stop_grace_period: 15s
+    # Image tanpa shell: secret dibaca langsung dari file (sintaks @file PostgREST).
+    secrets: [jwt_secret, postgrest_db_uri]
+    environment:
+      PGRST_DB_URI: "@/run/secrets/postgrest_db_uri"
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public}
+      PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
+      PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
+      PGRST_DB_POOL: ${PGRST_DB_POOL:-10}
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_JWT_SECRET: "@/run/secrets/jwt_secret"
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
+    command: ["postgrest"]
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512M, pids: 256}
+
+  realtime:
+    <<: *base
+    image: supabase/realtime:v2.143.3@sha256:768b559241dd234c4e8852c5c0f504e598b80f1df2ad4dd78d5486fbed2f17a2
+    networks:
+      app:
+        # Realtime menurunkan tenant id dari hostname (realtime-dev); Kong memakai nama ini.
+        aliases: [realtime-dev.supabase-realtime]
+      data: {}
+    depends_on:
+      db:
+        condition: service_healthy
+    stop_grace_period: 30s
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [postgres_password, jwt_secret, secret_key_base, realtime_db_enc_key, realtime_erlang_cookie]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "/usr/bin/tini", "-s", "-g", "--", "/app/run.sh"]
+    command: ["/app/bin/server"]
+    environment:
+      PORT: 4000
+      # Koneksi langsung (bukan PgBouncer): Realtime butuh replikasi logis.
+      DB_HOST: ${POSTGRES_HOST:-db}
+      DB_PORT: ${POSTGRES_PORT:-5432}
+      DB_USER: supabase_admin
+      DB_PASSWORD: "{{secret:postgres_password}}"
+      DB_NAME: ${POSTGRES_DB:-postgres}
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: "{{secret:realtime_db_enc_key}}"
+      API_JWT_SECRET: "{{secret:jwt_secret}}"
+      SECRET_KEY_BASE: "{{secret:secret_key_base}}"
+      METRICS_JWT_SECRET: "{{secret:jwt_secret}}"
+      # Cookie Erlang: dipakai saat Realtime di-cluster (profil cluster).
+      RELEASE_COOKIE: "{{secret:realtime_erlang_cookie}}"
+      RELEASE_TMP: /tmp
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
+      # Batas tenant saat tenant dibuat (lihat juga migrasi realtime).
+      TENANT_MAX_CONCURRENT_USERS: ${REALTIME_MAX_CONCURRENT_USERS:-10000}
+      TENANT_MAX_EVENTS_PER_SECOND: ${REALTIME_MAX_EVENTS_PER_SECOND:-1000}
+      TENANT_MAX_CHANNELS_PER_CLIENT: ${REALTIME_MAX_CHANNELS_PER_CLIENT:-100}
+      TENANT_MAX_JOINS_PER_SECOND: ${REALTIME_MAX_JOINS_PER_SECOND:-500}
+      TENANT_MAX_BYTES_PER_SECOND: ${REALTIME_MAX_BYTES_PER_SECOND:-1000000}
+    healthcheck:
+      test: ["CMD", "curl", "-sSf", "-o", "/dev/null", "http://localhost:4000/healthcheck"]
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    deploy:
+      resources:
+        limits: {cpus: "2", memory: "${REALTIME_MEMORY:-1G}", pids: 512}
+
+  storage:
+    <<: *base
+    image: supabase/storage-api:v1.81.0@sha256:98ffec5d0678803783c30e404c27f4ec65e97efbe014088f2a86b4b8b54b9f54
+    user: "1000:1000"
+    networks: [app, data]
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      pgbouncer:
+        condition: service_healthy
+      rest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [anon_key, service_role_key, jwt_secret, postgres_password, s3_protocol_access_key_id, s3_protocol_access_key_secret]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "docker-entrypoint.sh"]
+    command: ["node", "dist/start/server.js"]
+    environment:
+      ANON_KEY: "{{secret:anon_key}}"
+      SERVICE_KEY: "{{secret:service_role_key}}"
+      POSTGREST_URL: http://rest:3000
+      AUTH_JWT_SECRET: "{{secret:jwt_secret}}"
+      DATABASE_URL: postgres://supabase_storage_admin:{{secret:postgres_password}}@${DB_POOLER_HOST:-pgbouncer}:${DB_POOLER_PORT:-6432}/${POSTGRES_DB:-postgres}
+      STORAGE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      # Batas global; batas per bucket (avatars/attachments) diatur di migrasi.
+      FILE_SIZE_LIMIT: 52428800
+      # `file` (volume) di dev/single. Pindah ke S3/SeaweedFS cukup lewat env:
+      # STORAGE_BACKEND=s3 + GLOBAL_S3_* (lihat docs/scaling.md).
+      STORAGE_BACKEND: ${STORAGE_BACKEND:-file}
+      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET:-stub}
+      GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT:-}
+      GLOBAL_S3_PROTOCOL: ${GLOBAL_S3_PROTOCOL:-https}
+      GLOBAL_S3_FORCE_PATH_STYLE: ${GLOBAL_S3_FORCE_PATH_STYLE:-true}
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: ${STORAGE_TENANT_ID:-stub}
+      REGION: ${REGION:-stub}
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+      S3_PROTOCOL_ACCESS_KEY_ID: "{{secret:s3_protocol_access_key_id}}"
+      S3_PROTOCOL_ACCESS_KEY_SECRET: "{{secret:s3_protocol_access_key_secret}}"
+    volumes:
+      - storage-data:/var/lib/storage
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/status"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512M, pids: 128}
+
+  imgproxy:
+    <<: *base
+    image: darthsim/imgproxy:v3.31.4@sha256:73c5dda13199745b0d2d00e4149d4a589c5b2e205dbf335ca05eca8276b54712
+    networks: [app]
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    volumes:
+      - storage-data:/var/lib/storage:ro
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_AUTO_WEBP: ${IMGPROXY_AUTO_WEBP:-true}
+      IMGPROXY_MAX_SRC_RESOLUTION: 16.8
+    healthcheck:
+      test: ["CMD", "imgproxy", "health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512M, pids: 128}
+
+  meta:
+    <<: *base
+    image: supabase/postgres-meta:v0.100.0@sha256:145325b7e39f8ef4931d6e8cfd3f6f4d655de09d72a2ccc96d9513542c2202bd
+    user: "1000:1000"
+    networks: [app, data]
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [postgres_password, pg_meta_crypto_key]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "docker-entrypoint.sh"]
+    command: ["node", "dist/server/server.js"]
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: ${DB_POOLER_HOST:-pgbouncer}
+      PG_META_DB_PORT: ${DB_POOLER_PORT:-6432}
+      PG_META_DB_NAME: ${POSTGRES_DB:-postgres}
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: "{{secret:postgres_password}}"
+      CRYPTO_KEY: "{{secret:pg_meta_crypto_key}}"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8080/health').then((r) => {if (r.status !== 200) throw new Error(r.status)})\""]
+      timeout: 5s
+      interval: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M, pids: 128}
+
+  # Dashboard admin. Profil single/cluster: mati secara default (profile `admin`).
+  studio:
+    <<: *base
+    image: supabase/studio:2026.10.12-sha-3699278@sha256:948770ec467f00e6ae34c35018ef7cb23d7b30eb806b42c2cc0d7bcfdcf8a7a8
+    user: "1000:1000"
+    networks: [app]
+    depends_on:
+      meta:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /app/apps/studio/.next/cache:size=128m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [postgres_password, pg_meta_crypto_key, anon_key, service_role_key, jwt_secret]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "docker-entrypoint.sh"]
+    command: ["node", "apps/studio/server.js"]
+    environment:
+      HOSTNAME: "0.0.0.0"
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_HOST: ${DB_POOLER_HOST:-pgbouncer}
+      POSTGRES_PORT: ${DB_POOLER_PORT:-6432}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_PASSWORD: "{{secret:postgres_password}}"
+      POSTGRES_USER_READ_WRITE: postgres
+      PG_META_CRYPTO_KEY: "{{secret:pg_meta_crypto_key}}"
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public}
+      PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
+      PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION:-OLT}
+      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT:-OLT Social}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_ANON_KEY: "{{secret:anon_key}}"
+      SUPABASE_SERVICE_KEY: "{{secret:service_role_key}}"
+      AUTH_JWT_SECRET: "{{secret:jwt_secret}}"
+      ENABLED_FEATURES_LOGS_ALL: "false"
+      SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
+      EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
+    volumes:
+      - ./volumes/snippets:/app/snippets
+      - ./volumes/functions:/app/edge-functions:ro
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})\""]
+      timeout: 10s
+      interval: 5s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 1G, pids: 128}
+
+  functions:
+    <<: *base
+    image: supabase/edge-runtime:v1.77.4@sha256:ad45164b7548bf5820ed7be714789c17ac2865edce79a09cfb4c3756c3d365a8
+    user: "65534:65534"
+    # egress: unduh dependensi Deno (import remote) saat fungsi pertama kali jalan.
+    networks: [app, egress]
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [jwt_secret, anon_key, service_role_key]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "edge-runtime"]
+    command: ["start", "--user-worker-request-idle-timeout", "150000", "--main-service", "/home/deno/functions/main"]
+    environment:
+      JWT_SECRET: "{{secret:jwt_secret}}"
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_ANON_KEY: "{{secret:anon_key}}"
+      SUPABASE_SERVICE_ROLE_KEY: "{{secret:service_role_key}}"
+      SUPABASE_PUBLISHABLE_KEYS: '{"default":""}'
+      SUPABASE_SECRET_KEYS: '{"default":""}'
+      VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT:-true}"
+      DENO_DIR: /var/cache/deno
+      HOME: /tmp
+    volumes:
+      - ./volumes/functions:/home/deno/functions:ro
+      - deno-cache:/var/cache/deno
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/9000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512M, pids: 256}
+
+  # --- Data ------------------------------------------------------------------
+
+  db:
+    <<: *base
+    image: supabase/postgres:17.6.1.136@sha256:f371b5f3f2ac0a05703f33d6e6134515fb2498cab708fb948a0aeb7481467c00
+    networks: [data]
+    # Entrypoint mulai sebagai root, menyiapkan direktori, lalu turun ke user postgres.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    stop_grace_period: 60s
+    shm_size: 256m
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+      - /var/run/postgresql:size=16m
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+      - source: db-realtime
+        target: /docker-entrypoint-initdb.d/migrations/99-realtime.sql
+      # Harus superuser untuk membuat event trigger
+      - source: db-webhooks
+        target: /docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
+      # Harus superuser untuk mengubah reserved role
+      - source: db-roles
+        target: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
+      - source: db-jwt
+        target: /docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
+    secrets: [postgres_password]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "docker-entrypoint.sh"]
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      # Menyimpan kunci pgsodium agar tetap sama antar restart
+      - db-config:/etc/postgresql-custom
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      PGPASSWORD: "{{secret:postgres_password}}"
+      POSTGRES_PASSWORD: "{{secret:postgres_password}}"
+      PGDATABASE: ${POSTGRES_DB:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      JWT_EXP: ${JWT_EXPIRY:-3600}
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits: {cpus: "2", memory: "${DB_MEMORY:-2G}", pids: 512}
+
+  pgbouncer:
+    <<: *base
+    build:
+      context: ./pgbouncer
+    image: olt-social/pgbouncer:1.24.0-2
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [postgres_password]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "/bin/sh", "/usr/local/bin/pgbouncer-entrypoint.sh"]
+    environment:
+      # Password user `pgbouncer` (diset sama dengan POSTGRES_PASSWORD oleh volumes/db/roles.sql).
+      PGBOUNCER_AUTH_PASSWORD: "{{secret:postgres_password}}"
+      PGBOUNCER_DB_HOST: ${POSTGRES_HOST:-db}
+      PGBOUNCER_DB_PORT: ${POSTGRES_PORT:-5432}
+      PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-session}
+      PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-500}
+      PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+      PGBOUNCER_MAX_DB_CONNECTIONS: ${PGBOUNCER_MAX_DB_CONNECTIONS:-80}
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "6432"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 128M, pids: 64}
+
+  # Rate limit, cache, dan lock terdistribusi (dipakai auth-bridge & Traefik).
+  # Tanpa persistence: isinya boleh hilang saat restart.
+  valkey:
+    <<: *base
+    image: valkey/valkey:9.0.7-alpine@sha256:2d04268dfa26ab31cfa3fdc538866e76438b2d00e41db41b8cb86d780ac5a416
+    user: "999:1000"
+    networks: [data]
+    tmpfs:
+      - /data:size=16m
+      - /tmp:size=16m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [valkey_password]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "/bin/sh", "-c"]
+    command:
+      - |
+        umask 077
+        printf 'requirepass %s\n' "$$VALKEY_PASSWORD" > /tmp/valkey.conf
+        exec valkey-server /tmp/valkey.conf --save "" --appendonly no \
+          --maxmemory "$${VALKEY_MAXMEMORY:-192mb}" --maxmemory-policy volatile-lru
+    environment:
+      VALKEY_PASSWORD: "{{secret:valkey_password}}"
+      VALKEY_MAXMEMORY: ${VALKEY_MAXMEMORY:-192mb}
+    healthcheck:
+      # Tanpa password: balasan NOAUTH pun berarti server hidup.
+      test: ["CMD-SHELL", "valkey-cli ping 2>&1 | grep -qE 'PONG|NOAUTH'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 256M, pids: 64}
+
+  # --- One-shot & aplikasi ---------------------------------------------------
+
+  # Menyamakan kepemilikan volume dengan user non-root service (sekali, idempoten).
+  volume-init:
+    image: alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
+    restart: "no"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - storage-data:/volumes/storage
+      - deno-cache:/volumes/deno
+      - traefik-acme:/volumes/acme
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        own() { [ "$$(stat -c %u:%g "$$1")" = "$$2" ] || chown -R "$$2" "$$1"; }
+        own /volumes/storage 1000:1000
+        own /volumes/deno 65534:65534
+        own /volumes/acme 65532:65532
+        chmod 700 /volumes/acme
+
+  # One-shot: menjalankan migrasi OLT yang belum pernah dijalankan, lalu selesai.
+  # Menunggu auth/storage/realtime healthy karena migrasi memakai skema mereka
+  # (storage.buckets, realtime.messages). Koneksi langsung ke DB (superuser).
+  migrate:
+    <<: *base
+    restart: "no"
+    build:
+      context: ./tools
+    image: olt-social/tools:0.1.0
+    user: "1000:1000"
+    networks: [data]
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+      realtime:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [postgres_password]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "bash", "/olt/scripts/tools.sh"]
+    command: ["migrate"]
+    volumes:
+      - ../scripts:/olt/scripts:ro
+      - ../supabase:/olt/supabase:ro
+    environment:
+      HOME: /tmp
+      PGHOST: ${POSTGRES_HOST:-db}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      PGDATABASE: ${POSTGRES_DB:-postgres}
+      PGPASSWORD: "{{secret:postgres_password}}"
+
+  auth-bridge:
+    <<: *base
+    build:
+      context: ../services/auth-bridge
+    image: olt-social/auth-bridge:0.2.0
+    # egress: koneksi WebSocket ke server OLT. data: Valkey.
+    networks: [app, data, egress]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+    stop_grace_period: 20s
+    secrets: [jwt_secret]
+    environment:
+      PORT: 8080
+      # Secure by default: production. Profil dev menimpa ke development.
+      APP_ENV: production
+      LOG_LEVEL: ${AUTH_BRIDGE_LOG_LEVEL:-info}
+      # Image distroless (tanpa shell): secret dibaca dari file oleh auth-bridge.
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      JWT_TTL: ${AUTH_BRIDGE_JWT_TTL:-900}
+      # Upsert profil lewat PostgREST internal (RPC khusus service_role).
+      POSTGREST_URL: http://rest:3000
+      VERIFY_CACHE_TTL: ${AUTH_BRIDGE_CACHE_TTL:-60}
+      RATE_LIMIT_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE:-30}
+      OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-websocket}
+      OLT_WS_URL: ${OLT_WS_URL:-}
+      OLT_WS_TIMEOUT: ${OLT_WS_TIMEOUT:-5}
+      OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}
+      OLT_WS_LOGIN_TEMPLATE: ${OLT_WS_LOGIN_TEMPLATE:-}
+      OLT_WS_RESPONSE_MATCH_PATH: ${OLT_WS_RESPONSE_MATCH_PATH:-}
+      OLT_WS_RESPONSE_MATCH_VALUE: ${OLT_WS_RESPONSE_MATCH_VALUE:-}
+      OLT_WS_SUCCESS_PATH: ${OLT_WS_SUCCESS_PATH:-}
+      OLT_WS_SUCCESS_VALUE: ${OLT_WS_SUCCESS_VALUE:-}
+      OLT_WS_ERROR_MESSAGE_PATH: ${OLT_WS_ERROR_MESSAGE_PATH:-}
+      OLT_WS_USER_ID_PATH: ${OLT_WS_USER_ID_PATH:-}
+      OLT_WS_USERNAME_PATH: ${OLT_WS_USERNAME_PATH:-}
+      OLT_WS_EMAIL_PATH: ${OLT_WS_EMAIL_PATH:-}
+      OLT_WS_DISPLAY_NAME_PATH: ${OLT_WS_DISPLAY_NAME_PATH:-}
+    healthcheck:
+      # Image distroless tidak punya shell/curl; binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/auth-bridge", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 128M, pids: 64}
+
+  # Service operasional (tidak ikut `up`). Dipakai Makefile/make.ps1:
+  #   docker compose run --rm tools migrate|seed|test-db|smoke|backup|restore|psql
+  # Semua skrip berjalan di container Linux sehingga host Windows tidak butuh bash/psql.
+  tools:
+    <<: *base
+    restart: "no"
+    image: olt-social/tools:0.1.0
+    profiles: [tools]
+    user: "1000:1000"
+    networks: [app, data]
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    configs:
+      - source: with-secrets
+        target: /opt/olt/with-secrets.sh
+    secrets: [postgres_password, anon_key]
+    entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "bash", "/olt/scripts/tools.sh"]
+    volumes:
+      - ../scripts:/olt/scripts:ro
+      - ../supabase:/olt/supabase:ro
+      - ../backups:/olt/backups
+    environment:
+      HOME: /tmp
+      PGHOST: ${POSTGRES_HOST:-db}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      PGDATABASE: ${POSTGRES_DB:-postgres}
+      PGPASSWORD: "{{secret:postgres_password}}"
+      SUPABASE_URL: http://kong:8000
+      ANON_KEY: "{{secret:anon_key}}"
+
+networks:
+  edge:
+    internal: true
+    ipam:
+      config:
+        # Subnet tetap: Kong hanya mempercayai X-Forwarded-For dari sini (Traefik).
+        - subnet: ${EDGE_SUBNET:-10.250.250.0/24}
+  app:
+    internal: true
+  data:
+    internal: true
+  egress: {}
+
+volumes:
+  db-data:
+  db-config:
+  storage-data:
+  deno-cache:
+  traefik-acme:
+
+configs:
+  with-secrets:
+    file: ./volumes/olt/with-secrets.sh
+  traefik-common:
+    file: ./volumes/traefik/common.yml
+  kong-config:
+    file: ./volumes/api/kong.yml
+  kong-entrypoint:
+    file: ./volumes/api/kong-entrypoint.sh
+  db-realtime:
+    file: ./volumes/db/realtime.sql
+  db-webhooks:
+    file: ./volumes/db/webhooks.sql
+  db-roles:
+    file: ./volumes/db/roles.sql
+  db-jwt:
+    file: ./volumes/db/jwt.sql
+
+# Dibuat `make gen-secrets`; folder docker/secrets/ tidak pernah di-commit.
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  jwt_secret:
+    file: ./secrets/jwt_secret
+  anon_key:
+    file: ./secrets/anon_key
+  service_role_key:
+    file: ./secrets/service_role_key
+  dashboard_password:
+    file: ./secrets/dashboard_password
+  secret_key_base:
+    file: ./secrets/secret_key_base
+  realtime_db_enc_key:
+    file: ./secrets/realtime_db_enc_key
+  realtime_erlang_cookie:
+    file: ./secrets/realtime_erlang_cookie
+  pg_meta_crypto_key:
+    file: ./secrets/pg_meta_crypto_key
+  s3_protocol_access_key_id:
+    file: ./secrets/s3_protocol_access_key_id
+  s3_protocol_access_key_secret:
+    file: ./secrets/s3_protocol_access_key_secret
+  valkey_password:
+    file: ./secrets/valkey_password
+  postgrest_db_uri:
+    file: ./secrets/postgrest_db_uri

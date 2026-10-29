@@ -2,7 +2,7 @@
 
 Server **tiruan** WebSocket OLT untuk development dan testing. Gunanya agar auth-bridge bisa diuji dalam **mode `websocket`**, jalur yang sama dengan produksi, selama format login OLT asli belum tersedia.
 
-- **auth-bridge tidak diubah.** Penyambungannya hanya lewat konfigurasi `OLT_WS_*` di [`docker/docker-compose.dummy-olt.yml`](../../docker/docker-compose.dummy-olt.yml).
+- **auth-bridge tidak diubah.** Penyambungannya hanya lewat konfigurasi `OLT_WS_*` di [`docker/compose.dummy-olt.yml`](../../docker/compose.dummy-olt.yml).
 - **Hanya untuk development/testing.** Makefile menolak `DUMMY_OLT` bila dipakai bersama `PROD`.
 
 ```bash
@@ -82,7 +82,7 @@ Kode error yang mungkin muncul: `BAD_REQUEST`, `INVALID_CREDENTIALS`, `ACCOUNT_S
 
 ## Pemetaan ke auth-bridge
 
-Isi `docker/docker-compose.dummy-olt.yml` di bawah ini adalah konfigurasi lengkap adapter auth-bridge untuk protokol di atas. Saat format OLT asli tersedia, cukup ganti nilainya di `docker/.env`; kode tidak perlu disentuh.
+Isi `docker/compose.dummy-olt.yml` di bawah ini adalah konfigurasi lengkap adapter auth-bridge untuk protokol di atas. Saat format OLT asli tersedia, cukup ganti nilainya di `docker/.env`; kode tidak perlu disentuh.
 
 ```dotenv
 AUTH_BRIDGE_OLT_MODE=websocket
@@ -103,7 +103,7 @@ OLT_WS_DISPLAY_NAME_PATH=data.user.full_name
 
 | Variabel | Default | Keterangan |
 |---|---|---|
-| `DUMMY_OLT_PORT` | `8090` | Port host. Bind memakai `KONG_HTTP_BIND` |
+| `DUMMY_OLT_PORT` | `8090` | Port host. Bind memakai `EDGE_HTTP_BIND` |
 | `DUMMY_OLT_SECRET` | secret dev | Kunci HMAC token dummy (bukan rahasia produksi) |
 | `DUMMY_OLT_TOKEN_TTL` | `24h` | Masa berlaku token login password |
 | `DUMMY_OLT_ACCEPT_MOCK_TOKENS` | `true` | Terima juga token `mock:<id>:<username>` |

@@ -1,0 +1,175 @@
+# Profil cluster: Docker Swarm multi-node.  KERANGKA (dilengkapi di Tahap 7).
+#
+#   make up PROFILE=cluster     (= docker stack deploy -c compose.yml -c stack.cluster.yml olt-social)
+#
+# File ini HANYA menimpa konfigurasi deploy di atas compose.yml: image, nama
+# service, dan nama env tetap sama, sehingga tidak ada perubahan kode aplikasi.
+# Yang berbeda dari profil single:
+#   - replika per service, rolling update `start-first`, rollback otomatis;
+#   - overlay network terenkripsi;
+#   - Realtime di-cluster (libcluster DNS), Storage memakai backend S3 (SeaweedFS);
+#   - Postgres primary di node berlabel `olt.db=primary` (replica: Tahap 7).
+#
+# Prasyarat & langkah migrasi: docs/scaling.md.
+# Catatan Swarm: `depends_on`, `build`, `security_opt`, `shm_size`, dan
+# `network_mode` diabaikan; image buatan sendiri harus ada di registry
+# (${REGISTRY}/olt-social/...).
+
+x-deploy: &deploy
+  restart_policy:
+    condition: any
+    delay: 5s
+  update_config:
+    parallelism: 1
+    order: start-first
+    failure_action: rollback
+    monitor: 30s
+  rollback_config:
+    parallelism: 1
+    order: stop-first
+
+services:
+  traefik:
+    ports:
+      - target: 8080
+        published: 80
+        mode: host
+      - target: 8443
+        published: 443
+        mode: host
+    configs:
+      - source: traefik-routes-prod
+        target: /etc/traefik/dynamic/routes.yml
+    environment:
+      TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":8080"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: ":443"
+      TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https
+      TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS: ":8443"
+      TRAEFIK_ENTRYPOINTS_ADMIN_ADDRESS: ":9000"
+      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL wajib diisi}
+      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_STORAGE: /acme/acme.json
+      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_HTTPCHALLENGE_ENTRYPOINT: web
+      PROXY_DOMAIN: ${PROXY_DOMAIN:?PROXY_DOMAIN wajib diisi}
+      # Tahap 7: rate limit terdistribusi antar replika Traefik lewat Valkey.
+    volumes:
+      - traefik-acme:/acme
+    deploy:
+      <<: *deploy
+      # Satu instance per manager; sertifikat ACME di volume node tersebut (Tahap 7: penyimpanan bersama).
+      mode: global
+      placement:
+        constraints: [node.role == manager]
+
+  kong:
+    deploy:
+      <<: *deploy
+      replicas: 2
+  auth:
+    deploy:
+      <<: *deploy
+      replicas: 2
+  rest:
+    deploy:
+      <<: *deploy
+      replicas: 2
+  realtime:
+    environment:
+      # Node Realtime saling menemukan lewat DNS Swarm (tasks.<service>).
+      CLUSTER_STRATEGIES: DNS
+      DNS_NODES: tasks.realtime
+    deploy:
+      <<: *deploy
+      replicas: 2
+  storage:
+    environment:
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET:?GLOBAL_S3_BUCKET wajib diisi}
+      GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT:?GLOBAL_S3_ENDPOINT wajib diisi}
+      AWS_ACCESS_KEY_ID: "{{secret:storage_s3_access_key_id}}"
+      AWS_SECRET_ACCESS_KEY: "{{secret:storage_s3_secret_access_key}}"
+    secrets: [anon_key, service_role_key, jwt_secret, postgres_password, s3_protocol_access_key_id, s3_protocol_access_key_secret, storage_s3_access_key_id, storage_s3_secret_access_key]
+    deploy:
+      <<: *deploy
+      replicas: 2
+  imgproxy:
+    deploy:
+      <<: *deploy
+      replicas: 2
+  functions:
+    deploy:
+      <<: *deploy
+      replicas: 2
+  auth-bridge:
+    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.2.0
+    deploy:
+      <<: *deploy
+      replicas: 2
+  pgbouncer:
+    image: ${REGISTRY}/olt-social/pgbouncer:1.24.0-2
+    deploy:
+      <<: *deploy
+      replicas: 2
+  valkey:
+    deploy:
+      <<: *deploy
+      replicas: 1
+  db:
+    deploy:
+      <<: *deploy
+      replicas: 1
+      # Primary tetap di satu node (volume lokal). Rolling update DB tidak boleh start-first.
+      update_config:
+        parallelism: 1
+        order: stop-first
+      placement:
+        constraints: [node.labels.olt.db == primary]
+  migrate:
+    image: ${REGISTRY}/olt-social/tools:0.1.0
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 10
+        delay: 10s
+  tools:
+    image: ${REGISTRY}/olt-social/tools:0.1.0
+    deploy:
+      replicas: 0
+  # Admin & storage lokal tidak dipakai di cluster.
+  studio:
+    deploy:
+      replicas: 0
+  meta:
+    deploy:
+      replicas: 0
+  volume-init:
+    deploy:
+      replicas: 0
+
+networks:
+  edge:
+    driver: overlay
+    driver_opts:
+      encrypted: "true"
+  app:
+    driver: overlay
+    driver_opts:
+      encrypted: "true"
+  data:
+    driver: overlay
+    driver_opts:
+      encrypted: "true"
+  egress:
+    driver: overlay
+    driver_opts:
+      encrypted: "true"
+
+configs:
+  traefik-routes-prod:
+    file: ./volumes/traefik/prod.yml
+
+secrets:
+  storage_s3_access_key_id:
+    file: ./secrets/storage_s3_access_key_id
+  storage_s3_secret_access_key:
+    file: ./secrets/storage_s3_secret_access_key

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Smoke test auth-bridge MODE WEBSOCKET terhadap OLT dummy (services/dummy-olt).
 # Butuh: make up DUMMY_OLT=1 (dan make seed). Kode auth-bridge tidak diubah;
-# hanya konfigurasi OLT_WS_* di docker/docker-compose.dummy-olt.yml.
+# hanya konfigurasi OLT_WS_* di docker/compose.dummy-olt.yml.
 set -uo pipefail
 
 BASE="${SUPABASE_URL:-http://kong:8000}"

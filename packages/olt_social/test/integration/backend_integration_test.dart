@@ -3,7 +3,8 @@
 //   Windows : $env:OLT_SOCIAL_IT=1; flutter test test/integration
 //   Linux   : OLT_SOCIAL_IT=1 flutter test test/integration
 //
-// URL & anon key dibaca dari docker/.env repo (atau env OLT_SOCIAL_URL / OLT_SOCIAL_ANON_KEY).
+// URL dibaca dari docker/.env, anon key dari docker/secrets/anon_key (make gen-secrets),
+// atau dari env OLT_SOCIAL_URL / OLT_SOCIAL_ANON_KEY.
 @Tags(['integration'])
 library;
 
@@ -26,6 +27,12 @@ Map<String, String> _dockerEnv() {
   };
 }
 
+/// Docker secret repo (`docker/secrets/<name>`); dulu tersimpan di docker/.env.
+String? _dockerSecret(String name) {
+  final file = File('../../docker/secrets/$name');
+  return file.existsSync() ? file.readAsStringSync().trim() : null;
+}
+
 Future<T> _waitFor<T>(Stream<T> stream, bool Function(T) test, {Duration timeout = const Duration(seconds: 15)}) =>
     stream.firstWhere(test).timeout(timeout);
 
@@ -39,7 +46,7 @@ void main() {
     if (!_enabled) return;
     final env = _dockerEnv();
     final url = Platform.environment['OLT_SOCIAL_URL'] ?? env['SUPABASE_PUBLIC_URL'] ?? 'http://localhost:8000';
-    final anonKey = Platform.environment['OLT_SOCIAL_ANON_KEY'] ?? env['ANON_KEY']!;
+    final anonKey = Platform.environment['OLT_SOCIAL_ANON_KEY'] ?? _dockerSecret('anon_key') ?? env['ANON_KEY']!;
     user = (token) {
       final social = OltSocial.create(supabaseUrl: url, anonKey: anonKey, oltTokenProvider: () async => token);
       created.add(social);

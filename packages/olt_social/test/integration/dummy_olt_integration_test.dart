@@ -27,6 +27,12 @@ Map<String, String> _dockerEnv() {
   };
 }
 
+/// Docker secret repo (`docker/secrets/<name>`); dulu tersimpan di docker/.env.
+String? _dockerSecret(String name) {
+  final file = File('../../docker/secrets/$name');
+  return file.existsSync() ? file.readAsStringSync().trim() : null;
+}
+
 /// Klien minimal protokol OLT dummy (lihat services/dummy-olt/README.md).
 Future<Map<String, dynamic>> oltRequest(String wsUrl, Map<String, Object?> message, String replyType) async {
   final socket = await WebSocket.connect(wsUrl).timeout(const Duration(seconds: 5));
@@ -65,7 +71,7 @@ void main() {
     if (!_enabled) return;
     final env = _dockerEnv();
     url = Platform.environment['OLT_SOCIAL_URL'] ?? env['SUPABASE_PUBLIC_URL'] ?? 'http://localhost:8000';
-    anonKey = Platform.environment['OLT_SOCIAL_ANON_KEY'] ?? env['ANON_KEY']!;
+    anonKey = Platform.environment['OLT_SOCIAL_ANON_KEY'] ?? _dockerSecret('anon_key') ?? env['ANON_KEY']!;
     wsUrl = Platform.environment['OLT_DUMMY_WS_URL'] ?? 'ws://localhost:${env['DUMMY_OLT_PORT'] ?? '8090'}/ws';
   });
 

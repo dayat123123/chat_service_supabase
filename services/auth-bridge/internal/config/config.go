@@ -76,7 +76,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		Port:               intEnv("PORT", 8080, &errs),
 		AppEnv:             strings.ToLower(envOr("APP_ENV", "development")),
-		JWTSecret:          os.Getenv("JWT_SECRET"),
+		JWTSecret:          secretEnv("JWT_SECRET", &errs),
 		JWTTTL:             secondsEnv("JWT_TTL", 900, &errs),
 		JWTIssuer:          envOr("JWT_ISSUER", "olt-auth-bridge"),
 		PostgRESTURL:       strings.TrimRight(envOr("POSTGREST_URL", "http://rest:3000"), "/"),
@@ -172,6 +172,21 @@ func envOr(key, def string) string {
 		return v
 	}
 	return def
+}
+
+// secretEnv membaca rahasia dari file <KEY>_FILE (Docker secrets) bila diset,
+// atau dari env <KEY>. Spasi/baris baru di ujung isi file diabaikan.
+func secretEnv(key string, errs *[]error) string {
+	path := os.Getenv(key + "_FILE")
+	if path == "" {
+		return os.Getenv(key)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		*errs = append(*errs, fmt.Errorf("%s_FILE: %w", key, err))
+		return ""
+	}
+	return strings.TrimSpace(string(b))
 }
 
 func intEnv(key string, def int, errs *[]error) int {

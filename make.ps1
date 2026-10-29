@@ -3,12 +3,12 @@
   OLT Social - padanan Makefile untuk Windows (PowerShell 5.1+).
 
 .EXAMPLE
-  .\make.ps1 gen-keys
-  .\make.ps1 up
+  .\make.ps1 gen-secrets
+  .\make.ps1 up                            (profil dev: http://localhost:8000)
+  .\make.ps1 up -Profile single            (produksi 1 server; butuh PROXY_DOMAIN & ACME_EMAIL)
   .\make.ps1 logs -Service auth-bridge
-  .\make.ps1 gen-keys -Force
   .\make.ps1 restore -File olt-20261029-020000.dump -Yes
-  .\make.ps1 up -DummyOlt                 (OLT dummy + auth-bridge mode websocket)
+  .\make.ps1 up -DummyOlt                  (OLT dummy + auth-bridge mode websocket)
   .\make.ps1 dummy-token -User sari_invest -Ttl 1h
 #>
 [CmdletBinding()]
@@ -16,14 +16,19 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet('help', 'up', 'down', 'logs', 'ps', 'reset', 'migrate', 'seed',
                  'test', 'test-db', 'test-bridge', 'test-flutter', 'test-flutter-it',
-                 'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore', 'gen-keys', 'psql',
+                 'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
+                 'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy')]
     [string]$Target = 'help',
+    # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
+    [Alias('Profile')]
+    [ValidateSet('dev', 'single', 'cluster')]
+    [string]$DeployProfile = 'dev',
     [string]$Service = '',
     [string]$File = '',
     [switch]$Force,
     [switch]$Yes,
-    # OLT dummy + auth-bridge mode websocket (development/testing).
+    # OLT dummy + auth-bridge mode websocket (hanya profil dev).
     [switch]$DummyOlt,
     [string]$User = 'budi_santoso',
     [string]$Ttl = ''
@@ -33,11 +38,23 @@ $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 
 $EnvFile = 'docker/.env'
-$GoImage = 'golang:1.24.5-alpine3.22'
-$WebImage = 'caddy:2.10.2-alpine'
-$Compose = @('compose', '-f', 'docker/docker-compose.yml')
-if ($DummyOlt) { $Compose += @('-f', 'docker/docker-compose.dummy-olt.yml') }
-$DummyCompose = @('compose', '-f', 'docker/docker-compose.yml', '-f', 'docker/docker-compose.dummy-olt.yml')
+$SecretsDir = 'docker/secrets'
+$SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
+                 'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
+                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri')
+$GoImage = 'golang:1.24.5-alpine3.22@sha256:daae04ebad0c21149979cd8e9db38f565ecefd8547cf4a591240dc1972cf1399'
+$AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
+$ToolsImage = 'olt-social/tools:0.1.0'
+$WebImage = 'caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
+$Stack = 'olt-social'
+
+if ($DummyOlt -and $DeployProfile -ne 'dev') { throw 'DummyOlt hanya boleh dipakai di profil dev.' }
+$Compose = switch ($DeployProfile) {
+    'dev' { @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml') }
+    default { @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.prod.yml') }
+}
+if ($DummyOlt) { $Compose += @('-f', 'docker/compose.dummy-olt.yml') }
+$DummyCompose = @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml', '-f', 'docker/compose.dummy-olt.yml')
 
 function Invoke-Native {
     param([string]$Exe, [string[]]$Arguments)
@@ -55,25 +72,47 @@ function Invoke-Compose { param([string[]]$Arguments) Invoke-Docker ($Compose + 
 
 function Invoke-Tools { param([string[]]$Arguments) Invoke-Compose (@('run', '--rm', 'tools') + $Arguments) }
 
-function Assert-Env {
+function Get-EnvValue {
+    param([string]$Key)
+    $m = Select-String -LiteralPath $EnvFile -Pattern "^$Key=(.*)$" | Select-Object -Last 1
+    if ($m) { return $m.Matches[0].Groups[1].Value.Trim('"') }
+    return ''
+}
+
+function Get-AnonKey { (Get-Content -LiteralPath (Join-Path $SecretsDir 'anon_key') -Raw).Trim() }
+
+function Assert-Config {
     if (-not (Test-Path -LiteralPath $EnvFile)) {
-        throw 'docker/.env belum ada. Jalankan: .\make.ps1 gen-keys'
+        throw 'docker/.env belum ada. Jalankan: .\make.ps1 gen-secrets'
+    }
+    foreach ($name in $SecretNames) {
+        $path = Join-Path $SecretsDir $name
+        if (-not (Test-Path -LiteralPath $path) -or (Get-Item -LiteralPath $path).Length -eq 0) {
+            throw "Secret $name belum ada. Jalankan: .\make.ps1 gen-secrets"
+        }
     }
     $placeholders = Select-String -LiteralPath $EnvFile -Pattern '=CHANGE_ME' -SimpleMatch
     if ($placeholders) {
         $placeholders | ForEach-Object { Write-Host $_.Line }
         throw 'docker/.env masih berisi CHANGE_ME.'
     }
+    if ($DeployProfile -ne 'dev') {
+        foreach ($key in @('PROXY_DOMAIN', 'ACME_EMAIL')) {
+            if (-not (Get-EnvValue $key)) { throw "Profil ${DeployProfile}: $key wajib diisi di docker/.env" }
+        }
+    }
 }
 
 switch ($Target) {
     'help' {
         Write-Host @'
-  up            Build & jalankan semua service (migrasi otomatis), tunggu healthy
+  Profil: -Profile dev (default) | single | cluster
+
+  up            Build & jalankan stack, tunggu healthy
   down          Hentikan semua service (data tetap ada)
   logs          Ikuti log (filter: -Service auth-bridge)
   ps            Status service
-  reset         HAPUS semua volume (DB & storage), lalu naik ulang
+  reset         HAPUS semua volume (DB & storage), lalu naik ulang (-Yes)
   migrate       Jalankan migrasi baru di supabase/migrations
   seed          Isi data dummy development
   test          Tes backend (pgTAP + Go)
@@ -87,7 +126,10 @@ switch ($Target) {
   smoke         Smoke test end-to-end lewat Kong (butuh seed + mode mock)
   backup        Backup DB (+ file storage) ke folder backups/
   restore       Restore DB: -File olt-YYYYMMDD-HHMMSS.dump -Yes
-  gen-keys      Buat docker/.env + rahasia baru (-Force untuk menimpa)
+  gen-secrets   Buat docker/secrets/ + docker/.env (idempoten; -Force membuat ulang semua)
+  anon-key      Cetak ANON_KEY untuk build app Flutter
+  admin-up      Nyalakan Studio (profil single: lewat SSH tunnel ke 127.0.0.1:8000)
+  admin-down    Matikan Studio lagi (profil single)
   psql          Buka psql ke DB sebagai postgres
 
   OLT dummy (development/testing), jalankan stack dengan: .\make.ps1 up -DummyOlt
@@ -99,13 +141,15 @@ switch ($Target) {
 '@
     }
     'up' {
-        Assert-Env
-        Invoke-Compose @('up', '-d', '--build', '--wait', '--wait-timeout', '300')
+        Assert-Config
+        if ($DeployProfile -eq 'cluster') {
+            throw 'Profil cluster dijalankan di manager Swarm (Linux): make up PROFILE=cluster. Lihat docs/scaling.md.'
+        }
+        Invoke-Compose @('up', '-d', '--build', '--wait', '--wait-timeout', '300', '--remove-orphans')
         Invoke-Compose @('ps')
-        $url = (Select-String -LiteralPath $EnvFile -Pattern '^SUPABASE_PUBLIC_URL=(.*)$').Matches[0].Groups[1].Value
-        Write-Host "API + Studio: $url"
+        Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profil $DeployProfile)"
     }
-    'down' { Invoke-Compose @('down') }
+    'down' { Invoke-Compose @('--profile', 'admin', 'down') }
     'logs' {
         $logArgs = @('logs', '-f', '--tail=200')
         if ($Service) { $logArgs += $Service }
@@ -113,19 +157,20 @@ switch ($Target) {
     }
     'ps' { Invoke-Compose @('ps') }
     'reset' {
-        Assert-Env
-        Invoke-Compose @('down', '-v', '--remove-orphans')
-        & $PSCommandPath up -DummyOlt:$DummyOlt
+        Assert-Config
+        if (-not $Yes) { throw 'Ini MENGHAPUS seluruh data DB & storage. Ulangi dengan -Yes' }
+        Invoke-Compose @('--profile', 'admin', 'down', '-v', '--remove-orphans')
+        & $PSCommandPath up -Profile $DeployProfile -DummyOlt:$DummyOlt
     }
-    'migrate' { Assert-Env; Invoke-Tools @('migrate') }
-    'seed' { Assert-Env; Invoke-Tools @('seed') }
-    'test-db' { Assert-Env; Invoke-Tools @('test-db') }
+    'migrate' { Assert-Config; Invoke-Tools @('migrate') }
+    'seed' { Assert-Config; Invoke-Tools @('seed') }
+    'test-db' { Assert-Config; Invoke-Tools @('test-db') }
     'test-bridge' {
         $src = Join-Path $PSScriptRoot 'services/auth-bridge'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
     'test' {
-        & $PSCommandPath test-db
+        & $PSCommandPath test-db -Profile $DeployProfile
         & $PSCommandPath test-bridge
         & $PSCommandPath test-dummy-olt
     }
@@ -137,22 +182,22 @@ switch ($Target) {
         } finally { Pop-Location }
     }
     'test-flutter-it' {
-        Assert-Env
+        Assert-Config
         Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
         $env:OLT_SOCIAL_IT = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration') }
         finally { Remove-Item Env:OLT_SOCIAL_IT; Pop-Location }
     }
     'e2e-windows' {
-        Assert-Env
-        $anon = (Select-String -LiteralPath $EnvFile -Pattern '^ANON_KEY=(.*)$').Matches[0].Groups[1].Value
+        Assert-Config
+        $anon = Get-AnonKey
         Push-Location (Join-Path $PSScriptRoot 'packages/olt_social/example')
         try { Invoke-Native 'flutter' @('test', 'integration_test/app_test.dart', '-d', 'windows', "--dart-define=OLT_SOCIAL_ANON_KEY=$anon") }
         finally { Pop-Location }
     }
     'web-example' {
-        Assert-Env
-        $anon = (Select-String -LiteralPath $EnvFile -Pattern '^ANON_KEY=(.*)$').Matches[0].Groups[1].Value
+        Assert-Config
+        $anon = Get-AnonKey
         $example = Join-Path $PSScriptRoot 'packages/olt_social/example'
         Push-Location $example
         try {
@@ -170,51 +215,57 @@ switch ($Target) {
         Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
         try { Invoke-Native 'dart' @('run', 'tool/license_audit.dart') } finally { Pop-Location }
     }
-    'smoke' { Assert-Env; Invoke-Tools @('smoke') }
+    'smoke' { Assert-Config; Invoke-Tools @('smoke') }
     'backup' {
-        Assert-Env
+        Assert-Config
         Invoke-Tools @('backup')
         $backups = Join-Path $PSScriptRoot 'backups'
         $stamp = (Get-Date).ToUniversalTime().ToString('yyyyMMdd-HHmmss')
         Invoke-Docker @('run', '--rm', '-v', 'olt-social_storage-data:/data:ro', '-v', "${backups}:/backup",
-                        'alpine:3.22.7', 'tar', 'czf', "/backup/storage-$stamp.tar.gz", '-C', '/data', '.')
+                        $AlpineImage, 'tar', 'czf', "/backup/storage-$stamp.tar.gz", '-C', '/data', '.')
     }
     'restore' {
-        Assert-Env
+        Assert-Config
         if (-not $File) { throw 'Sebutkan file: .\make.ps1 restore -File olt-YYYYMMDD-HHMMSS.dump -Yes' }
         $confirm = if ($Yes) { 'yes' } else { 'no' }
         Invoke-Compose @('run', '--rm', '-e', "CONFIRM=$confirm", 'tools', 'restore', $File)
     }
-    'gen-keys' {
-        # .env mungkin belum ada; interpolasi compose cukup memakai .env.example.
-        $keyArgs = @('--env-file', 'docker/.env.example', 'run', '--rm', 'tools', 'gen-keys')
-        if ($Force) { $keyArgs += '--force' }
-        Invoke-Compose $keyArgs
+    { $_ -in @('gen-secrets', 'gen-keys') } {
+        # Di luar compose: compose menolak jalan bila file secret belum ada.
+        Invoke-Docker @('build', '-q', '-t', $ToolsImage, 'docker/tools') | Out-Null
+        $genArgs = @('run', '--rm', '-v', "$(Join-Path $PSScriptRoot 'docker'):/olt/docker",
+                     '-v', "$(Join-Path $PSScriptRoot 'scripts'):/olt/scripts:ro",
+                     '--entrypoint', 'bash', $ToolsImage, '/olt/scripts/gen-secrets.sh')
+        if ($Force) { $genArgs += '--force' }
+        Invoke-Docker $genArgs
     }
-    'psql' { Assert-Env; Invoke-Tools @('psql') }
+    'anon-key' { Get-AnonKey }
+    'admin-up' { Assert-Config; Invoke-Compose @('--profile', 'admin', 'up', '-d', '--wait', 'studio', 'meta') }
+    'admin-down' { Invoke-Compose @('--profile', 'admin', 'stop', 'studio', 'meta') }
+    'psql' { Assert-Config; Invoke-Tools @('psql') }
 
     # --- OLT dummy -----------------------------------------------------------------
     'dummy-token' {
-        Assert-Env
+        Assert-Config
         $tokenArgs = @('run', '--rm', '--no-deps', '-T', 'dummy-olt', 'token', $User)
         if ($Ttl) { $tokenArgs += @('-ttl', $Ttl) }
         Invoke-Docker ($DummyCompose + $tokenArgs)
     }
-    'smoke-dummy' { Assert-Env; Invoke-Docker ($DummyCompose + @('run', '--rm', 'tools', 'smoke-dummy')) }
+    'smoke-dummy' { Assert-Config; Invoke-Docker ($DummyCompose + @('run', '--rm', 'tools', 'smoke-dummy')) }
     'test-dummy-olt' {
         $src = Join-Path $PSScriptRoot 'services/dummy-olt'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
     'test-flutter-it-dummy' {
-        Assert-Env
+        Assert-Config
         Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
         $env:OLT_SOCIAL_IT_DUMMY = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration/dummy_olt_integration_test.dart') }
         finally { Remove-Item Env:OLT_SOCIAL_IT_DUMMY; Pop-Location }
     }
     'e2e-windows-dummy' {
-        Assert-Env
-        $anon = (Select-String -LiteralPath $EnvFile -Pattern '^ANON_KEY=(.*)$').Matches[0].Groups[1].Value
+        Assert-Config
+        $anon = Get-AnonKey
         Push-Location (Join-Path $PSScriptRoot 'packages/olt_social/example')
         try {
             Invoke-Native 'flutter' @('test', 'integration_test/dummy_olt_login_test.dart', '-d', 'windows',

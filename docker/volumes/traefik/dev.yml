@@ -1,0 +1,39 @@
+# Router profil dev: HTTP di entrypoint `web` (http://localhost:8000).
+# Semua path diteruskan ke Kong, termasuk Studio (basic-auth Kong) dan /auth/v1.
+http:
+  routers:
+    realtime:
+      entryPoints: [web]
+      rule: PathPrefix(`/realtime/v1`)
+      service: kong
+      middlewares: [ws-limit, rate-limit, security-headers]
+      priority: 100
+
+    storage-upload:
+      entryPoints: [web]
+      rule: PathPrefix(`/storage/v1`) && (Method(`POST`) || Method(`PUT`))
+      service: kong
+      middlewares: [rate-limit, body-upload, security-headers]
+      priority: 95
+
+    storage:
+      entryPoints: [web]
+      rule: PathPrefix(`/storage/v1`)
+      service: kong
+      middlewares: [rate-limit, security-headers]
+      priority: 90
+
+    api:
+      entryPoints: [web]
+      rule: PathPrefix(`/rest/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/bridge/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/graphql/v1`) || PathPrefix(`/pg/`)
+      service: kong
+      middlewares: [rate-limit, body-api, security-headers]
+      priority: 80
+
+    # Studio & sisa path (dev saja).
+    studio:
+      entryPoints: [web]
+      rule: PathPrefix(`/`)
+      service: kong
+      middlewares: [rate-limit, security-headers-ui]
+      priority: 1

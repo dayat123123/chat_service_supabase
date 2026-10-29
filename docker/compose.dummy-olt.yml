@@ -1,28 +1,30 @@
-# Override development/testing: auth-bridge memverifikasi token ke OLT DUMMY
+# Tambahan profil dev: auth-bridge memverifikasi token ke OLT DUMMY
 # (services/dummy-olt) lewat jalur WebSocket yang sama dengan produksi.
 # Yang berubah hanya KONFIGURASI auth-bridge (OLT_WS_*), bukan kodenya.
 #
 #   make up DUMMY_OLT=1          Windows: .\make.ps1 up -DummyOlt
 #   make down DUMMY_OLT=1        (ikut menghentikan dummy-olt)
 #
-# JANGAN dipakai di produksi (Makefile menolak DUMMY_OLT bersama PROD).
+# JANGAN dipakai di produksi (Makefile hanya mengizinkannya di profil dev).
 
 services:
   dummy-olt:
-    container_name: olt-dummy-olt
     build:
       context: ../services/dummy-olt
     image: olt-social/dummy-olt:0.1.0
     restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "5"
-    # internal: dijangkau auth-bridge; public: port host untuk app contoh / curl.
-    networks: [internal, public]
+    # app: dijangkau auth-bridge. egress: port host untuk app contoh / curl.
+    networks: [app, egress]
     ports:
-      - ${KONG_HTTP_BIND:-127.0.0.1}:${DUMMY_OLT_PORT:-8090}:8090/tcp
+      - ${EDGE_HTTP_BIND:-127.0.0.1}:${DUMMY_OLT_PORT:-8090}:8090/tcp
     environment:
       PORT: 8090
       DUMMY_OLT_SECRET: ${DUMMY_OLT_SECRET:-dummy-olt-dev-secret-jangan-dipakai-di-produksi}
@@ -36,6 +38,9 @@ services:
       timeout: 3s
       retries: 5
       start_period: 2s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 64M, pids: 64}
 
   # Pemetaan protokol login OLT dummy -> adapter WebSocket auth-bridge.
   # Saat format OLT asli tersedia, cukup ganti nilai-nilai ini (di docker/.env).

@@ -2,8 +2,8 @@
 # Restore database dari file backup (hasil backup.sh).
 #   restore <nama-file.dump>      (file di folder backups/)
 # MENIMPA data yang ada. Hentikan service lain dulu agar tidak ada koneksi aktif:
-#   docker compose -f docker/docker-compose.yml stop
-#   docker compose -f docker/docker-compose.yml start db
+#   make down   (lalu jalankan restore lewat: make restore FILE=... CONFIRM=yes)
+#   restore otomatis menyalakan db + tools; setelah selesai: make up
 # Lihat README bagian "Backup & restore".
 set -euo pipefail
 

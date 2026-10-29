@@ -1,4 +1,4 @@
-FROM golang:1.24.5-alpine3.22 AS build
+FROM golang:1.24.5-alpine3.22@sha256:daae04ebad0c21149979cd8e9db38f565ecefd8547cf4a591240dc1972cf1399 AS build
 WORKDIR /src
 # go.su[m]: ikut disalin jika sudah ada, tanpa gagal jika belum.
 COPY go.mod go.su[m] ./

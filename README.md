@@ -10,13 +10,15 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 
 | Bagian | Isi |
 |---|---|
-| [`docker/`](docker/) | Supabase self-hosted (image di-pin) + auth-bridge + Caddy (produksi), satu `docker compose` |
+| [`docker/`](docker/) | Supabase self-hosted + auth-bridge + Traefik, PgBouncer, Valkey. Profil `dev` / `single` / `cluster`, image di-pin tag + digest |
 | [`supabase/`](supabase/) | Migrasi SQL bernomor, seed development, tes pgTAP |
 | [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token login OLT menjadi JWT Supabase (tanpa login dua kali) |
 | [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri) untuk menguji auth-bridge mode websocket. Hanya development/testing |
 | [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
 | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
-| [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS, backup/restore, update versi, moderasi, checklist produksi |
+| [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
+| [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
+| [`docs/production-audit.md`](docs/production-audit.md) | Audit terhadap addendum produksi + status per tahap |
 
 ## Arsitektur
 
@@ -25,18 +27,33 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
   ├─ login OLT (username/email+password / token) ──▶       ▲
   └─ olt_social ── token OLT ──┐                           │ login metode token
                                ▼                           │ (verifikasi, timeout 5 dtk)
- ┌─────────────────────── docker compose ─────────────────┼────────────────────┐
- │ [Caddy :443, produksi] ─▶ Kong :8000 ─┬─ /bridge/v1   ─▶ auth-bridge (Go) ────┘ │
- │                                       │                   └─ RPC upsert profil   │
- │                                       ├─ /rest/v1     ─▶ PostgREST ─┐            │
- │                                       ├─ /realtime/v1 ─▶ Realtime  ─┤            │
- │                                       ├─ /storage/v1  ─▶ Storage ───┼─▶ Postgres 17
- │                                       ├─ /auth/v1     ─▶ GoTrue ────┤  RLS semua tabel
- │                                       ├─ /functions/v1─▶ Edge Runtime│            │
- │                                       └─ /  (dev)     ─▶ Studio      │            │
- │ migrate (one-shot): menjalankan supabase/migrations setiap stack naik            │
- └───────────────────────────────────────────────────────────────────────────────┘
+ ┌──────────────── docker compose (profil dev / single) ──┼──────────────────────────┐
+ │ Traefik ─▶ Kong ─┬─ /bridge/v1    ─▶ auth-bridge (Go) ─┘   (Valkey: rate limit/cache) │
+ │ (edge: TLS,      │                    └─ RPC upsert profil                             │
+ │  rate limit,     ├─ /rest/v1       ─▶ PostgREST ─┐                                     │
+ │  header)         ├─ /storage/v1    ─▶ Storage ───┼─▶ PgBouncer ─▶ Postgres 17          │
+ │ dev  :8000       ├─ /functions/v1  ─▶ Edge Runtime│                RLS semua tabel     │
+ │ single :443      ├─ /realtime/v1   ─▶ Realtime ── langsung (replikasi logis) ─▶ Postgres│
+ │                  ├─ /auth/v1 (dev) ─▶ GoTrue ────┘                                     │
+ │                  └─ /  (dev)       ─▶ Studio                                          │
+ │ migrate (one-shot): menjalankan supabase/migrations setiap stack naik                 │
+ └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**Profil deploy** (image, nama service, dan nama env sama di semua profil; lihat [docs/scaling.md](docs/scaling.md)):
+
+| Profil | File | Perintah | Kegunaan |
+|---|---|---|---|
+| `dev` | `docker/compose.yml` + `compose.dev.yml` | `make up` | Laptop: `http://localhost:8000`, Studio, token mock OLT, CORS `*` |
+| `single` | `docker/compose.yml` + `compose.prod.yml` | `make up PROFILE=single` | Produksi 1 server: HTTPS Let's Encrypt, hanya path API publik, Studio mati |
+| `cluster` | `docker/compose.yml` + `stack.cluster.yml` | `make up PROFILE=cluster` | Docker Swarm multi-node (kerangka; dilengkapi Tahap 7) |
+
+**Hardening container.**
+- Semua service read-only, `cap_drop: ALL`, `no-new-privileges`, dan punya batas CPU/memori/pids.
+- Semua non-root, kecuali Postgres: entrypoint-nya mulai sebagai root lalu turun ke user `postgres`.
+- Network dipisah `edge` / `app` / `data` / `egress`, dan hanya Traefik yang membuka port.
+
+**Rahasia.** Semua rahasia ada di `docker/secrets/` (Docker secrets, dibuat `make gen-secrets`), tidak ada di `.env` maupun `docker inspect`. Env berisi placeholder `{{secret:nama}}` yang diisi saat container start oleh [`with-secrets.sh`](docker/volumes/olt/with-secrets.sh).
 
 **Satu login.**
 - App mengirim token OLT ke `POST /bridge/v1/exchange`.
@@ -75,25 +92,28 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 ## Quick start (development)
 
 ```bash
-make gen-keys        # buat docker/.env berisi rahasia acak     (Windows: .\make.ps1 gen-keys)
+make gen-secrets     # docker/secrets/ (rahasia acak) + docker/.env   (Windows: .\make.ps1 gen-secrets)
 make up              # semua service + migrasi otomatis, tunggu healthy
 make seed            # 6 user, 49 saham/indeks IDX, post, thread 5 level, chat
 make smoke           # 21 cek end-to-end lewat Kong
+make anon-key        # ANON_KEY untuk app Flutter
 ```
+
+`make gen-secrets` aman diulang: secret yang sudah ada dipertahankan. Rahasia dari `docker/.env` versi lama dipindahkan otomatis (password DB tetap sama), dan cadangannya disimpan di `docker/secrets/`.
 
 | Apa | URL |
 |---|---|
-| API gateway (dipakai Flutter) | `http://localhost:8000` |
-| Studio | `http://localhost:8000`, login dengan `DASHBOARD_USERNAME` / `DASHBOARD_PASSWORD` dari `docker/.env` |
+| API gateway (dipakai Flutter) | `http://localhost:8000` (Traefik) |
+| Studio | `http://localhost:8000`, login `DASHBOARD_USERNAME` (`docker/.env`) + password di `docker/secrets/dashboard_password` |
 | Emulator Android | `http://10.0.2.2:8000` |
-| HP fisik di LAN | Set `KONG_HTTP_BIND=0.0.0.0`, lalu pakai `http://<IP-PC>:8000` |
+| HP fisik di LAN | Set `EDGE_HTTP_BIND=0.0.0.0`, lalu pakai `http://<IP-PC>:8000` |
 | App contoh versi web (`make web-example`) | `http://localhost:8081` |
 
 Jalankan app contoh: lihat [packages/olt_social/example/README.md](packages/olt_social/example/README.md).
 
 ```bash
 cd packages/olt_social/example
-flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY dari docker/.env>
+flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>
 ```
 
 Untuk testing beberapa user sekaligus, jalankan juga versi web: `make web-example` (Windows: `.\make.ps1 web-example`). Buka `http://localhost:8081/?user=sari_invest` untuk langsung masuk sebagai Sari. Tiap tab browser bisa menjadi user berbeda, jadi chat dan notifikasi realtime bisa dicoba antara tab dengan tab, atau tab dengan app Windows.
@@ -104,7 +124,7 @@ Login dev memakai **token mock**. Contohnya `mock:1001:budi_santoso`, yang sama 
 
 Selama format login OLT asli belum tersedia, [`services/dummy-olt`](services/dummy-olt/) berperan sebagai server WebSocket OLT tiruan. Ia menerbitkan token sesinya sendiri, dan auth-bridge memverifikasinya lewat **mode `websocket`**, jalur yang sama dengan produksi.
 
-- **Tidak ada kode yang diubah.** Auth-bridge, package Flutter, dan database tetap sama; yang berbeda hanya konfigurasi `OLT_WS_*` di [`docker/docker-compose.dummy-olt.yml`](docker/docker-compose.dummy-olt.yml).
+- **Tidak ada kode yang diubah.** Auth-bridge, package Flutter, dan database tetap sama; yang berbeda hanya konfigurasi `OLT_WS_*` di [`docker/compose.dummy-olt.yml`](docker/compose.dummy-olt.yml).
 - **Token mock lama tetap diterima** dalam mode ini, sehingga semua tes lama juga berjalan lewat jalur websocket.
 
 ```bash
@@ -122,8 +142,8 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 
 | Target | Fungsi |
 |---|---|
-| `up` / `down` / `ps` / `logs` | Kelola stack (`logs s=auth-bridge` atau `-Service auth-bridge` untuk satu service) |
-| `reset` | **Hapus volume DB & storage**, lalu naik ulang dari nol |
+| `up` / `down` / `ps` / `logs` | Kelola stack; `PROFILE=dev\|single\|cluster` (Windows `-Profile`). `logs s=auth-bridge` / `-Service auth-bridge` untuk satu service |
+| `reset` | **Hapus volume DB & storage**, lalu naik ulang dari nol. Wajib `CONFIRM=yes` (Windows `-Yes`) |
 | `migrate` / `seed` | Jalankan migrasi baru / isi data dummy (idempoten) |
 | `test` | `test-db` + `test-bridge` + `test-dummy-olt` |
 | `test-db` | 141 tes pgTAP: skema, RLS, parser, thread, reaksi, feed, chat, moderasi, realtime/storage |
@@ -135,16 +155,18 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `web-example` | Build app contoh untuk web, sajikan di `http://localhost:8081` (`?user=<username>` langsung login) |
 | `license-audit` | Audit lisensi dependensi runtime Flutter (tolak GPL/AGPL/LGPL/MPL) |
 | `backup` / `restore` | Backup DB + file storage ke `backups/`; restore: `make restore FILE=... CONFIRM=yes` |
-| `gen-keys` | Buat `docker/.env` + rahasia (`FORCE=1` / `-Force` untuk menimpa) |
+| `gen-secrets` | Buat `docker/secrets/` + `docker/.env`. Idempoten; `FORCE=1` / `-Force` membuat ulang semua rahasia. `gen-keys` = alias lama |
+| `anon-key` | Cetak `ANON_KEY` untuk build app Flutter |
+| `admin-up` / `admin-down` | Nyalakan/matikan Studio di profil `single` (akses lewat SSH tunnel ke `127.0.0.1:8000`) |
 | `psql` | psql ke DB sebagai `postgres` |
-| `up DUMMY_OLT=1` / `-DummyOlt` | Stack + OLT dummy, auth-bridge mode websocket (tidak bisa digabung dengan `PROD=1`) |
+| `up DUMMY_OLT=1` / `-DummyOlt` | Stack + OLT dummy, auth-bridge mode websocket (hanya profil `dev`) |
 | `dummy-token` | Token OLT dummy: `U=<user> [TTL=1h]` / `-User <user> [-Ttl 1h]` |
 | `smoke-dummy` | 16 skenario auth-bridge mode websocket vs OLT dummy |
 | `test-dummy-olt` | Unit test Go OLT dummy (di container) |
 | `test-flutter-it-dummy` | Integration test Flutter dengan token hasil login WebSocket OLT dummy |
 | `e2e-windows-dummy` | E2E app contoh: form login OLT dummy |
 
-Produksi memakai `make up PROD=1`, yang menambahkan Caddy HTTPS dan menutup Studio dari internet. Lihat [docs/PRODUCTION.md](docs/PRODUCTION.md).
+Produksi memakai `make up PROFILE=single`: Traefik HTTPS (Let's Encrypt), hanya path API yang publik, dan Studio mati. Lihat [docs/PRODUCTION.md](docs/PRODUCTION.md).
 
 ## Database
 
@@ -170,11 +192,14 @@ Migrasi ada di `supabase/migrations`. Service `migrate` menjalankannya otomatis 
 
 ## Versi image (semua di-pin)
 
-Dasarnya adalah `docker/docker-compose.yml` resmi `supabase/supabase`, commit `6a421fe` (29 Okt 2026).
+Dasarnya adalah `docker/docker-compose.yml` resmi `supabase/supabase`, commit `6a421fe` (29 Okt 2026). Semua image di `docker/compose.yml` di-pin **tag + digest** (`image@sha256:…`).
 
 | Service | Image |
 |---|---|
+| traefik | `traefik:v3.7.15` |
 | db | `supabase/postgres:17.6.1.136` |
+| pgbouncer | build lokal `alpine:3.22.7` + `pgbouncer=1.24.0-r0` |
+| valkey | `valkey/valkey:9.0.7-alpine` |
 | kong | `kong/kong:3.9.3` |
 | auth | `supabase/gotrue:v2.197.0` |
 | rest | `postgrest/postgrest:v14.18` |
@@ -184,16 +209,14 @@ Dasarnya adalah `docker/docker-compose.yml` resmi `supabase/supabase`, commit `6
 | meta | `supabase/postgres-meta:v0.100.0` |
 | studio | `supabase/studio:2026.10.12-sha-3699278` |
 | functions | `supabase/edge-runtime:v1.77.4` |
-| caddy (prod) | `caddy:2.10.2-alpine` |
-| auth-bridge | build lokal `golang:1.24.5-alpine3.22` → `distroless/static-debian12:nonroot@sha256:afa5c872…` (di-pin digest) |
+| auth-bridge | build lokal `golang:1.24.5-alpine3.22` → `distroless/static-debian12:nonroot` (keduanya di-pin digest) |
 | migrate / tools | build lokal `alpine:3.22.7` (psql 17, pg_prove 3.37 di-pin, curl, jq) |
 
 **Perbedaan dari compose resmi:**
-- Gateway memakai Kong (upstream sekarang default-nya Envoy).
-- Analytics (Logflare), Vector, dan Supavisor tidak disertakan.
-- Data disimpan di named volume.
-- Ada dua network: `internal` tanpa internet, dan `public` untuk Kong, auth-bridge, GoTrue, dan Edge Functions.
-- Log tiap container dirotasi.
+- Edge memakai Traefik di depan Kong (upstream sekarang default-nya Envoy).
+- PgBouncer (bukan Supavisor) sebagai pooler. Analytics (Logflare) dan Vector tidak disertakan.
+- Rahasia lewat Docker secrets, container di-hardening, dan network dipisah per lapisan (lihat [Arsitektur](#arsitektur)).
+- Data disimpan di named volume, dan log tiap container dirotasi.
 
 ## Lisensi
 
@@ -201,6 +224,6 @@ Kode di repo ini bersifat proprietary untuk Rendezvous OLT. Seluruh dependensi a
 - **Flutter:** MIT/BSD/Apache-2.0, diverifikasi dengan `make license-audit`.
 - **auth-bridge:** Go stdlib (BSD) + gorilla/websocket (BSD-2).
 
-Komponen Supabase, Kong, Caddy, dan Postgres hanya berjalan sebagai service terpisah dan tidak di-link ke aplikasi OLT.
+Komponen Supabase, Kong, Traefik (MIT), PgBouncer (ISC), Valkey (BSD-3), dan Postgres hanya berjalan sebagai service terpisah dan tidak di-link ke aplikasi OLT.
 #   c h a t _ s e r v i c e _ s u p a b a s e  
  

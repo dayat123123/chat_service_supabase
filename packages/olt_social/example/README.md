@@ -19,7 +19,7 @@ Siapkan backend dari root repo:
 make up && make seed            # Windows: .\make.ps1 up; .\make.ps1 seed
 ```
 
-Ambil `ANON_KEY` dari `docker/.env`, lalu jalankan app.
+Ambil `ANON_KEY` dengan `make anon-key` (Windows: `.\make.ps1 anon-key`; tersimpan di `docker/secrets/anon_key`), lalu jalankan app.
 
 **Windows:**
 
@@ -35,7 +35,7 @@ flutter run -d emulator-5554 --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY>
 ```
 
 **HP fisik di LAN:**
-1. Set `KONG_HTTP_BIND=0.0.0.0` di `docker/.env`, lalu jalankan `make up`.
+1. Set `EDGE_HTTP_BIND=0.0.0.0` di `docker/.env`, lalu jalankan `make up`.
 2. Jalankan app dengan URL server:
 
    ```bash

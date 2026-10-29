@@ -95,11 +95,12 @@ Cara kerja adapter:
 | `PORT` | `8080` | |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. Log berupa JSON (slog) dengan `request_id`. Token tidak pernah ditulis ke log |
 | `JWT_SECRET` | wajib | Sama dengan JWT secret Supabase, minimal 32 karakter |
+| `JWT_SECRET_FILE` | – | Baca `JWT_SECRET` dari file (Docker secrets). Dipakai compose: `/run/secrets/jwt_secret` |
 | `JWT_TTL` | `900` | Masa berlaku JWT user, dalam detik |
 | `POSTGREST_URL` | `http://rest:3000` | PostgREST internal |
 | `VERIFY_CACHE_TTL` | `60` | Cache hasil exchange per hash token, dalam detik |
 | `RATE_LIMIT_PER_MINUTE` | `30` | Per IP klien |
-| `TRUSTED_PROXIES` | jaringan privat | `X-Forwarded-For` hanya dipercaya dari proxy ini (Kong/Caddy). IP klien = IP paling kanan yang bukan proxy |
+| `TRUSTED_PROXIES` | jaringan privat | `X-Forwarded-For` hanya dipercaya dari proxy ini (Kong/Traefik). IP klien = IP paling kanan yang bukan proxy |
 | `OLT_MODE` | `mock` | `mock` / `websocket` |
 | `OLT_WS_*` | lihat di atas | Adapter WebSocket OLT |
 

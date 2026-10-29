@@ -1,11 +1,34 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 const secret = "test-secret-yang-panjangnya-lebih-dari-32-karakter"
+
+func TestLoadSecretFromFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "jwt_secret")
+	if err := os.WriteFile(path, []byte(secret+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JWT_SECRET", "")
+	t.Setenv("JWT_SECRET_FILE", path)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.JWTSecret != secret {
+		t.Fatalf("JWT secret dari file = %q, want %q", cfg.JWTSecret, secret)
+	}
+
+	t.Setenv("JWT_SECRET_FILE", filepath.Join(t.TempDir(), "tidak-ada"))
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "JWT_SECRET_FILE") {
+		t.Fatalf("file secret yang hilang harus ditolak, err=%v", err)
+	}
+}
 
 func TestLoadDefaults(t *testing.T) {
 	t.Setenv("JWT_SECRET", secret)
