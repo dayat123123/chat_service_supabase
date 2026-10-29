@@ -1,0 +1,23 @@
+{$PROXY_DOMAIN} {
+	encode zstd gzip
+
+	# Hanya API yang dibuka ke internet. Studio (dashboard) TIDAK dipublikasikan;
+	# akses lewat SSH tunnel: ssh -L 8000:127.0.0.1:8000 user@vps -> http://localhost:8000
+	@api path /auth/v1/* /rest/v1/* /realtime/v1/* /storage/v1/* /functions/v1/* /graphql/v1* /bridge/v1/*
+	handle @api {
+		# Realtime (WebSocket) ikut diteruskan.
+		reverse_proxy kong:8000 {
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+	handle {
+		respond "Not found" 404
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		-Server
+	}
+}

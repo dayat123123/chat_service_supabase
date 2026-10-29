@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The INTERNET permission is required for development. Specifically,
+         the Flutter tool needs it to communicate with the running application
+         to allow setting breakpoints, to provide hot reload, etc.
+    -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Hanya build debug: izinkan HTTP ke stack Docker lokal (10.0.2.2 / IP LAN).
+         Produksi wajib HTTPS (Caddy). -->
+    <application android:usesCleartextTraffic="true" tools:replace="android:usesCleartextTraffic" />
+</manifest>

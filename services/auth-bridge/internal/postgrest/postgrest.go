@@ -1,0 +1,124 @@
+// Package postgrest memanggil RPC internal Supabase (PostgREST) sebagai service_role.
+package postgrest
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+
+	"olt-social/auth-bridge/internal/exchange"
+)
+
+// ServiceTokenSource menyediakan JWT service_role.
+type ServiceTokenSource interface {
+	ServiceToken() (string, error)
+}
+
+// Client adalah klien PostgREST minimal untuk auth-bridge.
+type Client struct {
+	baseURL string
+	tokens  ServiceTokenSource
+	http    *http.Client
+}
+
+// NewClient membuat Client untuk baseURL (mis. http://rest:3000).
+func NewClient(baseURL string, tokens ServiceTokenSource) *Client {
+	return &Client{
+		baseURL: baseURL,
+		tokens:  tokens,
+		http:    &http.Client{Timeout: 5 * time.Second},
+	}
+}
+
+// UpsertProfile memanggil RPC upsert_olt_profile.
+func (c *Client) UpsertProfile(ctx context.Context, in exchange.ProfileInput) (exchange.Profile, error) {
+	body, err := json.Marshal(map[string]any{
+		"p_id":           in.ID,
+		"p_olt_user_id":  in.OLTUserID,
+		"p_username":     in.Username,
+		"p_display_name": nullable(in.DisplayName),
+		"p_email":        nullable(in.Email),
+	})
+	if err != nil {
+		return exchange.Profile{}, err
+	}
+
+	var profile exchange.Profile
+	if err := c.rpc(ctx, "upsert_olt_profile", body, &profile); err != nil {
+		return exchange.Profile{}, err
+	}
+	return profile, nil
+}
+
+// Ping memastikan PostgREST bisa dijangkau (dipakai /health?deep=1).
+func (c *Client) Ping(ctx context.Context) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, c.baseURL+"/", nil)
+	if err != nil {
+		return err
+	}
+	tok, err := c.tokens.ServiceToken()
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+tok)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 500 {
+		return fmt.Errorf("postgrest status %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func (c *Client) rpc(ctx context.Context, fn string, body []byte, out any) error {
+	tok, err := c.tokens.ServiceToken()
+	if err != nil {
+		return fmt.Errorf("service token: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/rpc/"+fn, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("rpc %s: %w", fn, err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return fmt.Errorf("rpc %s: baca respons: %w", fn, err)
+	}
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("rpc %s: status %d: %s", fn, resp.StatusCode, truncate(data, 300))
+	}
+	if err := json.Unmarshal(data, out); err != nil {
+		return fmt.Errorf("rpc %s: decode respons: %w", fn, err)
+	}
+	return nil
+}
+
+func nullable(s string) any {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func truncate(b []byte, n int) string {
+	if len(b) > n {
+		return string(b[:n]) + "…"
+	}
+	return string(b)
+}

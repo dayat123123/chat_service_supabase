@@ -1,0 +1,34 @@
+# Rahasia - jangan pernah di-commit
+.env
+*.env
+!.env.example
+docker/.env.old
+
+# Docker volume lokal (jika ada bind mount)
+docker/volumes/db/data/
+docker/volumes/storage/
+docker/volumes/snippets/*
+!docker/volumes/snippets/.gitkeep
+
+# Go
+services/auth-bridge/bin/
+
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec_overrides.yaml
+coverage/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Backup lokal
+backups/*
+!backups/.gitkeep

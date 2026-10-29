@@ -1,0 +1,201 @@
+package olt
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/gorilla/websocket"
+
+	"olt-social/auth-bridge/internal/config"
+)
+
+// WebSocketVerifier memverifikasi token dengan membuka koneksi ke WebSocket
+// server OLT, mengirim pesan login metode token, membaca respons login, lalu
+// menutup koneksi. auth-bridge tidak pernah menerima/menyimpan password user.
+type WebSocketVerifier struct {
+	cfg      config.OLTConfig
+	template any
+	dialer   *websocket.Dialer
+}
+
+// NewWebSocketVerifier membuat verifier dari konfigurasi (sudah divalidasi config.Load).
+func NewWebSocketVerifier(cfg config.OLTConfig) (*WebSocketVerifier, error) {
+	var tmpl any
+	if err := json.Unmarshal([]byte(cfg.LoginTemplate), &tmpl); err != nil {
+		return nil, fmt.Errorf("template login: %w", err)
+	}
+	return &WebSocketVerifier{
+		cfg:      cfg,
+		template: tmpl,
+		dialer: &websocket.Dialer{
+			HandshakeTimeout: cfg.Timeout,
+			Proxy:            http.ProxyFromEnvironment,
+		},
+	}, nil
+}
+
+// Verify menjalankan login token ke server OLT dengan batas waktu cfg.Timeout.
+func (v *WebSocketVerifier) Verify(ctx context.Context, token string) (User, error) {
+	ctx, cancel := context.WithTimeout(ctx, v.cfg.Timeout)
+	defer cancel()
+
+	header := http.Header{}
+	if v.cfg.Origin != "" {
+		header.Set("Origin", v.cfg.Origin)
+	}
+	conn, resp, err := v.dialer.DialContext(ctx, v.cfg.WebSocketURL, header)
+	if resp != nil && resp.Body != nil {
+		resp.Body.Close()
+	}
+	if err != nil {
+		return User{}, fmt.Errorf("%w: dial: %v", ErrUnavailable, err)
+	}
+	defer conn.Close()
+
+	deadline, _ := ctx.Deadline()
+	_ = conn.SetReadDeadline(deadline)
+	_ = conn.SetWriteDeadline(deadline)
+	defer func() {
+		_ = conn.WriteControl(websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
+	}()
+
+	msg, err := json.Marshal(substituteToken(v.template, token))
+	if err != nil {
+		return User{}, fmt.Errorf("susun pesan login: %w", err)
+	}
+	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
+		return User{}, fmt.Errorf("%w: kirim login: %v", ErrUnavailable, err)
+	}
+
+	// Server bisa mengirim pesan lain (heartbeat, info) sebelum respons login.
+	for {
+		_, data, err := conn.ReadMessage()
+		if err != nil {
+			return User{}, fmt.Errorf("%w: menunggu respons login: %v", ErrUnavailable, err)
+		}
+		doc, ok := decodeJSON(data)
+		if !ok {
+			continue
+		}
+		if v.cfg.ResponseMatchPath != "" {
+			if val, ok := Lookup(doc, v.cfg.ResponseMatchPath); !ok || val != v.cfg.ResponseMatchValue {
+				continue
+			}
+		}
+		return v.parseLoginResponse(doc)
+	}
+}
+
+func (v *WebSocketVerifier) parseLoginResponse(doc any) (User, error) {
+	if v.cfg.SuccessPath != "" {
+		val, ok := Lookup(doc, v.cfg.SuccessPath)
+		if !ok || !strings.EqualFold(val, v.cfg.SuccessValue) {
+			reason, _ := Lookup(doc, v.cfg.ErrorMessagePath)
+			if reason == "" {
+				reason = "login ditolak"
+			}
+			return User{}, fmt.Errorf("%w: %s", ErrInvalidToken, reason)
+		}
+	}
+
+	id, ok := Lookup(doc, v.cfg.UserIDPath)
+	if !ok || id == "" {
+		return User{}, fmt.Errorf("%w: respons login tanpa user id (%s)", ErrInvalidToken, v.cfg.UserIDPath)
+	}
+	u := User{ID: id}
+	u.Username, _ = Lookup(doc, v.cfg.UsernamePath)
+	u.Email, _ = Lookup(doc, v.cfg.EmailPath)
+	u.DisplayName, _ = Lookup(doc, v.cfg.DisplayNamePath)
+	if u.Username == "" {
+		u.Username = "user_" + id
+	}
+	return u, nil
+}
+
+// substituteToken mengganti placeholder {{token}} di semua nilai string template.
+// Bekerja pada struktur JSON (bukan teks), sehingga token tidak bisa menyuntikkan JSON.
+func substituteToken(node any, token string) any {
+	switch n := node.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(n))
+		for k, val := range n {
+			out[k] = substituteToken(val, token)
+		}
+		return out
+	case []any:
+		out := make([]any, len(n))
+		for i, val := range n {
+			out[i] = substituteToken(val, token)
+		}
+		return out
+	case string:
+		return strings.ReplaceAll(n, config.TokenPlaceholder, token)
+	default:
+		return n
+	}
+}
+
+func decodeJSON(data []byte) (any, bool) {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	var doc any
+	if err := dec.Decode(&doc); err != nil {
+		return nil, false
+	}
+	return doc, true
+}
+
+// Lookup membaca nilai pada path bertitik ("data.user.id", "items.0.id") dan
+// mengembalikannya sebagai string. Path kosong atau nilai null -> ok=false.
+func Lookup(doc any, path string) (string, bool) {
+	if path == "" {
+		return "", false
+	}
+	cur := doc
+	for _, seg := range strings.Split(path, ".") {
+		switch node := cur.(type) {
+		case map[string]any:
+			next, ok := node[seg]
+			if !ok {
+				return "", false
+			}
+			cur = next
+		case []any:
+			idx, err := strconv.Atoi(seg)
+			if err != nil || idx < 0 || idx >= len(node) {
+				return "", false
+			}
+			cur = node[idx]
+		default:
+			return "", false
+		}
+	}
+
+	switch val := cur.(type) {
+	case nil:
+		return "", false
+	case string:
+		return val, true
+	case json.Number:
+		return val.String(), true
+	case bool:
+		return strconv.FormatBool(val), true
+	default:
+		b, err := json.Marshal(val)
+		if err != nil {
+			return "", false
+		}
+		return string(b), true
+	}
+}
+
+// IsUnavailable melaporkan apakah err berasal dari kegagalan menghubungi OLT.
+func IsUnavailable(err error) bool { return errors.Is(err, ErrUnavailable) }

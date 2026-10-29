@@ -1,0 +1,3 @@
+tags:
+  # Integration test ke stack Docker lokal; dilewati kecuali OLT_SOCIAL_IT=1.
+  integration:

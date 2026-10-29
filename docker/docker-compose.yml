@@ -1,0 +1,493 @@
+# OLT Social - Supabase self-hosted stack + auth-bridge
+#
+# Diturunkan dari docker-compose resmi supabase/supabase (folder docker,
+# commit 6a421fe, 2026-10-29) dengan perubahan:
+#   - Kong dipakai sebagai API gateway (upstream default-nya Envoy).
+#   - Analytics (Logflare), Vector, dan Supavisor tidak disertakan.
+#   - Data DB & storage memakai named volume (aman di Windows/Docker Desktop).
+#   - Hanya port Kong yang di-expose. Studio diakses lewat Kong (basic-auth).
+#   - Migrasi supabase/migrations dijalankan otomatis oleh service one-shot
+#     `migrate` setiap kali stack naik, SETELAH storage & realtime selesai
+#     menyiapkan skemanya (migrasi OLT membuat bucket & policy realtime).
+#   - Ditambah service auth-bridge dan service `tools` (profile) untuk operasi.
+#   - Log tiap container dirotasi (json-file, 10 MB x 5) agar disk tidak penuh.
+#
+# Pakai lewat Makefile / make.ps1 di root repo:  make up | make down | make reset
+
+name: olt-social
+
+x-restart: &restart
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "5"
+
+services:
+
+  studio:
+    <<: *restart
+    container_name: olt-studio
+    image: supabase/studio:2026.10.12-sha-3699278
+    networks: [internal]
+    depends_on:
+      meta:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)})\""
+        ]
+      timeout: 10s
+      interval: 5s
+      retries: 3
+      start_period: 20s
+    environment:
+      HOSTNAME: "0.0.0.0"
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER_READ_WRITE: postgres
+      PG_META_CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
+      PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
+      PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
+      DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION}
+      DEFAULT_PROJECT_NAME: ${STUDIO_DEFAULT_PROJECT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      ENABLED_FEATURES_LOGS_ALL: "false"
+      SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
+      EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
+    volumes:
+      - ./volumes/snippets:/app/snippets:z
+      - ./volumes/functions:/app/edge-functions:ro,z
+
+  kong:
+    <<: *restart
+    container_name: olt-kong
+    image: kong/kong:3.9.3
+    networks: [internal, public]
+    depends_on:
+      studio:
+        condition: service_healthy
+      auth-bridge:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      # Satu-satunya port yang di-expose: API gateway (+ Studio via basic-auth).
+      - ${KONG_HTTP_BIND:-127.0.0.1}:${KONG_HTTP_PORT:-8000}:8000/tcp
+    volumes:
+      - ./volumes/api/kong.yml:/home/kong/temp.yml:ro,z
+      - ./volumes/api/kong-entrypoint.sh:/home/kong/kong-entrypoint.sh:ro,z
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /usr/local/kong/kong.yml
+      KONG_ROUTER_FLAVOR: expressions
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_DNS_NOT_FOUND_TTL: 1
+      KONG_DNS_VALID_TTL: 5
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_PROXY_ACCESS_LOG: /dev/stdout combined
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_PUBLISHABLE_KEY: ""
+      SUPABASE_SECRET_KEY: ""
+      ANON_KEY_ASYMMETRIC: ""
+      SERVICE_ROLE_KEY_ASYMMETRIC: ""
+      DASHBOARD_USERNAME: ${DASHBOARD_USERNAME}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD}
+    entrypoint: ["/bin/sh", "/home/kong/kong-entrypoint.sh"]
+
+  auth:
+    <<: *restart
+    container_name: olt-auth
+    image: supabase/gotrue:v2.197.0
+    networks: [internal, public]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      GOTRUE_SITE_URL: ${SITE_URL}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS}
+      # User OLT tidak signup lewat GoTrue; JWT diterbitkan oleh auth-bridge.
+      GOTRUE_DISABLE_SIGNUP: ${DISABLE_SIGNUP}
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: ${JWT_EXPIRY}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_JWT_ISSUER: ${API_EXTERNAL_URL}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: ${ENABLE_EMAIL_SIGNUP}
+      GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_EMAIL_AUTOCONFIRM}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_ADMIN_EMAIL}
+      GOTRUE_SMTP_HOST: ${SMTP_HOST}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT}
+      GOTRUE_SMTP_USER: ${SMTP_USER}
+      GOTRUE_SMTP_PASS: ${SMTP_PASS}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME}
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_SMS_AUTOCONFIRM: "false"
+
+  rest:
+    <<: *restart
+    container_name: olt-rest
+    image: postgrest/postgrest:v14.18
+    networks: [internal]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "postgrest", "--ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS}
+      PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
+      PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_ADMIN_SERVER_PORT: 3001
+      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY}
+    command: ["postgrest"]
+
+  realtime:
+    <<: *restart
+    # Nama container ini memang begini: realtime menurunkan tenant id dari subdomain.
+    container_name: realtime-dev.supabase-realtime
+    image: supabase/realtime:v2.143.3
+    networks: [internal]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -sSfL --head -o /dev/null -H \"Authorization: Bearer ${ANON_KEY}\" http://localhost:4000/api/tenants/realtime-dev/health"
+        ]
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    environment:
+      PORT: 4000
+      DB_HOST: ${POSTGRES_HOST}
+      DB_PORT: ${POSTGRES_PORT}
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_AFTER_CONNECT_QUERY: 'SET search_path TO _realtime'
+      DB_ENC_KEY: ${REALTIME_DB_ENC_KEY}
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
+      ERL_AFLAGS: -proto_dist inet_tcp
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RUN_JANITOR: "true"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
+
+  storage:
+    <<: *restart
+    container_name: olt-storage
+    image: supabase/storage-api:v1.81.0
+    networks: [internal]
+    depends_on:
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_started
+      imgproxy:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://storage:5000/status"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+      start_period: 10s
+    environment:
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      POSTGREST_URL: http://rest:3000
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: postgres://supabase_storage_admin:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      STORAGE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+      # Batas global; batas per bucket (avatars/attachments) diatur di migrasi.
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET}
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: ${STORAGE_TENANT_ID}
+      REGION: ${REGION}
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://imgproxy:5001
+      S3_PROTOCOL_ACCESS_KEY_ID: ${S3_PROTOCOL_ACCESS_KEY_ID}
+      S3_PROTOCOL_ACCESS_KEY_SECRET: ${S3_PROTOCOL_ACCESS_KEY_SECRET}
+    volumes:
+      - storage-data:/var/lib/storage
+
+  imgproxy:
+    <<: *restart
+    container_name: olt-imgproxy
+    image: darthsim/imgproxy:v3.31.4
+    networks: [internal]
+    volumes:
+      - storage-data:/var/lib/storage
+    healthcheck:
+      test: ["CMD", "imgproxy", "health"]
+      timeout: 5s
+      interval: 5s
+      retries: 3
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "true"
+      IMGPROXY_AUTO_WEBP: ${IMGPROXY_AUTO_WEBP}
+      IMGPROXY_MAX_SRC_RESOLUTION: 16.8
+
+  meta:
+    <<: *restart
+    container_name: olt-meta
+    image: supabase/postgres-meta:v0.100.0
+    networks: [internal]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:8080/health').then((r) => {if (r.status !== 200) throw new Error(r.status)})\""
+        ]
+      timeout: 5s
+      interval: 5s
+      retries: 5
+      start_period: 10s
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: ${POSTGRES_HOST}
+      PG_META_DB_PORT: ${POSTGRES_PORT}
+      PG_META_DB_NAME: ${POSTGRES_DB}
+      PG_META_DB_USER: postgres
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      CRYPTO_KEY: ${PG_META_CRYPTO_KEY}
+
+  functions:
+    <<: *restart
+    container_name: olt-edge-functions
+    image: supabase/edge-runtime:v1.77.4
+    networks: [internal, public]
+    volumes:
+      - ./volumes/functions:/home/deno/functions:z
+      - deno-cache:/root/.cache/deno
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/9000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_PUBLISHABLE_KEYS: '{"default":""}'
+      SUPABASE_SECRET_KEYS: '{"default":""}'
+      SUPABASE_DB_URL: postgresql://postgres:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      VERIFY_JWT: "${FUNCTIONS_VERIFY_JWT}"
+    command:
+      [
+        "start",
+        "--user-worker-request-idle-timeout",
+        "150000",
+        "--main-service",
+        "/home/deno/functions/main"
+      ]
+
+  db:
+    <<: *restart
+    container_name: olt-db
+    image: supabase/postgres:17.6.1.136
+    networks: [internal]
+    volumes:
+      - ./volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:Z
+      # Harus superuser untuk membuat event trigger
+      - ./volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:Z
+      # Harus superuser untuk mengubah reserved role
+      - ./volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:Z
+      - ./volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:Z
+      - db-data:/var/lib/postgresql/data
+      # Menyimpan kunci pgsodium agar tetap sama antar restart
+      - db-config:/etc/postgresql-custom
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    environment:
+      POSTGRES_HOST: /var/run/postgresql
+      PGPORT: ${POSTGRES_PORT}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB}
+      JWT_EXP: ${JWT_EXPIRY}
+    command:
+      [
+        "postgres",
+        "-c",
+        "config_file=/etc/postgresql/postgresql.conf",
+        "-c",
+        "log_min_messages=fatal"
+      ]
+
+  # One-shot: menjalankan migrasi OLT yang belum pernah dijalankan, lalu selesai.
+  # Menunggu auth/storage/realtime healthy karena migrasi memakai skema mereka
+  # (storage.buckets, realtime.messages). Service lain yang butuh skema OLT
+  # menunggu service ini selesai dengan sukses.
+  migrate:
+    container_name: olt-migrate
+    build:
+      context: ./tools
+    image: olt-social/tools:0.1.0
+    command: ["migrate"]
+    restart: "no"
+    networks: [internal]
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+      realtime:
+        condition: service_healthy
+    volumes:
+      - ../scripts:/olt/scripts:ro,z
+      - ../supabase:/olt/supabase:ro,z
+    environment:
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGDATABASE: ${POSTGRES_DB}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+
+  auth-bridge:
+    <<: *restart
+    container_name: olt-auth-bridge
+    build:
+      context: ../services/auth-bridge
+    image: olt-social/auth-bridge:0.1.0
+    networks: [internal, public]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+    healthcheck:
+      # Image distroless tidak punya shell/curl; binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/auth-bridge", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    environment:
+      PORT: 8080
+      APP_ENV: ${APP_ENV:-development}
+      LOG_LEVEL: ${AUTH_BRIDGE_LOG_LEVEL:-info}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_TTL: ${AUTH_BRIDGE_JWT_TTL:-900}
+      # Upsert profil lewat PostgREST internal (RPC khusus service_role).
+      POSTGREST_URL: http://rest:3000
+      VERIFY_CACHE_TTL: ${AUTH_BRIDGE_CACHE_TTL:-60}
+      RATE_LIMIT_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE:-30}
+      OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-mock}
+      OLT_WS_URL: ${OLT_WS_URL:-}
+      OLT_WS_TIMEOUT: ${OLT_WS_TIMEOUT:-5}
+      OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}
+      OLT_WS_LOGIN_TEMPLATE: ${OLT_WS_LOGIN_TEMPLATE:-}
+      OLT_WS_RESPONSE_MATCH_PATH: ${OLT_WS_RESPONSE_MATCH_PATH:-}
+      OLT_WS_RESPONSE_MATCH_VALUE: ${OLT_WS_RESPONSE_MATCH_VALUE:-}
+      OLT_WS_SUCCESS_PATH: ${OLT_WS_SUCCESS_PATH:-}
+      OLT_WS_SUCCESS_VALUE: ${OLT_WS_SUCCESS_VALUE:-}
+      OLT_WS_ERROR_MESSAGE_PATH: ${OLT_WS_ERROR_MESSAGE_PATH:-}
+      OLT_WS_USER_ID_PATH: ${OLT_WS_USER_ID_PATH:-}
+      OLT_WS_USERNAME_PATH: ${OLT_WS_USERNAME_PATH:-}
+      OLT_WS_EMAIL_PATH: ${OLT_WS_EMAIL_PATH:-}
+      OLT_WS_DISPLAY_NAME_PATH: ${OLT_WS_DISPLAY_NAME_PATH:-}
+
+  # Service operasional (tidak ikut `up`). Dipakai oleh Makefile/make.ps1:
+  #   docker compose run --rm tools migrate|seed|test-db|gen-keys
+  # Semua skrip berjalan di Linux container sehingga host Windows tidak butuh bash/psql.
+  tools:
+    build:
+      context: ./tools
+    image: olt-social/tools:0.1.0
+    profiles: [tools]
+    networks: [internal]
+    volumes:
+      - ../scripts:/olt/scripts:ro,z
+      - ../supabase:/olt/supabase:ro,z
+      - ./:/olt/docker:z
+      - ../backups:/olt/backups:z
+    environment:
+      PGHOST: ${POSTGRES_HOST}
+      PGPORT: ${POSTGRES_PORT}
+      PGDATABASE: ${POSTGRES_DB}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      SUPABASE_URL: http://kong:8000
+      ANON_KEY: ${ANON_KEY}
+
+networks:
+  # Tanpa akses internet: DB dan service inti hanya bisa saling bicara.
+  internal:
+    internal: true
+  # Untuk port publik (Kong) dan service yang butuh egress (OLT WS, SMTP, deno deps).
+  public:
+
+volumes:
+  db-data:
+  db-config:
+  storage-data:
+  deno-cache:
