@@ -22,6 +22,7 @@ class ChatRepositoryImpl implements ChatRepository {
   final RealtimeGateway? _realtime;
   final RoomChannelHub? _hub;
   late final SharedStream<RoomActivity> _activity = SharedStream(_createActivityStream);
+  final _unreadChanges = StreamController<void>.broadcast();
 
   @override
   Future<List<ChatRoom>> getRooms() async {
@@ -64,7 +65,10 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<void> deleteMessage(String messageId) => _api.rpcValue('delete_message', {'p_message_id': messageId});
 
   @override
-  Future<void> markRoomRead(String roomId) => _api.rpcValue('mark_room_read', {'p_room_id': roomId});
+  Future<void> markRoomRead(String roomId) async {
+    await _api.rpcValue('mark_room_read', {'p_room_id': roomId});
+    _unreadChanged();
+  }
 
   @override
   Future<int> markDelivered({List<String>? roomIds}) async =>
@@ -74,6 +78,17 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<Map<String, int>> unreadCounts() async {
     final rows = await _api.rpcRows('get_unread_counts');
     return {for (final row in rows) row['room_id'] as String: (row['unread_count'] as num).toInt()};
+  }
+
+  @override
+  Future<int> unreadChatCount() async =>
+      ((await _api.rpcValue('get_unread_chat_count')) as num?)?.toInt() ?? 0;
+
+  @override
+  Stream<void> watchUnreadChanges() => _unreadChanges.stream;
+
+  void _unreadChanged() {
+    if (!_unreadChanges.isClosed) _unreadChanges.add(null);
   }
 
   @override
@@ -89,12 +104,16 @@ class ChatRepositoryImpl implements ChatRepository {
       (await _api.rpcValue('join_stock_room', {'p_stock_code': stockCode}))! as String;
 
   @override
-  Future<void> leaveRoom(String roomId) => _api.rpcValue('leave_room', {'p_room_id': roomId});
+  Future<void> leaveRoom(String roomId) async {
+    await _api.rpcValue('leave_room', {'p_room_id': roomId});
+    _unreadChanged();
+  }
 
   @override
   Future<void> setMuted(String roomId, {required bool muted}) async {
     final me = await _api.requireUserId();
     await _api.update('chat_members', {'muted': muted}, {'room_id': roomId, 'user_id': me});
+    _unreadChanged();
   }
 
   @override
@@ -121,7 +140,10 @@ class ChatRepositoryImpl implements ChatRepository {
     return hub.watchAll(roomIds, me);
   }
 
-  Future<void> dispose() => _activity.close();
+  Future<void> dispose() async {
+    await _activity.close();
+    await _unreadChanges.close();
+  }
 
   Stream<RoomActivity> _createActivityStream() =>
       _realtime!.tableChanges(table: 'messages', event: PostgresChangeEvent.insert).map((p) {
@@ -174,8 +196,8 @@ class _SupabaseRoomConnection implements ChatRoomConnection {
           _emit(ReceiptChanged(receipt));
         case RoomPresence(:final userIds):
           _emit(PresenceChanged(userIds));
-        case RoomConnection():
-          break;
+        case RoomConnection(:final status):
+          _emit(SignalsConnectionChanged(status));
       }
     });
   }

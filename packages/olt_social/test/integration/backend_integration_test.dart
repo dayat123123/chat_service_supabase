@@ -166,6 +166,19 @@ void main() {
     }
   }, skip: skip);
 
+  test('badge chat: jumlah chat belum dibaca naik saat pesan masuk dan turun setelah dibuka', () async {
+    final roomId = await sari.chat.getOrCreateDirectRoom(budi.currentUser!.id);
+    await budi.chat.markRoomRead(roomId);
+    final before = await budi.chat.unreadChatCount();
+
+    await sari.chat.sendMessage(roomId, body: 'Badge ${const Uuid().v4()}', clientId: const Uuid().v4());
+    await sari.chat.sendMessage(roomId, body: 'Badge ${const Uuid().v4()}', clientId: const Uuid().v4());
+    expect(await budi.chat.unreadChatCount(), before + 1);
+
+    await budi.chat.markRoomRead(roomId);
+    expect(await budi.chat.unreadChatCount(), before);
+  }, skip: skip);
+
   test('polling: buat, pilih, hasil terlihat setelah memilih', () async {
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final post = await budi.feed.createPost(

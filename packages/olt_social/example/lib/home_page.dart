@@ -39,7 +39,11 @@ class _HomePageState extends State<HomePage> {
 
     Widget icon(int i) {
       final widget = Icon(destinations[i].$1);
-      return i == 3 ? OltNotificationBadge(child: widget) : widget;
+      return switch (i) {
+        2 => OltChatBadge(child: widget),
+        3 => OltNotificationBadge(child: widget),
+        _ => widget,
+      };
     }
 
     final body = switch (_index) {

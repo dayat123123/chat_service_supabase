@@ -52,6 +52,32 @@ void main() {
     expect(receiptOfMine(), ReceiptStatus.read);
   });
 
+  test('channel room tersambung ulang: tanda terima yang terlewat diambil ulang dari server', () async {
+    chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.connected));
+    await pumpEventQueue();
+    chat.members = [
+      RoomMember(user: me, lastReadAt: sentAt, lastDeliveredAt: sentAt, joinedAt: before),
+      RoomMember(user: alice, lastReadAt: sentAt, lastDeliveredAt: sentAt, joinedAt: before),
+    ];
+    chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.reconnecting));
+    await pumpEventQueue();
+    expect(receiptOfMine(), ReceiptStatus.sent);
+
+    chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.connected));
+    await pumpEventQueue();
+    expect(receiptOfMine(), ReceiptStatus.read);
+  });
+
+  test('data anggota dari server tidak menurunkan tanda terima yang lebih baru', () async {
+    chat.roomEvents.add(ReceiptChanged(MemberReceipt(userId: alice.id, lastDeliveredAt: sentAt, lastReadAt: sentAt)));
+    await pumpEventQueue();
+    chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.connected));
+    chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.reconnecting));
+    chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.connected));
+    await pumpEventQueue();
+    expect(receiptOfMine(), ReceiptStatus.read);
+  });
+
   test('presence menampilkan lawan bicara online', () async {
     chat.roomEvents.add(PresenceChanged({alice.id}));
     await pumpEventQueue();

@@ -51,6 +51,28 @@ void main() {
     expect(await ChatRepositoryImpl(api).unreadCounts(), {'r-1': 3, 'r-2': 0});
   });
 
+  test('unreadChatCount memanggil RPC jumlah chat belum dibaca', () async {
+    when(() => api.rpcValue('get_unread_chat_count', any())).thenAnswer((_) async => 3);
+    expect(await ChatRepositoryImpl(api).unreadChatCount(), 3);
+  });
+
+  test('membaca, membisukan, dan keluar room memberi tahu perubahan unread', () async {
+    when(() => api.rpcValue(any(), any())).thenAnswer((_) async => null);
+    when(() => api.update(any(), any(), any())).thenAnswer((_) async {});
+    final repo = ChatRepositoryImpl(api);
+    var changes = 0;
+    final sub = repo.watchUnreadChanges().listen((_) => changes++);
+
+    await repo.markRoomRead('r-1');
+    await repo.setMuted('r-1', muted: true);
+    await repo.leaveRoom('r-1');
+    await pumpEventQueue();
+
+    expect(changes, 3);
+    await sub.cancel();
+    await repo.dispose();
+  });
+
   test('getRooms memetakan lawan bicara DM dan status pesan terakhir', () async {
     when(() => api.rpcRows('get_my_rooms', any())).thenAnswer((_) async => [roomRow(status: 'read')]);
 

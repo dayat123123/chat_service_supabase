@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:olt_social/src/core/network/realtime_status.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
 import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
@@ -47,6 +48,7 @@ class ChatListCubit extends Cubit<ChatListState> {
   StreamSubscription<RoomActivity>? _activity;
   StreamSubscription<RoomSignal>? _signals;
   Set<String> _watched = const {};
+  final _channels = <String, RealtimeStatus>{};
   final _typingTimers = <String, Timer>{};
   Timer? _debounce;
 
@@ -103,8 +105,10 @@ class ChatListCubit extends Cubit<ChatListState> {
         _applyReceipt(roomId, receipt);
       case RoomPresence(:final roomId, :final userIds):
         emit(state.copyWith(presence: {...state.presence, roomId: userIds}));
-      case RoomConnection():
-        break;
+      case RoomConnection(:final roomId, :final status):
+        final previous = _channels[roomId];
+        _channels[roomId] = status;
+        if (status == RealtimeStatus.connected && previous != null && previous != status) _scheduleRefresh();
     }
   }
 

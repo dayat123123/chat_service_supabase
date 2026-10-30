@@ -28,6 +28,10 @@ abstract interface class ChatRepository {
 
   Future<Map<String, int>> unreadCounts();
 
+  Future<int> unreadChatCount();
+
+  Stream<void> watchUnreadChanges();
+
   Future<String> getOrCreateDirectRoom(String otherUserId);
 
   Future<String> createGroupRoom(String name, List<String> memberIds);

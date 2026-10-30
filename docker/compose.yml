@@ -288,6 +288,10 @@ services:
       RLIMIT_NOFILE: "10000"
       APP_NAME: realtime
       SEED_SELF_HOST: "true"
+      # Wajib sama dengan region tenant hasil seed self-host (dikunci "us-east-1" di image).
+      # Bila berbeda (default "local"), Realtime mematikan koneksi DB tenant tiap 10 menit
+      # ("Rebalancing ... for a closer region") dan broadcast dari database (centang) hilang.
+      REGION: us-east-1
       RUN_JANITOR: "true"
       DISABLE_HEALTHCHECK_LOGGING: "true"
       # Batas tenant saat tenant dibuat (lihat juga migrasi realtime).

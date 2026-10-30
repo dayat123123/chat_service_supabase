@@ -69,6 +69,12 @@ class ConnectionChanged extends ChatRoomEvent {
   final RealtimeStatus status;
 }
 
+class SignalsConnectionChanged extends ChatRoomEvent {
+  const SignalsConnectionChanged(this.status);
+
+  final RealtimeStatus status;
+}
+
 class RoomActivity {
   const RoomActivity({required this.roomId, required this.senderId, required this.preview, required this.createdAt});
 

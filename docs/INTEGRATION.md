@@ -97,6 +97,7 @@ Semua widget adalah konten tanpa `Scaffold`, sehingga OLT tetap memegang AppBar,
 | Halaman detail saham (tab "Diskusi") | `OltStockFeed(stockCode: code, showHeader: false)` (header disembunyikan karena OLT sudah menampilkan info saham) |
 | Tombol tulis post | `showOltComposer(context, initialStock: code)` atau `OltComposePost(...)` |
 | Menu "Chat" | `const OltChatList()` (otomatis multi-panel di Windows) |
+| Ikon menu/tab "Chat" | `OltChatBadge(child: Icon(Icons.chat_bubble_outline))` (jumlah chat yang punya pesan belum dibaca) |
 | Ikon lonceng | `OltNotificationBadge(child: Icon(Icons.notifications))` → `OltNotificationList()` |
 | Halaman profil sosial | `OltUserProfile(userId: id)` |
 | Deep link post | `OltPostDetail(postId: id)` |

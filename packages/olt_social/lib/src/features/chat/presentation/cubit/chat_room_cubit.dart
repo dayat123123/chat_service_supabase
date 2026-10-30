@@ -83,6 +83,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   Timer? _readDebounce;
   bool _typingSent = false;
   bool _wasConnected = false;
+  RealtimeStatus? _signals;
 
   Future<void> load() async {
     emit(state.copyWith(status: LoadStatus.loading, error: null));
@@ -139,6 +140,12 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         if (status == RealtimeStatus.connected) _wasConnected = true;
         emit(state.copyWith(connection: status));
         if (reconnected) unawaited(_fillGap());
+      case SignalsConnectionChanged(:final status):
+        final previous = _signals;
+        _signals = status;
+        if (status == RealtimeStatus.connected && previous != null && previous != status) {
+          unawaited(_reloadMembers());
+        }
     }
   }
 
@@ -151,6 +158,13 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       ...state.members,
       receipt.userId: member.copyWith(lastDeliveredAt: merged.lastDeliveredAt, lastReadAt: merged.lastReadAt),
     }));
+  }
+
+  RoomMember _keepLatestReceipt(RoomMember fresh) {
+    final known = state.members[fresh.user.id];
+    if (known == null) return fresh;
+    final merged = known.receipt.merge(fresh.receipt);
+    return fresh.copyWith(lastDeliveredAt: merged.lastDeliveredAt, lastReadAt: merged.lastReadAt);
   }
 
   ChatMessage _resolve(ChatMessage m) {
@@ -198,7 +212,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     try {
       final members = await _chat.getMembers(roomId);
       if (isClosed) return;
-      final map = {for (final m in members) m.user.id: m};
+      final map = {for (final m in members) m.user.id: _keepLatestReceipt(m)};
       emit(state.copyWith(
         members: map,
         messages: [

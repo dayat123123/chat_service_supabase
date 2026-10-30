@@ -201,6 +201,28 @@ Dasar audit:
   - Flutter: analyze bersih, 87 unit/widget (sebelumnya 44); integration 8 + 4, termasuk centang terkirim → dibaca dan polling ke backend nyata; E2E Windows 2;
   - smoke 23/23, smoke-dummy 16/16, tes Go.
 
+**Perbaikan 30 Okt 2026: centang berhenti di ✓, badge chat belum dibaca**
+- **Akar masalah (Realtime, bukan aplikasi):**
+  - Region node Realtime default `local`, sedangkan tenant hasil seed self-host dikunci `us-east-1`.
+  - Pemeriksaan *rebalance* (tiap `REBALANCE_CHECK_INTERVAL_IN_MS`, default 10 menit) menganggap tenant ada di region yang salah, lalu mematikan koneksi DB tenant (`Tenant realtime-dev has been terminated: {:shutdown, :rebalancing}`).
+  - Ikut mati: replikasi *Broadcast Changes* yang membawa `realtime.send` dari database. Slot replikasinya *temporary*, jadi broadcast selama jeda hilang. Replikasi baru hidup lagi saat ada klien yang join channel baru. Pesan tetap mengalir, tetapi tanda terima tidak sampai, tanpa error di klien.
+- **Bukti:**
+  - Log 29–30 Okt: pola terminate tiap ±10 menit setelah inisialisasi.
+  - 01:06:55 tenant dimatikan dan slot `supabase_realtime_messages_replication_slot_` hilang dari `pg_replication_slots`.
+  - Reproduksi dipercepat (`REBALANCE_CHECK_INTERVAL_IN_MS=20000`, langganan ditahan 45 dtk):
+    - sebelum perbaikan, receipt "dibaca" tidak pernah diterima;
+    - sesudah perbaikan, receipt diterima dan tidak ada rebalance.
+- **Perbaikan:**
+  - `REGION: us-east-1` di service `realtime` (`docker/compose.yml`, ikut ke `stack.cluster.yml`).
+  - Pengaman di klien: saat channel `room:<id>` tersambung ulang, room memuat ulang anggota (digabung, tanda terima tidak pernah mundur) dan daftar chat memuat ulang `get_my_rooms`. Broadcast yang terlewat karena restart Realtime atau jaringan putus ikut terkoreksi.
+- **Catatan perilaku:** ✓ tetap satu bila penerima tidak sedang membuka aplikasi. Itu benar seperti WhatsApp; ✓✓ abu-abu muncul begitu aplikasi penerima terbuka.
+- **Badge tab chat** (migrasi `0020_chat_unread_badge`):
+  - RPC `get_unread_chat_count`: jumlah chat DM/grup yang tidak dibisukan dan punya pesan belum dibaca dari orang lain. Pesan terhapus dan room saham tidak dihitung.
+  - Widget `OltChatBadge` memuat ulang saat ada notifikasi baru untuk user (yang dibuat server hanya untuk DM/grup yang tidak dibisukan, sehingga room saham ramai tidak memicu permintaan) dan saat room dibaca, dibisukan, atau ditinggalkan di perangkat ini.
+- **Verifikasi:**
+  - pgTAP 314 (+12 badge);
+  - Flutter: analyze bersih, 101 unit/widget (+14), integration 9 (+1 badge ke backend nyata).
+
 **Tahap 1: sengaja ditunda**
 - **WAL archiving** → Tahap 6, bersama WAL-G. Image DB perlu ditambah WAL-G.
 - **Profil cluster lengkap** → Tahap 7.

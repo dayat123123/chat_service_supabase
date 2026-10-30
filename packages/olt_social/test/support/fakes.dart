@@ -112,12 +112,27 @@ class FakeChatRepository extends Fake implements ChatRepository {
   final signals = StreamController<RoomSignal>.broadcast();
   final activity = StreamController<RoomActivity>.broadcast();
   final roomEvents = StreamController<ChatRoomEvent>.broadcast();
+  final unreadChanges = StreamController<void>.broadcast();
   final watchedRoomIds = <Set<String>>[];
   final delivered = <List<String>?>[];
   final readRooms = <String>[];
+  int unreadChats = 0;
+  int unreadChatCalls = 0;
+  Object? unreadChatError;
 
   @override
   Future<List<ChatRoom>> getRooms() async => rooms;
+
+  @override
+  Future<int> unreadChatCount() async {
+    unreadChatCalls++;
+    final error = unreadChatError;
+    if (error != null) throw error;
+    return unreadChats;
+  }
+
+  @override
+  Stream<void> watchUnreadChanges() => unreadChanges.stream;
 
   @override
   Future<List<RoomMember>> getMembers(String roomId) async => members;
@@ -150,7 +165,17 @@ class FakeChatRepository extends Fake implements ChatRepository {
     await signals.close();
     await activity.close();
     await roomEvents.close();
+    await unreadChanges.close();
   }
+}
+
+class FakeNotificationRepository extends Fake implements NotificationRepository {
+  final changes = StreamController<void>.broadcast();
+
+  @override
+  Stream<void> watchNotifications() => changes.stream;
+
+  Future<void> dispose() => changes.close();
 }
 
 class FakeRoomConnection implements ChatRoomConnection {
@@ -170,11 +195,17 @@ class _Unused extends Fake
     implements ProfileRepository, StockRepository, NotificationRepository, ModerationRepository, MediaRepository {}
 
 class FakeDependencies implements OltSocialDependencies {
-  FakeDependencies({FakeFeedRepository? feed, FakeCommentRepository? comments, FakePollRepository? polls, ChatRepository? chat})
-    : feed = feed ?? FakeFeedRepository(),
-      comments = comments ?? FakeCommentRepository(),
-      polls = polls ?? FakePollRepository(),
-      chat = chat ?? FakeChatRepository();
+  FakeDependencies({
+    FakeFeedRepository? feed,
+    FakeCommentRepository? comments,
+    FakePollRepository? polls,
+    ChatRepository? chat,
+    NotificationRepository? notifications,
+  }) : feed = feed ?? FakeFeedRepository(),
+       comments = comments ?? FakeCommentRepository(),
+       polls = polls ?? FakePollRepository(),
+       chat = chat ?? FakeChatRepository(),
+       notifications = notifications ?? _Unused();
 
   final _unused = _Unused();
 
@@ -191,7 +222,7 @@ class FakeDependencies implements OltSocialDependencies {
   @override
   StockRepository get stocks => _unused;
   @override
-  NotificationRepository get notifications => _unused;
+  final NotificationRepository notifications;
   @override
   ModerationRepository get moderation => _unused;
   @override

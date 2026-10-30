@@ -23,6 +23,7 @@ const OltPostDetail(postId: '...');       // post + thread komentar
 const OltComposePost(initialStock: 'BBCA');
 const OltChatList();                      // multi-panel di layar lebar
 const OltChatRoom(roomId: '...');
+const OltChatBadge(child: Icon(Icons.chat_bubble_outline));   // badge chat belum dibaca di tab
 const OltNotificationList();
 const OltNotificationBadge(child: Icon(Icons.notifications));
 const OltUserProfile(userId: '...');
@@ -45,7 +46,8 @@ supportedLocales: OltSocialLocalizations.supportedLocales,
 | `$KODE` & `@user` | Bisa diketuk lewat `onStockTap` / `onUserTap`. Bila callback tidak diisi, halaman bawaan yang dibuka |
 | Thread komentar | Garis indentasi per level. Mulai level 4, indentasi berhenti dan muncul "Lanjutkan thread". Tersedia "Lihat N balasan lainnya" dan collapse/expand per cabang |
 | Optimistic update | Like post/komentar, follow, watch, dan kirim pesan. Bila server gagal, perubahan dibatalkan dan SnackBar ditampilkan |
-| Chat | Centang ala WhatsApp: jam (mengirim), ✓ (sampai server), ✓✓ abu-abu (sudah diterima perangkat penerima yang online), ✓✓ biru (sudah dibaca). Di grup, centang naik setelah **semua** anggota menerima/membaca; room saham hanya ✓. Badge belum dibaca, balas pesan, reconnect otomatis dengan pengisian celah pesan |
+| Chat | Centang ala WhatsApp: jam (mengirim), ✓ (sampai server), ✓✓ abu-abu (sudah diterima perangkat penerima yang online), ✓✓ biru (sudah dibaca). Di grup, centang naik setelah **semua** anggota menerima/membaca; room saham hanya ✓. Badge belum dibaca per room, balas pesan, reconnect otomatis dengan pengisian celah pesan dan tanda terima |
+| Badge tab chat | `OltChatBadge` menampilkan jumlah **chat** (DM & grup yang tidak dibisukan) yang punya pesan belum dibaca, seperti tab Chat WhatsApp; `99+` bila lebih. Room saham tidak dihitung. Diperbarui saat pesan masuk dan saat room dibuka |
 | Mengetik & online | "mengetik…" (DM) atau "Budi sedang mengetik…" (grup) tampil di daftar chat dan di room. Titik hijau dan teks "Online" untuk lawan bicara DM |
 | Polling | Tombol polling di composer: 2–4 pilihan (maks 40 karakter, tidak boleh sama), durasi 1 jam–7 hari. Satu suara per user dan tidak bisa diubah; pembuat tidak ikut memilih. Hasil (persentase, pilihan Anda, pilihan teratas) tampil setelah memilih, saat polling selesai, atau bagi pembuat |
 | State | Skeleton saat memuat, tampilan kosong, error dengan tombol coba lagi, pull-to-refresh, infinite scroll, banner "N post baru" |
@@ -115,7 +117,10 @@ Aturan dependensi:
   - Selama aplikasi terbuka dan sesi aktif, `DeliveryTracker` (dijalankan `OltSocial`) memanggil RPC `mark_rooms_delivered` saat ada pesan masuk dari orang lain. Membuka room memanggil `mark_room_read`.
   - Kedua RPC menyimpan penanda di `chat_members` lalu menyiarkan `receipt` ke `room:<id>` lewat `realtime.send` di database. Klien tidak bisa memalsukan tanda terima orang lain.
   - Status per pesan dihitung fungsi domain `receiptStatus(sentAt, penerima)`. `get_my_rooms` mengembalikan `last_message_status` untuk pesan terakhir milik sendiri.
+  - Broadcast yang terlewat saat channel `room:<id>` terputus diambil ulang ketika tersambung lagi: room memuat ulang `get_room_members` (digabung, tanda terima tidak pernah mundur), daftar chat memuat ulang `get_my_rooms`.
+  - Broadcast dari database butuh Realtime dengan `REGION` yang sama dengan region tenant (`us-east-1`, lihat `docker/compose.yml`). Bila berbeda, Realtime memutus koneksi DB tenant tiap 10 menit dan tanda terima hilang tanpa error.
   - Matikan pelacakan terkirim dengan `OltSocial.initialize(trackDelivery: false)` bila host punya mekanisme sendiri.
+- **Badge chat:** `OltChatBadge` memanggil RPC `get_unread_chat_count` dan memuat ulang (digabung 1,2 detik) saat ada notifikasi baru untuk user (server membuat notifikasi `message` hanya untuk DM/grup yang tidak dibisukan, jadi room saham yang ramai tidak memicu permintaan) dan saat room dibaca, dibisukan, atau ditinggalkan di perangkat ini.
 - **Polling:** dibuat bersama post dalam satu transaksi (`create_post` dengan `p_poll`), dipilih lewat `vote_poll`. Jumlah suara hanya keluar lewat proyeksi feed (`feed_post.poll`); tabel suara tidak bisa dibaca langsung oleh client.
 - **Idempotensi:** composer memakai `client_id` per draf, jadi kirim ulang setelah koneksi putus tidak membuat post ganda.
 - **Test:** widget bisa diuji tanpa backend dengan membungkusnya di `OltSocialScope(dependencies: fake)`.
@@ -137,8 +142,8 @@ dart run tool/license_audit.dart # tolak GPL/AGPL/LGPL/MPL
 | `test/core` | Parser `$KODE`/`@mention` (identik dengan regex di DB), pemetaan error, TokenManager (single-flight, refresh, login gagal) |
 | `test/features/*/data` | Repository dengan data source mock: parameter RPC, pemetaan baris, pagination, idempotensi, polling, status centang |
 | `test/features/*/domain` | Perhitungan centang (DM & grup), DeliveryTracker, aturan draf polling |
-| `test/features/*/presentation` | Cubit daftar chat (mengetik, centang, online), cubit room, tile room, widget polling, composer polling, thread komentar |
-| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, polling, rate limit |
+| `test/features/*/presentation` | Cubit daftar chat (mengetik, centang, online, sinkron ulang setelah reconnect), cubit room, cubit & widget badge chat, tile room, widget polling, composer polling, thread komentar |
+| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit |
 | `test/support` | Fake dependensi & mock data source bersama |
 | `example/integration_test` | E2E app di Windows: login → feed → thread → komentar (Enter) → chat (Enter) → notifikasi |
 

@@ -20,6 +20,7 @@ Ketiga profil memakai **image, nama service, dan nama environment variable yang 
 - **Rahasia lewat Docker secrets.** Di compose, sumbernya file `docker/secrets/`. Di Swarm, sumbernya secret yang sama, dibuat saat `docker stack deploy`.
 - **Config file lewat `configs`.** Konfigurasi Kong, Traefik, dan init DB dipasang sebagai `configs`, bukan bind mount, sehingga juga jalan di Swarm.
 - **Tanpa `container_name`.** Nama tetap Realtime (`realtime-dev.supabase-realtime`) diganti alias network, sehingga service bisa direplikasi.
+- **Region Realtime.** Semua node memakai `REGION: us-east-1`, sama dengan region tenant hasil seed self-host. Bila berbeda, Realtime memutus koneksi DB tenant tiap 10 menit ("rebalancing") dan broadcast dari database (tanda terima chat) hilang.
 - **Storage S3-ready.** Pindah dari backend `file` cukup lewat env: `STORAGE_BACKEND=s3` dan `GLOBAL_S3_*`.
 
 ## Garis besar migrasi single → cluster (dirinci di Tahap 7)

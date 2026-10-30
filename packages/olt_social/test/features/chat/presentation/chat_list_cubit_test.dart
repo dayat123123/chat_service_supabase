@@ -81,6 +81,23 @@ void main() {
     expect(cubit.state.rooms.first.lastMessageStatus, ReceiptStatus.read);
   });
 
+  test('channel room tersambung ulang: daftar dimuat ulang agar centang yang terlewat diperbarui', () async {
+    chat.signals.add(const RoomConnection('dm', RealtimeStatus.connected));
+    await pumpEventQueue();
+    chat.rooms = [dm(status: ReceiptStatus.read)];
+    chat.signals.add(const RoomConnection('dm', RealtimeStatus.reconnecting));
+    chat.signals.add(const RoomConnection('dm', RealtimeStatus.connected));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(cubit.state.rooms.first.lastMessageStatus, ReceiptStatus.read);
+  });
+
+  test('sambungan pertama channel room tidak memuat ulang daftar', () async {
+    chat.rooms = [dm(status: ReceiptStatus.read)];
+    chat.signals.add(const RoomConnection('dm', RealtimeStatus.connected));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(cubit.state.rooms.first.lastMessageStatus, ReceiptStatus.sent);
+  });
+
   test('presence room DM menandai lawan bicara online', () async {
     chat.signals.add(RoomPresence('dm', {me.id, alice.id}));
     await pumpEventQueue();

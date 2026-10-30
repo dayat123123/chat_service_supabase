@@ -22,6 +22,7 @@ export 'src/features/chat/domain/entities/chat_message.dart';
 export 'src/features/chat/domain/entities/chat_room.dart';
 export 'src/features/chat/domain/entities/receipt.dart';
 export 'src/features/chat/domain/repositories/chat_repository.dart';
+export 'src/features/chat/presentation/widgets/olt_chat_badge.dart' show OltChatBadge;
 export 'src/features/chat/presentation/widgets/olt_chat_list.dart' show OltChatList;
 export 'src/features/chat/presentation/widgets/olt_chat_room.dart' show OltChatRoom;
 export 'src/features/compose/presentation/widgets/olt_compose_post.dart' show OltComposePost, showOltComposer;
