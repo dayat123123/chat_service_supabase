@@ -100,4 +100,55 @@ begin
 end;
 $$;
 
+create or replace function tests.create_agent(
+  p_name   text,
+  p_roles  text[] default '{cs_agent}',
+  p_skills jsonb default '{"general": 1}',
+  p_team   text default 'general',
+  p_max    integer default 3
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_id uuid := gen_random_uuid();
+begin
+  perform cs.create_agent(v_id, p_name, p_roles, p_team, p_skills, '{id,en}', p_max);
+  return v_id;
+end;
+$$;
+
+create or replace function tests.authenticate_agent(p_agent_id uuid, p_aal text default 'aal2')
+returns void
+language plpgsql
+as $$
+begin
+  perform tests.authenticate_with(p_agent_id, jsonb_build_object('aal', p_aal));
+end;
+$$;
+
+create or replace function tests.agent_online(p_agent_id uuid)
+returns void
+language sql
+security definer
+set search_path = ''
+as $$
+  update cs.agent_status set status = 'online', last_heartbeat_at = now() where agent_id = p_agent_id;
+$$;
+
+create or replace function tests.authenticate_service()
+returns void
+language plpgsql
+as $$
+begin
+  perform set_config('role', 'service_role', true);
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', '{"role":"service_role"}', true);
+end;
+$$;
+
 grant execute on all functions in schema tests to anon, authenticated;
+grant usage on schema tests to service_role;
+grant execute on all functions in schema tests to service_role;

@@ -91,6 +91,25 @@ OLT_WS_URL=ws://dummy-olt:8090/ws
 
 Pesan `welcome` dan `heartbeat` dilewati karena auth-bridge hanya membaca pesan `type = login_result`. Status gagal dummy (`FAILED`) tetap terbaca sebagai login ditolak, karena auth-bridge menganggap semua status selain `OK` gagal. Penyelarasan penuh dummy ke Protokol v1 (field `v`, status `ERROR`, kode error v1) dikerjakan di F1, bersama `quote`, `instruments`, dan `holdings`.
 
+## Data nasabah (customer service)
+
+OLT dummy juga mengimplementasikan perluasan Protokol v1 untuk `customer-adapter` ([docs/cs-chat/olt-data-requirements.md](../../docs/cs-chat/olt-data-requirements.md)). Respons memakai format v1: `<type>_result`, status `OK`/`ERROR`, dan kode `UNAUTHORIZED`, `INVALID_REQUEST`, atau `NOT_FOUND`.
+
+| Pesan | Isi tiruan |
+|---|---|
+| `customer_profile` / `customer_reveal` | Profil **tersamar** (NIK, HP, email, kode nasabah, SID, alamat, tanggal lahir, rekening), dan nilai asli satu field |
+| `customer_orders` / `customer_order` | 10 order per akun selama ±20 hari terakhir: terisi, sebagian, ditolak (`E-1021` saldo tidak cukup, `E-2003` harga di luar batas), dibatalkan, kedaluwarsa. Lengkap dengan riwayat & eksekusi. ID: `O-<id><nnn>`, mis. `O-1001002` |
+| `customer_cash_transactions` / `customer_cash_transaction` | 6 transaksi RDN: deposit diproses/berhasil, penarikan gagal/berhasil, dividen tunai, biaya. ID: `T-<id><nnn>` |
+| `customer_sessions`, `customer_security` | 2 sesi + 3 riwayat login, status keamanan (akun 1004 ditandai mencurigakan) |
+| `customer_portfolio` | Kas & 3 saham. Tidak dipakai adapter CS (panel agen tidak menampilkan portofolio) |
+| `secure_account` | `logout_all`, `lock_trading`, `lock_account`. Idempoten per `idempotency_key`; mengubah status keamanan tiruan |
+
+Ketentuan:
+- **Kredensial.** Koneksi wajib membawa `Authorization: Bearer <DUMMY_OLT_CUSTOMER_TOKEN>`. Di compose, nilainya sama dengan secret `olt_customer_service_token` milik adapter. Tanpa token itu, semua pesan nasabah ditolak.
+- **Akun lambat.** `lambat_test` (1010) menjawab setelah `DUMMY_OLT_SLOW_DELAY`, sehingga adapter menampilkan "tidak tersedia".
+- **Data acak tapi stabil.** Data dibuat deterministik per akun saat server mulai, dengan waktu relatif terhadap jam mulai.
+- **Endpoint dev.** `GET /api/dev/customers/{id|username}` menampilkan ID order/transaksi dan status keamanan. Berguna untuk mencari ID order saat mencoba kartu order.
+
 ## Konfigurasi
 
 | Variabel | Default | Keterangan |
@@ -100,12 +119,14 @@ Pesan `welcome` dan `heartbeat` dilewati karena auth-bridge hanya membaca pesan 
 | `DUMMY_OLT_TOKEN_TTL` | `24h` | Masa berlaku token login password |
 | `DUMMY_OLT_ACCEPT_MOCK_TOKENS` | `true` | Terima juga token `mock:<id>:<username>` |
 | `DUMMY_OLT_SLOW_DELAY` | `8s` | Jeda login token akun `lambat_test` |
+| `DUMMY_OLT_CUSTOMER_TOKEN[_FILE]` | – | Token layanan data nasabah. Kosong = semua pesan nasabah ditolak |
 
 ## Tes
 
 | Perintah | Isi |
 |---|---|
-| `make test-dummy-olt` | Unit test Go: token, login password/email/token, logout, akun ditangguhkan, mock, lambat, heartbeat |
+| `make test-dummy-olt` | Unit test Go: token, login password/email/token, logout, akun ditangguhkan, mock, lambat, heartbeat, dan pesan data nasabah |
 | `make smoke-dummy` | 16 skenario end-to-end lewat Kong + auth-bridge mode websocket |
+| `make smoke-cs` | 26 skenario CS chat end-to-end (nasabah, agen, adapter, amankan akun) |
 | `make test-flutter-it-dummy` | Package Flutter dengan token hasil login WebSocket (password → token → `OltSocial`) |
 | `make e2e-windows-dummy` | App contoh: form login OLT dummy (password salah ditolak, login email masuk) |

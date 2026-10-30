@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"olt-social/dummy-olt/internal/customers"
 	"olt-social/dummy-olt/internal/tokens"
 	"olt-social/dummy-olt/internal/users"
 )
@@ -25,6 +27,9 @@ const (
 	CodeTokenExpired       = "TOKEN_EXPIRED"
 	CodeTokenRevoked       = "TOKEN_REVOKED"
 	CodeUnknownType        = "UNKNOWN_TYPE"
+	CodeUnauthorized       = "UNAUTHORIZED"
+	CodeInvalidRequest     = "INVALID_REQUEST"
+	CodeNotFound           = "NOT_FOUND"
 )
 
 type Config struct {
@@ -32,22 +37,25 @@ type Config struct {
 	AcceptMockTokens  bool
 	SlowDelay         time.Duration
 	HeartbeatInterval time.Duration
+	CustomerToken     string
 }
 
 type Server struct {
-	users    *users.Directory
-	tokens   *tokens.Issuer
-	cfg      Config
-	log      *slog.Logger
-	upgrader websocket.Upgrader
+	users     *users.Directory
+	tokens    *tokens.Issuer
+	customers *customers.Store
+	cfg       Config
+	log       *slog.Logger
+	upgrader  websocket.Upgrader
 }
 
 func New(dir *users.Directory, issuer *tokens.Issuer, cfg Config, log *slog.Logger) *Server {
 	return &Server{
-		users:  dir,
-		tokens: issuer,
-		cfg:    cfg,
-		log:    log,
+		users:     dir,
+		tokens:    issuer,
+		customers: customers.NewStore(dir, time.Now()),
+		cfg:       cfg,
+		log:       log,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(*http.Request) bool { return true },
 		},
@@ -64,6 +72,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/logout", s.handleHTTPLogout)
 	mux.HandleFunc("POST /api/dev/token", s.handleDevToken)
 	mux.HandleFunc("GET /api/users", s.handleUsers)
+	mux.HandleFunc("GET /api/dev/customers/{user}", s.handleDevCustomer)
 	return mux
 }
 
@@ -100,20 +109,24 @@ type apiError struct {
 }
 
 type message struct {
-	Type       string     `json:"type"`
-	RequestID  string     `json:"request_id,omitempty"`
-	Status     string     `json:"status,omitempty"`
-	Data       *loginData `json:"data,omitempty"`
-	Error      *apiError  `json:"error,omitempty"`
-	Server     string     `json:"server,omitempty"`
-	ServerTime string     `json:"server_time,omitempty"`
+	Type       string    `json:"type"`
+	RequestID  string    `json:"request_id,omitempty"`
+	Status     string    `json:"status,omitempty"`
+	Data       any       `json:"data,omitempty"`
+	Error      *apiError `json:"error,omitempty"`
+	Server     string    `json:"server,omitempty"`
+	ServerTime string    `json:"server_time,omitempty"`
 }
 
 func result(kind, requestID string, data *loginData, e *apiError) message {
 	if e != nil {
 		return message{Type: kind, RequestID: requestID, Status: "FAILED", Error: e}
 	}
-	return message{Type: kind, RequestID: requestID, Status: "OK", Data: data}
+	m := message{Type: kind, RequestID: requestID, Status: "OK"}
+	if data != nil {
+		m.Data = data
+	}
+	return m
 }
 
 func toUserJSON(u *users.User) userJSON {
@@ -221,6 +234,8 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
+	serviceAuthorized := s.cfg.CustomerToken != "" &&
+		subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+s.cfg.CustomerToken)) == 1
 
 	var writeMu sync.Mutex
 	send := func(m message) {
@@ -288,6 +303,14 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			}
 		case "ping":
 			send(message{Type: "pong", RequestID: req.RequestID, ServerTime: now()})
+		case "customer_profile", "customer_reveal", "customer_orders", "customer_order", "customer_cash_transactions",
+			"customer_cash_transaction", "customer_portfolio", "customer_sessions", "customer_security", "secure_account":
+			go func(req request) {
+				resp := s.customerRequest(ctx, req, serviceAuthorized)
+				if ctx.Err() == nil {
+					send(resp)
+				}
+			}(req)
 		default:
 			send(message{Type: "error", RequestID: req.RequestID, Error: &apiError{CodeUnknownType, "type tidak dikenal"}})
 		}

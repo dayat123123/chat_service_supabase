@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -45,6 +46,18 @@ func env(key, def string) string {
 	return def
 }
 
+func secretEnv(key string) (string, error) {
+	path := os.Getenv(key + "_FILE")
+	if path == "" {
+		return strings.TrimSpace(os.Getenv(key)), nil
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("%s_FILE: %w", key, err)
+	}
+	return strings.TrimSpace(string(b)), nil
+}
+
 func durationEnv(key, def string) (time.Duration, error) {
 	d, err := time.ParseDuration(env(key, def))
 	if err != nil {
@@ -62,7 +75,8 @@ func serve() int {
 	slow, err2 := durationEnv("DUMMY_OLT_SLOW_DELAY", "8s")
 	heartbeat, err3 := durationEnv("DUMMY_OLT_HEARTBEAT", "15s")
 	acceptMock, err4 := strconv.ParseBool(env("DUMMY_OLT_ACCEPT_MOCK_TOKENS", "true"))
-	if err := errors.Join(err1, err2, err3, err4); err != nil {
+	customerToken, err5 := secretEnv("DUMMY_OLT_CUSTOMER_TOKEN")
+	if err := errors.Join(err1, err2, err3, err4, err5); err != nil {
 		fmt.Fprintln(os.Stderr, "konfigurasi tidak valid:", err)
 		return 1
 	}
@@ -72,6 +86,7 @@ func serve() int {
 		AcceptMockTokens:  acceptMock,
 		SlowDelay:         slow,
 		HeartbeatInterval: heartbeat,
+		CustomerToken:     customerToken,
 	}, log)
 
 	httpServer := &http.Server{
@@ -90,7 +105,8 @@ func serve() int {
 	}()
 
 	log.Warn("dummy-olt berjalan: server OLT TIRUAN untuk development/testing, jangan dipakai di produksi",
-		"addr", httpServer.Addr, "accept_mock_tokens", acceptMock, "token_ttl", ttl.String())
+		"addr", httpServer.Addr, "accept_mock_tokens", acceptMock, "token_ttl", ttl.String(),
+		"customer_data", customerToken != "")
 	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Error("server berhenti", "error", err)
 		return 1

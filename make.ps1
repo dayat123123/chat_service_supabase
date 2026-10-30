@@ -10,6 +10,7 @@
   .\make.ps1 restore -File olt-20261029-020000.dump -Yes
   .\make.ps1 up -DummyOlt                  (OLT dummy + auth-bridge mode websocket)
   .\make.ps1 dummy-token -User sari_invest -Ttl 1h
+  .\make.ps1 up -Profile single -Cs        (produksi dengan customer service lewat chat)
 #>
 [CmdletBinding()]
 param(
@@ -18,7 +19,8 @@ param(
                  'test', 'test-db', 'test-bridge', 'test-flutter', 'test-flutter-it',
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
-                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy')]
+                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy',
+                 'test-cs', 'smoke-cs')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
@@ -30,6 +32,8 @@ param(
     [switch]$Yes,
     # OLT dummy + auth-bridge mode websocket (hanya profil dev).
     [switch]$DummyOlt,
+    # Customer service lewat chat di profil single (di profil dev selalu aktif).
+    [switch]$Cs,
     [string]$User = 'budi_santoso',
     [string]$Ttl = ''
 )
@@ -41,7 +45,8 @@ $EnvFile = 'docker/.env'
 $SecretsDir = 'docker/secrets'
 $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
                  'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
-                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri')
+                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri',
+                 'olt_customer_service_token')
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
 $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
 $ToolsImage = 'olt-social/tools:0.1.0'
@@ -54,7 +59,9 @@ $Compose = switch ($DeployProfile) {
     default { @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.prod.yml') }
 }
 if ($DummyOlt) { $Compose += @('-f', 'docker/compose.dummy-olt.yml') }
-$DummyCompose = @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml', '-f', 'docker/compose.dummy-olt.yml')
+if ($DeployProfile -eq 'dev' -or $Cs) { $Compose += @('--profile', 'cs') }
+$DummyCompose = @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml', '-f', 'docker/compose.dummy-olt.yml',
+                  '--profile', 'cs')
 
 function Invoke-Native {
     param([string]$Exe, [string[]]$Arguments)
@@ -145,6 +152,10 @@ switch ($Target) {
   test-dummy-olt  Unit test OLT dummy (Go, di container)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
+
+  Customer service lewat chat (dev: selalu aktif; produksi: -Profile single -Cs)
+  test-cs       Unit test customer-adapter (Go, di container)
+  smoke-cs      Smoke test CS chat end-to-end lewat API asli (butuh up -DummyOlt)
 '@
     }
     'up' {
@@ -156,7 +167,7 @@ switch ($Target) {
         Invoke-Compose @('ps')
         Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profil $DeployProfile)"
     }
-    'down' { Invoke-Compose @('--profile', 'admin', 'down') }
+    'down' { Invoke-Compose @('--profile', 'admin', '--profile', 'cs', 'down') }
     'logs' {
         $logArgs = @('logs', '-f', '--tail=200')
         if ($Service) { $logArgs += $Service }
@@ -180,6 +191,7 @@ switch ($Target) {
         & $PSCommandPath test-db -Profile $DeployProfile
         & $PSCommandPath test-bridge
         & $PSCommandPath test-dummy-olt
+        & $PSCommandPath test-cs
     }
     'test-flutter' {
         Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
@@ -259,6 +271,11 @@ switch ($Target) {
         Invoke-Docker ($DummyCompose + $tokenArgs)
     }
     'smoke-dummy' { Assert-Config; Invoke-Docker ($DummyCompose + @('run', '--rm', 'tools', 'smoke-dummy')) }
+    'smoke-cs' { Assert-Config; Invoke-Docker ($DummyCompose + @('run', '--rm', 'tools', 'smoke-cs')) }
+    'test-cs' {
+        $src = Join-Path $PSScriptRoot 'services/cs'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
     'test-dummy-olt' {
         $src = Join-Path $PSScriptRoot 'services/dummy-olt'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')

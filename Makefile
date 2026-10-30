@@ -7,6 +7,7 @@
 #   cluster Docker Swarm (kerangka; dilengkapi Tahap 7)
 # PROD=1 adalah alias lama untuk PROFILE=single.
 # DUMMY_OLT=1 menambahkan OLT dummy + auth-bridge mode websocket (hanya profil dev).
+# CS=1 menyalakan customer service lewat chat (customer-adapter) di profil single.
 
 PROFILE ?= dev
 ifdef PROD
@@ -22,8 +23,11 @@ endif
 FILES_dev     := -f docker/compose.yml -f docker/compose.dev.yml $(if $(DUMMY_OLT),-f docker/compose.dummy-olt.yml)
 FILES_single  := -f docker/compose.yml -f docker/compose.prod.yml
 FILES_cluster := -f docker/compose.yml -f docker/compose.prod.yml
-COMPOSE       := docker compose $(FILES_$(PROFILE))
-DUMMY_COMPOSE := docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml
+# Customer service (profil compose `cs`): selalu di dev; produksi dengan CS=1.
+CS_dev        := --profile cs
+CS_single     := $(if $(CS),--profile cs)
+COMPOSE       := docker compose $(FILES_$(PROFILE)) $(CS_$(PROFILE))
+DUMMY_COMPOSE := docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs
 STACK         := olt-social
 TOOLS         := $(COMPOSE) run --rm tools
 ENV           := docker/.env
@@ -39,12 +43,14 @@ PKG           := packages/olt_social
 ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
-                 s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri
+                 s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri \
+                 olt_customer_service_token
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
-        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-flutter-it-dummy e2e-windows-dummy
+        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-flutter-it-dummy e2e-windows-dummy \
+        test-cs smoke-cs
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -69,7 +75,7 @@ down: ## Hentikan semua service (data tetap ada)
 ifeq ($(PROFILE),cluster)
 	docker stack rm $(STACK)
 else
-	$(COMPOSE) --profile admin down
+	$(COMPOSE) --profile admin --profile cs down
 endif
 
 logs: ## Ikuti log (filter service: make logs s=auth-bridge)
@@ -89,7 +95,7 @@ migrate: check-config ## Jalankan migrasi baru di supabase/migrations
 seed: check-config ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt test-cs ## Tes backend (pgTAP + Go)
 
 test-db: check-config ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -156,6 +162,12 @@ dummy-token: check-config ## Token sesi OLT dummy: make dummy-token U=budi_santo
 
 smoke-dummy: check-config ## Smoke test auth-bridge mode websocket vs OLT dummy (butuh up DUMMY_OLT=1)
 	$(DUMMY_COMPOSE) run --rm tools smoke-dummy
+
+test-cs: ## Unit test customer-adapter (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/cs:/src" -w /src $(GO_IMG) go test ./...
+
+smoke-cs: check-config ## Smoke test CS chat end-to-end lewat API asli (butuh up DUMMY_OLT=1)
+	$(DUMMY_COMPOSE) run --rm tools smoke-cs
 
 test-dummy-olt: ## Unit test OLT dummy (Go, di container)
 	docker run --rm -v "$(CURDIR)/services/dummy-olt:/src" -w /src $(GO_IMG) go test ./...

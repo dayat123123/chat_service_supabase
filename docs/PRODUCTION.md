@@ -63,6 +63,11 @@ Catatan:
   3. Buka `http://localhost:8000` di browser.
   4. Login dengan `DASHBOARD_USERNAME` dan password di `docker/secrets/dashboard_password`.
   5. Setelah selesai: `make admin-down PROFILE=single`.
+- **Customer service lewat chat mati secara default di profil single.** Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`) setelah dua hal berikut siap:
+  1. `docker/.env`: isi `OLT_CUSTOMER_WS_URL` (`wss://`, endpoint data nasabah dari tim OLT), dan `docker/secrets/olt_customer_service_token` dengan kredensial dari tim OLT.
+  2. Route publik `/cs/v1` belum dibuka di profil single. Route ini dibuka bersama aplikasi nasabah (CS3); API agen hanya lewat VPN (CS4).
+
+  Schema `cs_api` sudah ada di `PGRST_DB_SCHEMAS` default. Detail: [docs/cs-chat](cs-chat/README.md).
 - **Sinkronisasi daftar saham dari sistem OLT.** Ini memakai service key, jadi hanya dijalankan dari server lewat port admin:
 
   ```bash
@@ -228,6 +233,14 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 - [ ] Daftar saham tersinkron (`sync_stocks`). Daftar kata terlarang dan rate limit sudah ditinjau tim compliance.
 - [ ] Prosedur moderasi (bagian 5) sudah disosialisasikan.
 - [ ] DNS dan sertifikat HTTPS valid (Traefik memperbarui otomatis).
+
+**Customer service lewat chat (sebelum dibuka untuk nasabah; lihat [docs/cs-chat](cs-chat/README.md))**
+- [ ] CS1–CS4 selesai, `make test-db`, `make test-cs`, dan `make smoke-cs` lulus di staging, termasuk tes konkurensi `cs-matcher` (CS2).
+- [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
+- [ ] Kalender libur tahun berjalan dan tahun depan sudah diperiksa kepatuhan (`cs.holidays.verified = true`), termasuk libur bursa dari pengumuman BEI.
+- [ ] `customer-adapter` terhubung ke endpoint OLT nasabah asli (`wss://`) dengan kredensial terpisah, dan sudah diuji di UAT OLT.
+- [ ] API agen (`cs_api.agent_*`, `/cs/v1/agent/*`) dan panel CS hanya bisa diakses lewat VPN. Agen login dengan email + TOTP, dan pendaftaran publik GoTrue tetap mati.
+- [ ] Partisi `cs.*_default` kosong, dan job `cs-partitions` tercatat sukses di `cron.job_run_details`.
 
 **Aplikasi**
 - [ ] App OLT memakai URL HTTPS produksi. Build release Android tidak mengizinkan cleartext.

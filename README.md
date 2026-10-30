@@ -13,14 +13,17 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`docker/`](docker/) | Supabase self-hosted + auth-bridge + Traefik, PgBouncer, Valkey. Profil `dev` / `single` / `cluster`, image di-pin tag + digest |
 | [`supabase/`](supabase/) | Migrasi SQL bernomor, seed development, tes pgTAP |
 | [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token login OLT menjadi JWT Supabase (tanpa login dua kali) |
-| [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri) untuk menguji auth-bridge mode websocket. Hanya development/testing |
+| [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri, data nasabah tiruan) untuk menguji auth-bridge mode websocket dan `customer-adapter`. Hanya development/testing |
+| [`services/cs/`](services/cs/README.md) | Go: `customer-adapter` (data nasabah dari OLT untuk chat CS, amankan akun). `cs-matcher` menyusul di CS2 |
 | [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
 | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
 | [`docs/production-audit.md`](docs/production-audit.md) | Audit terhadap addendum produksi + status per tahap |
 | [`docs/market-integration.md`](docs/market-integration.md) | Rencana integrasi data pasar & portofolio OLT (menunggu info tim OLT) |
-| [`docs/PROMPT.md`](docs/PROMPT.md), [`PROMPT-PRODUCTION.md`](docs/PROMPT-PRODUCTION.md), [`PROMPT-FEATURES.md`](docs/PROMPT-FEATURES.md) | Spesifikasi proyek: dasar, produksi, dan fitur lanjutan |
+| [`docs/cs-chat/`](docs/cs-chat/README.md) | Customer service lewat chat + matching engine: status tahap, keputusan, model data, akses, API `cs_api`, kebutuhan data OLT, pertanyaan kepatuhan |
+| [`docs/archive/`](docs/archive/customer-care/README.md) | Arsip pendekatan ticketing yang dibatalkan (dokumen saja; kodenya sudah dihapus lewat migrasi `0026_care_cancel`) |
+| [`docs/PROMPT.md`](docs/PROMPT.md), [`PROMPT-PRODUCTION.md`](docs/PROMPT-PRODUCTION.md), [`PROMPT-FEATURES.md`](docs/PROMPT-FEATURES.md), [`PROMPT-CS-CHAT.md`](docs/PROMPT-CS-CHAT.md) | Spesifikasi proyek: dasar, produksi, fitur lanjutan, dan customer service lewat chat. Versi ticketing yang dibatalkan ada di [`docs/archive/`](docs/archive/PROMPT-CUSTOMER-CARE.md) |
 
 ## Arsitektur
 
@@ -173,8 +176,8 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `up` / `down` / `ps` / `logs` | Kelola stack; `PROFILE=dev\|single\|cluster` (Windows `-Profile`). `logs s=auth-bridge` / `-Service auth-bridge` untuk satu service |
 | `reset` | **Hapus volume DB & storage**, lalu naik ulang dari nol. Wajib `CONFIRM=yes` (Windows `-Yes`) |
 | `migrate` / `seed` | Jalankan migrasi baru / isi data dummy (idempoten) |
-| `test` | `test-db` + `test-bridge` + `test-dummy-olt` |
-| `test-db` | 255 tes pgTAP: skema, RLS, parser, thread, reaksi, feed, chat, moderasi, realtime/storage, rate limit, integritas konten, admin & sanksi, privasi, role |
+| `test` | `test-db` + `test-bridge` + `test-dummy-olt` + `test-cs` |
+| `test-db` | 504 tes pgTAP: skema, RLS, parser, thread, reaksi, feed, chat, moderasi, realtime/storage, rate limit, integritas konten, admin & sanksi, privasi, role, polling, centang, badge unread, serta CS chat (kalender, state machine sesi, RLS & catatan internal, penyamaran) |
 | `test-bridge` | Unit test Go auth-bridge (di container) |
 | `smoke` | 21 cek end-to-end lewat Kong (exchange, RLS, RPC, storage) |
 | `test-flutter` | `flutter analyze` + unit/widget test package |
@@ -193,6 +196,9 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `test-dummy-olt` | Unit test Go OLT dummy (di container) |
 | `test-flutter-it-dummy` | Integration test Flutter dengan token hasil login WebSocket OLT dummy |
 | `e2e-windows-dummy` | E2E app contoh: form login OLT dummy |
+| `test-cs` | Unit test Go `customer-adapter` (di container) |
+| `smoke-cs` | 26 skenario CS chat end-to-end: nasabah, agen 2FA, penyamaran, catatan internal, adapter + OLT dummy, amankan akun (butuh `DUMMY_OLT=1`) |
+| `up PROFILE=single CS=1` / `-Profile single -Cs` | Nyalakan CS chat (`customer-adapter`) di produksi (di dev selalu aktif). Butuh endpoint OLT nasabah, lihat [docs/cs-chat](docs/cs-chat/README.md) |
 
 Produksi memakai `make up PROFILE=single`: Traefik HTTPS (Let's Encrypt), hanya path API yang publik, dan Studio mati. Lihat [docs/PRODUCTION.md](docs/PRODUCTION.md).
 

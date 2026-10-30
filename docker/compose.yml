@@ -225,7 +225,7 @@ services:
     secrets: [jwt_secret, postgrest_db_uri]
     environment:
       PGRST_DB_URI: "@/run/secrets/postgrest_db_uri"
-      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public,cs_api}
       PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
       PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
       PGRST_DB_POOL: ${PGRST_DB_POOL:-10}
@@ -456,7 +456,7 @@ services:
       POSTGRES_PASSWORD: "{{secret:postgres_password}}"
       POSTGRES_USER_READ_WRITE: postgres
       PG_META_CRYPTO_KEY: "{{secret:pg_meta_crypto_key}}"
-      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public}
+      PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public,cs_api}
       PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
       PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
       DEFAULT_ORGANIZATION_NAME: ${STUDIO_DEFAULT_ORGANIZATION:-OLT}
@@ -767,6 +767,51 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
+  # --- Customer service lewat chat (docs/cs-chat) -------------------------------
+  # Profil compose `cs`: selalu aktif di dev; produksi menyalakannya dengan
+  # CS=1 (Windows: -Cs) setelah endpoint OLT data nasabah siap.
+
+  customer-adapter:
+    <<: *base
+    profiles: [cs]
+    build:
+      context: ../services/cs
+      args:
+        SERVICE: customer-adapter
+    image: olt-social/customer-adapter:0.2.0
+    # app: Kong -> adapter, adapter -> PostgREST. egress: endpoint OLT.
+    networks: [app, egress]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+    stop_grace_period: 45s
+    secrets: [jwt_secret, olt_customer_service_token]
+    environment:
+      APP_ENV: production
+      LOG_LEVEL: ${CS_LOG_LEVEL:-info}
+      PORT: 8080
+      OPS_PORT: 9100
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      # Endpoint OLT khusus data nasabah (kredensial terpisah dari harga/login).
+      OLT_WS_URL: ${OLT_CUSTOMER_WS_URL:-}
+      OLT_SERVICE_TOKEN_FILE: /run/secrets/olt_customer_service_token
+      OLT_WS_TIMEOUT: ${OLT_CUSTOMER_WS_TIMEOUT:-5}
+      OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}
+      BREAKER_FAILURE_THRESHOLD: 5
+      BREAKER_COOLDOWN: 30
+    healthcheck:
+      test: ["CMD", "/app", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 128M, pids: 64}
+
   # Service operasional (tidak ikut `up`). Dipakai Makefile/make.ps1:
   #   docker compose run --rm tools migrate|seed|test-db|smoke|backup|restore|psql
   # Semua skrip berjalan di container Linux sehingga host Windows tidak butuh bash/psql.
@@ -782,7 +827,8 @@ services:
     configs:
       - source: with-secrets
         target: /opt/olt/with-secrets.sh
-    secrets: [postgres_password, anon_key]
+    # jwt_secret: smoke-cs menandatangani JWT agen uji (2FA) seperti GoTrue.
+    secrets: [postgres_password, anon_key, jwt_secret]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "bash", "/olt/scripts/tools.sh"]
     volumes:
       - ../scripts:/olt/scripts:ro
@@ -796,6 +842,7 @@ services:
       PGPASSWORD: "{{secret:postgres_password}}"
       SUPABASE_URL: http://kong:8000
       ANON_KEY: "{{secret:anon_key}}"
+      JWT_SECRET: "{{secret:jwt_secret}}"
 
 networks:
   edge:
@@ -863,3 +910,5 @@ secrets:
     file: ./secrets/valkey_password
   postgrest_db_uri:
     file: ./secrets/postgrest_db_uri
+  olt_customer_service_token:
+    file: ./secrets/olt_customer_service_token

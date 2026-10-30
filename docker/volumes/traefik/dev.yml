@@ -25,7 +25,7 @@ http:
 
     api:
       entryPoints: [web]
-      rule: PathPrefix(`/rest/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/bridge/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/graphql/v1`) || PathPrefix(`/pg/`)
+      rule: PathPrefix(`/rest/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/bridge/v1`) || PathPrefix(`/cs/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/graphql/v1`) || PathPrefix(`/pg/`)
       service: kong
       middlewares: [rate-limit, body-api, security-headers]
       priority: 80

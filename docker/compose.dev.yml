@@ -26,6 +26,11 @@ services:
       # Tes & hot reload memakai user yang sama berulang kali. Produksi: 10.
       RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-60}
 
+  customer-adapter:
+    environment:
+      APP_ENV: development
+      LOG_LEVEL: ${CS_LOG_LEVEL:-debug}
+
 configs:
   traefik-routes-dev:
     file: ./volumes/traefik/dev.yml
