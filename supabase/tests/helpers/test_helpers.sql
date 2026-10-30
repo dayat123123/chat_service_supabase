@@ -138,6 +138,21 @@ as $$
   update cs.agent_status set status = 'online', last_heartbeat_at = now() where agent_id = p_agent_id;
 $$;
 
+create or replace function tests.error_detail(p_sql text)
+returns text
+language plpgsql
+as $$
+declare
+  v_detail text;
+begin
+  execute p_sql;
+  return null;
+exception when others then
+  get stacked diagnostics v_detail = pg_exception_detail;
+  return v_detail;
+end;
+$$;
+
 create or replace function tests.authenticate_service()
 returns void
 language plpgsql

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:olt_social/olt_social.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 
 import '../../../support/fakes.dart';
 

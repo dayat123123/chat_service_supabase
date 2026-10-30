@@ -33,6 +33,9 @@ Kompatibilitas:
 
 - Produksi memakai HTTPS. Bila staging masih HTTP, izinkan cleartext **hanya** di `src/debug/AndroidManifest.xml`. Contohnya ada di `packages/olt_social/example/android`.
 - Pemilihan gambar memakai `file_selector`, yang membuka pemilih dokumen sistem; tidak perlu izin storage.
+- Bila memakai notifikasi lokal untuk balasan CS (`flutter_local_notifications`):
+  - tambahkan izin `android.permission.POST_NOTIFICATIONS` (Android 13+);
+  - aktifkan core library desugaring di `android/app/build.gradle.kts`: `isCoreLibraryDesugaringEnabled = true` dan `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")`.
 
 **Windows:** tidak ada konfigurasi tambahan.
 
@@ -101,6 +104,10 @@ Semua widget adalah konten tanpa `Scaffold`, sehingga OLT tetap memegang AppBar,
 | Ikon lonceng | `OltNotificationBadge(child: Icon(Icons.notifications))` → `OltNotificationList()` |
 | Halaman profil sosial | `OltUserProfile(userId: id)` |
 | Deep link post | `OltPostDetail(postId: id)` |
+| Menu "Bantuan / Chat CS" | Windows: `OltSupportChat(onClose: ...)` sebagai panel samping (lebar ±420). Android: `openOltSupport(context)` (layar penuh dengan tombol kembali) |
+| Ikon menu "Bantuan" | `OltSupportBadge(child: Icon(Icons.support_agent_outlined))` (balasan CS yang belum dibaca) |
+| Tombol bantuan di layar order / dana / portofolio | `openOltSupport(context, topic: 'orders', screen: 'order_detail', card: SupportCard(kind: SupportCardKind.order, ref: orderId))` atau `OltSupportChat(topic: ..., card: ...)` di panel samping |
+| Riwayat tiket | `OltSupportTickets()` (juga ada di menu "⋯" room CS) |
 
 Contoh tab Diskusi di halaman saham OLT:
 
@@ -113,6 +120,32 @@ TabBarView(children: [
 ```
 
 Navigasi dari dalam widget sosial memakai callback dari langkah 3. Contohnya, mengetuk `$TLKM` di sebuah post memanggil `onStockTap(context, 'TLKM')`, sehingga OLT bisa membuka halaman sahamnya sendiri.
+
+### Chat CS (modul `support`)
+
+Room CS selalu disematkan paling atas di `OltChatList` dengan badge **CS Resmi**. Mengetuknya membuka tampilan CS, bukan chat biasa.
+
+**Alur nasabah:**
+1. **Buka chat CS.** Bila sudah ada tiket aktif, `OltSupportChat` langsung membuka tiket itu.
+2. **Pilih topik.** Bila belum ada tiket aktif, nasabah memilih topik di satu layar dan boleh melampirkan order. Tiket langsung dibuat dan nasabah bisa mengetik.
+3. **Selama tiket berjalan**, nasabah melihat:
+   - header dengan nomor, topik, dan status ("Menunggu CS", "Ditangani oleh [nama] – CS Resmi", "Menunggu balasan Anda", "Selesai");
+   - pesan sistem yang ringkas;
+   - pilihan jawaban cepat dari CS;
+   - peringatan saat mengetik OTP/PIN/nomor kartu.
+4. **Setelah tiket diselesaikan**, nasabah memberi rating langsung di chat.
+
+Menu "⋯" berisi:
+- Lampirkan order
+- Ajukan pengaduan
+- Laporkan CS palsu
+- Buat tiket baru
+- Tiket saya
+- Akhiri chat
+
+Pesan yang gagal karena offline otomatis dikirim ulang saat koneksi kembali. Pengiriman ulang ini aman karena memakai `client_id` yang idempoten.
+
+**Notifikasi saat CS mengambil, membalas, atau menyelesaikan tiket.** `OltSocial.instance.support.notices()` mengalirkan `SupportNotice` (judul = nama CS, isi = cuplikan pesan) selama aplikasi berjalan. Tampilkan sebagai notifikasi lokal bila room CS sedang tidak terbuka. Contohnya ada di `example/lib/support_notifications.dart` (`flutter_local_notifications`, BSD-3: Windows toast dan Android). Push saat aplikasi tertutup membutuhkan service notifier + FCM (tahap F1 produksi).
 
 ## 6. Penanganan error
 

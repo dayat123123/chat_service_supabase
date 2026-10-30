@@ -95,11 +95,14 @@ func do(t *testing.T, h http.Handler, method, path, bearer, body string) (int, m
 	return rec.Code, out
 }
 
-const session = "8b6f2d64-6a2a-4b7e-9f3c-2c1d0e9a7b11"
+const (
+	ticket      = "8b6f2d64-6a2a-4b7e-9f3c-2c1d0e9a7b11"
+	correlation = "CS-20261030-0001/CS-0001"
+)
 
 func TestAgentProfileIsAuthorizedAuditedAndMasked(t *testing.T) {
 	api := &fakeAPI{responses: map[string]any{
-		"agent_customer_access": map[string]string{"olt_user_id": "1001", "correlation_id": session + "/CS-0001"},
+		"agent_customer_access": map[string]string{"olt_user_id": "1001", "correlation_id": correlation},
 	}}
 	client := &fakeOLT{data: map[string]any{"customer_profile": map[string]any{
 		"name": "Budi Santoso", "nik": "3174012501900001", "phone": "081234567789", "email": "budi@olt.test",
@@ -107,15 +110,15 @@ func TestAgentProfileIsAuthorizedAuditedAndMasked(t *testing.T) {
 		"rdn": map[string]any{"bank": "BCA", "number": "1234567890"},
 	}}}
 	tok := agentToken(t, time.Now().Add(time.Minute))
-	code, body := do(t, newServer(api, client), http.MethodGet, "/v1/agent/sessions/"+session+"/customer/profile", tok, "")
+	code, body := do(t, newServer(api, client), http.MethodGet, "/v1/agent/tickets/"+ticket+"/customer/profile", tok, "")
 	if code != http.StatusOK || body["available"] != true {
 		t.Fatalf("status %d: %v", code, body)
 	}
 	if api.calls[0].bearer != tok || api.calls[0].fn != "agent_customer_access" ||
-		api.calls[0].args["p_session_id"] != session || api.calls[0].args["p_kind"] != "profile" {
+		api.calls[0].args["p_ticket_id"] != ticket || api.calls[0].args["p_kind"] != "profile" {
 		t.Fatalf("izin harus diperiksa database dengan token agen: %+v", api.calls[0])
 	}
-	if client.calls[0].payload["user_id"] != "1001" || client.calls[0].payload["correlation_id"] != session+"/CS-0001" {
+	if client.calls[0].payload["user_id"] != "1001" || client.calls[0].payload["correlation_id"] != correlation {
 		t.Fatalf("payload OLT: %v", client.calls[0].payload)
 	}
 	data := body["data"].(map[string]any)
@@ -143,15 +146,15 @@ func TestAuthenticationAndValidation(t *testing.T) {
 		status                           int
 		code                             string
 	}{
-		{"tanpa token", "GET", "/v1/agent/sessions/" + session + "/customer/profile", "", "", 401, "missing_token"},
-		{"token kedaluwarsa", "GET", "/v1/agent/sessions/" + session + "/customer/profile", expired, "", 401, "invalid_token"},
+		{"tanpa token", "GET", "/v1/agent/tickets/" + ticket + "/customer/profile", "", "", 401, "missing_token"},
+		{"token kedaluwarsa", "GET", "/v1/agent/tickets/" + ticket + "/customer/profile", expired, "", 401, "invalid_token"},
 		{"token palsu", "GET", "/v1/me/orders", "a.b.c", "", 401, "invalid_token"},
-		{"sesi bukan UUID", "GET", "/v1/agent/sessions/123/customer/profile", valid, "", 400, "invalid_session"},
-		{"data di luar daftar", "GET", "/v1/agent/sessions/" + session + "/customer/portfolio", valid, "", 404, ""},
+		{"tiket bukan UUID", "GET", "/v1/agent/tickets/123/customer/profile", valid, "", 400, "invalid_ticket"},
+		{"data di luar daftar", "GET", "/v1/agent/tickets/" + ticket + "/customer/portfolio", valid, "", 404, ""},
 		{"limit di luar batas", "GET", "/v1/me/orders?limit=500", valid, "", 400, "invalid_query"},
 		{"status order asing", "GET", "/v1/me/orders?status=hilang", valid, "", 400, "invalid_query"},
 		{"tanggal bukan RFC 3339", "GET", "/v1/me/cash-transactions?from=kemarin", valid, "", 400, "invalid_query"},
-		{"field reveal asing", "POST", "/v1/agent/sessions/" + session + "/customer/reveal", valid, `{"field":"pin","reason":"x"}`, 400, "invalid_body"},
+		{"field reveal asing", "POST", "/v1/agent/tickets/" + ticket + "/customer/reveal", valid, `{"field":"pin","reason":"x"}`, 400, "invalid_body"},
 	}
 	for _, c := range cases {
 		code, body := do(t, h, c.method, c.path, c.bearer, c.body)
@@ -168,7 +171,7 @@ func TestDatabaseDecisionsArePassedThrough(t *testing.T) {
 	api := &fakeAPI{errs: map[string]error{"agent_customer_access": &postgrest.Error{
 		Status: 403, Code: "customer_data_forbidden", Message: "Anda tidak berwenang"}}}
 	client := &fakeOLT{}
-	code, body := do(t, newServer(api, client), "GET", "/v1/agent/sessions/"+session+"/customer/security",
+	code, body := do(t, newServer(api, client), "GET", "/v1/agent/tickets/"+ticket+"/customer/security",
 		agentToken(t, time.Now().Add(time.Minute)), "")
 	if code != 403 || body["code"] != "customer_data_forbidden" || len(client.calls) != 0 {
 		t.Fatalf("%d %v, OLT dipanggil %d kali", code, body, len(client.calls))
@@ -176,7 +179,7 @@ func TestDatabaseDecisionsArePassedThrough(t *testing.T) {
 
 	limited := &fakeAPI{errs: map[string]error{"agent_customer_access": &postgrest.Error{
 		Status: 429, Code: "rate_limited", Message: "Batas", RetryAfter: "300"}}}
-	req := httptest.NewRequest("GET", "/v1/agent/sessions/"+session+"/customer/profile", nil)
+	req := httptest.NewRequest("GET", "/v1/agent/tickets/"+ticket+"/customer/profile", nil)
 	req.Header.Set("Authorization", "Bearer "+agentToken(t, time.Now().Add(time.Minute)))
 	rec := httptest.NewRecorder()
 	newServer(limited, client).ServeHTTP(rec, req)
@@ -227,15 +230,15 @@ func TestCustomerOrdersUseOwnIdentity(t *testing.T) {
 
 func TestRevealIsAuthorizedFirst(t *testing.T) {
 	api := &fakeAPI{responses: map[string]any{"agent_reveal_access": map[string]any{
-		"olt_user_id": "1001", "correlation_id": session + "/CS-0001", "valid_seconds": 300}}}
+		"olt_user_id": "1001", "correlation_id": correlation, "valid_seconds": 300}}}
 	client := &fakeOLT{data: map[string]any{"customer_reveal": map[string]string{"field": "phone", "value": "081234567789"}}}
-	code, body := do(t, newServer(api, client), "POST", "/v1/agent/sessions/"+session+"/customer/reveal",
+	code, body := do(t, newServer(api, client), "POST", "/v1/agent/tickets/"+ticket+"/customer/reveal",
 		agentToken(t, time.Now().Add(time.Minute)), `{"field":"phone","reason":"identity_verification"}`)
 	data, _ := body["data"].(map[string]any)
 	if code != 200 || data["value"] != "081234567789" || data["valid_seconds"] != float64(300) {
 		t.Fatalf("%d %v", code, body)
 	}
-	if api.calls[0].args["p_session_id"] != session || api.calls[0].args["p_field"] != "phone" ||
+	if api.calls[0].args["p_ticket_id"] != ticket || api.calls[0].args["p_field"] != "phone" ||
 		api.calls[0].args["p_reason"] != "identity_verification" {
 		t.Fatalf("alasan tidak diteruskan ke database: %v", api.calls[0].args)
 	}
@@ -260,7 +263,7 @@ func TestMaskingIsIdempotent(t *testing.T) {
 
 func TestSecureAccountRecordsOutcome(t *testing.T) {
 	grant := map[string]any{"olt_user_id": "1001", "actions": []string{"logout_all", "lock_trading"},
-		"idempotency_key": "cs-secure:" + session, "correlation_id": session + "/CS-0001"}
+		"idempotency_key": "cs-secure:" + ticket, "correlation_id": correlation}
 	cases := []struct {
 		name    string
 		results map[string]string
@@ -276,7 +279,7 @@ func TestSecureAccountRecordsOutcome(t *testing.T) {
 	for _, c := range cases {
 		api := &fakeAPI{responses: map[string]any{"agent_secure_account": grant}}
 		client := &fakeOLT{err: c.err, data: map[string]any{"secure_account": map[string]any{"results": c.results}}}
-		code, body := do(t, newServer(api, client), "POST", "/v1/agent/sessions/"+session+"/customer/secure-account",
+		code, body := do(t, newServer(api, client), "POST", "/v1/agent/tickets/"+ticket+"/customer/secure-account",
 			agentToken(t, time.Now().Add(time.Minute)), "")
 		if code != c.status {
 			t.Errorf("%s: %d %v", c.name, code, body)
@@ -290,14 +293,14 @@ func TestSecureAccountRecordsOutcome(t *testing.T) {
 		if reported != c.ok {
 			t.Errorf("%s: dicatat %v, ingin %v", c.name, reported, c.ok)
 		}
-		if client.calls[0].payload["idempotency_key"] != "cs-secure:"+session {
+		if client.calls[0].payload["idempotency_key"] != "cs-secure:"+ticket {
 			t.Errorf("%s: kunci idempoten tidak dikirim", c.name)
 		}
 	}
 
 	denied := &fakeAPI{errs: map[string]error{"agent_secure_account": &postgrest.Error{Status: 403, Code: "not_handling"}}}
 	client := &fakeOLT{}
-	code, _ := do(t, newServer(denied, client), "POST", "/v1/agent/sessions/"+session+"/customer/secure-account",
+	code, _ := do(t, newServer(denied, client), "POST", "/v1/agent/tickets/"+ticket+"/customer/secure-account",
 		agentToken(t, time.Now().Add(time.Minute)), "")
 	if code != 403 || len(client.calls) != 0 {
 		t.Fatalf("agen yang tidak menangani sesi tidak boleh mengamankan akun: %d, OLT %d", code, len(client.calls))

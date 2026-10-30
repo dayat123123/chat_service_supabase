@@ -6,6 +6,10 @@ part 'chat_message.freezed.dart';
 
 enum MessageStatus { sending, sent, failed }
 
+enum MessageKind { text, system, card, quickReply, helpLink, identityRequest, csat }
+
+enum SenderRole { customer, agent, supervisor, system }
+
 @freezed
 abstract class ChatMessage with _$ChatMessage {
   const factory ChatMessage({
@@ -24,9 +28,19 @@ abstract class ChatMessage with _$ChatMessage {
     required DateTime createdAt,
     String? cursor,
     @Default(MessageStatus.sent) MessageStatus status,
+    @Default(MessageKind.text) MessageKind kind,
+    SenderRole? senderRole,
+    String? ticketId,
+    @Default(<String, Object?>{}) Map<String, Object?> payload,
   }) = _ChatMessage;
 
   const ChatMessage._();
 
   bool get isLocal => id.startsWith('local-');
+
+  bool get isSystem => senderRole == SenderRole.system;
+
+  bool get isOfficial => senderRole == SenderRole.agent || senderRole == SenderRole.supervisor;
+
+  String? get systemCode => payload['code'] as String?;
 }

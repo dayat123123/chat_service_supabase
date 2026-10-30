@@ -580,4 +580,175 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   @override
   String get errorUserMuted =>
       'Akun Anda sedang dibatasi dan belum bisa mengirim konten.';
+
+  @override
+  String get today => 'Hari ini';
+
+  @override
+  String get yesterday => 'Kemarin';
+
+  @override
+  String get supportOfficialBadge => 'CS Resmi';
+
+  @override
+  String get supportOfficialChannel => 'Layanan resmi';
+
+  @override
+  String get supportOpenLink => 'Buka panduan';
+
+  @override
+  String get supportViewCard => 'Lihat detail';
+
+  @override
+  String get supportRatePrompt => 'Beri nilai layanan ini';
+
+  @override
+  String get supportRated => 'Terima kasih atas penilaian Anda';
+
+  @override
+  String get errorSecretRequestBlocked =>
+      'Pesan ditahan: CS tidak boleh meminta OTP, PIN, atau password. Supervisor sudah diberi tahu.';
+
+  @override
+  String get supportTitle => 'Bantuan / Chat CS';
+
+  @override
+  String get supportPickTopic => 'Apa yang bisa kami bantu?';
+
+  @override
+  String get supportPickTopicHint =>
+      'Pilih topik agar CS yang tepat langsung membantu Anda.';
+
+  @override
+  String get supportAttachOrder => 'Lampirkan order';
+
+  @override
+  String supportAttached(String ref) {
+    return 'Order $ref ikut dilampirkan';
+  }
+
+  @override
+  String get supportHistory => 'Lihat riwayat chat';
+
+  @override
+  String supportOutOfHours(String time) {
+    return 'CS sedang di luar jam layanan. Pesan Anda dibalas mulai $time.';
+  }
+
+  @override
+  String get supportStatusWaiting => 'Menunggu CS';
+
+  @override
+  String supportQueueAhead(int count) {
+    return '$count tiket di depan Anda';
+  }
+
+  @override
+  String supportStatusHandled(String name) {
+    return 'Ditangani oleh $name – CS Resmi';
+  }
+
+  @override
+  String get supportStatusWaitingYou => 'Menunggu balasan Anda';
+
+  @override
+  String get supportStatusResolved => 'Selesai';
+
+  @override
+  String get supportStatusClosed => 'Ditutup';
+
+  @override
+  String get supportMenu => 'Menu bantuan';
+
+  @override
+  String get supportEndChat => 'Akhiri chat';
+
+  @override
+  String get supportEndConfirm => 'Akhiri chat dan tandai tiket ini selesai?';
+
+  @override
+  String get supportComplaint => 'Ajukan pengaduan';
+
+  @override
+  String get supportComplaintConfirm =>
+      'Tiket ini akan dicatat sebagai pengaduan resmi dengan tenggat penyelesaian. Lanjutkan?';
+
+  @override
+  String get supportReportFake => 'Laporkan CS palsu';
+
+  @override
+  String get supportReportFakeHint =>
+      'Ceritakan kejadiannya: siapa yang menghubungi, lewat apa, dan apa yang diminta.';
+
+  @override
+  String get supportSend => 'Kirim';
+
+  @override
+  String get supportMyTickets => 'Tiket saya';
+
+  @override
+  String get supportNoTickets => 'Belum ada tiket.';
+
+  @override
+  String get supportNewTicket => 'Buat tiket baru';
+
+  @override
+  String get supportRateTitle => 'Nilai layanan CS';
+
+  @override
+  String get supportRateComment => 'Komentar (opsional)';
+
+  @override
+  String get supportRateSubmit => 'Kirim nilai';
+
+  @override
+  String supportSensitiveWarning(String kinds) {
+    return 'Pesan ini berisi $kinds dan akan disamarkan. CS OLT tidak pernah meminta OTP, PIN, atau password.';
+  }
+
+  @override
+  String get supportKindOtp => 'kode OTP';
+
+  @override
+  String get supportKindPassword => 'password/PIN';
+
+  @override
+  String get supportKindCard => 'nomor kartu';
+
+  @override
+  String get supportKindNik => 'NIK';
+
+  @override
+  String get supportKindAccount => 'nomor rekening';
+
+  @override
+  String get supportComplaintFiled =>
+      'Pengaduan dicatat. Tenggat penyelesaian tampil di chat.';
+
+  @override
+  String get supportFakeReported =>
+      'Laporan terkirim. Tim kami segera menindaklanjuti.';
+
+  @override
+  String get supportClosed => 'Chat diakhiri.';
+
+  @override
+  String get supportCardSent => 'Order dilampirkan ke chat.';
+
+  @override
+  String get supportNoOrders => 'Tidak ada order terbaru.';
+
+  @override
+  String supportTicketMeta(String date, String status) {
+    return '$date · $status';
+  }
+
+  @override
+  String supportRating(int rating) {
+    return 'Nilai $rating/5';
+  }
+
+  @override
+  String get supportUnavailable =>
+      'Chat CS belum tersedia. Coba lagi sebentar lagi.';
 }

@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:olt_social/src/core/auth/token_manager.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:olt_social/src/core/auth/session_tokens.dart';
 import 'package:olt_social/src/core/error/error_mapper.dart';
 import 'package:olt_social/src/core/error/olt_social_exception.dart';
 import 'package:olt_social/src/core/network/authorized_image.dart';
@@ -10,6 +13,8 @@ abstract interface class SocialRemoteDataSource {
   String? get currentUserId;
 
   Future<String> requireUserId();
+
+  SocialRemoteDataSource inSchema(String schema);
 
   Future<List<Map<String, dynamic>>> rpcRows(String fn, [Map<String, Object?> params = const {}]);
 
@@ -28,29 +33,55 @@ abstract interface class SocialRemoteDataSource {
   String publicUrl(String bucket, String path);
 
   Future<AuthorizedImage> authorizedObject(String bucket, String path);
+
+  Future<Object?> gatewayJson(String path, {Map<String, String>? query});
 }
 
 class SupabaseSocialDataSource implements SocialRemoteDataSource {
-  SupabaseSocialDataSource(this._client, this._tokens, {required String supabaseUrl, required this._anonKey})
-    : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), '');
+  SupabaseSocialDataSource(
+    this._client,
+    this._tokens, {
+    required String supabaseUrl,
+    required this._anonKey,
+    http.Client? httpClient,
+  }) : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), ''),
+       _http = httpClient ?? http.Client(),
+       _schema = null;
+
+  SupabaseSocialDataSource._forSchema(SupabaseSocialDataSource base, String this._schema)
+    : _client = base._client,
+      _tokens = base._tokens,
+      _supabaseUrl = base._supabaseUrl,
+      _anonKey = base._anonKey,
+      _http = base._http;
 
   final SupabaseClient _client;
-  final TokenManager _tokens;
+  final SessionTokens _tokens;
   final String _supabaseUrl;
   final String _anonKey;
+  final http.Client _http;
+  final String? _schema;
 
   @override
-  String? get currentUserId => _tokens.currentSession?.user.id;
+  String? get currentUserId => _tokens.currentUserId;
 
   @override
   Future<String> requireUserId() async {
     final id = currentUserId;
     if (id != null) return id;
     try {
-      return (await _tokens.refresh()).user.id;
+      return await _tokens.refreshUserId();
     } catch (e) {
       throw mapError(e);
     }
+  }
+
+  @override
+  SocialRemoteDataSource inSchema(String schema) => SupabaseSocialDataSource._forSchema(this, schema);
+
+  PostgrestFilterBuilder<T> _rpc<T>(String fn, Map<String, Object?> params) {
+    final schema = _schema;
+    return schema == null ? _client.rpc<T>(fn, params: params) : _client.schema(schema).rpc<T>(fn, params: params);
   }
 
   Future<T> _run<T>(Future<T> Function() fn) async {
@@ -59,7 +90,7 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
     } on PostgrestException catch (e) {
       if (!jwtErrorCodes.contains(e.code)) throw mapError(e);
       try {
-        await _tokens.refresh();
+        await _tokens.refreshUserId();
         return await fn();
       } catch (retryError) {
         throw mapError(retryError);
@@ -71,13 +102,13 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
   @override
   Future<List<Map<String, dynamic>>> rpcRows(String fn, [Map<String, Object?> params = const {}]) => _run(() async {
-    final res = await _client.rpc<Object?>(fn, params: params);
+    final res = await _rpc<Object?>(fn, params);
     return (res as List<Object?>? ?? const []).cast<Map<String, dynamic>>();
   });
 
   @override
   Future<Object?> rpcValue(String fn, [Map<String, Object?> params = const {}]) =>
-      _run(() async => await _client.rpc<Object?>(fn, params: params));
+      _run(() async => await _rpc<Object?>(fn, params));
 
   @override
   Future<void> insert(String table, Map<String, Object?> values) =>
@@ -113,6 +144,31 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
   @override
   String publicUrl(String bucket, String path) => _client.storage.from(bucket).getPublicUrl(path);
+
+  @override
+  Future<Object?> gatewayJson(String path, {Map<String, String>? query}) async {
+    try {
+      final uri = Uri.parse('$_supabaseUrl/$path').replace(queryParameters: query);
+      final response = await _http.get(uri, headers: {
+        'apikey': _anonKey,
+        'Authorization': 'Bearer ${await _tokens.accessToken()}',
+      });
+      final body = jsonDecode(utf8.decode(response.bodyBytes));
+      final map = body is Map<String, dynamic> ? body : const <String, dynamic>{};
+      if (response.statusCode == 200 && map['available'] == true) return map['data'];
+      final kind = switch (response.statusCode) {
+        401 => OltSocialErrorKind.unauthenticated,
+        403 => OltSocialErrorKind.forbidden,
+        404 => OltSocialErrorKind.notFound,
+        400 => OltSocialErrorKind.invalidInput,
+        429 => OltSocialErrorKind.rateLimited,
+        _ => OltSocialErrorKind.unavailable,
+      };
+      throw OltSocialException(kind, code: map['code'] as String?, message: map['message'] as String?);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
 
   @override
   Future<AuthorizedImage> authorizedObject(String bucket, String path) async {

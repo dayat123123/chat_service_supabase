@@ -20,7 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-cs', 'smoke-cs')]
+                 'test-cs', 'smoke-cs', 'cs-race', 'cs-demo', 'cs-console', 'cs-totp')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
@@ -85,6 +85,13 @@ function Invoke-Docker {
 function Invoke-Compose { param([string[]]$Arguments) Invoke-Docker ($Compose + $Arguments) }
 
 function Invoke-Tools { param([string[]]$Arguments) Invoke-Compose (@('run', '--rm', 'tools') + $Arguments) }
+
+function Remove-Containers {
+    param([string[]]$Names)
+    foreach ($name in $Names) {
+        if (& docker ps -aq --filter "name=^$name$") { Invoke-Docker @('rm', '-f', $name) | Out-Null }
+    }
+}
 
 function Get-EnvValue {
     param([string]$Key)
@@ -156,6 +163,10 @@ switch ($Target) {
   Customer service lewat chat (dev: selalu aktif; produksi: -Profile single -Cs)
   test-cs       Unit test customer-adapter (Go, di container)
   smoke-cs      Smoke test CS chat end-to-end lewat API asli (butuh up -DummyOlt)
+  cs-race       Tes rebutan klaim tiket CS: DB langsung + 3 replika PostgREST khusus tes
+  cs-demo       Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up -DummyOlt)
+  cs-console    Web CS (Flutter web) di http://localhost:8084 + akun staf dev dengan TOTP (butuh up -DummyOlt)
+  cs-totp       Kode TOTP saat ini untuk akun staf dev
 '@
     }
     'up' {
@@ -231,8 +242,11 @@ switch ($Target) {
         Write-Host 'App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)'
     }
     'license-audit' {
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
-        try { Invoke-Native 'dart' @('run', 'tool/license_audit.dart') } finally { Pop-Location }
+        $tool = Join-Path $PSScriptRoot 'packages/olt_social/tool/license_audit.dart'
+        foreach ($dir in 'packages/olt_social', 'apps/cs-console') {
+            Push-Location (Join-Path $PSScriptRoot $dir)
+            try { Invoke-Native 'dart' @('run', $tool) } finally { Pop-Location }
+        }
     }
     'smoke' { Assert-Config; Invoke-Tools @('smoke') }
     'backup' {
@@ -272,6 +286,60 @@ switch ($Target) {
     }
     'smoke-dummy' { Assert-Config; Invoke-Docker ($DummyCompose + @('run', '--rm', 'tools', 'smoke-dummy')) }
     'smoke-cs' { Assert-Config; Invoke-Docker ($DummyCompose + @('run', '--rm', 'tools', 'smoke-cs')) }
+    'cs-race' {
+        Assert-Config
+        $replicas = 1..3 | ForEach-Object { "olt-cs-race-rest-$_" }
+        Remove-Containers $replicas
+        try {
+            foreach ($name in $replicas) { Invoke-Compose @('run', '-d', '--no-deps', '-e', 'PGRST_DB_POOL=3', '--name', $name, 'rest') | Out-Null }
+            Invoke-Tools (@('cs-race') + ($replicas | ForEach-Object { "http://${_}:3000" }))
+        } finally {
+            Remove-Containers $replicas
+        }
+    }
+    'cs-demo' {
+        Assert-Config
+        $demo = Join-Path $PSScriptRoot 'scripts/cs-demo'
+        $runtime = Join-Path $demo 'runtime'
+        New-Item -ItemType Directory -Force $runtime | Out-Null
+        $config = Invoke-Docker ($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-demo-config'))
+        [IO.File]::WriteAllText((Join-Path $runtime 'config.js'), (($config | Out-String).Trim() + "`n"))
+        Remove-Containers @('olt-cs-demo')
+        Invoke-Docker @('run', '-d', '--name', 'olt-cs-demo', '--restart', 'unless-stopped', '-p', '127.0.0.1:8082:8082',
+                        '-v', "${demo}:/srv:ro", $WebImage, 'caddy', 'file-server', '--root', '/srv', '--listen', ':8082')
+        Write-Host 'Demo CS: http://localhost:8082  (stop: docker rm -f olt-cs-demo)'
+    }
+    'cs-console' {
+        Assert-Config
+        $runtime = Join-Path $PSScriptRoot 'scripts/cs-demo/runtime'
+        New-Item -ItemType Directory -Force $runtime | Out-Null
+        $staffFile = Join-Path $runtime 'staff.json'
+        $previous = if (Test-Path -LiteralPath $staffFile) { Get-Content -LiteralPath $staffFile -Raw } else { '{}' }
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try { $staff = $previous | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-staff')) 2>$null }
+        finally { $ErrorActionPreference = $prev }
+        if ($LASTEXITCODE -ne 0) { throw "akun staf dev gagal disiapkan (exit $LASTEXITCODE)" }
+        [IO.File]::WriteAllText($staffFile, (($staff | Out-String).Trim() + "`n"))
+        $anon = Get-AnonKey
+        $console = Join-Path $PSScriptRoot 'apps/cs-console'
+        Push-Location $console
+        try {
+            Invoke-Native 'flutter' @('build', 'web', '--release', '--no-web-resources-cdn', '--pwa-strategy=none',
+                                      "--dart-define=CS_CONSOLE_ANON_KEY=$anon")
+        } finally { Pop-Location }
+        Remove-Containers @('olt-cs-console')
+        Invoke-Docker @('run', '-d', '--name', 'olt-cs-console', '--restart', 'unless-stopped', '-p', '127.0.0.1:8084:8084',
+                        '-v', "$(Join-Path $console 'build/web'):/srv:ro", $WebImage, 'caddy', 'file-server', '--root', '/srv',
+                        '--listen', ':8084') | Out-Null
+        Write-Host 'CS Console: http://localhost:8084  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: .\make.ps1 cs-totp)'
+    }
+    'cs-totp' {
+        Assert-Config
+        $staffFile = Join-Path $PSScriptRoot 'scripts/cs-demo/runtime/staff.json'
+        if (-not (Test-Path -LiteralPath $staffFile)) { throw 'Akun staf dev belum ada. Jalankan: .\make.ps1 cs-console' }
+        Get-Content -LiteralPath $staffFile -Raw | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-totp'))
+    }
     'test-cs' {
         $src = Join-Path $PSScriptRoot 'services/cs'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')

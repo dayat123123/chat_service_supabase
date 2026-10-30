@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/app/olt_social_scope.dart';
 import 'package:olt_social/src/core/network/realtime_status.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
+import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
 import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/message_composer.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/message_list.dart';
@@ -14,25 +15,42 @@ import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
 import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
 
 class OltChatRoom extends StatelessWidget {
-  const OltChatRoom({super.key, required this.roomId, this.showHeader = true});
+  const OltChatRoom({
+    super.key,
+    required this.roomId,
+    this.showHeader = true,
+    this.repository,
+    this.header,
+    this.composer,
+  });
 
   final String roomId;
   final bool showHeader;
+  final ChatRepository? repository;
+  final Widget? header;
+  final Widget? composer;
 
   @override
   Widget build(BuildContext context) {
     final deps = OltSocialScope.of(context);
     return BlocProvider(
-      create: (_) => ChatRoomCubit(chat: deps.chat, media: deps.media, me: deps.ensureSignedIn, roomId: roomId)..load(),
-      child: _ChatRoomView(showHeader: showHeader),
+      create: (_) => ChatRoomCubit(
+        chat: repository ?? deps.chat,
+        media: deps.media,
+        me: deps.ensureSignedIn,
+        roomId: roomId,
+      )..load(),
+      child: _ChatRoomView(showHeader: showHeader, header: header, composer: composer),
     );
   }
 }
 
 class _ChatRoomView extends StatelessWidget {
-  const _ChatRoomView({required this.showHeader});
+  const _ChatRoomView({required this.showHeader, this.header, this.composer});
 
   final bool showHeader;
+  final Widget? header;
+  final Widget? composer;
 
   @override
   Widget build(BuildContext context) {
@@ -47,12 +65,12 @@ class _ChatRoomView extends StatelessWidget {
           LoadStatus.failure => OltErrorView(error: state.error!, onRetry: cubit.load),
           LoadStatus.ready => Column(
             children: [
-              if (showHeader) const RoomHeader(),
+              if (header != null) header! else if (showHeader) const RoomHeader(),
               const _ReconnectBanner(),
               const Expanded(child: MessageList()),
               const _TypingIndicator(),
               const Divider(height: 1),
-              const MessageComposer(),
+              composer ?? const MessageComposer(),
             ],
           ),
         };

@@ -192,8 +192,12 @@ services:
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
       # User OLT tidak signup lewat GoTrue; JWT diterbitkan auth-bridge.
+      # Login email + password hanya untuk akun staf (CS/admin) yang dibuat admin, wajib TOTP (aal2).
       GOTRUE_DISABLE_SIGNUP: "true"
-      GOTRUE_EXTERNAL_EMAIL_ENABLED: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_PASSWORD_MIN_LENGTH: "12"
+      GOTRUE_MFA_TOTP_ENROLL_ENABLED: "true"
+      GOTRUE_MFA_TOTP_VERIFY_ENABLED: "true"
       GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
       GOTRUE_MAILER_AUTOCONFIRM: "false"
@@ -778,7 +782,7 @@ services:
       context: ../services/cs
       args:
         SERVICE: customer-adapter
-    image: olt-social/customer-adapter:0.2.0
+    image: olt-social/customer-adapter:0.3.0
     # app: Kong -> adapter, adapter -> PostgREST. egress: endpoint OLT.
     networks: [app, egress]
     depends_on:

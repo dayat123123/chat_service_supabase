@@ -3,6 +3,7 @@ import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/receipt_icon.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/room_visuals.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/typing_text.dart';
+import 'package:olt_social/src/features/support/presentation/widgets/support_message_parts.dart';
 import 'package:olt_social/src/shared/domain/entities/user.dart';
 import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
@@ -34,7 +35,17 @@ class RoomTile extends StatelessWidget {
       selected: selected,
       onTap: onTap,
       leading: roomAvatar(context, room, online: online),
-      title: Text(roomTitle(room), maxLines: 1, overflow: TextOverflow.ellipsis),
+      title: room.type == RoomType.support
+          ? Row(
+              children: [
+                Flexible(child: Text(roomTitle(room), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                const SizedBox(width: 6),
+                OfficialBadge(color: OltSocialTheme.of(context).link),
+                const SizedBox(width: 4),
+                Icon(Icons.push_pin, size: 14, color: theme.colorScheme.outline),
+              ],
+            )
+          : Text(roomTitle(room), maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: typing.isNotEmpty ? _typingLine(context) : _previewLine(context),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,

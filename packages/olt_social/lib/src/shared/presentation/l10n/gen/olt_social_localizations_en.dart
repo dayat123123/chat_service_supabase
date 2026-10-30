@@ -598,4 +598,175 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   @override
   String get errorUserMuted =>
       'Your account is temporarily restricted from posting.';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get yesterday => 'Yesterday';
+
+  @override
+  String get supportOfficialBadge => 'Official CS';
+
+  @override
+  String get supportOfficialChannel => 'Official support';
+
+  @override
+  String get supportOpenLink => 'Open guide';
+
+  @override
+  String get supportViewCard => 'View details';
+
+  @override
+  String get supportRatePrompt => 'Rate this service';
+
+  @override
+  String get supportRated => 'Thanks for your rating';
+
+  @override
+  String get errorSecretRequestBlocked =>
+      'Message held: support staff may not ask for OTP, PIN, or passwords. A supervisor has been notified.';
+
+  @override
+  String get supportTitle => 'Help / Chat with CS';
+
+  @override
+  String get supportPickTopic => 'How can we help?';
+
+  @override
+  String get supportPickTopicHint =>
+      'Pick a topic so the right agent can help you right away.';
+
+  @override
+  String get supportAttachOrder => 'Attach an order';
+
+  @override
+  String supportAttached(String ref) {
+    return 'Order $ref will be attached';
+  }
+
+  @override
+  String get supportHistory => 'View chat history';
+
+  @override
+  String supportOutOfHours(String time) {
+    return 'Support is closed right now. We\'ll reply from $time.';
+  }
+
+  @override
+  String get supportStatusWaiting => 'Waiting for an agent';
+
+  @override
+  String supportQueueAhead(int count) {
+    return '$count tickets ahead of you';
+  }
+
+  @override
+  String supportStatusHandled(String name) {
+    return 'Handled by $name – Official CS';
+  }
+
+  @override
+  String get supportStatusWaitingYou => 'Waiting for your reply';
+
+  @override
+  String get supportStatusResolved => 'Resolved';
+
+  @override
+  String get supportStatusClosed => 'Closed';
+
+  @override
+  String get supportMenu => 'Support menu';
+
+  @override
+  String get supportEndChat => 'End chat';
+
+  @override
+  String get supportEndConfirm => 'End this chat and mark the ticket as done?';
+
+  @override
+  String get supportComplaint => 'File a complaint';
+
+  @override
+  String get supportComplaintConfirm =>
+      'This ticket will be recorded as a formal complaint with a resolution deadline. Continue?';
+
+  @override
+  String get supportReportFake => 'Report a fake agent';
+
+  @override
+  String get supportReportFakeHint =>
+      'Tell us what happened: who contacted you, how, and what they asked for.';
+
+  @override
+  String get supportSend => 'Send';
+
+  @override
+  String get supportMyTickets => 'My tickets';
+
+  @override
+  String get supportNoTickets => 'No tickets yet.';
+
+  @override
+  String get supportNewTicket => 'New ticket';
+
+  @override
+  String get supportRateTitle => 'Rate our support';
+
+  @override
+  String get supportRateComment => 'Comment (optional)';
+
+  @override
+  String get supportRateSubmit => 'Submit rating';
+
+  @override
+  String supportSensitiveWarning(String kinds) {
+    return 'This message contains $kinds and will be masked. OLT support never asks for your OTP, PIN, or password.';
+  }
+
+  @override
+  String get supportKindOtp => 'an OTP code';
+
+  @override
+  String get supportKindPassword => 'a password/PIN';
+
+  @override
+  String get supportKindCard => 'a card number';
+
+  @override
+  String get supportKindNik => 'an ID number';
+
+  @override
+  String get supportKindAccount => 'an account number';
+
+  @override
+  String get supportComplaintFiled =>
+      'Complaint recorded. The resolution deadline is shown in the chat.';
+
+  @override
+  String get supportFakeReported =>
+      'Report sent. Our team will follow up shortly.';
+
+  @override
+  String get supportClosed => 'Chat ended.';
+
+  @override
+  String get supportCardSent => 'Order attached to the chat.';
+
+  @override
+  String get supportNoOrders => 'No recent orders.';
+
+  @override
+  String supportTicketMeta(String date, String status) {
+    return '$date · $status';
+  }
+
+  @override
+  String supportRating(int rating) {
+    return 'Rated $rating/5';
+  }
+
+  @override
+  String get supportUnavailable =>
+      'Support chat is unavailable. Please try again shortly.';
 }

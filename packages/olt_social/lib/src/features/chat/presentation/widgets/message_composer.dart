@@ -7,7 +7,10 @@ import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 import 'package:olt_social/src/shared/presentation/widgets/olt_composer_field.dart';
 
 class MessageComposer extends StatefulWidget {
-  const MessageComposer({super.key});
+  const MessageComposer({super.key, this.onChanged, this.leading = const []});
+
+  final ValueChanged<String>? onChanged;
+  final List<Widget> leading;
 
   @override
   State<MessageComposer> createState() => _MessageComposerState();
@@ -20,7 +23,10 @@ class _MessageComposerState extends State<MessageComposer> {
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() => context.read<ChatRoomCubit>().onTextChanged(_controller.text));
+    _controller.addListener(() {
+      context.read<ChatRoomCubit>().onTextChanged(_controller.text);
+      widget.onChanged?.call(_controller.text);
+    });
   }
 
   @override
@@ -87,6 +93,7 @@ class _MessageComposerState extends State<MessageComposer> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    ...widget.leading,
                     IconButton(
                       tooltip: l10n.composeAddImage,
                       onPressed: state.uploading ? null : _pickImage,

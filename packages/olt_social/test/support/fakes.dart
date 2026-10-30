@@ -119,6 +119,7 @@ class FakeChatRepository extends Fake implements ChatRepository {
   int unreadChats = 0;
   int unreadChatCalls = 0;
   Object? unreadChatError;
+  Object? sendError;
 
   @override
   Future<List<ChatRoom>> getRooms() async => rooms;
@@ -157,6 +158,27 @@ class FakeChatRepository extends Fake implements ChatRepository {
 
   @override
   Future<void> markRoomRead(String roomId) async => readRooms.add(roomId);
+
+  @override
+  Future<ChatMessage> sendMessage(
+    String roomId, {
+    required String body,
+    required String clientId,
+    String? replyToId,
+    List<Attachment> attachments = const [],
+  }) async {
+    final error = sendError;
+    if (error != null) throw error;
+    return ChatMessage(
+      id: 'srv-$clientId',
+      roomId: roomId,
+      senderId: me.id,
+      sender: me,
+      body: body,
+      clientId: clientId,
+      createdAt: DateTime.now().toUtc(),
+    );
+  }
 
   @override
   ChatRoomConnection connectRoom(String roomId, {required UserSummary me}) => FakeRoomConnection(roomEvents.stream);

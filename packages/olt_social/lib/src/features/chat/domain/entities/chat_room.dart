@@ -4,7 +4,7 @@ import 'package:olt_social/src/shared/domain/entities/user.dart';
 
 part 'chat_room.freezed.dart';
 
-enum RoomType { direct, group, stock }
+enum RoomType { direct, group, stock, support }
 
 enum MemberRole { owner, admin, member }
 

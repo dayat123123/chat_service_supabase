@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:olt_social/src/core/error/error_mapper.dart';
+import 'package:olt_social/src/core/error/olt_social_exception.dart';
 import 'package:olt_social/src/core/network/realtime_status.dart';
 import 'package:olt_social/src/core/paging/paged.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
@@ -139,7 +141,10 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
             status == RealtimeStatus.connected && _wasConnected && state.connection != RealtimeStatus.connected;
         if (status == RealtimeStatus.connected) _wasConnected = true;
         emit(state.copyWith(connection: status));
-        if (reconnected) unawaited(_fillGap());
+        if (reconnected) {
+          unawaited(_fillGap());
+          unawaited(_resendFailed());
+        }
       case SignalsConnectionChanged(:final status):
         final previous = _signals;
         _signals = status;
@@ -280,6 +285,12 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     await _deliver(local);
   }
 
+  Future<void> _resendFailed() async {
+    for (final message in [...state.messages.reversed]) {
+      if (message.isLocal && message.status == MessageStatus.failed) await retry(message);
+    }
+  }
+
   Future<void> retry(ChatMessage message) async {
     if (message.status != MessageStatus.failed) return;
     _setStatus(message.clientId, MessageStatus.sending);
@@ -297,9 +308,21 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       );
       _upsert(sent);
     } catch (e) {
-      _setStatus(local.clientId, MessageStatus.failed);
+      if (mapError(e).kind == OltSocialErrorKind.contentBlocked) {
+        _removeLocal(local.clientId);
+      } else {
+        _setStatus(local.clientId, MessageStatus.failed);
+      }
       _fail(e);
     }
+  }
+
+  void _removeLocal(String? clientId) {
+    if (isClosed || clientId == null) return;
+    emit(state.copyWith(messages: [
+      for (final m in state.messages)
+        if (!(m.isLocal && m.clientId == clientId)) m,
+    ]));
   }
 
   void _setStatus(String? clientId, MessageStatus status) {

@@ -4,7 +4,7 @@ import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
 
 String roomTitle(ChatRoom room) => switch (room.type) {
   RoomType.direct => room.otherUser?.name ?? '',
-  RoomType.group => room.name ?? '',
+  RoomType.group || RoomType.support => room.name ?? '',
   RoomType.stock => '\$${room.stockCode}',
 };
 
@@ -23,6 +23,12 @@ Widget roomAvatar(BuildContext context, ChatRoom room, {bool online = false, dou
       backgroundColor: scheme.primaryContainer,
       foregroundColor: scheme.onPrimaryContainer,
       child: const Icon(Icons.show_chart),
+    ),
+    RoomType.support => CircleAvatar(
+      radius: radius,
+      backgroundColor: scheme.primary,
+      foregroundColor: scheme.onPrimary,
+      child: const Icon(Icons.support_agent),
     ),
   };
 }

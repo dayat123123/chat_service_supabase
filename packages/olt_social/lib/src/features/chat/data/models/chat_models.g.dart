@@ -30,6 +30,11 @@ _ChatMessageModel _$ChatMessageModelFromJson(Map<String, dynamic> json) =>
           : DateTime.parse(json['edited_at'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
       cursor: json['cursor'] as String?,
+      kind: json['kind'] as String?,
+      senderRole: json['sender_role'] as String?,
+      sessionId: json['session_id'] as String?,
+      payload:
+          json['payload'] as Map<String, dynamic>? ?? const <String, dynamic>{},
     );
 
 Map<String, dynamic> _$ChatMessageModelToJson(_ChatMessageModel instance) =>
@@ -50,6 +55,10 @@ Map<String, dynamic> _$ChatMessageModelToJson(_ChatMessageModel instance) =>
       'edited_at': instance.editedAt?.toIso8601String(),
       'created_at': instance.createdAt.toIso8601String(),
       'cursor': instance.cursor,
+      'kind': instance.kind,
+      'sender_role': instance.senderRole,
+      'session_id': instance.sessionId,
+      'payload': instance.payload,
     };
 
 _MessageRowModel _$MessageRowModelFromJson(Map<String, dynamic> json) =>
@@ -72,6 +81,11 @@ _MessageRowModel _$MessageRowModelFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['deleted_at'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
+      kind: json['kind'] as String?,
+      senderRole: json['sender_role'] as String?,
+      sessionId: json['session_id'] as String?,
+      payload:
+          json['payload'] as Map<String, dynamic>? ?? const <String, dynamic>{},
     );
 
 Map<String, dynamic> _$MessageRowModelToJson(_MessageRowModel instance) =>
@@ -86,6 +100,10 @@ Map<String, dynamic> _$MessageRowModelToJson(_MessageRowModel instance) =>
       'edited_at': instance.editedAt?.toIso8601String(),
       'deleted_at': instance.deletedAt?.toIso8601String(),
       'created_at': instance.createdAt.toIso8601String(),
+      'kind': instance.kind,
+      'sender_role': instance.senderRole,
+      'session_id': instance.sessionId,
+      'payload': instance.payload,
     };
 
 _RoomSummaryModel _$RoomSummaryModelFromJson(Map<String, dynamic> json) =>

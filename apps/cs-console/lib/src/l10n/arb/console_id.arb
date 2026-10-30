@@ -1,0 +1,748 @@
+{
+  "@@locale": "id",
+  "appTitle": "CS Console",
+  "loginTitle": "Masuk ke CS Console",
+  "loginSubtitle": "Khusus CS dan supervisor OLT. Akses hanya lewat jaringan internal (VPN).",
+  "email": "Email",
+  "password": "Password",
+  "showPassword": "Tampilkan password",
+  "hidePassword": "Sembunyikan password",
+  "signIn": "Masuk",
+  "signOut": "Keluar",
+  "useOtherAccount": "Pakai akun lain",
+  "totpTitle": "Verifikasi dua langkah",
+  "totpHint": "Masukkan 6 digit kode dari aplikasi authenticator Anda.",
+  "totpCode": "Kode 6 digit",
+  "verify": "Verifikasi",
+  "enrollTitle": "Aktifkan verifikasi dua langkah",
+  "enrollHint": "Akun CS wajib memakai aplikasi authenticator. Pindai kode QR ini atau masukkan kunci di bawah secara manual, lalu masukkan kode 6 digit yang muncul.",
+  "enrollKey": "Kunci manual",
+  "enrollActivate": "Aktifkan & masuk",
+  "copy": "Salin",
+  "signedOutIdle": "Anda keluar otomatis karena tidak aktif {minutes} menit.",
+  "@signedOutIdle": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "signedOutExpired": "Sesi berakhir. Silakan masuk lagi.",
+  "signedOutNotStaff": "Akun ini bukan akun CS aktif.",
+  "errorInvalidLogin": "Email atau password salah.",
+  "errorInvalidCode": "Kode verifikasi salah atau kedaluwarsa. Coba kode terbaru.",
+  "errorTooManyAttempts": "Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.",
+  "errorNetwork": "Tidak bisa terhubung ke server. Periksa jaringan atau VPN.",
+  "errorUnavailable": "Layanan sedang sibuk. Coba lagi sebentar lagi.",
+  "errorSecretRequestBlocked": "Pesan ditahan: CS tidak boleh meminta OTP, PIN, atau password. Supervisor sudah diberi tahu.",
+  "errorGeneric": "Terjadi kesalahan. Coba lagi.",
+  "idleTitle": "Masih di sana?",
+  "idleBody": "Anda akan keluar otomatis dalam {seconds} detik karena tidak ada aktivitas.",
+  "@idleBody": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "idleStay": "Tetap masuk",
+  "statusOnline": "Online",
+  "statusBusy": "Sibuk",
+  "statusBreak": "Istirahat",
+  "statusOffline": "Offline",
+  "changeStatus": "Ubah status",
+  "activeTickets": "Tiket aktif {count}/{max}",
+  "@activeTickets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "activeTicketsHint": "Tiket yang sedang Anda tangani dibanding batas maksimal",
+  "alertsSettings": "Notifikasi",
+  "alertsNewTickets": "Notifikasi tiket baru",
+  "alertsAll": "Semua tiket baru",
+  "alertsHighPriority": "Prioritas tinggi saja (P1–P2)",
+  "alertsOff": "Mati",
+  "alertsAllowBrowser": "Izinkan notifikasi browser",
+  "alertsBlocked": "Notifikasi browser diblokir (ubah di pengaturan browser)",
+  "alertsTestSound": "Tes suara",
+  "alertNewTicket": "Tiket baru",
+  "alertNewUrgentTicket": "Tiket baru prioritas tinggi",
+  "alertCustomerMessage": "Pesan baru dari nasabah",
+  "alertOpenTicket": "Buka tiket untuk membalas",
+  "alertTransferRequest": "Permintaan transfer dari {name}",
+  "@alertTransferRequest": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alertFakeCs": "Laporan CS palsu",
+  "alertSecretRequest": "CS mencoba meminta OTP/PIN/password",
+  "account": "Akun",
+  "roleAgent": "CS",
+  "roleSupervisor": "Supervisor",
+  "roleAdmin": "Admin CS",
+  "roleCompliance": "Kepatuhan",
+  "tabOpen": "Terbuka",
+  "tabMine": "Saya",
+  "tabResolvedToday": "Selesai hari ini",
+  "tabAllActive": "Semua aktif",
+  "searchHint": "Cari nomor tiket, nama, kode nasabah, isi pesan",
+  "filterTopic": "Topik",
+  "filterPriority": "Prioritas",
+  "filterFlag": "Tanda",
+  "filterAll": "Semua",
+  "clearFilters": "Hapus filter",
+  "flagComplaint": "Pengaduan",
+  "flagFraud": "Fraud",
+  "flagVip": "VIP",
+  "claim": "Ambil",
+  "waiting": "menunggu {duration}",
+  "@waiting": {
+    "placeholders": {
+      "duration": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyOpen": "Tidak ada tiket terbuka. Tiket baru akan muncul di sini.",
+  "emptyMine": "Belum ada tiket yang Anda tangani.",
+  "emptyResolved": "Belum ada tiket selesai hari ini.",
+  "emptyAllActive": "Tidak ada tiket yang sedang ditangani.",
+  "emptySearch": "Tidak ada tiket yang cocok.",
+  "handledBy": "Ditangani oleh {name}",
+  "@handledBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "you": "Anda",
+  "transferFrom": "Transfer dari {name}",
+  "@transferFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "transferWaiting": "Menunggu {name} menerima transfer",
+  "@transferWaiting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accept": "Terima",
+  "reject": "Tolak",
+  "cancel": "Batal",
+  "retry": "Coba lagi",
+  "loadFailed": "Gagal memuat data.",
+  "offlineHint": "Anda Offline. Ubah status ke Online untuk mengambil tiket.",
+  "statusOpenLabel": "Terbuka",
+  "statusClaimedLabel": "Ditangani",
+  "statusWaitingLabel": "Menunggu nasabah",
+  "statusResolvedLabel": "Selesai",
+  "statusClosedLabel": "Ditutup",
+  "selectTicket": "Pilih tiket dari daftar di kiri.",
+  "previewBanner": "Pratinjau hanya-baca. Ambil tiket ini untuk membalas.",
+  "closedBanner": "Tiket sudah selesai. Pesan baru dari nasabah akan membuka tiket lagi.",
+  "join": "Gabung",
+  "moveTo": "Pindahkan ke…",
+  "tabReply": "Balas",
+  "tabNote": "Catatan internal",
+  "replyHint": "Tulis balasan… ketik / untuk balasan cepat",
+  "noteHint": "Tulis catatan untuk sesama CS…",
+  "noteInvisible": "Tidak terlihat nasabah",
+  "send": "Kirim",
+  "saveNote": "Simpan catatan",
+  "noteSaved": "Catatan disimpan.",
+  "quickReplies": "Balasan cepat",
+  "quickRepliesEmpty": "Tidak ada balasan cepat yang cocok.",
+  "attachImage": "Lampirkan gambar",
+  "sendHelpLink": "Kirim tautan bantuan",
+  "actionWait": "Tunggu nasabah",
+  "actionRelease": "Lepas",
+  "actionTransfer": "Transfer",
+  "actionResolve": "Selesaikan",
+  "releaseTitle": "Lepas tiket ke antrean",
+  "releaseHint": "Tiket kembali ke tab Terbuka dan bisa diambil CS lain.",
+  "reasonRequired": "Alasan (wajib)",
+  "releaseConfirm": "Lepas tiket",
+  "transferTitle": "Transfer ke CS lain",
+  "transferHint": "Tiket tetap milik Anda sampai CS tujuan menerima.",
+  "transferTo": "CS tujuan",
+  "transferNote": "Catatan serah terima",
+  "transferSend": "Kirim permintaan",
+  "transferNoAgents": "Tidak ada CS lain yang Online dan masih punya slot.",
+  "slots": "{count}/{max} tiket",
+  "@slots": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "resolveTitle": "Selesaikan tiket",
+  "resolveOutcome": "Hasil",
+  "resolveSummary": "Ringkasan singkat (5–500 karakter)",
+  "resolveTags": "Tag (opsional, pisahkan dengan koma)",
+  "resolveConfirm": "Selesaikan",
+  "reassignTitle": "Pindahkan tiket",
+  "reassignReason": "Alasan (wajib, dicatat di audit log)",
+  "reassignConfirm": "Pindahkan",
+  "priority": "Prioritas",
+  "createdAt": "Dibuat {time}",
+  "@createdAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "owner": "Pemilik",
+  "complaintDue": "Tenggat pengaduan {date}",
+  "@complaintDue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "pendingTransfer": "Menunggu {name} menerima transfer",
+  "@pendingTransfer": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeClaimed": "Tiket diambil. Anda sekarang pemiliknya.",
+  "noticeReleased": "Tiket dikembalikan ke antrean.",
+  "noticeTransferRequested": "Permintaan transfer dikirim. Tiket tetap milik Anda sampai diterima.",
+  "noticeResolved": "Tiket diselesaikan. Nasabah diminta memberi nilai.",
+  "noticeWaiting": "Status diubah: menunggu balasan nasabah.",
+  "noticeJoined": "Anda bergabung ke percakapan.",
+  "noticeReassigned": "Tiket dipindahkan.",
+  "noticeSent": "Terkirim ke chat.",
+  "noticeStale": "Tiket sudah berubah. Data terbaru dimuat ulang.",
+  "transferRejected": "{name} menolak transfer {ticket}",
+  "@transferRejected": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "ticket": {
+        "type": "String"
+      }
+    }
+  },
+  "transferExpired": "Permintaan transfer {ticket} kedaluwarsa",
+  "@transferExpired": {
+    "placeholders": {
+      "ticket": {
+        "type": "String"
+      }
+    }
+  },
+  "showInfo": "Tampilkan info nasabah",
+  "hideInfo": "Sembunyikan info nasabah",
+  "customerInfo": "Info nasabah",
+  "dataAfterClaim": "Data OLT nasabah tersedia setelah Anda mengambil tiket.",
+  "profile": "Profil",
+  "fieldName": "Nama",
+  "fieldClientCode": "Kode nasabah",
+  "fieldSid": "SID",
+  "fieldNik": "NIK",
+  "fieldEmail": "Email",
+  "fieldPhone": "No. HP",
+  "fieldBirthDate": "Tanggal lahir",
+  "fieldAddress": "Alamat",
+  "fieldRdn": "RDN",
+  "fieldBankAccount": "Rek. penarikan",
+  "fieldAccountStatus": "Status akun",
+  "fieldKycStatus": "Status KYC",
+  "fieldSegment": "Segmen",
+  "reveal": "Tampilkan",
+  "revealTitle": "Tampilkan {field}",
+  "@revealTitle": {
+    "placeholders": {
+      "field": {
+        "type": "String"
+      }
+    }
+  },
+  "revealReason": "Alasan membuka data",
+  "revealNote": "Data tampil 5 menit lalu disamarkan lagi. Akses ini tercatat di audit log.",
+  "orders": "Order terakhir",
+  "cashTransactions": "Transaksi dana terakhir",
+  "devices": "Perangkat & login",
+  "security": "Keamanan akun",
+  "history": "Riwayat tiket",
+  "notes": "Catatan internal",
+  "sendToChat": "Kirim ke chat",
+  "noData": "Tidak ada data.",
+  "oltUnavailable": "Data OLT sedang tidak tersedia.",
+  "secureAccount": "Amankan akun",
+  "secureConfirm": "Kunci transaksi dan keluarkan semua perangkat nasabah di OLT? Nasabah akan diberi tahu di chat.",
+  "secureDone": "Akun nasabah diamankan.",
+  "secureFailed": "Sebagian aksi gagal. Hubungi tim OLT.",
+  "tradingLocked": "Transaksi dikunci",
+  "accountLocked": "Akun dikunci",
+  "failedLogins": "Gagal login 24 jam: {count}",
+  "@failedLogins": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "otpEnabled": "OTP aktif",
+  "suspicious": "Aktivitas mencurigakan",
+  "lastPasswordChange": "Ganti password terakhir {date}",
+  "@lastPasswordChange": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "yes": "Ya",
+  "no": "Tidak",
+  "sideBuy": "Beli",
+  "sideSell": "Jual",
+  "lots": "{count} lot",
+  "@lots": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addNote": "Tambah catatan",
+  "notesEmpty": "Belum ada catatan.",
+  "noteHandover": "Serah terima",
+  "orderDetail": "Detail order",
+  "close": "Tutup",
+  "lastSessions": "Sesi aktif",
+  "lastLogins": "Login terakhir",
+  "cashDetail": "Detail transaksi dana",
+  "cashKind": "Jenis",
+  "cashAmount": "Nominal",
+  "cashBank": "Bank",
+  "cashBankRef": "Ref. bank",
+  "cashTime": "Waktu",
+  "orderStock": "Saham",
+  "orderSide": "Sisi",
+  "orderPrice": "Harga",
+  "orderLot": "Lot",
+  "orderFilled": "{lot} (terisi {filled})",
+  "@orderFilled": {
+    "placeholders": {
+      "lot": {
+        "type": "String"
+      },
+      "filled": {
+        "type": "String"
+      }
+    }
+  },
+  "orderStatus": "Status",
+  "orderReason": "Alasan",
+  "orderChannel": "Kanal",
+  "refresh": "Muat ulang",
+  "save": "Simpan",
+  "edit": "Ubah",
+  "delete": "Hapus",
+  "done": "Selesai",
+  "copied": "Disalin",
+  "active": "Aktif",
+  "inactive": "Nonaktif",
+  "saved": "Tersimpan",
+  "since": "Sejak {time}",
+  "@since": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "updatedAt": "Diperbarui {time}",
+  "@updatedAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "navTickets": "Tiket",
+  "navDashboard": "Dashboard",
+  "navReports": "Laporan",
+  "navSettings": "Pengaturan",
+  "navAttention": "{count} tiket perlu perhatian",
+  "@navAttention": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dashboardTitle": "Dashboard supervisor",
+  "dashboardStale": "Gagal memperbarui, data mungkin belum terbaru",
+  "statOpen": "Tiket terbuka",
+  "statLongestWait": "Tunggu terlama",
+  "statNoQueue": "Antrean kosong",
+  "statActive": "Sedang ditangani",
+  "statResolvedToday": "Selesai hari ini",
+  "statAgentsOnline": "CS online",
+  "needsAttention": "Perlu perhatian",
+  "overdueTitle": "Belum diambil > {minutes} menit (P1 > {p1} menit)",
+  "@overdueTitle": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "p1": {
+        "type": "int"
+      }
+    }
+  },
+  "overdueEmpty": "Semua tiket terbuka masih dalam batas waktu.",
+  "flaggedTitle": "Fraud / pengaduan belum diambil",
+  "flaggedEmpty": "Tidak ada tiket fraud atau pengaduan yang menunggu.",
+  "offlineOwnedTitle": "Milik CS yang offline",
+  "offlineOwnedEmpty": "Tidak ada tiket milik CS yang sedang offline.",
+  "moreTickets": "+{count} tiket lainnya",
+  "@moreTickets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "ownerOffline": "{name} offline",
+  "@ownerOffline": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "agentsToday": "Status CS hari ini",
+  "noAgents": "Belum ada akun CS.",
+  "colAgent": "CS",
+  "colStatus": "Status",
+  "colActiveTickets": "Tiket aktif",
+  "colResolvedToday": "Selesai hari ini",
+  "colStatusSince": "Status sejak",
+  "connectionLostHint": "Web CS tidak mengirim heartbeat, kemungkinan koneksi terputus",
+  "reportsTitle": "Laporan",
+  "rangeToday": "Hari ini",
+  "rangeWeek": "7 hari",
+  "rangeMonth": "30 hari",
+  "rangeCustom": "Pilih tanggal",
+  "rangePickerTitle": "Pilih rentang laporan",
+  "rangeTooLong": "Rentang laporan maksimal {days} hari",
+  "@rangeTooLong": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "exportCsv": "Ekspor CSV",
+  "exportDaily": "Tiket per hari",
+  "exportAgents": "Per CS",
+  "exportTopics": "Topik",
+  "reportCreated": "Tiket masuk",
+  "reportResolved": "Selesai",
+  "percentOfTickets": "{percent}% dari tiket masuk",
+  "@percentOfTickets": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "reportClaimTime": "Rata-rata sampai diambil",
+  "reportFirstResponse": "Respons pertama",
+  "reportDuration": "Durasi sampai selesai",
+  "reportAvgRating": "Rating rata-rata",
+  "ratingCount": "{count} penilaian",
+  "@ratingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reportPerDay": "Tiket per hari",
+  "reportDate": "Tanggal",
+  "reportEmpty": "Belum ada data pada rentang ini.",
+  "reportPerAgent": "Per CS",
+  "reportAgent": "CS",
+  "reportAgentCode": "Kode CS",
+  "reportHandled": "Ditangani",
+  "reportTopTopics": "Topik terbanyak",
+  "reportTopic": "Topik",
+  "reportTopicCode": "Kode topik",
+  "reportCount": "Jumlah",
+  "reportShare": "Porsi",
+  "reportClaimMinutes": "Rata-rata menit sampai diambil",
+  "reportFirstResponseMinutes": "Rata-rata menit respons pertama",
+  "reportResolutionMinutes": "Rata-rata menit sampai selesai",
+  "reportRatings": "Jumlah penilaian",
+  "reportTotal": "Total",
+  "settingsTitle": "Pengaturan",
+  "menuAccounts": "Akun CS",
+  "menuTopics": "Topik",
+  "menuQuickReplies": "Quick reply",
+  "menuHours": "Jam layanan & libur",
+  "menuMessages": "Pesan otomatis",
+  "menuAssignment": "Penugasan & alert",
+  "accountsTitle": "Akun CS",
+  "accountsDescription": "Tambah akun, atur peran dan batas tiket aktif, atau nonaktifkan akun. Akun yang dinonaktifkan langsung tidak bisa login, dan tiket aktifnya kembali ke antrean dengan tanda.",
+  "addAccount": "Tambah akun",
+  "colRoles": "Peran",
+  "colTeam": "Tim",
+  "colTicketLimit": "Batas tiket",
+  "colTwoFactor": "2FA",
+  "twoFactorOn": "TOTP aktif",
+  "twoFactorPending": "Belum daftar",
+  "disabledSince": "Dinonaktifkan {time}",
+  "@disabledSince": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "accountDisabled": "Nonaktif",
+  "addAccountTitle": "Tambah akun CS",
+  "editAccountTitle": "Ubah akun {name}",
+  "@editAccountTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "displayName": "Nama tampilan",
+  "displayNameHint": "Terlihat oleh nasabah, 2–40 karakter",
+  "staffEmailHint": "Email kerja untuk login web CS",
+  "rolesLabel": "Peran",
+  "teamLabel": "Tim",
+  "ticketLimitLabel": "Batas tiket aktif (1–20)",
+  "accountActive": "Akun aktif",
+  "disableWarning": "Akun ini langsung tidak bisa login. {count} tiket aktifnya kembali ke antrean dengan tanda \"Akun CS dinonaktifkan\".",
+  "@disableWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selfLocked": "Anda tidak bisa menonaktifkan atau melepas peran admin akun sendiri.",
+  "createAccount": "Buat akun",
+  "rolesRequired": "Pilih minimal satu peran",
+  "invalidEmail": "Format email tidak valid",
+  "invalidName": "Nama 2–40 karakter",
+  "numberRange": "Isi angka {min}–{max}",
+  "@numberRange": {
+    "placeholders": {
+      "min": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "accountCreatedTitle": "Akun dibuat",
+  "accountCreatedBody": "Akun {name} siap dipakai. Password sementara hanya ditampilkan sekali ini.",
+  "@accountCreatedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "temporaryPassword": "Password sementara",
+  "accountCreatedSteps": "Serahkan email dan password ini lewat jalur aman. Saat login pertama, CS wajib mengganti password lalu mendaftarkan 2FA (TOTP).",
+  "topicsTitle": "Topik bantuan",
+  "topicsDescription": "Topik yang dipilih nasabah saat membuat tiket, beserta prioritas default dan skill CS yang dibutuhkan.",
+  "addTopic": "Tambah topik",
+  "colOrder": "Urutan",
+  "colCode": "Kode",
+  "colName": "Nama",
+  "colSkill": "Skill",
+  "colDefaultPriority": "Prioritas default",
+  "colHelpLink": "Tautan bantuan",
+  "editTopicTitle": "Ubah topik {name}",
+  "@editTopicTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "topicCode": "Kode",
+  "topicCodeHint": "Huruf kecil, angka, atau garis bawah. Tidak bisa diubah.",
+  "invalidTopicCode": "Kode 2–32 karakter, diawali huruf kecil",
+  "topicNameId": "Nama (Indonesia)",
+  "topicNameEn": "Nama (Inggris)",
+  "topicSkill": "Skill CS",
+  "defaultPriority": "Prioritas default",
+  "helpUrl": "Tautan bantuan (opsional)",
+  "helpUrlHint": "https:// ke situs bantuan resmi",
+  "sortOrder": "Urutan tampil (0–999)",
+  "topicActive": "Tampilkan ke nasabah",
+  "quickRepliesTitle": "Quick reply global",
+  "quickRepliesDescription": "Balasan siap pakai untuk semua CS. Ketik / di kolom balas untuk memakainya.",
+  "addQuickReply": "Tambah quick reply",
+  "colShortcut": "Pintasan",
+  "colTitle": "Judul",
+  "colLanguage": "Bahasa",
+  "colUpdated": "Diubah",
+  "editQuickReplyTitle": "Ubah quick reply",
+  "shortcut": "Pintasan",
+  "shortcutHint": "Huruf kecil, angka, - atau _ (2–32)",
+  "invalidShortcut": "Pintasan 2–32 karakter: huruf kecil, angka, - atau _",
+  "replyTitle": "Judul",
+  "replyBody": "Isi balasan",
+  "variables": "Variabel",
+  "languageId": "Indonesia",
+  "languageEn": "Inggris",
+  "languageLabel": "Bahasa",
+  "requiredField": "Wajib diisi",
+  "hoursTitle": "Jam layanan & hari libur",
+  "hoursDescription": "Jam layanan CS dalam WIB. Di luar jam layanan, nasabah menerima pesan otomatis dan CS membalas mulai jam buka berikutnya.",
+  "serviceHours": "Jam layanan (WIB)",
+  "dayOpen": "Buka",
+  "dayClosed": "Tutup",
+  "opensAt": "Jam buka",
+  "closesAt": "Jam tutup",
+  "hoursInvalid": "Format HH:MM, jam buka sebelum jam tutup (tutup boleh 24:00)",
+  "saveHours": "Simpan jam layanan",
+  "holidaysTitle": "Hari libur {year}",
+  "@holidaysTitle": {
+    "placeholders": {
+      "year": {
+        "type": "String"
+      }
+    }
+  },
+  "holidaysHint": "Libur nasional dan cuti bersama: layanan CS tutup. Libur bursa: pasar tutup, layanan CS tetap buka.",
+  "addHoliday": "Tambah hari libur",
+  "holidayNational": "Libur nasional",
+  "holidayCollective": "Cuti bersama",
+  "holidayExchange": "Libur bursa",
+  "holidayName": "Nama hari libur",
+  "holidayDate": "Tanggal",
+  "holidayKind": "Jenis",
+  "deleteHolidayTitle": "Hapus hari libur?",
+  "deleteHolidayBody": "{name} ({date}) dihapus dari kalender layanan.",
+  "@deleteHolidayBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noHolidays": "Belum ada hari libur di tahun ini.",
+  "previousYear": "Tahun sebelumnya",
+  "nextYear": "Tahun berikutnya",
+  "messagesTitle": "Pesan otomatis",
+  "messagesDescription": "Pesan sistem yang dikirim ke nasabah. Variabel dalam kurung kurawal diisi otomatis; hanya variabel yang sudah ada yang boleh dipakai.",
+  "messageId": "Bahasa Indonesia",
+  "messageEn": "Bahasa Inggris",
+  "noVariables": "Tanpa variabel",
+  "lastChangedBy": "Terakhir diubah {time} oleh {name}",
+  "@lastChangedBy": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "lastChanged": "Terakhir diubah {time}",
+  "@lastChanged": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "assignmentTitle": "Penugasan & alert",
+  "assignmentDescription": "Atur cara tiket dibagikan ke CS dan kapan supervisor mendapat peringatan.",
+  "assignmentMode": "Mode penugasan",
+  "modeClaim": "Ambil tiket (default)",
+  "modeClaimHint": "CS memilih dan mengambil sendiri tiket dari daftar Terbuka.",
+  "modeAuto": "Penugasan otomatis",
+  "modeAutoHint": "Sistem menugaskan tiket terbuka ke CS online yang sesuai skill dan masih punya slot.",
+  "autoRelease": "Lepas otomatis bila pemilik offline",
+  "autoReleaseHint": "Default mati. Bila aktif, tiket milik CS yang offline lebih lama dari batas ini kembali ke antrean.",
+  "autoReleaseMinutes": "Batas offline (menit, 1–1440)",
+  "supervisorAlerts": "Alert supervisor",
+  "alertUnclaimed": "Tiket belum diambil lebih dari (menit)",
+  "alertP1": "Tiket P1 belum diambil lebih dari (menit)",
+  "alertOverdueTitle": "Tiket {priority} belum diambil {minutes} menit",
+  "@alertOverdueTitle": {
+    "placeholders": {
+      "priority": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "transferCancelled": "Transfer tiket {ticket} dibatalkan: {reason}",
+  "@transferCancelled": {
+    "placeholders": {
+      "ticket": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "changePasswordTitle": "Ganti password",
+  "changePasswordSubtitle": "Akun Anda masih memakai password sementara. Buat password baru sebelum mulai bekerja.",
+  "newPassword": "Password baru",
+  "confirmPassword": "Ulangi password baru",
+  "passwordRules": "Minimal 12 karakter. Jangan pakai ulang password akun lain.",
+  "passwordTooShort": "Password minimal 12 karakter",
+  "passwordMismatch": "Password tidak sama",
+  "savePassword": "Simpan password",
+  "errorSamePassword": "Password baru harus berbeda dari password sementara",
+  "errorWeakPassword": "Password terlalu lemah, pakai kombinasi yang lebih panjang",
+  "noConsoleAccess": "Peran akun ini belum punya menu di web CS. Hubungi admin CS.",
+  "returnedTicket": "Dikembalikan ke antrean: {reason}",
+  "@returnedTicket": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  }
+}

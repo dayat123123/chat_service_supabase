@@ -8,6 +8,7 @@ import 'package:olt_social/src/features/chat/presentation/widgets/receipt_icon.d
 import 'package:olt_social/src/features/media/presentation/widgets/attachment_grid.dart';
 import 'package:olt_social/src/features/moderation/domain/entities/report.dart';
 import 'package:olt_social/src/features/moderation/presentation/widgets/moderation_actions.dart';
+import 'package:olt_social/src/features/support/presentation/widgets/support_message_parts.dart';
 import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
 import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
@@ -37,6 +38,8 @@ class _MessageBubbleState extends State<MessageBubble> {
   @override
   Widget build(BuildContext context) {
     final m = widget.message;
+    if (m.isSystem) return SupportSystemNotice(message: m);
+    final support = m.senderRole != null;
     final l10n = context.oltL10n;
     final theme = Theme.of(context);
     final t = OltSocialTheme.of(context);
@@ -63,10 +66,15 @@ class _MessageBubbleState extends State<MessageBubble> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.showSender && m.sender != null)
-            GestureDetector(
-              onTap: () => OltNavigator.openUser(context, m.sender!),
-              child: Text(m.sender!.name, style: theme.textTheme.labelMedium?.copyWith(color: t.link, fontWeight: FontWeight.w700)),
-            ),
+            if (m.isOfficial)
+              OfficialSenderLabel(sender: m.sender!, color: t.link)
+            else if (support)
+              Text(m.sender!.name, style: theme.textTheme.labelMedium?.copyWith(color: t.link, fontWeight: FontWeight.w700))
+            else
+              GestureDetector(
+                onTap: () => OltNavigator.openUser(context, m.sender!),
+                child: Text(m.sender!.name, style: theme.textTheme.labelMedium?.copyWith(color: t.link, fontWeight: FontWeight.w700)),
+              ),
           if (m.replyToId != null)
             Container(
               margin: const EdgeInsets.only(top: 4, bottom: 4),
@@ -87,7 +95,16 @@ class _MessageBubbleState extends State<MessageBubble> {
             Text(l10n.messageDeleted, style: theme.textTheme.bodyMedium?.copyWith(color: fg, fontStyle: FontStyle.italic))
           else ...[
             if (m.attachments.isNotEmpty) AttachmentGrid(attachments: m.attachments, maxHeight: 220),
-            if ((m.body ?? '').isNotEmpty) SocialText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
+            if (m.kind == MessageKind.card)
+              SupportMessageExtras(message: m, color: fg, mine: widget.mine)
+            else ...[
+              if ((m.body ?? '').isNotEmpty)
+                support
+                    ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))
+                    : SocialText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
+              if (m.kind == MessageKind.quickReply || m.kind == MessageKind.helpLink)
+                SupportMessageExtras(message: m, color: fg, mine: widget.mine),
+            ],
           ],
           const SizedBox(height: 2),
           Row(
@@ -116,7 +133,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                 onPressed: () => cubit.setReplyTo(m),
                 icon: const Icon(Icons.reply),
               ),
-              if (widget.mine)
+              if (widget.mine && !support)
                 IconButton(
                   tooltip: l10n.delete,
                   visualDensity: VisualDensity.compact,
@@ -173,7 +190,9 @@ class _MessageBubbleState extends State<MessageBubble> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(leading: const Icon(Icons.reply), title: Text(l10n.replyToMessage), onTap: () => Navigator.pop(sheetContext, 'reply')),
-            if (widget.mine)
+            if (widget.message.senderRole != null)
+              const SizedBox.shrink()
+            else if (widget.mine)
               ListTile(leading: const Icon(Icons.delete_outline), title: Text(l10n.delete), onTap: () => Navigator.pop(sheetContext, 'delete'))
             else
               ListTile(leading: const Icon(Icons.flag_outlined), title: Text(l10n.report), onTap: () => Navigator.pop(sheetContext, 'report')),

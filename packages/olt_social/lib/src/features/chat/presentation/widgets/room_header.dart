@@ -30,6 +30,7 @@ class RoomHeader extends StatelessWidget {
                 RoomType.direct => '@${room.otherUser?.username ?? ''}',
                 RoomType.group => l10n.members(state.members.length),
                 RoomType.stock => '${room.name ?? ''} · ${l10n.members(state.members.length)}',
+                RoomType.support => l10n.supportOfficialChannel,
               };
         final accent = typing || (room.type == RoomType.direct && state.otherOnline);
         return Material(
@@ -48,20 +49,22 @@ class RoomHeader extends StatelessWidget {
                 : room.type == RoomType.stock && room.stockCode != null
                     ? () => OltNavigator.openStock(context, room.stockCode!)
                     : null,
-            trailing: PopupMenuButton<String>(
-              onSelected: (action) async {
-                switch (action) {
-                  case 'mute':
-                    await cubit.setMuted(!room.muted);
-                  case 'leave':
-                    if (await cubit.leave() && context.mounted) await Navigator.of(context).maybePop();
-                }
-              },
-              itemBuilder: (_) => [
-                PopupMenuItem(value: 'mute', child: Text(room.muted ? l10n.unmute : l10n.mute)),
-                if (room.type != RoomType.direct) PopupMenuItem(value: 'leave', child: Text(l10n.leaveRoom)),
-              ],
-            ),
+            trailing: room.type == RoomType.support
+                ? null
+                : PopupMenuButton<String>(
+                    onSelected: (action) async {
+                      switch (action) {
+                        case 'mute':
+                          await cubit.setMuted(!room.muted);
+                        case 'leave':
+                          if (await cubit.leave() && context.mounted) await Navigator.of(context).maybePop();
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'mute', child: Text(room.muted ? l10n.unmute : l10n.mute)),
+                      if (room.type != RoomType.direct) PopupMenuItem(value: 'leave', child: Text(l10n.leaveRoom)),
+                    ],
+                  ),
           ),
         );
       },

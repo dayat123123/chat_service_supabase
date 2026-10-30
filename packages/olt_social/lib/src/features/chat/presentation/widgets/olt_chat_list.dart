@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/app/olt_social_scope.dart';
+import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
 import 'package:olt_social/src/features/chat/presentation/cubit/chat_list_cubit.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/new_group_dialog.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/olt_chat_room.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/room_tile.dart';
+import 'package:olt_social/src/features/support/presentation/widgets/olt_support_chat.dart';
 import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 import 'package:olt_social/src/shared/presentation/load_status.dart';
 import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
@@ -36,11 +38,22 @@ class _ChatListLayout extends StatefulWidget {
 
 class _ChatListLayoutState extends State<_ChatListLayout> {
   late String? _selected = widget.initialRoomId;
+  bool _selectedSupport = false;
 
-  Future<void> _open(BuildContext context, String roomId, {required bool wide}) async {
+  Future<void> _open(BuildContext context, ChatRoom room, {required bool wide}) async {
+    final roomId = room.id;
+    final support = room.type == RoomType.support;
     final cubit = context.read<ChatListCubit>()..markOpened(roomId);
     if (wide) {
-      setState(() => _selected = roomId);
+      setState(() {
+        _selected = roomId;
+        _selectedSupport = support;
+      });
+      return;
+    }
+    if (support) {
+      await openOltSupport(context);
+      await cubit.refresh();
       return;
     }
     final deps = OltSocialScope.of(context);
@@ -60,7 +73,7 @@ class _ChatListLayoutState extends State<_ChatListLayout> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= OltBreakpoints.wide;
-        final list = _RoomList(selectedRoomId: wide ? _selected : null, onOpen: (id) => _open(context, id, wide: wide));
+        final list = _RoomList(selectedRoomId: wide ? _selected : null, onOpen: (room) => _open(context, room, wide: wide));
         if (!wide) return list;
         return Row(
           children: [
@@ -69,7 +82,9 @@ class _ChatListLayoutState extends State<_ChatListLayout> {
             Expanded(
               child: _selected == null
                   ? OltEmptyView(message: context.oltL10n.selectChat, icon: Icons.chat_outlined)
-                  : OltChatRoom(key: ValueKey(_selected), roomId: _selected!),
+                  : _selectedSupport
+                      ? const OltSupportChat()
+                      : OltChatRoom(key: ValueKey(_selected), roomId: _selected!),
             ),
           ],
         );
@@ -82,7 +97,7 @@ class _RoomList extends StatelessWidget {
   const _RoomList({required this.selectedRoomId, required this.onOpen});
 
   final String? selectedRoomId;
-  final ValueChanged<String> onOpen;
+  final ValueChanged<ChatRoom> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +122,7 @@ class _RoomList extends StatelessWidget {
                   online: state.isOnline(room),
                   typing: state.typingIn(room.id),
                   selected: room.id == selectedRoomId,
-                  onTap: () => onOpen(room.id),
+                  onTap: () => onOpen(room),
                 );
               },
             ),
@@ -126,7 +141,8 @@ class _RoomList extends StatelessWidget {
                       final roomId = await showNewGroupDialog(context);
                       if (roomId != null && context.mounted) {
                         await cubit.refresh();
-                        onOpen(roomId);
+                        final room = cubit.state.rooms.where((r) => r.id == roomId).firstOrNull;
+                        if (room != null) onOpen(room);
                       }
                     },
                     icon: const Icon(Icons.group_add_outlined),

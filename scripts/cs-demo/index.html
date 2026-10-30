@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo CS Chat</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Demo CS Chat</h1>
+      <span class="tag">development · model tiket</span>
+    </div>
+    <p class="lead">
+      Halaman uji khusus profil <code>dev</code> dengan API asli (<code>cs_api</code>, <code>customer-adapter</code>, OLT dummy):
+      kolom nasabah dan pemilih CS demo hanya ada di sini. Web CS resmi untuk CS dan supervisor ada di
+      <code>apps/cs-console</code> (<a href="http://localhost:8084">localhost:8084</a>), aplikasi nasabah memakai modul
+      <code>support</code> di <code>olt_social</code>.
+    </p>
+  </header>
+
+  <main class="layout">
+    <section class="panel customer" aria-label="Nasabah">
+      <div class="panel-head">
+        <h2>Nasabah</h2>
+        <div id="c-login" class="head-tools"></div>
+      </div>
+      <div id="c-status" class="status"></div>
+      <div id="c-body" class="panel-body"></div>
+    </section>
+
+    <section class="panel agent" aria-label="Panel CS demo">
+      <div class="panel-head">
+        <h2>Panel CS (demo)</h2>
+        <div id="a-login" class="head-tools"></div>
+      </div>
+      <div class="agent-grid">
+        <aside id="a-inbox" class="inbox"></aside>
+        <div id="a-chat" class="chat-pane"></div>
+        <aside id="a-side" class="side"></aside>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dialog"></dialog>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script src="runtime/config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

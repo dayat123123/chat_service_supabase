@@ -14,8 +14,9 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`supabase/`](supabase/) | Migrasi SQL bernomor, seed development, tes pgTAP |
 | [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token login OLT menjadi JWT Supabase (tanpa login dua kali) |
 | [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri, data nasabah tiruan) untuk menguji auth-bridge mode websocket dan `customer-adapter`. Hanya development/testing |
-| [`services/cs/`](services/cs/README.md) | Go: `customer-adapter` (data nasabah dari OLT untuk chat CS, amankan akun). `cs-matcher` menyusul di CS2 |
+| [`services/cs/`](services/cs/README.md) | Go: `customer-adapter` (data nasabah dari OLT untuk chat CS, amankan akun) |
 | [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
+| [`apps/cs-console/`](apps/cs-console/README.md) | Flutter web: web CS khusus CS, supervisor, dan admin CS (login + TOTP, ambil tiket, chat, catatan internal, info nasabah, dashboard supervisor, laporan + CSV, pengaturan admin). Produksi: hanya lewat VPN |
 | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
@@ -197,7 +198,11 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `test-flutter-it-dummy` | Integration test Flutter dengan token hasil login WebSocket OLT dummy |
 | `e2e-windows-dummy` | E2E app contoh: form login OLT dummy |
 | `test-cs` | Unit test Go `customer-adapter` (di container) |
-| `smoke-cs` | 26 skenario CS chat end-to-end: nasabah, agen 2FA, penyamaran, catatan internal, adapter + OLT dummy, amankan akun (butuh `DUMMY_OLT=1`) |
+| `smoke-cs` | 40 skenario CS chat end-to-end: buka tiket, ambil & rebutan, balas, penyamaran, catatan internal, adapter + OLT dummy, amankan akun, transfer, selesai, rating (butuh `DUMMY_OLT=1`) |
+| `cs-race` | Tes rebutan ambil tiket: 50 CS × 1 tiket dan 200 tiket × 30 CS, langsung ke database dan lewat 3 replika PostgREST |
+| `cs-console` | Web CS di `http://localhost:8084` + akun staf dev dengan TOTP (`scripts/cs-demo/runtime/staff.json`). Butuh Flutter SDK dan `DUMMY_OLT=1` |
+| `cs-totp` | Kode TOTP saat ini untuk akun staf dev |
+| `cs-demo` | Halaman demo CS (dev) di `http://localhost:8082`: nasabah dan panel CS berdampingan lewat API asli. Stop: `docker rm -f olt-cs-demo` (butuh `DUMMY_OLT=1`) |
 | `up PROFILE=single CS=1` / `-Profile single -Cs` | Nyalakan CS chat (`customer-adapter`) di produksi (di dev selalu aktif). Butuh endpoint OLT nasabah, lihat [docs/cs-chat](docs/cs-chat/README.md) |
 
 Produksi memakai `make up PROFILE=single`: Traefik HTTPS (Let's Encrypt), hanya path API yang publik, dan Studio mati. Lihat [docs/PRODUCTION.md](docs/PRODUCTION.md).

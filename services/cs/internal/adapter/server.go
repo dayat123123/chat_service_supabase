@@ -85,20 +85,20 @@ func (s *Server) Handler() http.Handler {
 		ops.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	agent := map[string]route{
-		"GET /v1/agent/sessions/{session}/customer/profile":                 {"profile", "customer_profile", noParams, maskProfile},
-		"GET /v1/agent/sessions/{session}/customer/orders":                  {"orders", "customer_orders", orderFilters, passthrough},
-		"GET /v1/agent/sessions/{session}/customer/orders/{ref}":            {"order", "customer_order", refParam("order_id"), passthrough},
-		"GET /v1/agent/sessions/{session}/customer/cash-transactions":       {"cash_transactions", "customer_cash_transactions", periodFilters, passthrough},
-		"GET /v1/agent/sessions/{session}/customer/cash-transactions/{ref}": {"cash_transaction", "customer_cash_transaction", refParam("transaction_id"), passthrough},
-		"GET /v1/agent/sessions/{session}/customer/sessions":                {"sessions", "customer_sessions", noParams, maskSessions},
-		"GET /v1/agent/sessions/{session}/customer/security":                {"security", "customer_security", noParams, passthrough},
+		"GET /v1/agent/tickets/{ticket}/customer/profile":                 {"profile", "customer_profile", noParams, maskProfile},
+		"GET /v1/agent/tickets/{ticket}/customer/orders":                  {"orders", "customer_orders", orderFilters, passthrough},
+		"GET /v1/agent/tickets/{ticket}/customer/orders/{ref}":            {"order", "customer_order", refParam("order_id"), passthrough},
+		"GET /v1/agent/tickets/{ticket}/customer/cash-transactions":       {"cash_transactions", "customer_cash_transactions", periodFilters, passthrough},
+		"GET /v1/agent/tickets/{ticket}/customer/cash-transactions/{ref}": {"cash_transaction", "customer_cash_transaction", refParam("transaction_id"), passthrough},
+		"GET /v1/agent/tickets/{ticket}/customer/sessions":                {"sessions", "customer_sessions", noParams, maskSessions},
+		"GET /v1/agent/tickets/{ticket}/customer/security":                {"security", "customer_security", noParams, passthrough},
 	}
 	for pattern, rt := range agent {
 		mux.Handle(pattern, s.instrument(pattern, s.agentRead(rt)))
 	}
-	reveal := "POST /v1/agent/sessions/{session}/customer/reveal"
+	reveal := "POST /v1/agent/tickets/{ticket}/customer/reveal"
 	mux.Handle(reveal, s.instrument(reveal, http.HandlerFunc(s.reveal)))
-	secure := "POST /v1/agent/sessions/{session}/customer/secure-account"
+	secure := "POST /v1/agent/tickets/{ticket}/customer/secure-account"
 	mux.Handle(secure, s.instrument(secure, http.HandlerFunc(s.secureAccount)))
 
 	customer := map[string]route{
@@ -114,7 +114,7 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) agentRead(rt route) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		bearer, session, ok := s.authenticateSession(w, r)
+		bearer, ticket, ok := s.authenticateTicket(w, r)
 		if !ok {
 			return
 		}
@@ -125,7 +125,7 @@ func (s *Server) agentRead(rt route) http.Handler {
 		}
 		var grant access
 		if err := s.api.CallAs(r.Context(), bearer, "agent_customer_access",
-			map[string]any{"p_session_id": session, "p_kind": rt.kind}, &grant); err != nil {
+			map[string]any{"p_ticket_id": ticket, "p_kind": rt.kind}, &grant); err != nil {
 			s.writeAPIError(w, err)
 			return
 		}
@@ -173,7 +173,7 @@ func (s *Server) respond(w http.ResponseWriter, r *http.Request, rt route, grant
 }
 
 func (s *Server) reveal(w http.ResponseWriter, r *http.Request) {
-	bearer, session, ok := s.authenticateSession(w, r)
+	bearer, ticket, ok := s.authenticateTicket(w, r)
 	if !ok {
 		return
 	}
@@ -187,7 +187,7 @@ func (s *Server) reveal(w http.ResponseWriter, r *http.Request) {
 	}
 	var grant access
 	if err := s.api.CallAs(r.Context(), bearer, "agent_reveal_access",
-		map[string]any{"p_session_id": session, "p_field": body.Field, "p_reason": body.Reason}, &grant); err != nil {
+		map[string]any{"p_ticket_id": ticket, "p_field": body.Field, "p_reason": body.Reason}, &grant); err != nil {
 		s.writeAPIError(w, err)
 		return
 	}
@@ -208,7 +208,7 @@ func (s *Server) reveal(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) secureAccount(w http.ResponseWriter, r *http.Request) {
-	bearer, session, ok := s.authenticateSession(w, r)
+	bearer, ticket, ok := s.authenticateTicket(w, r)
 	if !ok {
 		return
 	}
@@ -218,7 +218,7 @@ func (s *Server) secureAccount(w http.ResponseWriter, r *http.Request) {
 		IdempotencyKey string   `json:"idempotency_key"`
 		CorrelationID  string   `json:"correlation_id"`
 	}
-	if err := s.api.CallAs(r.Context(), bearer, "agent_secure_account", map[string]any{"p_session_id": session}, &grant); err != nil {
+	if err := s.api.CallAs(r.Context(), bearer, "agent_secure_account", map[string]any{"p_ticket_id": ticket}, &grant); err != nil {
 		s.writeAPIError(w, err)
 		return
 	}
@@ -249,28 +249,28 @@ func (s *Server) secureAccount(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !done {
-		s.log.Error("aksi amankan akun di OLT tidak lengkap", "session_id", session)
+		s.log.Error("aksi amankan akun di OLT tidak lengkap", "ticket_id", ticket)
 	}
 	if err := s.api.CallAs(r.Context(), bearer, "agent_secure_account_result",
-		map[string]any{"p_session_id": session, "p_ok": done, "p_results": results}, nil); err != nil {
-		s.log.Error("hasil amankan akun gagal dicatat, aman diulang karena idempoten", "session_id", session, "error", err)
+		map[string]any{"p_ticket_id": ticket, "p_ok": done, "p_results": results}, nil); err != nil {
+		s.log.Error("hasil amankan akun gagal dicatat, aman diulang karena idempoten", "ticket_id", ticket, "error", err)
 		writeError(w, http.StatusBadGateway, "record_failed", "Aksi sudah dikirim ke OLT tetapi hasilnya gagal dicatat, ulangi")
 		return
 	}
 	ops.WriteJSON(w, http.StatusOK, map[string]any{"available": true, "data": map[string]any{"ok": done, "results": results}})
 }
 
-func (s *Server) authenticateSession(w http.ResponseWriter, r *http.Request) (string, string, bool) {
+func (s *Server) authenticateTicket(w http.ResponseWriter, r *http.Request) (string, string, bool) {
 	bearer, ok := s.authenticate(w, r)
 	if !ok {
 		return "", "", false
 	}
-	session := r.PathValue("session")
-	if !uuidPattern.MatchString(session) {
-		writeError(w, http.StatusBadRequest, "invalid_session", "ID sesi tidak valid")
+	ticket := r.PathValue("ticket")
+	if !uuidPattern.MatchString(ticket) {
+		writeError(w, http.StatusBadRequest, "invalid_ticket", "ID tiket tidak valid")
 		return "", "", false
 	}
-	return bearer, session, true
+	return bearer, ticket, true
 }
 
 func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, bool) {

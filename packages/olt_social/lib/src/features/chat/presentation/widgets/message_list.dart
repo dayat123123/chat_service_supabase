@@ -50,20 +50,62 @@ class _MessageListState extends State<MessageList> {
             }
             final message = state.messages[i];
             final older = i + 1 < state.messages.length ? state.messages[i + 1] : null;
+            final newDay = older == null || !_sameDay(older.createdAt, message.createdAt);
             final grouped = older != null &&
+                !newDay &&
+                !older.isSystem &&
                 older.senderId == message.senderId &&
                 message.createdAt.difference(older.createdAt).inMinutes < 3;
             final mine = state.isMine(message);
-            return MessageBubble(
+            final bubble = MessageBubble(
               key: ValueKey(message.clientId ?? message.id),
               message: message,
               mine: mine,
               receipt: state.receiptOf(message),
               showSender: !grouped && state.room?.type != RoomType.direct && !mine,
             );
+            if (!newDay) return bubble;
+            return Column(
+              key: ValueKey('day-${message.clientId ?? message.id}'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [_DayDivider(time: message.createdAt), bubble],
+            );
           },
         );
       },
+    );
+  }
+}
+
+bool _sameDay(DateTime a, DateTime b) {
+  final x = a.toLocal();
+  final y = b.toLocal();
+  return x.year == y.year && x.month == y.month && x.day == y.day;
+}
+
+class _DayDivider extends StatelessWidget {
+  const _DayDivider({required this.time});
+
+  final DateTime time;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            context.oltL10n.dayLabel(time),
+            style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+      ),
     );
   }
 }

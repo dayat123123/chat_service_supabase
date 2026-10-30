@@ -53,6 +53,10 @@ Future<void> main() async {
       rows.add((name, 'SDK Flutter (BSD)', 'ok'));
       continue;
     }
+    if (source == 'path') {
+      rows.add((name, 'kode repo ini', 'ok'));
+      continue;
+    }
     final dir = Directory.fromUri(roots[name]!);
     final licenseFile = dir
         .listSync()

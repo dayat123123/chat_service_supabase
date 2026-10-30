@@ -23,6 +23,25 @@ Ketiga profil memakai **image, nama service, dan nama environment variable yang 
 - **Region Realtime.** Semua node memakai `REGION: us-east-1`, sama dengan region tenant hasil seed self-host. Bila berbeda, Realtime memutus koneksi DB tenant tiap 10 menit ("rebalancing") dan broadcast dari database (tanda terima chat) hilang.
 - **Storage S3-ready.** Pindah dari backend `file` cukup lewat env: `STORAGE_BACKEND=s3` dan `GLOBAL_S3_*`.
 
+## Ukuran pool PostgREST di belakang PgBouncer
+
+PgBouncer berjalan dalam mode `session`. Artinya satu koneksi klien memegang satu koneksi server sampai klien itu menutupnya. Setiap instance PostgREST memakai hingga `PGRST_DB_POOL` koneksi, ditambah 1 koneksi `LISTEN` untuk reload schema cache. Karena itu, untuk setiap instance PgBouncer berlaku:
+
+```
+replika PostgREST × (PGRST_DB_POOL + 1) ≤ PGBOUNCER_DEFAULT_POOL_SIZE
+```
+
+`PGBOUNCER_RESERVE_POOL_SIZE` (5) hanya cadangan dan baru dipakai setelah klien menunggu 5 detik.
+
+Bila aturan ini dilanggar, permintaan saat lonjakan menunggu koneksi server lebih lama dari `query_wait_timeout` (30 detik), lalu PostgREST membalas `503 PGRST001`. Contoh nyata dari `make cs-race`: 3 replika tambahan dengan pool bawaan 10 menghasilkan 33 klien untuk pool 20+5, dan 11 dari 50 klaim gagal dengan 503. Karena itu tes tersebut menjalankan replikanya dengan `PGRST_DB_POOL=3`.
+
+Dengan nilai bawaan (`PGRST_DB_POOL=10`, `PGBOUNCER_DEFAULT_POOL_SIZE=20`), satu PgBouncer cukup untuk 1 replika PostgREST. Untuk lebih banyak replika per PgBouncer, ada dua pilihan:
+
+- Naikkan `PGBOUNCER_DEFAULT_POOL_SIZE`. Total koneksi server dari semua PgBouncer tetap harus di bawah batas role `authenticator` (60) dan `max_connections` Postgres (100).
+- Turunkan `PGRST_DB_POOL`.
+
+Profil `cluster` (2 replika `rest`, 2 replika `pgbouncer`) hanya aman bila koneksi terbagi rata. Ini diverifikasi di Tahap 7.
+
 ## Garis besar migrasi single → cluster (dirinci di Tahap 7)
 
 1. **Siapkan node.** Inisialisasi Swarm dengan 3 manager. Beri label node DB: `docker node update --label-add olt.db=primary <node>`.

@@ -26,6 +26,7 @@ extension OltErrorText on OltSocialLocalizations {
       'poll_with_attachments' => errorInvalidPoll,
       'duplicate_content' => errorDuplicateContent,
       'user_muted' => errorUserMuted,
+      'secret_request_blocked' => errorSecretRequestBlocked,
       _ => switch (mapped.kind) {
         OltSocialErrorKind.network => errorNetwork,
         OltSocialErrorKind.unauthenticated => errorUnauthenticated,
@@ -53,6 +54,17 @@ extension OltErrorText on OltSocialLocalizations {
   }
 
   String clockTime(DateTime time) => DateFormat.Hm(localeName).format(time.toLocal());
+
+  String dayLabel(DateTime time, {DateTime? now}) {
+    final local = time.toLocal();
+    final current = (now ?? DateTime.now()).toLocal();
+    final day = DateTime(local.year, local.month, local.day);
+    final days = DateTime(current.year, current.month, current.day).difference(day).inDays;
+    if (days == 0) return today;
+    if (days == 1) return yesterday;
+    final pattern = local.year == current.year ? DateFormat.MMMMEEEEd(localeName) : DateFormat.yMMMMEEEEd(localeName);
+    return pattern.format(local);
+  }
 
   String remainingTime(Duration left) {
     if (left.inDays >= 1) return pollTimeDays(left.inDays);

@@ -31,6 +31,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# Token agen uji untuk halaman demo CS (make cs-demo)
+scripts/cs-demo/runtime/
+
 # Backup lokal
 backups/*
 !backups/.gitkeep

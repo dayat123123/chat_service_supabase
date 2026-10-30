@@ -1,10 +1,11 @@
 import 'dart:async';
 
 import 'package:olt_social/src/core/auth/auth_bridge_client.dart';
+import 'package:olt_social/src/core/auth/session_tokens.dart';
 import 'package:olt_social/src/core/auth/social_session.dart';
 import 'package:olt_social/src/core/error/olt_social_exception.dart';
 
-class TokenManager {
+class TokenManager implements SessionTokens {
   TokenManager({
     required this._bridge,
     required this._oltTokenProvider,
@@ -27,13 +28,20 @@ class TokenManager {
 
   SocialSession? get currentSession => _session;
 
+  @override
+  String? get currentUserId => _session?.user.id;
+
   Stream<SocialSession?> get sessionChanges => _changes.stream;
 
+  @override
   Future<String> accessToken() async {
     final session = _session;
     if (session != null && !_expiringSoon(session)) return session.accessToken;
     return (await refresh()).accessToken;
   }
+
+  @override
+  Future<String> refreshUserId() async => (await refresh()).user.id;
 
   Future<SocialSession> refresh() {
     if (_disposed) {

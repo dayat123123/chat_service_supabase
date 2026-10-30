@@ -12,6 +12,20 @@ MemberRole parseRole(String? value) => MemberRole.values.asNameMap()[value] ?? M
 
 ReceiptStatus? parseReceiptStatus(String? value) => value == null ? null : ReceiptStatus.values.asNameMap()[value];
 
+const _messageKinds = {
+  'text': MessageKind.text,
+  'system': MessageKind.system,
+  'card': MessageKind.card,
+  'quick_reply': MessageKind.quickReply,
+  'help_link': MessageKind.helpLink,
+  'identity_request': MessageKind.identityRequest,
+  'csat': MessageKind.csat,
+};
+
+MessageKind parseMessageKind(String? value) => _messageKinds[value] ?? MessageKind.text;
+
+SenderRole? parseSenderRole(String? value) => value == null ? null : SenderRole.values.asNameMap()[value];
+
 @freezed
 abstract class ChatMessageModel with _$ChatMessageModel {
   const factory ChatMessageModel({
@@ -31,6 +45,10 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     DateTime? editedAt,
     required DateTime createdAt,
     String? cursor,
+    String? kind,
+    String? senderRole,
+    String? sessionId,
+    @Default(<String, dynamic>{}) Map<String, dynamic> payload,
   }) = _ChatMessageModel;
 
   const ChatMessageModel._();
@@ -59,6 +77,10 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     editedAt: editedAt,
     createdAt: createdAt,
     cursor: cursor,
+    kind: parseMessageKind(kind),
+    senderRole: parseSenderRole(senderRole),
+    ticketId: sessionId,
+    payload: payload,
   );
 }
 
@@ -75,6 +97,10 @@ abstract class MessageRowModel with _$MessageRowModel {
     DateTime? editedAt,
     DateTime? deletedAt,
     required DateTime createdAt,
+    String? kind,
+    String? senderRole,
+    String? sessionId,
+    @Default(<String, dynamic>{}) Map<String, dynamic> payload,
   }) = _MessageRowModel;
 
   const MessageRowModel._();
@@ -93,6 +119,10 @@ abstract class MessageRowModel with _$MessageRowModel {
     clientId: clientId,
     editedAt: editedAt,
     createdAt: createdAt,
+    kind: parseMessageKind(kind),
+    senderRole: parseSenderRole(senderRole),
+    ticketId: sessionId,
+    payload: payload,
   );
 }
 

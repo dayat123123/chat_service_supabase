@@ -1042,6 +1042,306 @@ abstract class OltSocialLocalizations {
   /// In id, this message translates to:
   /// **'Akun Anda sedang dibatasi dan belum bisa mengirim konten.'**
   String get errorUserMuted;
+
+  /// No description provided for @today.
+  ///
+  /// In id, this message translates to:
+  /// **'Hari ini'**
+  String get today;
+
+  /// No description provided for @yesterday.
+  ///
+  /// In id, this message translates to:
+  /// **'Kemarin'**
+  String get yesterday;
+
+  /// No description provided for @supportOfficialBadge.
+  ///
+  /// In id, this message translates to:
+  /// **'CS Resmi'**
+  String get supportOfficialBadge;
+
+  /// No description provided for @supportOfficialChannel.
+  ///
+  /// In id, this message translates to:
+  /// **'Layanan resmi'**
+  String get supportOfficialChannel;
+
+  /// No description provided for @supportOpenLink.
+  ///
+  /// In id, this message translates to:
+  /// **'Buka panduan'**
+  String get supportOpenLink;
+
+  /// No description provided for @supportViewCard.
+  ///
+  /// In id, this message translates to:
+  /// **'Lihat detail'**
+  String get supportViewCard;
+
+  /// No description provided for @supportRatePrompt.
+  ///
+  /// In id, this message translates to:
+  /// **'Beri nilai layanan ini'**
+  String get supportRatePrompt;
+
+  /// No description provided for @supportRated.
+  ///
+  /// In id, this message translates to:
+  /// **'Terima kasih atas penilaian Anda'**
+  String get supportRated;
+
+  /// No description provided for @errorSecretRequestBlocked.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan ditahan: CS tidak boleh meminta OTP, PIN, atau password. Supervisor sudah diberi tahu.'**
+  String get errorSecretRequestBlocked;
+
+  /// No description provided for @supportTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Bantuan / Chat CS'**
+  String get supportTitle;
+
+  /// No description provided for @supportPickTopic.
+  ///
+  /// In id, this message translates to:
+  /// **'Apa yang bisa kami bantu?'**
+  String get supportPickTopic;
+
+  /// No description provided for @supportPickTopicHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Pilih topik agar CS yang tepat langsung membantu Anda.'**
+  String get supportPickTopicHint;
+
+  /// No description provided for @supportAttachOrder.
+  ///
+  /// In id, this message translates to:
+  /// **'Lampirkan order'**
+  String get supportAttachOrder;
+
+  /// No description provided for @supportAttached.
+  ///
+  /// In id, this message translates to:
+  /// **'Order {ref} ikut dilampirkan'**
+  String supportAttached(String ref);
+
+  /// No description provided for @supportHistory.
+  ///
+  /// In id, this message translates to:
+  /// **'Lihat riwayat chat'**
+  String get supportHistory;
+
+  /// No description provided for @supportOutOfHours.
+  ///
+  /// In id, this message translates to:
+  /// **'CS sedang di luar jam layanan. Pesan Anda dibalas mulai {time}.'**
+  String supportOutOfHours(String time);
+
+  /// No description provided for @supportStatusWaiting.
+  ///
+  /// In id, this message translates to:
+  /// **'Menunggu CS'**
+  String get supportStatusWaiting;
+
+  /// No description provided for @supportQueueAhead.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} tiket di depan Anda'**
+  String supportQueueAhead(int count);
+
+  /// No description provided for @supportStatusHandled.
+  ///
+  /// In id, this message translates to:
+  /// **'Ditangani oleh {name} – CS Resmi'**
+  String supportStatusHandled(String name);
+
+  /// No description provided for @supportStatusWaitingYou.
+  ///
+  /// In id, this message translates to:
+  /// **'Menunggu balasan Anda'**
+  String get supportStatusWaitingYou;
+
+  /// No description provided for @supportStatusResolved.
+  ///
+  /// In id, this message translates to:
+  /// **'Selesai'**
+  String get supportStatusResolved;
+
+  /// No description provided for @supportStatusClosed.
+  ///
+  /// In id, this message translates to:
+  /// **'Ditutup'**
+  String get supportStatusClosed;
+
+  /// No description provided for @supportMenu.
+  ///
+  /// In id, this message translates to:
+  /// **'Menu bantuan'**
+  String get supportMenu;
+
+  /// No description provided for @supportEndChat.
+  ///
+  /// In id, this message translates to:
+  /// **'Akhiri chat'**
+  String get supportEndChat;
+
+  /// No description provided for @supportEndConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Akhiri chat dan tandai tiket ini selesai?'**
+  String get supportEndConfirm;
+
+  /// No description provided for @supportComplaint.
+  ///
+  /// In id, this message translates to:
+  /// **'Ajukan pengaduan'**
+  String get supportComplaint;
+
+  /// No description provided for @supportComplaintConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Tiket ini akan dicatat sebagai pengaduan resmi dengan tenggat penyelesaian. Lanjutkan?'**
+  String get supportComplaintConfirm;
+
+  /// No description provided for @supportReportFake.
+  ///
+  /// In id, this message translates to:
+  /// **'Laporkan CS palsu'**
+  String get supportReportFake;
+
+  /// No description provided for @supportReportFakeHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Ceritakan kejadiannya: siapa yang menghubungi, lewat apa, dan apa yang diminta.'**
+  String get supportReportFakeHint;
+
+  /// No description provided for @supportSend.
+  ///
+  /// In id, this message translates to:
+  /// **'Kirim'**
+  String get supportSend;
+
+  /// No description provided for @supportMyTickets.
+  ///
+  /// In id, this message translates to:
+  /// **'Tiket saya'**
+  String get supportMyTickets;
+
+  /// No description provided for @supportNoTickets.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada tiket.'**
+  String get supportNoTickets;
+
+  /// No description provided for @supportNewTicket.
+  ///
+  /// In id, this message translates to:
+  /// **'Buat tiket baru'**
+  String get supportNewTicket;
+
+  /// No description provided for @supportRateTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Nilai layanan CS'**
+  String get supportRateTitle;
+
+  /// No description provided for @supportRateComment.
+  ///
+  /// In id, this message translates to:
+  /// **'Komentar (opsional)'**
+  String get supportRateComment;
+
+  /// No description provided for @supportRateSubmit.
+  ///
+  /// In id, this message translates to:
+  /// **'Kirim nilai'**
+  String get supportRateSubmit;
+
+  /// No description provided for @supportSensitiveWarning.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan ini berisi {kinds} dan akan disamarkan. CS OLT tidak pernah meminta OTP, PIN, atau password.'**
+  String supportSensitiveWarning(String kinds);
+
+  /// No description provided for @supportKindOtp.
+  ///
+  /// In id, this message translates to:
+  /// **'kode OTP'**
+  String get supportKindOtp;
+
+  /// No description provided for @supportKindPassword.
+  ///
+  /// In id, this message translates to:
+  /// **'password/PIN'**
+  String get supportKindPassword;
+
+  /// No description provided for @supportKindCard.
+  ///
+  /// In id, this message translates to:
+  /// **'nomor kartu'**
+  String get supportKindCard;
+
+  /// No description provided for @supportKindNik.
+  ///
+  /// In id, this message translates to:
+  /// **'NIK'**
+  String get supportKindNik;
+
+  /// No description provided for @supportKindAccount.
+  ///
+  /// In id, this message translates to:
+  /// **'nomor rekening'**
+  String get supportKindAccount;
+
+  /// No description provided for @supportComplaintFiled.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengaduan dicatat. Tenggat penyelesaian tampil di chat.'**
+  String get supportComplaintFiled;
+
+  /// No description provided for @supportFakeReported.
+  ///
+  /// In id, this message translates to:
+  /// **'Laporan terkirim. Tim kami segera menindaklanjuti.'**
+  String get supportFakeReported;
+
+  /// No description provided for @supportClosed.
+  ///
+  /// In id, this message translates to:
+  /// **'Chat diakhiri.'**
+  String get supportClosed;
+
+  /// No description provided for @supportCardSent.
+  ///
+  /// In id, this message translates to:
+  /// **'Order dilampirkan ke chat.'**
+  String get supportCardSent;
+
+  /// No description provided for @supportNoOrders.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada order terbaru.'**
+  String get supportNoOrders;
+
+  /// No description provided for @supportTicketMeta.
+  ///
+  /// In id, this message translates to:
+  /// **'{date} · {status}'**
+  String supportTicketMeta(String date, String status);
+
+  /// No description provided for @supportRating.
+  ///
+  /// In id, this message translates to:
+  /// **'Nilai {rating}/5'**
+  String supportRating(int rating);
+
+  /// No description provided for @supportUnavailable.
+  ///
+  /// In id, this message translates to:
+  /// **'Chat CS belum tersedia. Coba lagi sebentar lagi.'**
+  String get supportUnavailable;
 }
 
 class _OltSocialLocalizationsDelegate

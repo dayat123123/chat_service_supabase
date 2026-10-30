@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 import 'package:olt_social/src/app/olt_social_dependencies.dart';
+import 'package:olt_social/src/app/olt_support_scope.dart';
 import 'package:olt_social/src/core/auth/auth_bridge_client.dart';
 import 'package:olt_social/src/core/auth/social_session.dart';
 import 'package:olt_social/src/core/auth/token_manager.dart';
@@ -9,6 +10,7 @@ import 'package:olt_social/src/core/error/error_mapper.dart';
 import 'package:olt_social/src/core/network/realtime_gateway.dart';
 import 'package:olt_social/src/core/network/social_remote_data_source.dart';
 import 'package:olt_social/src/features/chat/data/repositories/chat_repository_impl.dart';
+import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
 import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
 import 'package:olt_social/src/features/chat/domain/services/delivery_tracker.dart';
 import 'package:olt_social/src/features/feed/data/repositories/feed_repository_impl.dart';
@@ -27,10 +29,13 @@ import 'package:olt_social/src/features/profile/data/repositories/profile_reposi
 import 'package:olt_social/src/features/profile/domain/repositories/profile_repository.dart';
 import 'package:olt_social/src/features/stocks/data/repositories/stock_repository_impl.dart';
 import 'package:olt_social/src/features/stocks/domain/repositories/stock_repository.dart';
+import 'package:olt_social/src/features/support/data/repositories/support_chat_repository.dart';
+import 'package:olt_social/src/features/support/data/repositories/support_repository_impl.dart';
+import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
 import 'package:olt_social/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class OltSocial implements OltSocialDependencies {
+class OltSocial implements OltSocialDependencies, OltSupportDependencies {
   OltSocial._({
     required this.client,
     required this._tokens,
@@ -44,6 +49,8 @@ class OltSocial implements OltSocialDependencies {
     required this.notifications,
     required this.moderation,
     required this.media,
+    required this.support,
+    required this.supportChat,
     required bool trackDelivery,
   }) {
     if (trackDelivery) {
@@ -119,8 +126,17 @@ class OltSocial implements OltSocialDependencies {
       oltTokenProvider: oltTokenProvider,
     );
     final client = SupabaseClient(baseUrl, anonKey, accessToken: tokens.accessToken, httpClient: httpClient);
-    final api = SupabaseSocialDataSource(client, tokens, supabaseUrl: baseUrl, anonKey: anonKey);
+    final api = SupabaseSocialDataSource(
+      client,
+      tokens,
+      supabaseUrl: baseUrl,
+      anonKey: anonKey,
+      httpClient: httpClient,
+    );
     final realtime = RealtimeGateway(client);
+    final notifications = NotificationRepositoryImpl(api, realtime);
+    final cs = api.inSchema('cs_api');
+    final support = SupportRepositoryImpl(api, cs: cs, realtime: realtime, notifications: notifications);
 
     final social = OltSocial._(
       client: client,
@@ -137,9 +153,21 @@ class OltSocial implements OltSocialDependencies {
       polls: PollRepositoryImpl(api),
       profiles: ProfileRepositoryImpl(api),
       stocks: StockRepositoryImpl(api),
-      notifications: NotificationRepositoryImpl(api, realtime),
+      notifications: notifications,
       moderation: ModerationRepositoryImpl(api),
       media: MediaRepositoryImpl(api),
+      support: support,
+      supportChat: SupportChatRepository(
+        cs,
+        realtime: realtime,
+        rooms: () async {
+          final home = await support.home();
+          final roomId = home.roomId;
+          if (roomId == null) return const <ChatRoom>[];
+          final now = DateTime.now().toUtc();
+          return [ChatRoom(id: roomId, type: RoomType.support, name: home.supportName, createdAt: now, lastReadAt: now)];
+        },
+      ),
       trackDelivery: trackDelivery,
     );
 
@@ -180,6 +208,10 @@ class OltSocial implements OltSocialDependencies {
   final ModerationRepository moderation;
   @override
   final MediaRepository media;
+  @override
+  final SupportRepository support;
+  @override
+  final ChatRepository supportChat;
 
   @override
   UserSummary? get currentUser => _tokens.currentSession?.user;

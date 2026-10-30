@@ -10,9 +10,9 @@ Panel agen / App nasabah ──JWT──▶ Kong /cs/v1 ──▶ customer-adapt
 ```
 
 - Adapter memverifikasi tanda tangan JWT, lalu meneruskan JWT pemanggil ke RPC `cs_api`.
-- RPC itu memeriksa peran + 2FA (`aal2`), apakah agen sedang menangani sesi tersebut, dan batas anomali (30 profil/jam, 10 pembukaan data/jam per agen). Setelah itu ia menulis audit log. Baru setelahnya adapter memanggil OLT.
+- RPC itu memeriksa peran + 2FA (`aal2`), apakah CS adalah pemilik tiket aktif tersebut, dan batas anomali (30 profil/jam, 10 pembukaan data/jam per agen). Setelah itu ia menulis audit log. Baru setelahnya adapter memanggil OLT.
 - Data sensitif disamarkan oleh OLT (sesuai protokol). Adapter menyamarkan sekali lagi sebagai pengaman.
-- Setiap request ke OLT membawa `correlation_id` (ID sesi + kode agen).
+- Setiap request ke OLT membawa `correlation_id` (nomor tiket + kode CS, mis. `CS-20261030-0001/CS-0045`).
 
 ## API (lewat Kong: `/cs/v1`)
 
@@ -20,14 +20,14 @@ Semua request wajib membawa `apikey` dan `Authorization: Bearer <JWT>`. Respons 
 
 | Method & path | Siapa | Isi |
 |---|---|---|
-| `GET /agent/sessions/{session}/customer/profile` | Agen yang menangani sesi, supervisor, kepatuhan (sesi berflag) | Profil tersamar |
-| `GET /agent/sessions/{session}/customer/orders` | 〃 | Daftar order (`from`, `to`, `status`, `code`, `cursor`, `limit`) |
-| `GET /agent/sessions/{session}/customer/orders/{order}` | 〃 | Detail order + riwayat + eksekusi (isi kartu order di chat) |
-| `GET /agent/sessions/{session}/customer/cash-transactions[/{id}]` | 〃 | Transaksi RDN |
-| `GET /agent/sessions/{session}/customer/sessions` | 〃 | Perangkat & riwayat login (IP tersamar) |
-| `GET /agent/sessions/{session}/customer/security` | 〃 | Status keamanan akun |
-| `POST /agent/sessions/{session}/customer/reveal` | 〃 | Buka satu field (`{"field","reason"}`), berlaku 5 menit, tercatat |
-| `POST /agent/sessions/{session}/customer/secure-account` | Agen yang menangani, supervisor | "Amankan akun" di OLT (idempoten per sesi). Hasilnya dicatat dan nasabah diberi tahu di chat |
+| `GET /agent/tickets/{ticket}/customer/profile` | CS pemilik tiket aktif, supervisor, kepatuhan (tiket berflag) | Profil tersamar |
+| `GET /agent/tickets/{ticket}/customer/orders` | 〃 | Daftar order (`from`, `to`, `status`, `code`, `cursor`, `limit`) |
+| `GET /agent/tickets/{ticket}/customer/orders/{order}` | 〃 | Detail order + riwayat + eksekusi (isi kartu order di chat) |
+| `GET /agent/tickets/{ticket}/customer/cash-transactions[/{id}]` | 〃 | Transaksi RDN |
+| `GET /agent/tickets/{ticket}/customer/sessions` | 〃 | Perangkat & riwayat login (IP tersamar) |
+| `GET /agent/tickets/{ticket}/customer/security` | 〃 | Status keamanan akun |
+| `POST /agent/tickets/{ticket}/customer/reveal` | 〃 | Buka satu field (`{"field","reason"}`), berlaku 5 menit, tercatat |
+| `POST /agent/tickets/{ticket}/customer/secure-account` | CS pemilik tiket aktif, supervisor | "Amankan akun" di OLT (idempoten per tiket). Hasilnya dicatat dan nasabah diberi tahu di chat |
 | `GET /me/orders`, `GET /me/orders/{order}`, `GET /me/cash-transactions` | Nasabah (data sendiri) | Memilih order/transaksi untuk kartu konteks di chat |
 
 Port ops (`9100`, tidak lewat Kong) menyediakan `GET /livez`, `GET /readyz`, dan `GET /metrics`.

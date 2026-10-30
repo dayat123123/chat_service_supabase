@@ -235,11 +235,21 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 - [ ] DNS dan sertifikat HTTPS valid (Traefik memperbarui otomatis).
 
 **Customer service lewat chat (sebelum dibuka untuk nasabah; lihat [docs/cs-chat](cs-chat/README.md))**
-- [ ] CS1–CS4 selesai, `make test-db`, `make test-cs`, dan `make smoke-cs` lulus di staging, termasuk tes konkurensi `cs-matcher` (CS2).
+- [ ] Revisi CS-2 (R1–R4) selesai. `make test-db`, `make test-cs`, `make cs-race`, dan `make smoke-cs` lulus di staging. `make cs-race` mencakup tes rebutan lewat beberapa replika API.
 - [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
 - [ ] Kalender libur tahun berjalan dan tahun depan sudah diperiksa kepatuhan (`cs.holidays.verified = true`), termasuk libur bursa dari pengumuman BEI.
 - [ ] `customer-adapter` terhubung ke endpoint OLT nasabah asli (`wss://`) dengan kredensial terpisah, dan sudah diuji di UAT OLT.
-- [ ] API agen (`cs_api.agent_*`, `/cs/v1/agent/*`) dan panel CS hanya bisa diakses lewat VPN. Agen login dengan email + TOTP, dan pendaftaran publik GoTrue tetap mati.
+- [ ] API agen (`cs_api.agent_*`, `/cs/v1/agent/*`) dan web CS (`apps/cs-console`) hanya bisa diakses lewat VPN. Agen login dengan email + TOTP, dan pendaftaran publik GoTrue tetap mati.
+- [ ] Endpoint login GoTrue (`/auth/v1/token`, `/auth/v1/factors`, `/auth/v1/user`) hanya dari VPN. Nasabah tidak memakainya karena JWT nasabah diterbitkan auth-bridge.
+- [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari VPN. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.
+- [ ] Admin CS pertama dibuat sekali dari host admin:
+  1. buat user lewat API admin GoTrue;
+  2. jalankan `select cs.create_agent('<uuid user>', '<nama>', '{cs_admin}')`;
+  3. admin login dan mendaftarkan TOTP.
+
+  Akun CS berikutnya dibuat dari menu Pengaturan. `scripts/cs-staff-setup.sh` hanya untuk dev.
+- [ ] Halaman demo `scripts/cs-demo` tidak ikut di-deploy. Halaman ini hanya disajikan `make cs-demo` di profil dev.
+- [ ] Web CS disajikan dengan header keamanan (`Content-Security-Policy` yang membatasi `connect-src` ke API internal, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`) dan tanpa cache untuk `index.html`.
 - [ ] Partisi `cs.*_default` kosong, dan job `cs-partitions` tercatat sukses di `cron.job_run_details`.
 
 **Aplikasi**
