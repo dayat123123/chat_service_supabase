@@ -35,7 +35,6 @@ func TestUserTokenClaims(t *testing.T) {
 	if claims["exp"].(float64) != float64(now.Add(15*time.Minute).Unix()) {
 		t.Errorf("claim exp salah: %v", claims["exp"])
 	}
-	// Klaim minimal: tidak ada data pribadi di JWT.
 	for _, key := range []string{"email", "user_metadata", "phone"} {
 		if _, ok := claims[key]; ok {
 			t.Errorf("claim %s tidak boleh ada", key)
@@ -84,7 +83,7 @@ func TestServiceTokenCachedAndRefreshed(t *testing.T) {
 	if again, _ := iss.ServiceToken(); again != first {
 		t.Error("token masih berlaku harus dipakai ulang")
 	}
-	now = now.Add(25 * time.Second) // sisa < 10 detik
+	now = now.Add(25 * time.Second)
 	if renewed, _ := iss.ServiceToken(); renewed == first {
 		t.Error("token hampir kedaluwarsa harus diperbarui")
 	}

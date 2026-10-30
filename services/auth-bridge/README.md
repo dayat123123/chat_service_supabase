@@ -148,7 +148,7 @@ Cara kerja adapter:
 | `RATE_LIMIT_PER_USER_PER_MINUTE` | `10` | Per user OLT |
 | `BREAKER_FAILURE_THRESHOLD` | `5` | Kegagalan OLT berturut-turut sebelum breaker terbuka |
 | `BREAKER_COOLDOWN` | `30` | Detik sebelum request uji ke OLT |
-| `TRUSTED_PROXIES` | jaringan privat | `X-Forwarded-For` hanya dipercaya dari proxy ini (Kong/Traefik). IP klien = IP paling kanan yang bukan proxy |
+| `TRUSTED_PROXIES` | jaringan privat | `X-Forwarded-For` hanya dipercaya dari proxy ini (Kong/Traefik). IP klien = IP paling kanan yang bukan proxy. Bila semua hop berupa IP privat (dev/service internal), dipakai hop paling kiri agar klien internal tidak berbagi satu kuota. XFF kiriman internet dibuang Traefik sebelum sampai ke sini |
 | `OLT_MODE` | `mock` | `mock` / `websocket` |
 | `OLT_WS_*` | Protokol v1 | Adapter WebSocket OLT, lihat di atas |
 

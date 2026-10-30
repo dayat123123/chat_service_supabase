@@ -1,4 +1,3 @@
-// Package config membaca konfigurasi auth-bridge dari environment variable.
 package config
 
 import (
@@ -14,58 +13,39 @@ import (
 	"time"
 )
 
-// OLTMode menentukan cara auth-bridge memverifikasi token OLT.
 type OLTMode string
 
 const (
-	// OLTModeMock memverifikasi token dummy tanpa menghubungi server OLT (khusus development).
-	OLTModeMock OLTMode = "mock"
-	// OLTModeWebSocket memverifikasi token dengan login-token ke WebSocket server OLT.
+	OLTModeMock      OLTMode = "mock"
 	OLTModeWebSocket OLTMode = "websocket"
 )
 
 const (
-	// TokenPlaceholder diganti dengan token OLT di template pesan login WebSocket.
-	TokenPlaceholder = "{{token}}"
-	// RequestIDPlaceholder diganti dengan id unik per request (UUID v4).
+	TokenPlaceholder     = "{{token}}"
 	RequestIDPlaceholder = "{{request_id}}"
 )
 
-// Config adalah seluruh konfigurasi runtime auth-bridge.
 type Config struct {
-	Port               int
-	AppEnv             string
-	LogLevel           slog.Level
-	JWTSecret          string
-	JWTTTL             time.Duration
-	JWTIssuer          string
-	PostgRESTURL       string
-	VerifyCacheTTL     time.Duration
-	RateLimitPerMinute int
-	// RateLimitPerUserPerMinute membatasi exchange per user OLT (setelah token
-	// terverifikasi), selain batas per IP.
+	Port                      int
+	AppEnv                    string
+	LogLevel                  slog.Level
+	JWTSecret                 string
+	JWTTTL                    time.Duration
+	JWTIssuer                 string
+	PostgRESTURL              string
+	VerifyCacheTTL            time.Duration
+	RateLimitPerMinute        int
 	RateLimitPerUserPerMinute int
 	TrustedProxies            []netip.Prefix
-	// Valkey dipakai bersama semua replika untuk rate limit & cache verifikasi.
-	// Kosong = in-memory per instance (hanya untuk development satu replika).
-	ValkeyAddr     string
-	ValkeyPassword string
-	ValkeyDB       int
-	// Circuit breaker ke server OLT.
-	BreakerThreshold int
-	BreakerCooldown  time.Duration
-	// OpsPort menyajikan /metrics, /livez, /readyz di port internal yang tidak
-	// diteruskan Kong. 0 = mati.
-	OpsPort int
-	OLT     OLTConfig
+	ValkeyAddr                string
+	ValkeyPassword            string
+	ValkeyDB                  int
+	BreakerThreshold          int
+	BreakerCooldown           time.Duration
+	OpsPort                   int
+	OLT                       OLTConfig
 }
 
-// OLTConfig mengatur verifikasi token ke server OLT.
-//
-// Default-nya mengikuti Protokol v1 (docs/market-integration.md), sehingga di
-// produksi cukup mengisi OLT_WS_URL. Bila format OLT berbeda, request dibangun
-// dari template JSON dan field respons dibaca lewat path bertitik
-// (mis. "data.user.id", indeks array: "items.0.id").
 type OLTConfig struct {
 	Mode               OLTMode
 	WebSocketURL       string
@@ -83,12 +63,10 @@ type OLTConfig struct {
 	DisplayNamePath    string
 }
 
-// IsProduction bernilai true jika APP_ENV=production.
 func (c Config) IsProduction() bool {
 	return c.AppEnv == "production"
 }
 
-// Load membaca dan memvalidasi konfigurasi dari environment.
 func Load() (Config, error) {
 	var errs []error
 
@@ -113,8 +91,6 @@ func Load() (Config, error) {
 			WebSocketURL: os.Getenv("OLT_WS_URL"),
 			Timeout:      secondsEnv("OLT_WS_TIMEOUT", 5, &errs),
 			Origin:       os.Getenv("OLT_WS_ORIGIN"),
-			// Default = Protokol v1. Satu koneksi per login, jadi respons cukup
-			// dicocokkan lewat type.
 			LoginTemplate: envOr("OLT_WS_LOGIN_TEMPLATE",
 				`{"v":1,"type":"login","request_id":"{{request_id}}","method":"token","payload":{"token":"{{token}}"}}`),
 			ResponseMatchPath:  envOr("OLT_WS_RESPONSE_MATCH_PATH", "type"),
@@ -206,8 +182,6 @@ func envOr(key, def string) string {
 	return def
 }
 
-// secretEnv membaca rahasia dari file <KEY>_FILE (Docker secrets) bila diset,
-// atau dari env <KEY>. Spasi/baris baru di ujung isi file diabaikan.
 func secretEnv(key string, errs *[]error) string {
 	path := os.Getenv(key + "_FILE")
 	if path == "" {
@@ -225,7 +199,6 @@ func intEnv(key string, def int, errs *[]error) int {
 	return intEnvMin(key, def, 1, errs)
 }
 
-// intEnvMin membaca bilangan bulat >= floor.
 func intEnvMin(key string, def, floor int, errs *[]error) int {
 	v := envOr(key, strconv.Itoa(def))
 	n, err := strconv.Atoi(v)

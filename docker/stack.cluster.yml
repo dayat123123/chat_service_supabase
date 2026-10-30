@@ -100,7 +100,7 @@ services:
       <<: *deploy
       replicas: 2
   auth-bridge:
-    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.3.0
+    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.3.1
     deploy:
       <<: *deploy
       replicas: 2

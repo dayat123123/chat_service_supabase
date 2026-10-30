@@ -36,7 +36,7 @@ func TestLookup(t *testing.T) {
 		want string
 		ok   bool
 	}{
-		"data.user.id":   {"12345678901234567890", true}, // angka besar tidak kehilangan presisi
+		"data.user.id":   {"12345678901234567890", true},
 		"data.user.name": {"Budi", true},
 		"data.user.ok":   {"true", true},
 		"data.list.0.id": {"x", true},
@@ -53,7 +53,6 @@ func TestLookup(t *testing.T) {
 	}
 }
 
-// fakeOLT adalah server WebSocket OLT tiruan.
 func fakeOLT(t *testing.T, handle func(conn *websocket.Conn, login map[string]any)) *httptest.Server {
 	t.Helper()
 	upgrader := websocket.Upgrader{}
@@ -68,7 +67,6 @@ func fakeOLT(t *testing.T, handle func(conn *websocket.Conn, login map[string]an
 			return
 		}
 		handle(conn, login)
-		// Tunggu client menutup koneksi.
 		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 		_, _, _ = conn.ReadMessage()
 	}))
@@ -140,7 +138,7 @@ func TestWebSocketVerifierRejected(t *testing.T) {
 
 func TestWebSocketVerifierTimeout(t *testing.T) {
 	srv := fakeOLT(t, func(*websocket.Conn, map[string]any) {
-		time.Sleep(800 * time.Millisecond) // tidak pernah menjawab sebelum timeout
+		time.Sleep(800 * time.Millisecond)
 	})
 	cfg := wsConfig(srv.URL)
 	cfg.Timeout = 300 * time.Millisecond
@@ -165,7 +163,6 @@ func TestWebSocketVerifierUnreachable(t *testing.T) {
 	}
 }
 
-// Konfigurasi default (hanya OLT_WS_URL diisi) harus berbicara Protokol v1.
 func TestWebSocketVerifierProtocolV1Defaults(t *testing.T) {
 	ids := make(chan string, 2)
 	srv := fakeOLT(t, func(conn *websocket.Conn, login map[string]any) {

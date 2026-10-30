@@ -5,7 +5,8 @@ select plan(11);
 select tables_are('public', array[
   'banned_words', 'blocks', 'chat_members', 'chat_rooms', 'comments', 'follows',
   'legal_documents', 'messages', 'muted_keywords', 'muted_stocks', 'mutes', 'notifications',
-  'post_mentions', 'post_stocks', 'posts', 'profiles', 'reactions', 'reports',
+  'post_mentions', 'post_poll_options', 'post_poll_votes', 'post_polls', 'post_stocks', 'posts',
+  'profiles', 'reactions', 'reports',
   'stock_watchers', 'stocks', 'user_consents'
 ], 'Tabel public sesuai skema');
 

@@ -1,9 +1,13 @@
 targets:
   $default:
+    sources:
+      - lib/**
+      - test/**
+      - $package$
+      - pubspec.yaml
     builders:
       json_serializable:
         options:
-          # Kolom Postgres snake_case -> field Dart camelCase.
           field_rename: snake
           explicit_to_json: true
           checked: false

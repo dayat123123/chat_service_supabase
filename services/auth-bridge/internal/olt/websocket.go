@@ -18,16 +18,12 @@ import (
 	"olt-social/auth-bridge/internal/config"
 )
 
-// WebSocketVerifier memverifikasi token dengan membuka koneksi ke WebSocket
-// server OLT, mengirim pesan login metode token, membaca respons login, lalu
-// menutup koneksi. auth-bridge tidak pernah menerima/menyimpan password user.
 type WebSocketVerifier struct {
 	cfg      config.OLTConfig
 	template any
 	dialer   *websocket.Dialer
 }
 
-// NewWebSocketVerifier membuat verifier dari konfigurasi (sudah divalidasi config.Load).
 func NewWebSocketVerifier(cfg config.OLTConfig) (*WebSocketVerifier, error) {
 	var tmpl any
 	if err := json.Unmarshal([]byte(cfg.LoginTemplate), &tmpl); err != nil {
@@ -43,7 +39,6 @@ func NewWebSocketVerifier(cfg config.OLTConfig) (*WebSocketVerifier, error) {
 	}, nil
 }
 
-// Verify menjalankan login token ke server OLT dengan batas waktu cfg.Timeout.
 func (v *WebSocketVerifier) Verify(ctx context.Context, token string) (User, error) {
 	ctx, cancel := context.WithTimeout(ctx, v.cfg.Timeout)
 	defer cancel()
@@ -78,7 +73,6 @@ func (v *WebSocketVerifier) Verify(ctx context.Context, token string) (User, err
 		return User{}, fmt.Errorf("%w: kirim login: %v", ErrUnavailable, err)
 	}
 
-	// Server bisa mengirim pesan lain (heartbeat, info) sebelum respons login.
 	for {
 		_, data, err := conn.ReadMessage()
 		if err != nil {
@@ -123,10 +117,6 @@ func (v *WebSocketVerifier) parseLoginResponse(doc any) (User, error) {
 	return u, nil
 }
 
-// substitute mengganti placeholder ({{token}}, {{request_id}}) di semua nilai
-// string template. Bekerja pada struktur JSON (bukan teks), sehingga token
-// tidak bisa menyuntikkan JSON; Replacer berjalan satu kali sehingga isi token
-// tidak ikut diganti ulang.
 func substitute(node any, vars *strings.Replacer) any {
 	switch n := node.(type) {
 	case map[string]any:
@@ -148,7 +138,6 @@ func substitute(node any, vars *strings.Replacer) any {
 	}
 }
 
-// newRequestID membuat UUID v4 acak untuk field request_id Protokol v1.
 func newRequestID() string {
 	var b [16]byte
 	_, _ = rand.Read(b[:])
@@ -168,8 +157,6 @@ func decodeJSON(data []byte) (any, bool) {
 	return doc, true
 }
 
-// Lookup membaca nilai pada path bertitik ("data.user.id", "items.0.id") dan
-// mengembalikannya sebagai string. Path kosong atau nilai null -> ok=false.
 func Lookup(doc any, path string) (string, bool) {
 	if path == "" {
 		return "", false
@@ -212,5 +199,4 @@ func Lookup(doc any, path string) (string, bool) {
 	}
 }
 
-// IsUnavailable melaporkan apakah err berasal dari kegagalan menghubungi OLT.
 func IsUnavailable(err error) bool { return errors.Is(err, ErrUnavailable) }

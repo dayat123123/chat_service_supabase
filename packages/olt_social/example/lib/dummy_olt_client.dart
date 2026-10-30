@@ -4,19 +4,14 @@ import 'dart:math';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-/// Klien protokol login OLT DUMMY (services/dummy-olt), meniru cara aplikasi
-/// OLT login ke WebSocket OLT: username/email + password, atau token.
-/// Hanya untuk demo & testing; aplikasi OLT asli memakai modul login miliknya.
 class DummyOltClient {
   DummyOltClient(this.url, {this.timeout = const Duration(seconds: 10)});
 
-  /// Mis. ws://localhost:8090/ws
   final String url;
   final Duration timeout;
 
   static final _random = Random();
 
-  /// Login dengan username atau email (otomatis dikenali dari '@') + password.
   Future<DummyOltSession> loginWithPassword(String identifier, String password) async {
     final id = identifier.trim();
     final res = await _request({
@@ -27,7 +22,6 @@ class DummyOltClient {
     return DummyOltSession._fromResult(res);
   }
 
-  /// Login ulang memakai token sesi yang sudah dimiliki.
   Future<DummyOltSession> loginWithToken(String token) async {
     final res = await _request({
       'type': 'login',
@@ -55,10 +49,8 @@ class DummyOltClient {
       );
     }
     try {
-      // 0x7fffffff: aman juga di web (bilangan bulat JavaScript).
       final requestId = '${DateTime.now().microsecondsSinceEpoch}-${_random.nextInt(0x7fffffff)}';
       channel.sink.add(jsonEncode({...message, 'request_id': requestId}));
-      // Server bisa mengirim pesan lain (welcome, heartbeat) sebelum balasan.
       await for (final raw in channel.stream.timeout(timeout)) {
         final msg = jsonDecode(raw as String) as Map<String, dynamic>;
         if (msg['type'] != replyType || msg['request_id'] != requestId) continue;
@@ -77,7 +69,6 @@ class DummyOltClient {
   }
 }
 
-/// Sesi hasil login OLT dummy.
 class DummyOltSession {
   const DummyOltSession({required this.token, required this.userId, required this.username, required this.fullName});
 

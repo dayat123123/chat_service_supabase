@@ -66,7 +66,7 @@ func TestReleaseFreesHalfOpenProbe(t *testing.T) {
 	if !b.Allow() {
 		t.Fatal("request uji harus diizinkan setelah cooldown")
 	}
-	b.Release() // request uji dibatalkan klien
+	b.Release()
 	if !b.Allow() {
 		t.Fatal("setelah Release, request lain harus boleh menguji")
 	}

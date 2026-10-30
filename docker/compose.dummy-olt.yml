@@ -12,7 +12,7 @@ services:
   dummy-olt:
     build:
       context: ../services/dummy-olt
-    image: olt-social/dummy-olt:0.1.1
+    image: olt-social/dummy-olt:0.1.2
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]

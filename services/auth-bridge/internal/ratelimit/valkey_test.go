@@ -30,7 +30,6 @@ func TestValkeySlidingWindow(t *testing.T) {
 	if ok {
 		t.Fatal("request ke-3 dalam semenit harus ditolak")
 	}
-	// Request pertama (t=1000s) keluar dari jendela pada t=1060s; sekarang t=1020s.
 	if retry != 40*time.Second {
 		t.Fatalf("retry = %v, want 40s", retry)
 	}

@@ -48,8 +48,6 @@ func TestLoadDefaults(t *testing.T) {
 	}
 }
 
-// Default adapter WebSocket harus sama dengan Protokol v1
-// (docs/market-integration.md) agar produksi cukup mengisi OLT_WS_URL.
 func TestLoadDefaultsFollowProtocolV1(t *testing.T) {
 	t.Setenv("JWT_SECRET", secret)
 	t.Setenv("OLT_MODE", "websocket")

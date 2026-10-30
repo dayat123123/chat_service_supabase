@@ -1,16 +1,9 @@
 import 'dart:async';
 
-import '../../domain/entities/user.dart';
-import '../errors/olt_social_exception.dart';
-import 'auth_bridge_client.dart';
+import 'package:olt_social/src/core/auth/auth_bridge_client.dart';
+import 'package:olt_social/src/core/auth/social_session.dart';
+import 'package:olt_social/src/core/error/olt_social_exception.dart';
 
-/// Mengelola JWT Supabase yang diterbitkan auth-bridge.
-///
-/// * [accessToken] dipakai SupabaseClient untuk setiap request: mengembalikan
-///   token yang masih berlaku, atau menukar ulang token OLT bila hampir habis.
-/// * Refresh dijadwalkan [refreshMargin] sebelum kedaluwarsa dan diumumkan lewat
-///   [sessionChanges] (dipakai untuk memperbarui token koneksi realtime).
-/// * Refresh paralel digabung menjadi satu panggilan ke auth-bridge.
 class TokenManager {
   TokenManager({
     required this._bridge,
@@ -32,20 +25,16 @@ class TokenManager {
   Timer? _timer;
   bool _disposed = false;
 
-  /// Sesi aktif (null sebelum login pertama atau setelah [clear]).
   SocialSession? get currentSession => _session;
 
-  /// Memancar setiap sesi baru (refresh) dan null saat [clear].
   Stream<SocialSession?> get sessionChanges => _changes.stream;
 
-  /// Token yang masih berlaku; melempar [OltSocialException] bila tidak bisa login.
   Future<String> accessToken() async {
     final session = _session;
     if (session != null && !_expiringSoon(session)) return session.accessToken;
     return (await refresh()).accessToken;
   }
 
-  /// Menukar ulang token OLT sekarang juga.
   Future<SocialSession> refresh() {
     if (_disposed) {
       return Future.error(const OltSocialException(OltSocialErrorKind.unknown, message: 'TokenManager sudah ditutup'));
@@ -72,7 +61,6 @@ class TokenManager {
       try {
         await refresh();
       } catch (_) {
-        // Gagal (mis. offline): coba lagi nanti. Request berikutnya juga akan refresh.
         if (!_disposed) _schedule(retryDelay);
       }
     });
@@ -80,7 +68,6 @@ class TokenManager {
 
   bool _expiringSoon(SocialSession s) => !_clock().isBefore(s.expiresAt.subtract(refreshMargin ~/ 2));
 
-  /// Hapus sesi (mis. user logout dari OLT).
   void clear() {
     _timer?.cancel();
     _session = null;

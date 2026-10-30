@@ -175,6 +175,32 @@ Dasar audit:
   - Prometheus men-scrape `auth-bridge:9100/metrics`, dengan alert untuk breaker terbuka, lonjakan `valkey_errors_total`, dan rasio 429.
   - Provenance/SBOM dibuat di CI saat image di-push ke registry, bukan di build lokal.
 
+**Permintaan tambahan 29 Okt 2026: centang ala WhatsApp, mengetik di daftar chat, polling, kode bersih**
+- **Database** (migrasi `0018_chat_receipts`, `0019_polls`; ditulis tanpa komentar; migrasi lama tidak diubah karena dikunci checksum):
+  - `chat_members.last_delivered_at`; RPC `mark_rooms_delivered` dan `mark_room_read` (kini *security definer*) menyiarkan `receipt` dari server lewat `realtime.send`.
+  - Hak `UPDATE last_read_at` langsung dicabut, sehingga tanda terima tidak bisa dipalsukan klien.
+  - `get_my_rooms.last_message_status` dihitung di server (grup: semua anggota). Room saham tidak dilacak.
+  - Polling:
+    - tabel `post_polls`, `post_poll_options`, `post_poll_votes` (RLS aktif, tidak bisa dibaca langsung);
+    - `create_post(..., p_poll)` dalam satu transaksi, `vote_poll` (invoker, tunduk RLS post);
+    - counter lewat trigger, rate limit `poll_vote`;
+    - hasil tersembunyi sampai memilih, polling selesai, atau bagi pembuat;
+    - ekspor data memuat polling dan suara.
+- **Flutter** (`olt_social`):
+  - Struktur per fitur (`app` / `core` / `shared` / `features/<fitur>/{domain,data,presentation}`) dan cubit dipisah dari widget.
+  - `RoomChannelHub`: satu channel per room dengan ref-count, dibagi oleh daftar chat dan room.
+  - Presence dipindah dari channel global `online` ke channel room, sehingga tidak ada lagi siaran daftar semua user online ke semua klien.
+  - `DeliveryTracker` di tingkat aplikasi; composer memakai `create_post` + `client_id` per draf; editor polling dan `OltPollView`.
+  - Pemetaan error per kode stabil, misalnya `poll_closed` dan `duplicate_content`.
+- **Kode tanpa komentar:**
+  - Semua Dart dan Go dibersihkan memakai scanner resmi (`package:analyzer`, `go/scanner`), sehingga string dan directive (`// ignore:`, `//go:`) aman.
+  - Penjelasan dipindah ke README.
+- **Build image deterministik tetap terjaga:** hanya auth-bridge 0.3.1 dan dummy-olt 0.1.2 yang dibuat ulang.
+- **Verifikasi:**
+  - pgTAP 302 (+26 polling, +21 tanda terima);
+  - Flutter: analyze bersih, 87 unit/widget (sebelumnya 44); integration 8 + 4, termasuk centang terkirim → dibaca dan polling ke backend nyata; E2E Windows 2;
+  - smoke 23/23, smoke-dummy 16/16, tes Go.
+
 **Tahap 1: sengaja ditunda**
 - **WAL archiving** → Tahap 6, bersama WAL-G. Image DB perlu ditambah WAL-G.
 - **Profil cluster lengkap** → Tahap 7.

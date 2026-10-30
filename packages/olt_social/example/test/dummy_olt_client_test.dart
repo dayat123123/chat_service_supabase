@@ -1,7 +1,3 @@
-// Tes klien OLT dummy terhadap server yang berjalan (make up DUMMY_OLT=1).
-// Dilewati kecuali OLT_DUMMY_IT=1:
-//   Windows : $env:OLT_DUMMY_IT=1; flutter test test/dummy_olt_client_test.dart
-//   Linux   : OLT_DUMMY_IT=1 flutter test test/dummy_olt_client_test.dart
 import 'dart:io' show Platform;
 
 import 'package:flutter_test/flutter_test.dart';

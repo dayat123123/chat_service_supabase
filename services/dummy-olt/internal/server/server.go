@@ -1,20 +1,3 @@
-// Package server mengimplementasikan protokol login OLT dummy lewat WebSocket
-// (dipakai app & auth-bridge) dan endpoint HTTP bantu untuk testing.
-//
-// WebSocket /ws
-//
-//	server -> {"type":"welcome",...}                (saat tersambung)
-//	server -> {"type":"heartbeat",...}              (berkala)
-//	client -> {"type":"login","request_id":"r1","method":"password",
-//	           "payload":{"username":"budi_santoso","password":"..."}}   (atau "email")
-//	client -> {"type":"login","request_id":"r1","method":"token","payload":{"token":"olt_..."}}
-//	server -> {"type":"login_result","request_id":"r1","status":"OK",
-//	           "data":{"token":"olt_...","expires_at":"...","user":{"id":1001,"username":"...",
-//	           "email":"...","full_name":"..."}}}
-//	server -> {"type":"login_result","request_id":"r1","status":"FAILED",
-//	           "error":{"code":"INVALID_TOKEN","message":"..."}}
-//	client -> {"type":"logout","request_id":"r2","payload":{"token":"olt_..."}}
-//	client -> {"type":"ping"}  -> {"type":"pong"}
 package server
 
 import (
@@ -34,7 +17,6 @@ import (
 	"olt-social/dummy-olt/internal/users"
 )
 
-// Kode error yang dikirim ke client.
 const (
 	CodeBadRequest         = "BAD_REQUEST"
 	CodeInvalidCredentials = "INVALID_CREDENTIALS"
@@ -45,20 +27,13 @@ const (
 	CodeUnknownType        = "UNKNOWN_TYPE"
 )
 
-// Config mengatur perilaku server dummy.
 type Config struct {
-	// TokenTTL masa berlaku token hasil login password.
-	TokenTTL time.Duration
-	// AcceptMockTokens: token "mock:<id>:<username>" (format mode mock auth-bridge)
-	// juga diterima, agar tes lama tetap jalan saat auth-bridge memakai OLT dummy.
-	AcceptMockTokens bool
-	// SlowDelay jeda login token untuk akun simulasi lambat.
-	SlowDelay time.Duration
-	// HeartbeatInterval jeda pesan heartbeat WebSocket.
+	TokenTTL          time.Duration
+	AcceptMockTokens  bool
+	SlowDelay         time.Duration
 	HeartbeatInterval time.Duration
 }
 
-// Server menyatukan direktori akun, penerbit token, dan konfigurasi.
 type Server struct {
 	users    *users.Directory
 	tokens   *tokens.Issuer
@@ -67,7 +42,6 @@ type Server struct {
 	upgrader websocket.Upgrader
 }
 
-// New membuat Server.
 func New(dir *users.Directory, issuer *tokens.Issuer, cfg Config, log *slog.Logger) *Server {
 	return &Server{
 		users:  dir,
@@ -75,13 +49,11 @@ func New(dir *users.Directory, issuer *tokens.Issuer, cfg Config, log *slog.Logg
 		cfg:    cfg,
 		log:    log,
 		upgrader: websocket.Upgrader{
-			// Server dummy: terima koneksi dari origin mana pun.
 			CheckOrigin: func(*http.Request) bool { return true },
 		},
 	}
 }
 
-// Handler mengembalikan router HTTP.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
@@ -94,10 +66,6 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/users", s.handleUsers)
 	return mux
 }
-
-// ---------------------------------------------------------------------------
-// Pesan
-// ---------------------------------------------------------------------------
 
 type request struct {
 	Type      string          `json:"type"`
@@ -114,7 +82,6 @@ type credentials struct {
 }
 
 type userJSON struct {
-	// Angka untuk akun direktori (seperti OLT asli), string untuk token mock non-numerik.
 	ID       any    `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
@@ -149,15 +116,10 @@ func result(kind, requestID string, data *loginData, e *apiError) message {
 	return message{Type: kind, RequestID: requestID, Status: "OK", Data: data}
 }
 
-// ---------------------------------------------------------------------------
-// Logika login
-// ---------------------------------------------------------------------------
-
 func toUserJSON(u *users.User) userJSON {
 	return userJSON{ID: u.ID, Username: u.Username, Email: u.Email, FullName: u.FullName}
 }
 
-// passwordLogin: username/email + password -> token baru.
 func (s *Server) passwordLogin(c credentials) (*loginData, *apiError) {
 	identifier := c.Username
 	if identifier == "" {
@@ -183,8 +145,6 @@ func (s *Server) passwordLogin(c credentials) (*loginData, *apiError) {
 	return &loginData{Token: token, ExpiresAt: exp.UTC().Format(time.RFC3339), User: toUserJSON(u)}, nil
 }
 
-// tokenLogin: verifikasi token sesi -> data user. Akun simulasi lambat
-// sengaja menunggu cfg.SlowDelay (dibatalkan bila koneksi ditutup).
 func (s *Server) tokenLogin(ctx context.Context, token string) (*loginData, *apiError) {
 	if token == "" {
 		return nil, &apiError{CodeBadRequest, "token wajib diisi"}
@@ -226,7 +186,6 @@ func (s *Server) tokenLogin(ctx context.Context, token string) (*loginData, *api
 	}, nil
 }
 
-// mockTokenLogin menerima "mock:<id>:<username>[:<nama>]" bila diizinkan.
 func (s *Server) mockTokenLogin(token string) (*loginData, *apiError) {
 	if !s.cfg.AcceptMockTokens {
 		return nil, s.reject(CodeInvalidToken, "Token mock tidak diizinkan")
@@ -253,10 +212,6 @@ func (s *Server) reject(code, msg string) *apiError {
 	return &apiError{code, msg}
 }
 
-// ---------------------------------------------------------------------------
-// WebSocket
-// ---------------------------------------------------------------------------
-
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -267,7 +222,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	// gorilla/websocket tidak mengizinkan penulisan paralel.
 	var writeMu sync.Mutex
 	send := func(m message) {
 		writeMu.Lock()
@@ -309,8 +263,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 		switch req.Type {
 		case "login":
-			// Diproses di goroutine agar pembacaan tetap jalan (deteksi koneksi
-			// ditutup saat login lambat).
 			go func(req request, creds credentials) {
 				var (
 					login *loginData
@@ -341,10 +293,6 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-
-// ---------------------------------------------------------------------------
-// HTTP bantu (testing dengan curl)
-// ---------------------------------------------------------------------------
 
 func statusFor(code string) int {
 	switch code {
@@ -381,9 +329,6 @@ func (s *Server) handleHTTPLogout(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleDevToken menerbitkan token untuk akun mana pun tanpa password
-// (termasuk akun ditangguhkan, dan ttl negatif = token kedaluwarsa).
-// KHUSUS testing; OLT asli tidak punya endpoint seperti ini.
 func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		User string `json:"user"`

@@ -1,12 +1,11 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:olt_social/src/core/auth/social_session.dart';
+import 'package:olt_social/src/core/error/error_mapper.dart';
+import 'package:olt_social/src/core/error/olt_social_exception.dart';
+import 'package:olt_social/src/shared/domain/entities/user.dart';
 
-import '../../domain/entities/user.dart';
-import '../errors/error_mapper.dart';
-import '../errors/olt_social_exception.dart';
-
-/// Klien endpoint auth-bridge: menukar token OLT dengan JWT Supabase.
 class AuthBridgeClient {
   AuthBridgeClient({
     required String baseUrl,
@@ -21,7 +20,6 @@ class AuthBridgeClient {
   final String _anonKey;
   final http.Client _http;
 
-  /// Client milik aplikasi host tidak boleh ditutup oleh package.
   final bool _ownsHttpClient;
   final Duration timeout;
 

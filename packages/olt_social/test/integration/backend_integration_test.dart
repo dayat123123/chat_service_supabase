@@ -1,10 +1,3 @@
-// Integration test ke stack Docker lokal (butuh `make up` + `make seed`, mode mock).
-//
-//   Windows : $env:OLT_SOCIAL_IT=1; flutter test test/integration
-//   Linux   : OLT_SOCIAL_IT=1 flutter test test/integration
-//
-// URL dibaca dari docker/.env, anon key dari docker/secrets/anon_key (make gen-secrets),
-// atau dari env OLT_SOCIAL_URL / OLT_SOCIAL_ANON_KEY.
 @Tags(['integration'])
 library;
 
@@ -27,7 +20,6 @@ Map<String, String> _dockerEnv() {
   };
 }
 
-/// Docker secret repo (`docker/secrets/<name>`); dulu tersimpan di docker/.env.
 String? _dockerSecret(String name) {
   final file = File('../../docker/secrets/$name');
   return file.existsSync() ? file.readAsStringSync().trim() : null;
@@ -88,14 +80,11 @@ void main() {
   }, skip: skip);
 
   test('komentar baru diterima realtime oleh pemilik post', () async {
-    // Teks unik per run: server menolak konten sama >= 3x dalam 5 menit.
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final post = await budi.feed.createPost(body: 'Integration test \$BBCA $stamp');
     final seen = <String>{};
     final sub = budi.comments.watchComments(post.id).listen(seen.add);
     try {
-      // Langganan realtime yang baru dibuka (mis. stack baru start) butuh waktu
-      // siap: kirim komentar ulang sampai event pertamanya diterima.
       String? received;
       for (var attempt = 0; attempt < 5 && received == null; attempt++) {
         final comment = await sari.comments.createComment(postId: post.id, body: 'Komentar realtime $stamp-$attempt');
@@ -130,7 +119,6 @@ void main() {
       expect(event.message.id, sent.id);
       await notified;
 
-      // Sinyal mengetik lewat channel private room:<id> (policy realtime.messages).
       final typing = _waitFor(sariEvents, (e) => e is TypingChanged && e.isTyping);
       final ticker = Timer.periodic(const Duration(milliseconds: 500), (_) => budiRoom.sendTyping(isTyping: true));
       try {
@@ -146,20 +134,72 @@ void main() {
     }
   }, skip: skip);
 
-  test('presence online', () async {
-    final budiOnline = budi.chat.watchOnlineUsers(me: budi.currentUser!);
-    final sub = sari.chat.watchOnlineUsers(me: sari.currentUser!).listen((_) {});
+  test('presence per room dan centang ala WhatsApp: terkirim lalu dibaca', () async {
+    final roomId = await budi.chat.getOrCreateDirectRoom(sari.currentUser!.id);
+    final budiSignals = budi.chat.watchRoomSignals({roomId}, me: budi.currentUser!).asBroadcastStream();
+    final budiSub = budiSignals.listen((_) {});
+    final sariSub = sari.chat.watchRoomSignals({roomId}, me: sari.currentUser!).listen((_) {});
     try {
-      final ids = await _waitFor(budiOnline, (ids) => ids.contains(sari.currentUser!.id));
-      expect(ids, contains(sari.currentUser!.id));
+      await _waitFor(
+        budiSignals,
+        (s) => s is RoomPresence && s.userIds.contains(sari.currentUser!.id),
+        timeout: const Duration(seconds: 20),
+      );
+
+      final clientId = const Uuid().v4();
+      final sent = await budi.chat.sendMessage(roomId, body: 'Centang $clientId', clientId: clientId);
+      bool reached(RoomSignal s, DateTime Function(MemberReceipt r) pick) =>
+          s is RoomReceipt && s.receipt.userId == sari.currentUser!.id && !pick(s.receipt).isBefore(sent.createdAt);
+
+      await _waitFor(budiSignals, (s) => reached(s, (r) => r.lastDeliveredAt), timeout: const Duration(seconds: 20));
+      final delivered = (await budi.chat.getRooms()).firstWhere((r) => r.id == roomId);
+      expect(delivered.lastMessageStatus, ReceiptStatus.delivered);
+
+      final read = _waitFor(budiSignals, (s) => reached(s, (r) => r.lastReadAt), timeout: const Duration(seconds: 20));
+      await sari.chat.markRoomRead(roomId);
+      await read;
+      final seen = (await budi.chat.getRooms()).firstWhere((r) => r.id == roomId);
+      expect(seen.lastMessageStatus, ReceiptStatus.read);
     } finally {
-      await sub.cancel();
+      await budiSub.cancel();
+      await sariSub.cancel();
+    }
+  }, skip: skip);
+
+  test('polling: buat, pilih, hasil terlihat setelah memilih', () async {
+    final stamp = DateTime.now().microsecondsSinceEpoch;
+    final post = await budi.feed.createPost(
+      body: 'Polling integration $stamp: IHSG minggu depan?',
+      poll: const PollDraft(options: ['Naik', 'Turun', 'Sideways'], duration: PollDuration.oneHour),
+    );
+    try {
+      final created = post.poll!;
+      expect(created.options.map((o) => o.label), ['Naik', 'Turun', 'Sideways']);
+      expect(created.resultsVisible, isTrue);
+
+      final beforeVote = (await sari.feed.getPost(post.id))!.poll!;
+      expect(beforeVote.resultsVisible, isFalse);
+      expect(beforeVote.options.first.votes, isNull);
+
+      final afterVote = await sari.polls.vote(post.id, beforeVote.options[1].id);
+      expect(afterVote.myOptionId, beforeVote.options[1].id);
+      expect(afterVote.totalVotes, 1);
+      expect(afterVote.options[1].votes, 1);
+
+      await expectLater(
+        sari.polls.vote(post.id, beforeVote.options.first.id),
+        throwsA(isA<OltSocialException>().having((e) => e.code, 'code', 'already_voted')),
+      );
+      await expectLater(
+        budi.polls.vote(post.id, beforeVote.options.first.id),
+        throwsA(isA<OltSocialException>().having((e) => e.code, 'code', 'own_poll')),
+      );
+    } finally {
+      await budi.feed.deletePost(post.id);
     }
   }, skip: skip);
 
   test('rate limit server dipetakan ke OltSocialErrorKind.rateLimited', () async {
-    // User terpisah: kuota pesan Budi/Sari (dipakai tes & E2E lain) tidak ikut habis,
-    // sehingga suite bisa diulang tanpa menunggu satu menit.
     final rina = user('mock:1004:rina_saham');
     final dewi = user('mock:1005:dewi_cuan');
     final dewiUser = await dewi.ensureSignedIn();

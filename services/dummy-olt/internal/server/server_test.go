@@ -31,8 +31,6 @@ func newTestServer(t *testing.T, cfg Config) (*httptest.Server, *tokens.Issuer) 
 	return srv, issuer
 }
 
-// wsCall membuka koneksi, memastikan welcome diterima, mengirim req, dan
-// mengembalikan pesan pertama bertipe want.
 func wsCall(t *testing.T, srv *httptest.Server, req map[string]any, want string) map[string]any {
 	t.Helper()
 	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http")+"/ws", nil)

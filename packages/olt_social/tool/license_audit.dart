@@ -1,10 +1,3 @@
-// Audit lisensi dependensi runtime olt_social.
-//
-// OLT closed-source: hanya lisensi permisif (MIT, BSD, Apache-2.0, ISC, Zlib)
-// yang diizinkan. Keluar dengan kode 1 jika ada GPL/AGPL/LGPL/MPL atau lisensi
-// yang tidak dikenali.
-//
-//   cd packages/olt_social && dart run tool/license_audit.dart
 import 'dart:convert';
 import 'dart:io';
 
@@ -35,7 +28,6 @@ Future<void> main() async {
     for (final p in (deps['packages'] as List<dynamic>).cast<Map<String, dynamic>>()) p['name'] as String: p,
   };
 
-  // Closure dependensi non-dev mulai dari root.
   final root = packages.values.firstWhere((p) => p['kind'] == 'root');
   final queue = [
     for (final name in (root['directDependencies'] as List<dynamic>).cast<String>()) name,

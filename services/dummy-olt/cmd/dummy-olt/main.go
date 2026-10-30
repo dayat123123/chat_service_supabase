@@ -1,11 +1,3 @@
-// Command dummy-olt adalah tiruan server WebSocket OLT untuk development &
-// testing auth-bridge mode websocket. JANGAN dipakai di produksi.
-//
-// Pemakaian:
-//
-//	dummy-olt [serve]                   jalankan server (WebSocket /ws + HTTP bantu)
-//	dummy-olt token <user> [-ttl 24h]   cetak token sesi untuk akun (id/username/email)
-//	dummy-olt healthcheck               cek /health server lokal (Docker healthcheck)
 package main
 
 import (
@@ -106,7 +98,6 @@ func serve() int {
 	return 0
 }
 
-// mintToken mencetak token untuk akun dummy (dengan secret yang sama dengan server).
 func mintToken(args []string) int {
 	if len(args) == 0 || args[0] == "" || args[0][0] == '-' {
 		fmt.Fprintln(os.Stderr, "pemakaian: dummy-olt token <id|username|email> [-ttl 24h]")

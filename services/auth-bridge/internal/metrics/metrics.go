@@ -1,5 +1,3 @@
-// Package metrics menyediakan registry metrik Prometheus minimal (format teks
-// exposition 0.0.4) tanpa dependensi luar: counter, histogram, dan gauge.
 package metrics
 
 import (
@@ -12,7 +10,6 @@ import (
 	"sync"
 )
 
-// Registry menyimpan semua metrik dan menyajikannya di /metrics.
 type Registry struct {
 	mu      sync.Mutex
 	metrics []metric
@@ -22,7 +19,6 @@ type metric interface {
 	write(b *strings.Builder)
 }
 
-// NewRegistry membuat registry kosong.
 func NewRegistry() *Registry { return &Registry{} }
 
 func (r *Registry) add(m metric) {
@@ -31,7 +27,6 @@ func (r *Registry) add(m metric) {
 	r.metrics = append(r.metrics, m)
 }
 
-// Handler menyajikan semua metrik dalam format teks Prometheus.
 func (r *Registry) Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		var b strings.Builder
@@ -45,11 +40,6 @@ func (r *Registry) Handler() http.Handler {
 	})
 }
 
-// ---------------------------------------------------------------------------
-// Counter
-// ---------------------------------------------------------------------------
-
-// CounterVec adalah counter dengan label.
 type CounterVec struct {
 	name, help string
 	labels     []string
@@ -58,17 +48,14 @@ type CounterVec struct {
 	values map[string]float64
 }
 
-// Counter mendaftarkan counter baru.
 func (r *Registry) Counter(name, help string, labels ...string) *CounterVec {
 	c := &CounterVec{name: name, help: help, labels: labels, values: map[string]float64{}}
 	r.add(c)
 	return c
 }
 
-// Inc menambah 1 untuk kombinasi label.
 func (c *CounterVec) Inc(labelValues ...string) { c.Add(1, labelValues...) }
 
-// Add menambah v untuk kombinasi label.
 func (c *CounterVec) Add(v float64, labelValues ...string) {
 	key := labelKey(c.labels, labelValues)
 	c.mu.Lock()
@@ -85,11 +72,6 @@ func (c *CounterVec) write(b *strings.Builder) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Histogram
-// ---------------------------------------------------------------------------
-
-// HistogramVec adalah histogram dengan label.
 type HistogramVec struct {
 	name, help string
 	labels     []string
@@ -105,14 +87,12 @@ type histogramSeries struct {
 	count  uint64
 }
 
-// Histogram mendaftarkan histogram baru dengan batas bucket (detik, menaik).
 func (r *Registry) Histogram(name, help string, buckets []float64, labels ...string) *HistogramVec {
 	h := &HistogramVec{name: name, help: help, labels: labels, buckets: buckets, series: map[string]*histogramSeries{}}
 	r.add(h)
 	return h
 }
 
-// Observe mencatat satu nilai.
 func (h *HistogramVec) Observe(v float64, labelValues ...string) {
 	key := labelKey(h.labels, labelValues)
 	h.mu.Lock()
@@ -151,16 +131,11 @@ func (h *HistogramVec) write(b *strings.Builder) {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Gauge
-// ---------------------------------------------------------------------------
-
 type gaugeFunc struct {
 	name, help string
 	fn         func() float64
 }
 
-// GaugeFunc mendaftarkan gauge yang nilainya dibaca saat scrape.
 func (r *Registry) GaugeFunc(name, help string, fn func() float64) {
 	r.add(&gaugeFunc{name: name, help: help, fn: fn})
 }
@@ -169,10 +144,6 @@ func (g *gaugeFunc) write(b *strings.Builder) {
 	header(b, g.name, g.help, "gauge")
 	fmt.Fprintf(b, "%s %s\n", g.name, num(g.fn()))
 }
-
-// ---------------------------------------------------------------------------
-// Utilitas format
-// ---------------------------------------------------------------------------
 
 func header(b *strings.Builder, name, help, typ string) {
 	fmt.Fprintf(b, "# HELP %s %s\n# TYPE %s %s\n", name, help, name, typ)

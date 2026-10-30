@@ -705,7 +705,7 @@ services:
     <<: *base
     build:
       context: ../services/auth-bridge
-    image: olt-social/auth-bridge:0.3.0
+    image: olt-social/auth-bridge:0.3.1
     # egress: koneksi WebSocket ke server OLT. data: Valkey.
     networks: [app, data, egress]
     depends_on:

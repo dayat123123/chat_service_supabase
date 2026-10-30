@@ -1,15 +1,3 @@
-// Package server berisi HTTP handler auth-bridge.
-//
-// Port publik (diteruskan Kong di /bridge/v1/):
-//
-//	GET  /health    status service (dipakai healthcheck Docker)
-//	POST /exchange  {"token":"<token OLT>"} -> JWT Supabase
-//
-// Port ops (internal, tidak diteruskan Kong):
-//
-//	GET  /metrics   metrik Prometheus
-//	GET  /livez     proses hidup
-//	GET  /readyz    dependensi siap
 package server
 
 import (
@@ -32,56 +20,42 @@ import (
 	"olt-social/auth-bridge/internal/token"
 )
 
-// Resolver memverifikasi token OLT dan mengembalikan identitas user.
 type Resolver interface {
 	Resolve(ctx context.Context, oltToken string) (exchange.Identity, bool, error)
 }
 
-// TokenIssuer menerbitkan JWT user.
 type TokenIssuer interface {
 	UserToken(u token.User) (string, time.Time, error)
 }
 
-// RateLimiter membatasi request per kunci.
 type RateLimiter interface {
 	Allow(key string) (bool, time.Duration)
 }
 
-// Options adalah dependensi Server.
 type Options struct {
-	Log      *slog.Logger
-	Resolver Resolver
-	Issuer   TokenIssuer
-	// Limiter membatasi /exchange per IP klien; UserLimiter per user OLT
-	// (diperiksa setelah token terverifikasi). UserLimiter boleh nil.
+	Log            *slog.Logger
+	Resolver       Resolver
+	Issuer         TokenIssuer
 	Limiter        RateLimiter
 	UserLimiter    RateLimiter
 	TrustedProxies []netip.Prefix
 	OLTMode        string
-	// ReadyChecks dijalankan berurutan oleh /readyz. Boleh kosong.
-	ReadyChecks []ReadyCheck
-	// Metrics boleh nil (tidak mencatat metrik).
-	Metrics *Metrics
+	ReadyChecks    []ReadyCheck
+	Metrics        *Metrics
 }
 
-// ReadyCheck adalah satu pemeriksaan /readyz. Kegagalan pemeriksaan Optional
-// hanya dilaporkan "degraded" (layanan tetap jalan dengan fallback) dan tidak
-// membuat instance dianggap tidak siap: kalau Valkey mati, semua replika akan
-// gagal bersamaan, dan menariknya dari rotasi justru memadamkan layanan.
 type ReadyCheck struct {
 	Name     string
 	Check    func(context.Context) error
 	Optional bool
 }
 
-// Metrics adalah metrik HTTP & exchange yang dicatat handler.
 type Metrics struct {
-	Requests  *metrics.CounterVec   // label: path, status
-	Duration  *metrics.HistogramVec // label: path
-	Exchanges *metrics.CounterVec   // label: result
+	Requests  *metrics.CounterVec
+	Duration  *metrics.HistogramVec
+	Exchanges *metrics.CounterVec
 }
 
-// NewMetrics mendaftarkan metrik server ke registry.
 func NewMetrics(r *metrics.Registry) *Metrics {
 	return &Metrics{
 		Requests: r.Counter("olt_auth_bridge_http_requests_total", "Jumlah request HTTP", "path", "status"),
@@ -93,17 +67,14 @@ func NewMetrics(r *metrics.Registry) *Metrics {
 	}
 }
 
-// Server menyatukan dependensi handler HTTP.
 type Server struct {
 	opts Options
 }
 
-// New membuat Server baru.
 func New(opts Options) *Server {
 	return &Server{opts: opts}
 }
 
-// Handler mengembalikan router HTTP publik lengkap dengan middleware.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.handleHealth)
@@ -111,8 +82,6 @@ func (s *Server) Handler() http.Handler {
 	return s.withRequestID(s.withRecover(s.withLogging(mux)))
 }
 
-// OpsHandler mengembalikan router port ops: /metrics, /livez, /readyz.
-// Tidak dicatat ke log/metrik per request (di-scrape berkala).
 func (s *Server) OpsHandler(metricsHandler http.Handler) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", metricsHandler)
@@ -129,8 +98,6 @@ func (s *Server) handleLive(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// handleReady memeriksa dependensi: 200 "ready"/"degraded", atau 503
-// "not_ready" bila pemeriksaan wajib gagal. Detail error hanya ke log.
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
@@ -253,11 +220,6 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// clientIP mengambil IP klien. X-Forwarded-For hanya dipercaya bila request
-// datang dari proxy tepercaya (Kong/Traefik); diambil IP paling kanan yang
-// bukan proxy tepercaya. Bila semua hop tepercaya (klien di jaringan privat,
-// mis. dev atau service internal), dipakai hop valid paling kiri, bukan IP
-// proxy, agar klien-klien itu tidak berbagi satu kuota rate limit.
 func (s *Server) clientIP(r *http.Request) string {
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
@@ -291,10 +253,6 @@ func (s *Server) trusted(addr netip.Addr) bool {
 	}
 	return false
 }
-
-// ---------------------------------------------------------------------------
-// Middleware
-// ---------------------------------------------------------------------------
 
 type ctxKey int
 
@@ -347,7 +305,6 @@ func (s *Server) withLogging(next http.Handler) http.Handler {
 			m.Duration.Observe(time.Since(start).Seconds(), path)
 		}
 
-		// Healthcheck Docker berjalan tiap beberapa detik; jangan banjiri log.
 		level := slog.LevelInfo
 		if path == "/health" && rec.status == http.StatusOK {
 			level = slog.LevelDebug
@@ -362,7 +319,6 @@ func (s *Server) withLogging(next http.Handler) http.Handler {
 	})
 }
 
-// metricPath membatasi label path ke rute yang dikenal (kardinalitas rendah).
 func metricPath(p string) string {
 	switch p {
 	case "/exchange", "/health":

@@ -4,9 +4,6 @@ import 'package:olt_social/olt_social.dart';
 import 'fake_olt_auth.dart';
 import 'main.dart';
 
-/// Halaman utama contoh: navigasi responsif.
-/// * Layar lebar (Windows): NavigationRail + feed dua panel (daftar | detail).
-/// * Layar sempit (Android): NavigationBar bawah.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.auth});
 
@@ -117,8 +114,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// Stream + detail post berdampingan (desktop). Mengetuk post membuka
-/// detailnya di panel kanan, bukan halaman baru.
 class _TwoPaneStream extends StatefulWidget {
   const _TwoPaneStream();
 
@@ -153,7 +148,6 @@ class _TwoPaneStreamState extends State<_TwoPaneStream> {
   }
 }
 
-/// Meneruskan semua dependensi, kecuali callback buka post.
 class _PostTapOverride implements OltSocialDependencies {
   _PostTapOverride(this._base, this._onPost);
 
@@ -172,6 +166,8 @@ class _PostTapOverride implements OltSocialDependencies {
   FeedRepository get feed => _base.feed;
   @override
   CommentRepository get comments => _base.comments;
+  @override
+  PollRepository get polls => _base.polls;
   @override
   ProfileRepository get profiles => _base.profiles;
   @override

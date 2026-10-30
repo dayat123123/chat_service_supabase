@@ -4,11 +4,6 @@ import 'dummy_olt_client.dart';
 import 'home_page.dart';
 import 'main.dart' show autoLoginUser, dummyOltWsUrl;
 
-/// Tiruan modul login OLT. Di aplikasi OLT asli, token didapat dari login
-/// WebSocket OLT (username/email + password atau token). Di sini token berasal dari:
-/// * token mock `mock:<olt_user_id>:<username>` (auth-bridge mode mock), atau
-/// * login ke OLT dummy lewat WebSocket (auth-bridge mode websocket,
-///   `make up DUMMY_OLT=1`).
 class FakeOltAuth {
   FakeOltAuth(this.currentToken);
 
@@ -17,7 +12,6 @@ class FakeOltAuth {
   void logout() => currentToken = null;
 }
 
-/// User seed (lihat supabase/seed/seed.sql).
 const demoUsers = [
   ('1001', 'budi_santoso', 'Budi Santoso'),
   ('1002', 'sari_invest', 'Sari Wulandari'),
@@ -43,7 +37,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    // Web: http://localhost:8081/?user=sari_invest langsung masuk sebagai Sari.
     final wanted = autoLoginUser;
     final match = demoUsers.where((u) => u.$1 == wanted || u.$2 == wanted).firstOrNull;
     if (match != null) {
@@ -60,7 +53,6 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _login(String id, String username) => _proceed(() async => FakeOltAuth('mock:$id:$username'));
 
-  /// Login ke OLT dummy lewat WebSocket (seperti aplikasi OLT), lalu pakai tokennya.
   Future<void> _loginDummyOlt() => _proceed(() async {
     final session = await DummyOltClient(dummyOltWsUrl).loginWithPassword(_identifier.text, _password.text);
     return FakeOltAuth(session.token);

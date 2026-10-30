@@ -1,4 +1,3 @@
-// Package postgrest memanggil RPC internal Supabase (PostgREST) sebagai service_role.
 package postgrest
 
 import (
@@ -14,12 +13,10 @@ import (
 	"olt-social/auth-bridge/internal/exchange"
 )
 
-// ServiceTokenSource menyediakan JWT service_role.
 type ServiceTokenSource interface {
 	ServiceToken() (string, error)
 }
 
-// Client adalah klien PostgREST minimal untuk auth-bridge.
 type Client struct {
 	baseURL  string
 	tokens   ServiceTokenSource
@@ -28,7 +25,6 @@ type Client struct {
 	backoff  time.Duration
 }
 
-// NewClient membuat Client untuk baseURL (mis. http://rest:3000).
 func NewClient(baseURL string, tokens ServiceTokenSource) *Client {
 	return &Client{
 		baseURL:  baseURL,
@@ -39,7 +35,6 @@ func NewClient(baseURL string, tokens ServiceTokenSource) *Client {
 	}
 }
 
-// UpsertProfile memanggil RPC upsert_olt_profile.
 func (c *Client) UpsertProfile(ctx context.Context, in exchange.ProfileInput) (exchange.Profile, error) {
 	body, err := json.Marshal(map[string]any{
 		"p_id":           in.ID,
@@ -59,7 +54,6 @@ func (c *Client) UpsertProfile(ctx context.Context, in exchange.ProfileInput) (e
 	return profile, nil
 }
 
-// Ping memastikan PostgREST bisa dijangkau (dipakai /health?deep=1).
 func (c *Client) Ping(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, c.baseURL+"/", nil)
 	if err != nil {
@@ -81,8 +75,6 @@ func (c *Client) Ping(ctx context.Context) error {
 	return nil
 }
 
-// rpc memanggil RPC dengan retry (backoff + jitter) untuk gangguan sementara:
-// error jaringan dan status 5xx. RPC yang dipanggil auth-bridge idempoten.
 func (c *Client) rpc(ctx context.Context, fn string, body []byte, out any) error {
 	var err error
 	for attempt := 0; attempt < c.attempts; attempt++ {

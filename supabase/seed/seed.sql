@@ -261,3 +261,30 @@ from (values
    'Iya, asing net buy dari pagi.', '15 minutes')
 ) as m(id, room, u, body, age)
 on conflict (id) do nothing;
+
+insert into public.posts (id, author_id, body, sentiment, created_at)
+values (
+  'a0000000-0000-4000-8000-000000000011', pg_temp.uid('1004'),
+  'Polling: menurut kalian $IHSG minggu ini ditutup bagaimana?', null, now() - interval '20 minutes'
+)
+on conflict (id) do nothing;
+
+insert into public.post_polls (post_id, ends_at, created_at)
+values ('a0000000-0000-4000-8000-000000000011', now() + interval '7 days', now() - interval '20 minutes')
+on conflict (post_id) do nothing;
+
+insert into public.post_poll_options (id, post_id, position, label)
+values
+  ('f1000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000011', 0, 'Menguat'),
+  ('f1000000-0000-4000-8000-000000000002', 'a0000000-0000-4000-8000-000000000011', 1, 'Sideways'),
+  ('f1000000-0000-4000-8000-000000000003', 'a0000000-0000-4000-8000-000000000011', 2, 'Melemah')
+on conflict (id) do nothing;
+
+insert into public.post_poll_votes (post_id, user_id, option_id)
+select 'a0000000-0000-4000-8000-000000000011', pg_temp.uid(v.u), v.opt::uuid
+from (values
+  ('1003', 'f1000000-0000-4000-8000-000000000001'),
+  ('1005', 'f1000000-0000-4000-8000-000000000003'),
+  ('1006', 'f1000000-0000-4000-8000-000000000001')
+) as v(u, opt)
+on conflict do nothing;

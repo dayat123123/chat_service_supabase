@@ -136,11 +136,9 @@ func TestExchangeRateLimitPerClientIP(t *testing.T) {
 	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" {
 		t.Fatalf("status = %d, want 429 dengan Retry-After", rec.Code)
 	}
-	// Klien lain di balik proxy yang sama punya kuota sendiri.
 	if rec := post(h, `{"token":"mock:1:a"}`, "10.0.0.5:1", "198.51.100.8"); rec.Code != 200 {
 		t.Fatalf("klien lain ikut terblokir, status = %d", rec.Code)
 	}
-	// X-Forwarded-For dari klien yang tidak tepercaya diabaikan (tidak bisa memalsukan IP).
 	for range 2 {
 		post(h, `{"token":"mock:1:a"}`, "192.0.2.50:1", "1.1.1.1")
 	}
@@ -152,12 +150,12 @@ func TestExchangeRateLimitPerClientIP(t *testing.T) {
 func TestClientIP(t *testing.T) {
 	s := New(testOptions(fakeResolver{}, 1))
 	cases := []struct{ remote, xff, want string }{
-		{"10.0.0.5:1", "203.0.113.9", "203.0.113.9"},                         // klien publik di balik proxy
-		{"10.0.0.5:1", "198.51.100.1, 203.0.113.9, 10.0.0.7", "203.0.113.9"}, // paling kanan yang tidak tepercaya
-		{"10.0.0.5:1", "10.1.1.1, 10.2.2.2", "10.1.1.1"},                     // semua privat: hop paling kiri
-		{"10.0.0.5:1", "", "10.0.0.5"},                                       // tanpa XFF: IP proxy
-		{"10.0.0.5:1", "bukan-ip, 10.2.2.2", "10.2.2.2"},                     // entri rusak: berhenti di situ
-		{"192.0.2.50:1", "10.1.1.1", "192.0.2.50"},                           // klien tidak tepercaya: XFF diabaikan
+		{"10.0.0.5:1", "203.0.113.9", "203.0.113.9"},
+		{"10.0.0.5:1", "198.51.100.1, 203.0.113.9, 10.0.0.7", "203.0.113.9"},
+		{"10.0.0.5:1", "10.1.1.1, 10.2.2.2", "10.1.1.1"},
+		{"10.0.0.5:1", "", "10.0.0.5"},
+		{"10.0.0.5:1", "bukan-ip, 10.2.2.2", "10.2.2.2"},
+		{"192.0.2.50:1", "10.1.1.1", "192.0.2.50"},
 	}
 	for _, c := range cases {
 		req := httptest.NewRequest(http.MethodPost, "/exchange", nil)
@@ -176,7 +174,6 @@ func TestExchangeRateLimitPerUser(t *testing.T) {
 	opts.UserLimiter = ratelimit.New(2, time.Minute)
 	h := New(opts).Handler()
 
-	// User yang sama dari IP berbeda tetap berbagi kuota.
 	for i := range 2 {
 		if rec := post(h, `{"token":"mock:1001:budi"}`, fmt.Sprintf("192.0.2.%d:1", i+1), ""); rec.Code != 200 {
 			t.Fatalf("status = %d", rec.Code)

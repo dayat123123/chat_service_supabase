@@ -9,8 +9,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// slidingWindow: hitung request dalam jendela [now-window, now] memakai sorted set.
-// Mengembalikan {1, 0} bila diizinkan, atau {0, retry_ms} bila ditolak.
 var slidingWindow = redis.NewScript(`
 local key = KEYS[1]
 local now = tonumber(ARGV[1])
@@ -28,9 +26,6 @@ redis.call('PEXPIRE', key, window)
 return {1, 0}
 `)
 
-// Valkey adalah rate limiter sliding window bersama untuk semua replika.
-// Bila Valkey tidak bisa dihubungi, Allow memakai limiter in-memory (fallback)
-// agar layanan tetap jalan, dan melaporkan error lewat OnError.
 type Valkey struct {
 	client   redis.UniversalClient
 	limit    int
@@ -40,11 +35,9 @@ type Valkey struct {
 	fallback *Limiter
 	now      func() time.Time
 
-	// OnError dipanggil saat Valkey gagal (mis. untuk log & metrik).
 	OnError func(error)
 }
 
-// NewValkey membuat limiter: maksimal limit request per window untuk tiap kunci.
 func NewValkey(client redis.UniversalClient, prefix string, limit int, window time.Duration) *Valkey {
 	return &Valkey{
 		client:   client,
@@ -57,7 +50,6 @@ func NewValkey(client redis.UniversalClient, prefix string, limit int, window ti
 	}
 }
 
-// Allow mencatat satu request untuk key.
 func (v *Valkey) Allow(key string) (bool, time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), v.timeout)
 	defer cancel()

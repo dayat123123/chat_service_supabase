@@ -1,11 +1,3 @@
-// Package breaker menyediakan circuit breaker sederhana untuk dependensi
-// eksternal (server OLT). Bila OLT gagal berturut-turut, breaker "terbuka" dan
-// request langsung ditolak tanpa menunggu timeout, sehingga auth-bridge tidak
-// ikut tumbang saat OLT lambat. Setelah cooldown, satu request uji diizinkan
-// (half-open): sukses menutup breaker, gagal membukanya lagi.
-//
-// State disimpan per instance: setiap replika mengamati kesehatan OLT sendiri.
-// Ini sengaja; state breaker adalah sinyal sesaat, bukan data aplikasi.
 package breaker
 
 import (
@@ -13,7 +5,6 @@ import (
 	"time"
 )
 
-// State adalah kondisi breaker.
 type State string
 
 const (
@@ -22,7 +13,6 @@ const (
 	HalfOpen State = "half_open"
 )
 
-// Breaker aman dipakai bersamaan.
 type Breaker struct {
 	threshold int
 	cooldown  time.Duration
@@ -35,12 +25,10 @@ type Breaker struct {
 	probing   bool
 }
 
-// New membuat breaker yang terbuka setelah threshold kegagalan berturut-turut.
 func New(threshold int, cooldown time.Duration) *Breaker {
 	return &Breaker{threshold: threshold, cooldown: cooldown, now: time.Now, state: Closed}
 }
 
-// Allow menentukan apakah request boleh diteruskan ke dependensi.
 func (b *Breaker) Allow() bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -53,7 +41,6 @@ func (b *Breaker) Allow() bool {
 		b.probing = true
 		return true
 	case HalfOpen:
-		// Hanya satu request uji pada satu waktu.
 		if b.probing {
 			return false
 		}
@@ -64,7 +51,6 @@ func (b *Breaker) Allow() bool {
 	}
 }
 
-// Success mencatat request yang berhasil (dependensi menjawab).
 func (b *Breaker) Success() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -73,7 +59,6 @@ func (b *Breaker) Success() {
 	b.probing = false
 }
 
-// Failure mencatat request yang gagal karena dependensi bermasalah.
 func (b *Breaker) Failure() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -85,16 +70,12 @@ func (b *Breaker) Failure() {
 	}
 }
 
-// Release melepas request yang hasilnya bukan sinyal kesehatan dependensi
-// (mis. dibatalkan klien) tanpa mencatat sukses/gagal. Tanpa ini, request uji
-// half-open yang dibatalkan membuat breaker macet menolak semua request.
 func (b *Breaker) Release() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.probing = false
 }
 
-// State mengembalikan kondisi saat ini (untuk metrik & readiness).
 func (b *Breaker) State() State {
 	b.mu.Lock()
 	defer b.mu.Unlock()

@@ -133,13 +133,15 @@ Jenis error (`kind`) yang tersedia: `network`, `unauthenticated`, `rateLimited`,
 Bila OLT ingin membuat UI sendiri, semua repository tersedia di `OltSocial.instance`:
 - `feed.getFeed(FeedScope.stock('BBCA'), cursor: ..., limit: 20)` mengembalikan `Paged<Post>`.
 - `comments.getThread(postId, maxDepth: 3)`.
-- `chat.connectRoom(roomId, me: user).events` adalah stream realtime room.
+- `chat.connectRoom(roomId, me: user).events` adalah stream realtime room (pesan, mengetik, tanda terima, presence).
+- `chat.watchRoomSignals({roomId, ...}, me: user)` memantau mengetik, tanda terima, dan presence banyak room sekaligus (untuk daftar chat buatan sendiri).
+- `polls.vote(postId, optionId)` memberi suara; data polling ada di `Post.poll`.
 
-Kontrak lengkapnya ada di `lib/src/domain/repositories/repositories.dart`.
+Kontrak lengkapnya ada di `lib/src/features/<fitur>/domain/repositories/` (mis. `features/chat/domain/repositories/chat_repository.dart`).
 
 ## 8. Test di proyek OLT
 
-Bungkus widget sosial dengan `OltSocialScope` dan berikan implementasi palsu `OltSocialDependencies`. Dengan begitu widget test berjalan tanpa backend. Contohnya ada di `packages/olt_social/test/presentation/fakes.dart`.
+Bungkus widget sosial dengan `OltSocialScope` dan berikan implementasi palsu `OltSocialDependencies`. Dengan begitu widget test berjalan tanpa backend. Contohnya ada di `packages/olt_social/test/support/fakes.dart`.
 
 ## 9. Troubleshooting
 

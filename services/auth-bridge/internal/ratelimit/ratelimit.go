@@ -1,4 +1,3 @@
-// Package ratelimit membatasi jumlah request per kunci (mis. IP) per jendela waktu.
 package ratelimit
 
 import (
@@ -6,7 +5,6 @@ import (
 	"time"
 )
 
-// Limiter adalah fixed-window limiter in-memory yang aman dipakai bersamaan.
 type Limiter struct {
 	limit  int
 	window time.Duration
@@ -22,13 +20,10 @@ type bucket struct {
 	resetAt time.Time
 }
 
-// New membuat Limiter: maksimal limit request per window untuk tiap kunci.
 func New(limit int, window time.Duration) *Limiter {
 	return &Limiter{limit: limit, window: window, now: time.Now, buckets: make(map[string]*bucket)}
 }
 
-// Allow mencatat satu request untuk key. Jika ditolak, retryAfter berisi
-// sisa waktu sampai jendela berikutnya.
 func (l *Limiter) Allow(key string) (allowed bool, retryAfter time.Duration) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -48,7 +43,6 @@ func (l *Limiter) Allow(key string) (allowed bool, retryAfter time.Duration) {
 	return true, 0
 }
 
-// sweep membuang bucket kedaluwarsa paling sering sekali per window.
 func (l *Limiter) sweep(now time.Time) {
 	if now.Sub(l.lastSweep) < l.window {
 		return

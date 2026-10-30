@@ -1,8 +1,3 @@
-// Package tokens menerbitkan dan memverifikasi token sesi OLT dummy.
-//
-// Format: olt_<base64url(payload JSON)>.<base64url(HMAC-SHA256(secret, payload))>
-// Token stateless (tetap valid setelah server restart selama secret sama),
-// kecuali sudah di-logout (daftar pencabutan disimpan di memori).
 package tokens
 
 import (
@@ -18,12 +13,10 @@ import (
 	"time"
 )
 
-// Prefix semua token OLT dummy.
 const Prefix = "olt_"
 
 var b64 = base64.RawURLEncoding
 
-// Claims adalah isi token.
 type Claims struct {
 	UserID    string `json:"uid"`
 	IssuedAt  int64  `json:"iat"`
@@ -38,22 +31,18 @@ var (
 	ErrRevoked   = errors.New("token sudah logout")
 )
 
-// Issuer menerbitkan, memverifikasi, dan mencabut token.
 type Issuer struct {
 	secret []byte
 	now    func() time.Time
 
 	mu      sync.Mutex
-	revoked map[string]int64 // jti -> exp (unix), dibersihkan setelah kedaluwarsa
+	revoked map[string]int64
 }
 
-// NewIssuer membuat Issuer dengan secret HMAC.
 func NewIssuer(secret string) *Issuer {
 	return &Issuer{secret: []byte(secret), now: time.Now, revoked: make(map[string]int64)}
 }
 
-// Issue membuat token untuk userID. ttl negatif menghasilkan token yang sudah
-// kedaluwarsa (berguna untuk menguji penolakan).
 func (i *Issuer) Issue(userID string, ttl time.Duration) (string, time.Time, error) {
 	var id [12]byte
 	if _, err := rand.Read(id[:]); err != nil {
@@ -69,7 +58,6 @@ func (i *Issuer) Issue(userID string, ttl time.Duration) (string, time.Time, err
 	return Prefix + body + "." + b64.EncodeToString(i.sign(body)), exp, nil
 }
 
-// Verify memeriksa tanda tangan, masa berlaku, dan status logout.
 func (i *Issuer) Verify(token string) (Claims, error) {
 	claims, err := i.parse(token)
 	if err != nil {
@@ -86,7 +74,6 @@ func (i *Issuer) Verify(token string) (Claims, error) {
 	return claims, nil
 }
 
-// Revoke mencabut token (logout). Token harus bertanda tangan valid.
 func (i *Issuer) Revoke(token string) error {
 	claims, err := i.parse(token)
 	if err != nil {

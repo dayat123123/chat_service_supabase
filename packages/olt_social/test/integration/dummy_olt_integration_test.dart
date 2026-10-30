@@ -1,10 +1,3 @@
-// Integration test dengan token OLT "asli" dari OLT dummy (services/dummy-olt):
-// login WebSocket seperti aplikasi OLT -> token -> olt_social -> auth-bridge
-// mode websocket -> JWT. Kode package tidak diubah untuk ini.
-//
-// Butuh: make up DUMMY_OLT=1 && make seed
-//   Windows : $env:OLT_SOCIAL_IT_DUMMY=1; flutter test test/integration/dummy_olt_integration_test.dart
-//   Linux   : OLT_SOCIAL_IT_DUMMY=1 flutter test test/integration/dummy_olt_integration_test.dart
 @Tags(['integration'])
 library;
 
@@ -27,13 +20,11 @@ Map<String, String> _dockerEnv() {
   };
 }
 
-/// Docker secret repo (`docker/secrets/<name>`); dulu tersimpan di docker/.env.
 String? _dockerSecret(String name) {
   final file = File('../../docker/secrets/$name');
   return file.existsSync() ? file.readAsStringSync().trim() : null;
 }
 
-/// Klien minimal protokol OLT dummy (lihat services/dummy-olt/README.md).
 Future<Map<String, dynamic>> oltRequest(String wsUrl, Map<String, Object?> message, String replyType) async {
   final socket = await WebSocket.connect(wsUrl).timeout(const Duration(seconds: 5));
   try {
@@ -87,7 +78,6 @@ void main() {
     final token = await oltPasswordLogin(wsUrl, {'username': 'budi_santoso', 'password': 'olt12345'});
     expect(token, startsWith('olt_'));
 
-    // Seperti aplikasi OLT saat restart: login ulang memakai token.
     final relogin = await oltRequest(wsUrl, {'type': 'login', 'method': 'token', 'payload': {'token': token}}, 'login_result');
     expect(relogin['status'], 'OK');
 

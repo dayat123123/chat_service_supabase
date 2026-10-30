@@ -1,9 +1,3 @@
-// Command auth-bridge menukar token login OLT menjadi JWT Supabase.
-//
-// Pemakaian:
-//
-//	auth-bridge              menjalankan HTTP server
-//	auth-bridge healthcheck  cek /health server lokal (dipakai Docker healthcheck)
 package main
 
 import (
@@ -147,9 +141,6 @@ func run(cfg config.Config, log *slog.Logger) error {
 	return errors.Join(errs...)
 }
 
-// sharedState adalah state yang dibagi antar replika: rate limit & cache
-// verifikasi. Dengan Valkey, semua replika memakai kuota & cache yang sama;
-// tanpa Valkey (development), state disimpan per instance.
 type sharedState struct {
 	ipLimiter   server.RateLimiter
 	userLimiter server.RateLimiter
@@ -189,7 +180,7 @@ func newSharedState(cfg config.Config, log *slog.Logger, reg *metrics.Registry) 
 		}
 	}
 
-	const rlPrefix = "bridge:rl:exchange:" // + "ip:<ip>" / "user:<olt_user_id>"
+	const rlPrefix = "bridge:rl:exchange:"
 	ipLimiter := ratelimit.NewValkey(client, rlPrefix, cfg.RateLimitPerMinute, time.Minute)
 	ipLimiter.OnError = onError("ratelimit")
 	userLimiter := ratelimit.NewValkey(client, rlPrefix, cfg.RateLimitPerUserPerMinute, time.Minute)
@@ -208,8 +199,6 @@ func newSharedState(cfg config.Config, log *slog.Logger, reg *metrics.Registry) 
 	}
 }
 
-// throttled menjalankan fn paling sering sekali per interval, agar gangguan
-// dependensi tidak membanjiri log (metrik tetap menghitung setiap kejadian).
 func throttled(every time.Duration) func(fn func()) {
 	var last atomic.Int64
 	return func(fn func()) {
