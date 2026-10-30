@@ -37,3 +37,17 @@ http:
       service: kong
       middlewares: [rate-limit, security-headers-ui]
       priority: 1
+
+    # Web CS React di http://localhost:8085; header keamanan & CSP dari nginx-nya.
+    cs-console:
+      entryPoints: [console]
+      rule: PathPrefix(`/`)
+      service: cs-console
+      middlewares: [rate-limit]
+      priority: 1
+
+  services:
+    cs-console:
+      loadBalancer:
+        servers:
+          - url: http://cs-console:8080

@@ -7,7 +7,7 @@
 #   cluster Docker Swarm (kerangka; dilengkapi Tahap 7)
 # PROD=1 adalah alias lama untuk PROFILE=single.
 # DUMMY_OLT=1 menambahkan OLT dummy + auth-bridge mode websocket (hanya profil dev).
-# CS=1 menyalakan customer service lewat chat (customer-adapter) di profil single.
+# CS=1 menyalakan customer service lewat chat (customer-adapter + web CS React) di profil single.
 
 PROFILE ?= dev
 ifdef PROD
@@ -21,7 +21,7 @@ $(error DUMMY_OLT hanya boleh dipakai di profil dev)
 endif
 
 FILES_dev     := -f docker/compose.yml -f docker/compose.dev.yml $(if $(DUMMY_OLT),-f docker/compose.dummy-olt.yml)
-FILES_single  := -f docker/compose.yml -f docker/compose.prod.yml
+FILES_single  := -f docker/compose.yml -f docker/compose.prod.yml $(if $(CS),-f docker/compose.cs.yml)
 FILES_cluster := -f docker/compose.yml -f docker/compose.prod.yml
 # Customer service (profil compose `cs`): selalu di dev; produksi dengan CS=1.
 CS_dev        := --profile cs
@@ -36,6 +36,7 @@ SECRETS       := docker/secrets
 # Build lokal tanpa attestation (berisi timestamp): build ulang tanpa perubahan
 # menghasilkan ID image yang sama, jadi `up --build` tidak me-restart container.
 export BUILDX_NO_DEFAULT_ATTESTATIONS := 1
+NODE_IMG      := node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85
 GO_IMG        := golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb
 TOOLS_IMG     := olt-social/tools:0.1.0
 ALPINE_IMG    := alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
@@ -51,7 +52,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-flutter-it-dummy e2e-windows-dummy \
-        test-cs smoke-cs cs-race cs-demo cs-console cs-totp
+        test-cs smoke-cs cs-race cs-demo cs-console cs-totp cs-staff cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -186,6 +187,22 @@ cs-console: check-config ## Web CS (Flutter web) di http://localhost:8084 + akun
 	docker run -d --name olt-cs-console --restart unless-stopped -p 127.0.0.1:8084:8084 \
 	  -v "$(CURDIR)/apps/cs-console/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8084
 	@echo "CS Console: http://localhost:8084  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: make cs-totp)"
+
+cs-staff: check-config ## Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
+	mkdir -p scripts/cs-demo/runtime
+	@(cat scripts/cs-demo/runtime/staff.json 2>/dev/null || echo '{}') | $(DUMMY_COMPOSE) run --rm -T tools cs-staff \
+	  > scripts/cs-demo/runtime/staff.json.new && mv scripts/cs-demo/runtime/staff.json.new scripts/cs-demo/runtime/staff.json
+
+cs-console-react: cs-staff ## Web CS React (container nginx) di http://localhost:8085 (butuh up DUMMY_OLT=1)
+	$(COMPOSE) up -d --build --wait traefik cs-console
+	@echo "Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: make cs-totp)"
+
+test-cs-console: ## Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
+	docker run --rm -v "$(CURDIR)/apps/cs-console-react:/app" -v /app/node_modules -v /app/dist -w /app $(NODE_IMG) \
+	  sh -c 'npm ci --no-audit --no-fund && npm run ci'
+
+e2e-cs-console: cs-console-react ## E2E Playwright web CS React vs stack dev (butuh up DUMMY_OLT=1, Node 24 + Chromium Playwright)
+	cd apps/cs-console-react && E2E_BASE_URL=http://localhost:8085 npx playwright test
 
 cs-totp: check-config ## Kode TOTP saat ini untuk akun staf dev
 	@$(DUMMY_COMPOSE) run --rm -T tools cs-totp < scripts/cs-demo/runtime/staff.json

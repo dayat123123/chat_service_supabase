@@ -816,6 +816,35 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
+  # Web CS React (apps/cs-console-react): SPA statis di nginx non-root. Browser
+  # agen memanggil API lewat SUPABASE_URL; env.js ditulis saat container start.
+  # Produksi hanya lewat VPN (compose.cs.yml + volumes/traefik/cs.yml).
+  cs-console:
+    <<: *base
+    profiles: [cs]
+    build:
+      context: ../apps/cs-console-react
+    image: olt-social/cs-console:0.1.0
+    user: "101:101"
+    networks: [edge]
+    stop_grace_period: 10s
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    secrets: [anon_key]
+    environment:
+      SUPABASE_URL: ${CS_CONSOLE_API_URL:-http://localhost:8000}
+      SUPABASE_ANON_KEY_FILE: /run/secrets/anon_key
+      APP_ENV: production
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 64M, pids: 64}
+
   # Service operasional (tidak ikut `up`). Dipakai Makefile/make.ps1:
   #   docker compose run --rm tools migrate|seed|test-db|smoke|backup|restore|psql
   # Semua skrip berjalan di container Linux sehingga host Windows tidak butuh bash/psql.

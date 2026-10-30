@@ -11,6 +11,7 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 | **R2** | Web CS khusus ([`apps/cs-console`](../../apps/cs-console/README.md)): login + TOTP, 3 kolom, ambil tiket, chat, catatan internal, balasan cepat, info nasabah, notifikasi | **Selesai** |
 | **R3** | Integrasi aplikasi nasabah: modul `support` di `olt_social` (room CS disematkan, pilih topik + kartu order, header status, aksi, rating di chat, tiket saya, notifikasi lokal, antrean offline, peringatan data sensitif). Windows: panel samping. Android: layar penuh | **Selesai** |
 | **R4** | Dashboard supervisor realtime + alert tiket terlambat, laporan + ekspor CSV, pengaturan admin (akun CS, topik, quick reply global, jam layanan & libur, pesan otomatis, lepas otomatis, mode penugasan), halaman demo dev dipindah ke model tiket (bagian 5) | **Selesai** |
+| React | Web CS ditulis ulang dengan React + TypeScript ([`apps/cs-console-react`](../../apps/cs-console-react/README.md), [prompt](../PROMPT-CS-CONSOLE-REACT.md), [paritas](../cs-console-parity.md)). Backend tidak berubah. M1–M4 selesai; console Flutter tetap ada sampai cutover M5 disetujui | **M1–M4 selesai** |
 
 | Dokumen | Untuk |
 |---|---|
@@ -174,13 +175,16 @@ Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
 | `make test-cs` | Unit test `customer-adapter` |
 | `make smoke-cs` | End-to-end lewat Kong + OLT dummy (40 skenario): buka tiket, ambil, rebutan, balas, OTP diblokir, catatan, lampiran gambar dari CS, data nasabah, transfer, versi kedaluwarsa, selesai, rating |
 | `cd apps/cs-console && flutter test` | Web CS (29 tes): urutan dan filter tiket, kalah rebutan, auth + TOTP, ganti password sementara, akun dicabut saat bekerja, versi tiket kedaluwarsa, dashboard & laporan, CSV aman, akun admin lewat `cs-admin` |
+| `make test-cs-console` | Web CS React: lint, typecheck, 64 unit test, build, bundle awal ≤ 300 KB gzip, lisensi |
+| `make e2e-cs-console` | Web CS React, Playwright vs stack dev (13 tes): login + TOTP, rebutan klaim, chat + lampiran + tanda dibaca, lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor gabung + pindahkan, tampilan terang/gelap, kinerja 1000 tiket + 5000 pesan |
 
 ## Menjalankan
 
 ```bash
 make up DUMMY_OLT=1          # Windows: .\make.ps1 up -DummyOlt
 make test-db && make cs-race && make smoke-cs
-make cs-console              # web CS di http://localhost:8084 (akun dev: scripts/cs-demo/runtime/staff.json)
+make cs-console              # web CS Flutter di http://localhost:8084 (akun dev: scripts/cs-demo/runtime/staff.json)
+make cs-console-react        # web CS React di http://localhost:8085 (akun yang sama, kode TOTP: make cs-totp)
 make cs-demo                 # halaman demo (dev) di http://localhost:8082
 ```
 

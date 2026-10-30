@@ -1,0 +1,51 @@
+# Router web CS React + API agen (profil single dengan CS=1, dan cluster).
+# Semua router di domain CS_CONSOLE_DOMAIN dibatasi ke IP VPN (vpn-only).
+# Header keamanan halaman web (CSP, HSTS, dsb.) dipasang nginx cs-console.
+http:
+  middlewares:
+    vpn-only:
+      ipAllowList:
+        sourceRange: [{{ env "VPN_SOURCE_RANGES" }}]
+
+  routers:
+    cs-realtime:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/realtime/v1`)
+      service: kong
+      middlewares: [vpn-only, ws-limit, rate-limit, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 100
+
+    cs-storage-upload:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/storage/v1`) && (Method(`POST`) || Method(`PUT`))
+      service: kong
+      middlewares: [vpn-only, rate-limit, body-upload, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 95
+
+    cs-api:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/cs/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/storage/v1`))
+      service: kong
+      middlewares: [vpn-only, rate-limit, body-api, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 80
+
+    cs-console:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`)
+      service: cs-console
+      middlewares: [vpn-only, rate-limit, hsts]
+      tls:
+        certResolver: le
+      priority: 1
+
+  services:
+    cs-console:
+      loadBalancer:
+        servers:
+          - url: http://cs-console:8080

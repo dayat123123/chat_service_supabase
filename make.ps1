@@ -20,7 +20,8 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-cs', 'smoke-cs', 'cs-race', 'cs-demo', 'cs-console', 'cs-totp')]
+                 'test-cs', 'smoke-cs', 'cs-race', 'cs-demo', 'cs-console', 'cs-totp',
+                 'cs-staff', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
@@ -50,6 +51,7 @@ $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_ke
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
 $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
 $ToolsImage = 'olt-social/tools:0.1.0'
+$NodeImage = 'node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85'
 $WebImage = 'caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
 $Stack = 'olt-social'
 
@@ -59,6 +61,7 @@ $Compose = switch ($DeployProfile) {
     default { @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.prod.yml') }
 }
 if ($DummyOlt) { $Compose += @('-f', 'docker/compose.dummy-olt.yml') }
+if ($Cs -and $DeployProfile -ne 'dev') { $Compose += @('-f', 'docker/compose.cs.yml') }
 if ($DeployProfile -eq 'dev' -or $Cs) { $Compose += @('--profile', 'cs') }
 $DummyCompose = @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml', '-f', 'docker/compose.dummy-olt.yml',
                   '--profile', 'cs')
@@ -98,6 +101,19 @@ function Get-EnvValue {
     $m = Select-String -LiteralPath $EnvFile -Pattern "^$Key=(.*)$" | Select-Object -Last 1
     if ($m) { return $m.Matches[0].Groups[1].Value.Trim('"') }
     return ''
+}
+
+function Update-StaffAccounts {
+    $runtime = Join-Path $PSScriptRoot 'scripts/cs-demo/runtime'
+    New-Item -ItemType Directory -Force $runtime | Out-Null
+    $staffFile = Join-Path $runtime 'staff.json'
+    $previous = if (Test-Path -LiteralPath $staffFile) { Get-Content -LiteralPath $staffFile -Raw } else { '{}' }
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $staff = $previous | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-staff')) 2>$null }
+    finally { $ErrorActionPreference = $prev }
+    if ($LASTEXITCODE -ne 0) { throw "akun staf dev gagal disiapkan (exit $LASTEXITCODE)" }
+    [IO.File]::WriteAllText($staffFile, (($staff | Out-String).Trim() + "`n"))
 }
 
 function Get-AnonKey { (Get-Content -LiteralPath (Join-Path $SecretsDir 'anon_key') -Raw).Trim() }
@@ -167,6 +183,10 @@ switch ($Target) {
   cs-demo       Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up -DummyOlt)
   cs-console    Web CS (Flutter web) di http://localhost:8084 + akun staf dev dengan TOTP (butuh up -DummyOlt)
   cs-totp       Kode TOTP saat ini untuk akun staf dev
+  cs-staff      Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
+  cs-console-react  Web CS React (container nginx) di http://localhost:8085 (butuh up -DummyOlt)
+  test-cs-console   Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
+  e2e-cs-console    E2E Playwright web CS React vs stack dev (butuh up -DummyOlt, Node 24 + Chromium Playwright)
 '@
     }
     'up' {
@@ -311,16 +331,7 @@ switch ($Target) {
     }
     'cs-console' {
         Assert-Config
-        $runtime = Join-Path $PSScriptRoot 'scripts/cs-demo/runtime'
-        New-Item -ItemType Directory -Force $runtime | Out-Null
-        $staffFile = Join-Path $runtime 'staff.json'
-        $previous = if (Test-Path -LiteralPath $staffFile) { Get-Content -LiteralPath $staffFile -Raw } else { '{}' }
-        $prev = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        try { $staff = $previous | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-staff')) 2>$null }
-        finally { $ErrorActionPreference = $prev }
-        if ($LASTEXITCODE -ne 0) { throw "akun staf dev gagal disiapkan (exit $LASTEXITCODE)" }
-        [IO.File]::WriteAllText($staffFile, (($staff | Out-String).Trim() + "`n"))
+        Update-StaffAccounts
         $anon = Get-AnonKey
         $console = Join-Path $PSScriptRoot 'apps/cs-console'
         Push-Location $console
@@ -333,6 +344,25 @@ switch ($Target) {
                         '-v', "$(Join-Path $console 'build/web'):/srv:ro", $WebImage, 'caddy', 'file-server', '--root', '/srv',
                         '--listen', ':8084') | Out-Null
         Write-Host 'CS Console: http://localhost:8084  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: .\make.ps1 cs-totp)'
+    }
+    'cs-staff' { Assert-Config; Update-StaffAccounts }
+    'cs-console-react' {
+        Assert-Config
+        Update-StaffAccounts
+        Invoke-Compose @('up', '-d', '--build', '--wait', 'traefik', 'cs-console')
+        Write-Host 'Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: .\make.ps1 cs-totp)'
+    }
+    'test-cs-console' {
+        $src = Join-Path $PSScriptRoot 'apps/cs-console-react'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/app", '-v', '/app/node_modules', '-v', '/app/dist', '-w', '/app', $NodeImage,
+                        'sh', '-c', 'npm ci --no-audit --no-fund && npm run ci')
+    }
+    'e2e-cs-console' {
+        & $PSCommandPath cs-console-react -Profile $DeployProfile -DummyOlt:$DummyOlt
+        Push-Location (Join-Path $PSScriptRoot 'apps/cs-console-react')
+        $env:E2E_BASE_URL = 'http://localhost:8085'
+        try { Invoke-Native 'npx' @('playwright', 'test') }
+        finally { Remove-Item Env:E2E_BASE_URL; Pop-Location }
     }
     'cs-totp' {
         Assert-Config

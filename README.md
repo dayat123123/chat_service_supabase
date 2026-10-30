@@ -17,6 +17,7 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`services/cs/`](services/cs/README.md) | Go: `customer-adapter` (data nasabah dari OLT untuk chat CS, amankan akun) |
 | [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
 | [`apps/cs-console/`](apps/cs-console/README.md) | Flutter web: web CS khusus CS, supervisor, dan admin CS (login + TOTP, ambil tiket, chat, catatan internal, info nasabah, dashboard supervisor, laporan + CSV, pengaturan admin). Produksi: hanya lewat VPN |
+| [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS baru (paritas penuh dengan console Flutter, palet Ctrl+K, 3 kolom yang bisa diatur, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
 | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
@@ -201,6 +202,7 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `smoke-cs` | 40 skenario CS chat end-to-end: buka tiket, ambil & rebutan, balas, penyamaran, catatan internal, adapter + OLT dummy, amankan akun, transfer, selesai, rating (butuh `DUMMY_OLT=1`) |
 | `cs-race` | Tes rebutan ambil tiket: 50 CS × 1 tiket dan 200 tiket × 30 CS, langsung ke database dan lewat 3 replika PostgREST |
 | `cs-console` | Web CS di `http://localhost:8084` + akun staf dev dengan TOTP (`scripts/cs-demo/runtime/staff.json`). Butuh Flutter SDK dan `DUMMY_OLT=1` |
+| `cs-console-react` | Web CS React (container nginx) di `http://localhost:8085` + akun staf dev dengan TOTP. Butuh `DUMMY_OLT=1`. Tes: `test-cs-console` (lint, typecheck, unit, build, lisensi), `e2e-cs-console` (Playwright) |
 | `cs-totp` | Kode TOTP saat ini untuk akun staf dev |
 | `cs-demo` | Halaman demo CS (dev) di `http://localhost:8082`: nasabah dan panel CS berdampingan lewat API asli. Stop: `docker rm -f olt-cs-demo` (butuh `DUMMY_OLT=1`) |
 | `up PROFILE=single CS=1` / `-Profile single -Cs` | Nyalakan CS chat (`customer-adapter`) di produksi (di dev selalu aktif). Butuh endpoint OLT nasabah, lihat [docs/cs-chat](docs/cs-chat/README.md) |

@@ -1,0 +1,23 @@
+# Overlay produksi untuk web CS React:  make up PROFILE=single CS=1
+#
+# Web CS dan API agen (/auth/v1, /cs/v1, /functions/v1/cs-admin, REST, Realtime,
+# Storage) disajikan di satu domain CS_CONSOLE_DOMAIN yang HANYA menerima IP dari
+# VPN_SOURCE_RANGES (Traefik ipAllowList). Satu origin: tanpa CORS.
+# Lihat docs/PRODUCTION.md bagian web CS.
+
+services:
+  traefik:
+    configs:
+      - source: traefik-routes-cs
+        target: /etc/traefik/dynamic/cs.yml
+    environment:
+      CS_CONSOLE_DOMAIN: ${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN wajib diisi bila CS=1 (docker/.env)}
+      VPN_SOURCE_RANGES: ${VPN_SOURCE_RANGES:?VPN_SOURCE_RANGES wajib diisi bila CS=1 (docker/.env)}
+
+  cs-console:
+    environment:
+      SUPABASE_URL: https://${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN wajib diisi bila CS=1 (docker/.env)}
+
+configs:
+  traefik-routes-cs:
+    file: ./volumes/traefik/cs.yml

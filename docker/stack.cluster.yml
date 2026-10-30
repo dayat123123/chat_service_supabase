@@ -40,7 +40,11 @@ services:
     configs:
       - source: traefik-routes-prod
         target: /etc/traefik/dynamic/routes.yml
+      - source: traefik-routes-cs
+        target: /etc/traefik/dynamic/cs.yml
     environment:
+      CS_CONSOLE_DOMAIN: ${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN wajib diisi}
+      VPN_SOURCE_RANGES: ${VPN_SOURCE_RANGES:?VPN_SOURCE_RANGES wajib diisi}
       TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":8080"
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: ":443"
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https
@@ -101,6 +105,13 @@ services:
       replicas: 2
   auth-bridge:
     image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.3.1
+    deploy:
+      <<: *deploy
+      replicas: 2
+  cs-console:
+    image: ${REGISTRY}/olt-social/cs-console:0.1.0
+    environment:
+      SUPABASE_URL: https://${CS_CONSOLE_DOMAIN}
     deploy:
       <<: *deploy
       replicas: 2
@@ -167,6 +178,8 @@ networks:
 configs:
   traefik-routes-prod:
     file: ./volumes/traefik/prod.yml
+  traefik-routes-cs:
+    file: ./volumes/traefik/cs.yml
 
 secrets:
   storage_s3_access_key_id:
