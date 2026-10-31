@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -23,6 +23,14 @@ export const settingsKeys = {
   quickReplies: ['admin', 'quick-replies'] as const,
   settings: ['admin', 'settings'] as const,
   holidays: (year: number) => ['admin', 'holidays', year] as const,
+}
+
+function putAccount(client: QueryClient, agent: StaffAccount) {
+  client.setQueryData<StaffAccount[]>(settingsKeys.accounts, (items = []) =>
+    items.some((item) => item.id === agent.id)
+      ? items.map((item) => (item.id === agent.id ? agent : item))
+      : [...items, agent],
+  )
 }
 
 export function useAccounts() {
@@ -56,13 +64,16 @@ export function useSaveAccount() {
       id === null
         ? settingsApi.createAccount(draft)
         : { agent: await settingsApi.updateAccount(id, draft), temporary_password: null },
-    onSuccess: ({ agent }) => {
-      client.setQueryData<StaffAccount[]>(settingsKeys.accounts, (items = []) =>
-        items.some((item) => item.id === agent.id)
-          ? items.map((item) => (item.id === agent.id ? agent : item))
-          : [...items, agent],
-      )
-    },
+    onSuccess: ({ agent }) => putAccount(client, agent),
+  })
+}
+
+export function useResetPassword() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => settingsApi.resetPassword(id),
+    onSuccess: ({ agent }) => putAccount(client, agent),
+    onError: () => void client.invalidateQueries({ queryKey: settingsKeys.accounts }),
   })
 }
 

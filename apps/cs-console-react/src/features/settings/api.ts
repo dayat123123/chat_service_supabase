@@ -41,6 +41,10 @@ export const settingsApi = {
     const updated = await invoke<{ agent: StaffAccount }>(`cs-admin/agents/${id}`, 'PATCH', body)
     return account(updated.agent)
   },
+  resetPassword: async (id: string) => {
+    const reset = await invoke<CreatedAccount>(`cs-admin/agents/${id}/reset-password`, 'POST', {})
+    return { ...reset, agent: account(reset.agent) }
+  },
   topics: () => rpc<TopicConfig[]>('admin_topics'),
   saveTopic: (topic: TopicConfig) =>
     rpc<TopicConfig[]>('admin_save_topic', {
