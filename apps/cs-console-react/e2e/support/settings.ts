@@ -1,4 +1,4 @@
-import { expect, type Browser, type Page } from '@playwright/test'
+import { expect, test, type Browser, type Page } from '@playwright/test'
 
 import { staffPage } from './staff'
 
@@ -42,4 +42,13 @@ export function keepAssignmentMode() {
     },
     restore: (browser: Browser) => asSuperAdmin(browser, (page) => setAssignmentMode(page, previous)),
   }
+}
+
+export function pinAssignmentMode(mode: RegExp) {
+  const saved = keepAssignmentMode()
+  test.beforeAll(async ({ browser }) => {
+    await saved.remember(browser)
+    await asSuperAdmin(browser, (page) => setAssignmentMode(page, mode))
+  })
+  test.afterAll(({ browser }) => saved.restore(browser))
 }

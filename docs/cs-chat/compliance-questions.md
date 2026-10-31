@@ -9,6 +9,7 @@ Customer service OLT dibangun sebagai chat dua arah di dalam aplikasi, tanpa sis
 **Cara menjawab:**
 - Setiap pertanyaan memuat **usulan kami**. Usulan itu sudah dipakai sebagai pengaturan (`cs_settings`) dan bisa diubah tanpa mengubah program. Cukup jawab "setuju", atau tuliskan aturan yang benar beserta rujukannya.
 - Chat CS **tidak dibuka untuk nasabah** sebelum semua pertanyaan terjawab.
+- Nilai A1 (`complaint.days`), A5 (`complaint.extension_days`), dan B3 (`retention.chat_years`) bisa langsung dikonfirmasi atau diubah akun Kepatuhan di web CS → **Kebijakan**. Konfirmasi tercatat per versi pengaturan beserta dasar ketentuannya ([kepatuhan.md](kepatuhan.md)).
 
 ## A. Pengaduan lewat chat
 
@@ -18,7 +19,7 @@ Customer service OLT dibangun sebagai chat dua arah di dalam aplikasi, tanpa sis
 | A2 | Kapan pengaduan dianggap **diterima**: saat nasabah menekan "Saya ingin mengajukan pengaduan", atau saat agen menandai sesi sebagai pengaduan? | Saat sesi ditandai pengaduan (oleh nasabah atau agen), memakai waktu server. Nasabah langsung mendapat pesan berisi waktu diterima dan tenggatnya | Sebelum peluncuran |
 | A3 | Definisi **hari kerja**: apakah libur bursa ikut dikecualikan? Apakah Sabtu dihitung bila CS buka? | Senin–Jumat, kecuali libur nasional, cuti bersama, dan libur bursa. Sabtu tidak dihitung walaupun CS buka | Sebelum peluncuran |
 | A4 | **Hari pertama**: apakah hari penerimaan dihitung hari ke-0? Bagaimana pengaduan di luar hari kerja? | Hari penerimaan = hari ke-0. Pengaduan di luar hari kerja dianggap diterima hari kerja berikutnya. Tenggat jatuh pukul 23.59 WIB hari kerja ke-N. Semua dalam WIB | Sebelum peluncuran |
-| A5 | **Perpanjangan** tenggat: kondisi apa yang membolehkan, berapa kali, dan bagaimana memberitahukannya lewat chat? | Maksimal 1 kali, 10 hari kerja, diberitahukan lewat pesan sistem di chat (dibangun di CS5) | Sebelum CS5 |
+| A5 | **Perpanjangan** tenggat: kondisi apa yang membolehkan, berapa kali, dan bagaimana memberitahukannya lewat chat? | Maksimal 1 kali, 10 hari kerja (`complaint.extension_days`), sebelum tenggat lewat, diberitahukan lewat pesan sistem di chat. Sudah dibangun: web CS → Kasus → Perpanjang tenggat (akun Kepatuhan) | Sebelum CS5 |
 | A6 | Apakah **transkrip chat** yang diekspor ke PDF bernomor sah sebagai catatan pengaduan? Perlu bukti integritas tambahan? | Ya. Pesan CS tidak bisa diedit atau dihapus nasabah, log kejadian sesi tidak bisa diubah, dan PDF memuat sidik digital (hash) | Sebelum CS5 |
 
 ## B. Data, penyamaran, dan retensi

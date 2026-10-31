@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Akun staf dev untuk web CS (make cs-staff): CS dan super admin demo dengan ID tetap, login GoTrue
+# Akun staf dev untuk web CS (make cs-staff): CS, super admin, dan kepatuhan demo dengan ID tetap, login GoTrue
 # email + password tanpa TOTP. Mencetak JSON (email, password) ke stdout; make menyimpannya di
 # scripts/cs-demo/runtime/staff.json (di-gitignore). Password diturunkan dari JWT secret lingkungan ini.
 # Hanya untuk profil dev.
@@ -14,6 +14,7 @@ STAFF=(
   '5e000000-0000-4000-8000-0000000000d3|Laras|laras|{cs_agent}|complaints|{"complaint": 3, "fraud": 3, "general": 1}'
   '5e000000-0000-4000-8000-0000000000d4|Sinta|sinta|{cs_super_admin}|general|{"general": 3, "complaint": 2, "fraud": 2}'
   '5e000000-0000-4000-8000-0000000000d5|Adi|adi|{cs_super_admin}|general|{}'
+  '5e000000-0000-4000-8000-0000000000d6|Kirana|kirana|{compliance}|general|{}'
 )
 
 now=$(date +%s)

@@ -25,7 +25,7 @@ function navLinks() {
 
 describe('TopBar', () => {
   it('shows status and capacity to agents', () => {
-    renderWithProviders(<TopBar attention={0} />, agentFixture)
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, agentFixture)
 
     expect(screen.getByRole('button', { name: 'Ubah status: Online' })).toBeInTheDocument()
     expect(screen.getByText('Aktif 1/5')).toBeInTheDocument()
@@ -34,7 +34,7 @@ describe('TopBar', () => {
   })
 
   it('shows monitor mode and admin menus to Super Admins without status or capacity', () => {
-    renderWithProviders(<TopBar attention={0} />, monitorFixture)
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, monitorFixture)
 
     expect(screen.getByText('Mode pantau')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Ubah status/ })).not.toBeInTheDocument()

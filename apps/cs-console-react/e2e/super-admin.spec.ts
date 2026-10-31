@@ -1,8 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import { Customer } from './support/customer'
+import { claimMode, pinAssignmentMode } from './support/settings'
 import { openTab, openTicket, staffPage, ticketCard } from './support/staff'
 import { tag } from './support/text'
+
+pinAssignmentMode(claimMode)
 
 async function moveTo(page: Page, name: string, reason: string) {
   await page.getByRole('button', { name: 'Pindahkan ke…', exact: true }).click()

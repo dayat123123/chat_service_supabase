@@ -2,7 +2,7 @@
   "name": "cs-console-react",
   "private": true,
   "version": "0.1.0",
-  "description": "Web CS OLT (React + TypeScript): CS dan Super Admin. Produksi hanya lewat VPN.",
+  "description": "Web CS OLT (React + TypeScript): CS, Super Admin, dan Kepatuhan. Produksi hanya lewat VPN.",
   "type": "module",
   "engines": {
     "node": ">=24.12.0"

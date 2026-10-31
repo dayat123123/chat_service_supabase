@@ -57,5 +57,29 @@ for (const theme of themes) {
         await audit(page, `settings-${theme}`)
       })
     })
+
+    test('ringkasan, kasus, jejak audit, dan kebijakan Kepatuhan', async ({ browser }) => {
+      await asStaff(browser, theme, 'Kirana', async (page) => {
+        const menu = page.getByRole('navigation', { name: 'Menu' })
+        await expect(page.getByRole('heading', { name: 'Ringkasan Kepatuhan' })).toBeVisible()
+        await audit(page, `compliance-overview-${theme}`)
+        await menu.getByRole('link', { name: /^Kasus/ }).click()
+        await expect(page.getByRole('heading', { name: 'Kasus', exact: true })).toBeVisible()
+        await audit(page, `compliance-cases-${theme}`)
+        const open = page.getByRole('button', { name: /^Buka kasus/ }).first()
+        if (await open.isVisible()) {
+          await open.click()
+          await expect(page.getByRole('tab', { name: /^Transkrip/ })).toBeVisible()
+          await audit(page, `compliance-case-${theme}`)
+          await page.keyboard.press('Escape')
+        }
+        await menu.getByRole('link', { name: 'Jejak Audit', exact: true }).click()
+        await expect(page.getByRole('heading', { name: 'Jejak Audit' })).toBeVisible()
+        await audit(page, `compliance-audit-${theme}`)
+        await menu.getByRole('link', { name: 'Kebijakan', exact: true }).click()
+        await expect(page.getByRole('heading', { name: 'Tenggat pengaduan' })).toBeVisible()
+        await audit(page, `compliance-policy-${theme}`)
+      })
+    })
   })
 }

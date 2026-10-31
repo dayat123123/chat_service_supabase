@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { Customer } from './support/customer'
+import { claimMode, pinAssignmentMode } from './support/settings'
 import { claim, signIn } from './support/staff'
 import { tag } from './support/text'
 
@@ -8,6 +9,8 @@ const png = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGD4DwABBAEAwS2OUAAAAABJRU5ErkJggg==',
   'base64',
 )
+
+pinAssignmentMode(claimMode)
 
 test('balas, tanda dibaca, lampiran, pesan nasabah realtime, dan panel info nasabah', async ({ page }) => {
   const customer = await Customer.login('andi_trader')

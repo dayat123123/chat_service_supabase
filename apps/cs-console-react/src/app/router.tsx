@@ -6,7 +6,8 @@ import {
   redirect,
 } from '@tanstack/react-router'
 
-import { isSuperAdmin, type AgentProfile } from '@/features/presence/types'
+import { caseStates, type CaseState } from '@/features/compliance/types'
+import { canViewTickets, isCompliance, isSuperAdmin, type AgentProfile } from '@/features/presence/types'
 import { appEnv } from '@/lib/supabase'
 
 import { Home, NoAccess } from './home'
@@ -18,6 +19,12 @@ const superAdminOnly = ({ context }: { context: RouterContext }) => {
   if (!isSuperAdmin(context.agent)) throw redirect({ to: '/' })
 }
 
+const complianceOnly = ({ context }: { context: RouterContext }) => {
+  if (!isCompliance(context.agent)) throw redirect({ to: '/' })
+}
+
+const text = (value: unknown) => (typeof value === 'string' && value !== '' ? value : undefined)
+
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Shell,
   notFoundComponent: NoAccess,
@@ -26,6 +33,9 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  beforeLoad: ({ context }) => {
+    if (!canViewTickets(context.agent) && isCompliance(context.agent)) throw redirect({ to: '/compliance' })
+  },
   component: Home,
 })
 
@@ -53,6 +63,54 @@ const settingsRoute = createRoute({
   component: lazyRouteComponent(() => import('@/features/settings/components/settings-page'), 'SettingsPage'),
 })
 
+const complianceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance',
+  beforeLoad: complianceOnly,
+  component: lazyRouteComponent(
+    () => import('@/features/compliance/components/overview-page'),
+    'ComplianceOverviewPage',
+  ),
+})
+
+const complianceCasesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance/cases',
+  beforeLoad: complianceOnly,
+  validateSearch: (search: Record<string, unknown>): { case?: string; state?: CaseState } => {
+    const state = text(search.state)
+    return {
+      case: text(search.case),
+      state: caseStates.includes(state as CaseState) ? (state as CaseState) : undefined,
+    }
+  },
+  component: lazyRouteComponent(
+    () => import('@/features/compliance/components/cases-page'),
+    'ComplianceCasesPage',
+  ),
+})
+
+const complianceAuditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance/audit',
+  beforeLoad: complianceOnly,
+  validateSearch: (search: Record<string, unknown>): { action?: string } => ({ action: text(search.action) }),
+  component: lazyRouteComponent(
+    () => import('@/features/compliance/components/audit-page'),
+    'ComplianceAuditPage',
+  ),
+})
+
+const compliancePolicyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance/policy',
+  beforeLoad: complianceOnly,
+  component: lazyRouteComponent(
+    () => import('@/features/compliance/components/policy-page'),
+    'CompliancePolicyPage',
+  ),
+})
+
 const perfRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/__perf',
@@ -62,7 +120,17 @@ const perfRoute = createRoute({
   component: lazyRouteComponent(() => import('@/features/perf/perf-page'), 'PerfPage'),
 })
 
-const routeTree = rootRoute.addChildren([homeRoute, dashboardRoute, reportsRoute, settingsRoute, perfRoute])
+const routeTree = rootRoute.addChildren([
+  homeRoute,
+  dashboardRoute,
+  reportsRoute,
+  settingsRoute,
+  complianceRoute,
+  complianceCasesRoute,
+  complianceAuditRoute,
+  compliancePolicyRoute,
+  perfRoute,
+])
 
 export function createAppRouter(agent: AgentProfile) {
   return createRouter({ routeTree, context: { agent }, defaultPreload: 'intent' })

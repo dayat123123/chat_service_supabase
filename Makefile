@@ -176,7 +176,7 @@ cs-race: check-config ## Tes rebutan klaim tiket CS: DB langsung + 3 replika Pos
 cs-bootstrap-admin: check-config ## Super admin web CS pertama: make cs-bootstrap-admin EMAIL=nama@domain NAME="Nama" [FORCE=1] [PROFILE=single]
 	@$(TOOLS) cs-bootstrap-admin "$(EMAIL)" "$(NAME)" $(if $(FORCE),--force)
 
-cs-staff: check-config ## Akun staf dev (CS dan super admin) di scripts/cs-demo/runtime/staff.json
+cs-staff: check-config ## Akun staf dev (CS, super admin, kepatuhan) di scripts/cs-demo/runtime/staff.json
 	mkdir -p scripts/cs-demo/runtime
 	@(cat scripts/cs-demo/runtime/staff.json 2>/dev/null || echo '{}') | $(DUMMY_COMPOSE) run --rm -T tools cs-staff \
 	  > scripts/cs-demo/runtime/staff.json.new && mv scripts/cs-demo/runtime/staff.json.new scripts/cs-demo/runtime/staff.json

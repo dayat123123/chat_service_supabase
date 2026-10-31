@@ -56,6 +56,7 @@ export function normalizeAgent(raw: AgentProfile): AgentProfile {
 
 export const isSuperAdmin = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_super_admin')
 export const worksTickets = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_agent')
+export const isCompliance = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('compliance')
 export const isMonitor = (agent: Pick<AgentProfile, 'roles'>) => isSuperAdmin(agent) && !worksTickets(agent)
 export const canViewTickets = (agent: Pick<AgentProfile, 'roles'>) =>
   worksTickets(agent) || isSuperAdmin(agent)

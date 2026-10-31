@@ -182,7 +182,7 @@ switch ($Target) {
   smoke-cs      Smoke test CS chat end-to-end lewat API asli (butuh up -DummyOlt)
   cs-race       Tes rebutan klaim tiket CS: DB langsung + 3 replika PostgREST khusus tes
   cs-demo       Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up -DummyOlt)
-  cs-staff      Akun staf dev (CS dan super admin) di scripts/cs-demo/runtime/staff.json
+  cs-staff      Akun staf dev (CS, super admin, kepatuhan) di scripts/cs-demo/runtime/staff.json
   cs-bootstrap-admin  Super admin web CS pertama: -Email nama@domain -Name "Nama" [-Force] [-Profile single]
   cs-console-react  Web CS React (container nginx) di http://localhost:8085 (butuh up -DummyOlt)
   test-cs-console   Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)

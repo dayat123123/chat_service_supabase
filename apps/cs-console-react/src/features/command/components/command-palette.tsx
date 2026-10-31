@@ -3,6 +3,8 @@ import {
   ArrowRightLeftIcon,
   BarChart3Icon,
   ClockIcon,
+  FolderSearchIcon,
+  GaugeIcon,
   HandIcon,
   KeyboardIcon,
   LayoutDashboardIcon,
@@ -10,7 +12,9 @@ import {
   MessageSquareTextIcon,
   MoonIcon,
   RowsIcon,
+  ScrollTextIcon,
   SettingsIcon,
+  ShieldCheckIcon,
   SquareCheckBigIcon,
   StickyNoteIcon,
   TicketIcon,
@@ -36,6 +40,7 @@ import { useSetStatus } from '@/features/presence/hooks'
 import {
   agentStatuses,
   canViewTickets,
+  isCompliance,
   isSuperAdmin,
   worksTickets,
   type AgentStatus,
@@ -93,6 +98,15 @@ function Section({
   )
 }
 
+type SectionTarget =
+  | '/dashboard'
+  | '/reports'
+  | '/settings'
+  | '/compliance'
+  | '/compliance/cases'
+  | '/compliance/audit'
+  | '/compliance/policy'
+
 function PaletteBody({
   choose,
   onOpenTicket,
@@ -106,6 +120,7 @@ function PaletteBody({
   const tickets = canViewTickets(agent)
   const worker = worksTickets(agent)
   const superAdmin = isSuperAdmin(agent)
+  const compliance = isCompliance(agent)
   const topicName = useTopicName()
   const lists = useTicketLists(tickets)
   const setStatus = useSetStatus()
@@ -142,13 +157,23 @@ function PaletteBody({
     }))
 
   const tabs = ticketTabs(agent).map((tab) => ({ tab, label: t(tabLabelKeys[tab]) }))
-  const sections: { label: string; icon: Icon; to: '/dashboard' | '/reports' | '/settings' }[] = superAdmin
-    ? [
-        { label: t('nav.dashboard'), icon: LayoutDashboardIcon, to: '/dashboard' },
-        { label: t('nav.reports'), icon: BarChart3Icon, to: '/reports' },
-        { label: t('nav.settings'), icon: SettingsIcon, to: '/settings' },
-      ]
-    : []
+  const sections: { label: string; icon: Icon; to: SectionTarget }[] = [
+    ...(superAdmin
+      ? [
+          { label: t('nav.dashboard'), icon: LayoutDashboardIcon, to: '/dashboard' as const },
+          { label: t('nav.reports'), icon: BarChart3Icon, to: '/reports' as const },
+          { label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const },
+        ]
+      : []),
+    ...(compliance
+      ? [
+          { label: t('nav.overview'), icon: GaugeIcon, to: '/compliance' as const },
+          { label: t('nav.cases'), icon: FolderSearchIcon, to: '/compliance/cases' as const },
+          { label: t('nav.audit'), icon: ScrollTextIcon, to: '/compliance/audit' as const },
+          { label: t('nav.policy'), icon: ShieldCheckIcon, to: '/compliance/policy' as const },
+        ]
+      : []),
+  ]
   const navigation: PaletteItem[] = [
     ...tabs.map((item) => ({
       id: `tab:${item.tab}`,

@@ -9,7 +9,9 @@ import { CommandPalette } from '@/features/command/components/command-palette'
 import { ShortcutsDialog } from '@/features/command/components/shortcuts-dialog'
 import { useConsoleAlerts, useDocumentTitle, useOverdueAlerts } from '@/features/notifications/hooks'
 import { useHeartbeat, useResumeStatus, useStatusOnClose } from '@/features/presence/hooks'
-import { canViewTickets, isSuperAdmin, worksTickets } from '@/features/presence/types'
+import { useComplianceOverview } from '@/features/compliance/hooks'
+import { caseAttention } from '@/features/compliance/logic'
+import { canViewTickets, isCompliance, isSuperAdmin, worksTickets } from '@/features/presence/types'
 import { useSupervisorOverview } from '@/features/supervisor/hooks'
 import { attentionCount } from '@/features/supervisor/types'
 import { useOpenTicket, useTicketLists, useTicketRealtime } from '@/features/tickets/hooks'
@@ -56,6 +58,7 @@ export function Shell() {
 
   const lists = useTicketLists(tickets)
   const overview = useSupervisorOverview(superAdmin)
+  const complianceOverview = useComplianceOverview(isCompliance(agent))
   useOverdueAlerts(overview.data?.overdue, openTicket)
   useDocumentTitle(lists.data ? unreadMine(lists.data) : 0, t('app.title'))
 
@@ -67,7 +70,10 @@ export function Shell() {
       >
         {t('app.skipToContent')}
       </a>
-      <TopBar attention={attentionCount(overview.data)} />
+      <TopBar
+        attention={attentionCount(overview.data)}
+        caseAttention={caseAttention(complianceOverview.data)}
+      />
       <main id="main" className="min-h-0 flex-1">
         <Outlet />
       </main>

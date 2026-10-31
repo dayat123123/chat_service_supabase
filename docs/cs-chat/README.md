@@ -11,6 +11,8 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 - memantau dashboard, laporan, serta semua tiket dan percakapan (hanya baca), menulis catatan internal, mengubah prioritas dan tanda, dan memindahkan tiket ke CS lain agar tiket CS yang offline tidak tertahan;
 - mengelola akun CS (membuat akun, mengubah peran dan batas tiket, menonaktifkan, mereset password yang lupa) serta semua pengaturan admin.
 
+**Pembaruan 31 Okt 2026: menu Kepatuhan.** Peran `compliance` kini punya menu sendiri di web CS ([kepatuhan.md](kepatuhan.md), migrasi `0042_cs_compliance`): ringkasan pengaduan dan penipuan, register kasus dengan transkrip dan tinjauan, perpanjangan tenggat pengaduan (sekali, nasabah diberi tahu), unduh transkrip bersidik SHA-256, jejak audit, serta konfirmasi kebijakan tenggat pengaduan, perpanjangan, dan retensi chat. Kepatuhan tetap tidak menangani tiket.
+
 | Tahap | Isi | Status |
 |---|---|---|
 | CS1 | Fondasi: perluasan chat, schema `cs`, RLS, catatan internal, audit log (`customer-adapter` dihapus 31 Okt 2026) | Selesai |
@@ -24,6 +26,7 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 |---|---|
 | [olt-integration.md](../olt-integration.md) | Tim OLT: satu-satunya kebutuhan server, yaitu token sosial bertanda tangan saat login |
 | [compliance-questions.md](compliance-questions.md) | Tim kepatuhan: 19 pertanyaan dengan usulan yang sudah dipakai sebagai pengaturan |
+| [kepatuhan.md](kepatuhan.md) | Menu Kepatuhan di web CS: halaman, status tenggat, aksi, API, dan keputusan |
 
 ## Keputusan
 
@@ -49,7 +52,7 @@ Pemilik produk mendelegasikan pilihan ke tim. Yang dipilih beserta alasannya:
 
 ## Model data
 
-Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessions`, `0029_cs_api`, `0030_cs_session_detail`, `0031_cs_concurrency`, `0032_cs_tickets` (model ambil tiket), `0033_cs_tickets_api`, `0034_cs_room_members`, `0035_cs_supervisor_admin` (dashboard, laporan, pengaturan admin), `0037_client_owned_business_data` (hapus kartu order dan fungsi data nasabah), `0038_cs_supervisor_monitor_only`, `0039_cs_super_admin_without_totp`. RLS aktif di semua tabel `cs` (termasuk partisi).
+Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessions`, `0029_cs_api`, `0030_cs_session_detail`, `0031_cs_concurrency`, `0032_cs_tickets` (model ambil tiket), `0033_cs_tickets_api`, `0034_cs_room_members`, `0035_cs_supervisor_admin` (dashboard, laporan, pengaturan admin), `0037_client_owned_business_data` (hapus kartu order dan fungsi data nasabah), `0038_cs_supervisor_monitor_only`, `0039_cs_super_admin_without_totp`, `0040_cs_auto_assign_immediate`, `0041_cs_offline_agent_reply`, `0042_cs_compliance` (menu Kepatuhan). RLS aktif di semua tabel `cs` (termasuk partisi).
 
 **Perluasan chat yang ada:**
 - `chat_rooms.type` + `support`, kolom `customer_id`, satu room `support` per nasabah (unique index). Semua tiket nasabah ada di room yang sama.
@@ -69,7 +72,9 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 | `quick_replies` | Balasan cepat pribadi/tim/global |
 | `cs_settings`, `cs_settings_history` | Pengaturan berversi (jam layanan, mode penugasan, batas, pesan otomatis ID/EN) |
 | `holidays` | Kalender libur 2026–2027 (nasional, cuti bersama, libur bursa) |
-| `cs_audit_log` | Audit append-only semua aksi CS dan super admin (partisi bulanan) |
+| `cs_audit_log` | Audit append-only semua aksi CS, super admin, dan kepatuhan (partisi bulanan) |
+| `compliance_reviews` | Tinjauan kepatuhan per kasus (putusan + catatan), append-only |
+| `policy_confirmations` | Konfirmasi kepatuhan per versi pengaturan kebijakan, append-only |
 
 ## Status tiket
 
@@ -108,7 +113,9 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 | Dashboard | – | – | Ya | – |
 | Laporan + ekspor CSV | – | – | Ya | – |
 | Akun CS (buat, ubah, nonaktifkan, reset password) dan pengaturan admin | – | – | Ya | – |
-| Audit log | – | – | Ya | Ya |
+| Audit log | – | – | Ya | Ya (menu Jejak Audit) |
+| Ringkasan kepatuhan, register kasus + ekspor CSV, tinjauan, perpanjang tenggat pengaduan, unduh transkrip | – | – | – | Ya (tiket berflag) |
+| Kebijakan tenggat pengaduan, perpanjangan, dan retensi chat | – | – | – | Ya |
 | Channel realtime | `cs:room:<room miliknya>` | `cs:queue`, `cs:agent:<diri>`, `cs:room:<yang ditangani>` | Sama | `cs:room` berflag |
 
 Semua dicek di server (RLS + fungsi). Login web CS cukup email + password (tanpa TOTP); di produksi web CS hanya bisa diakses lewat VPN. Akun nonaktif langsung kehilangan akses. Client tidak bisa mengirim broadcast ke channel `cs:*` (hanya server), sehingga event status tidak bisa dipalsukan.
@@ -120,6 +127,7 @@ Semua dicek di server (RLS + fungsi). Login web CS cukup email + password (tanpa
 | Nasabah | `topics`, `support_home`, `open_ticket`, `my_tickets`, `ticket_messages`, `send_message`, `get_messages`, `mark_read`, `close_ticket`, `rate_ticket`, `request_complaint`, `report_fake_cs`, `check_sensitive` |
 | CS | `agent_me`, `agent_set_status`, `agent_heartbeat`, `ticket_lists` (Terbuka / Saya / Selesai hari ini / transfer masuk & keluar), `search_tickets`, `claim_ticket`, `release_ticket`, `request_transfer`, `respond_transfer`, `cancel_transfer`, `wait_customer`, `resolve_ticket`, `set_ticket_priority`, `flag_ticket`, `agent_send_message` (`text`, `quick_reply`, `help_link`), `add_note`, `notes`, `ticket_detail`, `customer_history`, `online_agents`, `room_members`, `quick_replies` |
 | Super admin (`cs_super_admin`) | Memantau: `ticket_lists` (termasuk tab "Semua aktif"), `ticket_detail`, `get_messages`, `notes`, `add_note`, `customer_history`, `set_ticket_priority`, `flag_ticket`, `reassign_ticket` (ke akun `cs_agent`), `online_agents`, `supervisor_overview`, `report_summary`. Mengelola: `admin_agents`, `admin_options`, `admin_update_agent`, `admin_reset_password`, `admin_topics`, `admin_save_topic`, `admin_quick_replies`, `admin_save_quick_reply`, `admin_settings`, `admin_set_setting`, `admin_holidays`, `admin_save_holiday`, `admin_delete_holiday`. Akun baru dan reset password lewat Edge Function `cs-admin`. Aksi menangani tiket ditolak `role_forbidden` |
+| Kepatuhan (`compliance`) | `compliance_overview`, `compliance_cases`, `compliance_case`, `compliance_review`, `compliance_extend_deadline`, `compliance_transcript_exported`, `compliance_audit`, `compliance_policies`, `compliance_confirm_policy`, serta `ticket_messages` untuk transkrip tiket berflag. Detail di [kepatuhan.md](kepatuhan.md) |
 | Layanan (service role) | `service_create_agent`, hanya dipanggil Edge Function `cs-admin` |
 
 Topik realtime (event dikirim server):

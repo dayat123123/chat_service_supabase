@@ -26,7 +26,7 @@ vi.mock('@/lib/supabase', async (importOriginal) => {
 
 vi.mock('@/features/presence/api', async (importOriginal) => {
   const actual = await importOriginal<typeof PresenceApiModule>()
-  return { ...actual, presenceApi: { ...actual.presenceApi, setStatus: vi.fn() } }
+  return { ...actual, presenceApi: { ...actual.presenceApi, me: vi.fn(), setStatus: vi.fn() } }
 })
 
 const session = (mustChange: boolean) => ({
@@ -51,6 +51,7 @@ describe('login without TOTP', () => {
   beforeEach(() => {
     useAuth.setState({ phase: { kind: 'signedOut' }, busy: false, error: null })
     Object.values(auth).forEach((mock) => mock.mockReset())
+    vi.mocked(presenceApi.me).mockReset().mockResolvedValue(agentFixture)
     vi.mocked(presenceApi.setStatus).mockReset().mockResolvedValue(agentFixture)
     auth.signInWithPassword.mockResolvedValue({ data: { session: {}, user: {} }, error: null })
   })
@@ -68,6 +69,22 @@ describe('login without TOTP', () => {
       password: 'rahasia-sekali',
     })
     expect(presenceApi.setStatus).toHaveBeenCalledWith('offline')
+  })
+
+  it('leaves the status alone for staff who do not handle tickets', async () => {
+    const user = userEvent.setup()
+    auth.getSession.mockResolvedValue(session(false))
+    vi.mocked(presenceApi.me).mockResolvedValue({
+      ...agentFixture,
+      display_name: 'Kirana',
+      roles: ['compliance'],
+    })
+    render(<Gate />)
+
+    await signIn(user, 'rahasia-sekali')
+
+    expect(await screen.findByText('Ruang kerja Kirana')).toBeInTheDocument()
+    expect(presenceApi.setStatus).not.toHaveBeenCalled()
   })
 
   it('asks for a new password first while the temporary one is still in use', async () => {

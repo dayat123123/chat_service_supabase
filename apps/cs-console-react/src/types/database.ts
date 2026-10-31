@@ -92,6 +92,47 @@ export type Database = {
       check_sensitive: { Args: { p_text: string }; Returns: Json }
       claim_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       close_ticket: { Args: { p_ticket_id: string }; Returns: Json }
+      compliance_audit: {
+        Args: {
+          p_action?: string
+          p_before_at?: string
+          p_before_id?: number
+          p_from: string
+          p_limit?: number
+          p_query?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      compliance_case: { Args: { p_ticket_id: string }; Returns: Json }
+      compliance_cases: {
+        Args: {
+          p_from?: string
+          p_kind?: string
+          p_query?: string
+          p_state?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      compliance_confirm_policy: {
+        Args: { p_key: string; p_note?: string; p_value: Json }
+        Returns: Json
+      }
+      compliance_extend_deadline: {
+        Args: { p_reason: string; p_ticket_id: string; p_version?: number }
+        Returns: Json
+      }
+      compliance_overview: { Args: Record<PropertyKey, never>; Returns: Json }
+      compliance_policies: { Args: Record<PropertyKey, never>; Returns: Json }
+      compliance_review: {
+        Args: { p_note: string; p_ticket_id: string; p_verdict: string }
+        Returns: Json
+      }
+      compliance_transcript_exported: {
+        Args: { p_messages: number; p_sha256: string; p_ticket_id: string }
+        Returns: Json
+      }
       customer_history: { Args: { p_customer_id: string }; Returns: Json }
       flag_ticket: {
         Args: { p_flag: string; p_ticket_id: string }
