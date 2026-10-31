@@ -20,7 +20,7 @@ import {
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
 import { GoOnlineButton } from '@/features/presence/components/go-online-button'
-import { useClaimGate } from '@/features/presence/hooks'
+import { useActionGuard, useClaimGate } from '@/features/presence/hooks'
 import { worksTickets } from '@/features/presence/types'
 import { useDebounced, useNow } from '@/hooks/use-now'
 import { usePreferences } from '@/lib/preferences'
@@ -173,6 +173,7 @@ export function TicketColumn() {
   )
   const gate = useClaimGate()
   const canClaim = gate.canClaim
+  const guard = useActionGuard()
 
   const tabs = available.map((value) => ({ value, label: t(tabLabelKeys[value]), count: data[value].length }))
 
@@ -198,8 +199,9 @@ export function TicketColumn() {
   )
   const claimSelected = useCallback(() => {
     const ticket = tickets.find((item) => item.id === selectedId)
-    if (ticket?.status === 'open' && canClaim && !claim.isPending) claim.mutate(ticket.id)
-  }, [tickets, selectedId, canClaim, claim])
+    if (ticket?.status !== 'open' || claim.isPending) return
+    if (guard('claim')) claim.mutate(ticket.id)
+  }, [tickets, selectedId, guard, claim])
   useCommandHandler(
     'next',
     useCallback(() => move(1), [move]),
@@ -360,9 +362,11 @@ export function TicketColumn() {
                     claim={
                       worker && ticket.status === 'open'
                         ? {
-                            disabled: !canClaim,
+                            blocked: !canClaim,
                             pending: claim.isPending && claim.variables === ticket.id,
-                            onClaim: () => claim.mutate(ticket.id),
+                            onClaim: () => {
+                              if (guard('claim')) claim.mutate(ticket.id)
+                            },
                           }
                         : undefined
                     }

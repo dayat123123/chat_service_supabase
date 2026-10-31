@@ -68,7 +68,7 @@ Perintah ini mem-build app ke `build/web`, lalu menyajikannya lewat container Ca
    Dengan ini auth-bridge berjalan dalam mode `jwt` (seperti produksi), dan dummy-olt mendengarkan di `ws://localhost:8090/ws`.
 2. Di layar login, isi form "Login OLT dummy". Contoh: `budi_santoso` atau `sari@olt.test`, dengan password `olt12345`.
 3. App membuka WebSocket ke OLT dummy dan menerima token sesi `olt_...` beserta **token sosial** (JWT, 10 menit).
-4. `oltTokenProvider` mengembalikan token sosial. Bila sisa umurnya kurang dari 1 menit, app meminta yang baru lewat pesan `social_token` dengan token sesi ([`lib/fake_olt_auth.dart`](lib/fake_olt_auth.dart)). Pola inilah yang perlu ditiru app OLT asli.
+4. `tokenProvider` mengembalikan token sosial. Bila sisa umurnya kurang dari 1 menit, app meminta yang baru lewat pesan `social_token` dengan token sesi ([`lib/fake_olt_auth.dart`](lib/fake_olt_auth.dart)). Pola inilah yang perlu ditiru app OLT asli.
 
 **Alamat OLT dummy** diturunkan dari URL sosial dengan port 8090. Misalnya emulator Android memakai `ws://10.0.2.2:8090/ws`. Untuk mengganti alamatnya: `--dart-define=OLT_DUMMY_WS_URL=ws://<host>:8090/ws`.
 

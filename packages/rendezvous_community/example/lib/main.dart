@@ -4,7 +4,7 @@ import 'package:rendezvous_community/rendezvous_community.dart';
 
 import 'custom_chat_style.dart';
 import 'fake_olt_auth.dart';
-import 'olt_stocks.dart';
+import 'stock_directory.dart';
 
 const _anonKey = String.fromEnvironment('OLT_SOCIAL_ANON_KEY');
 const _urlOverride = String.fromEnvironment('OLT_SOCIAL_URL');
@@ -73,9 +73,9 @@ Future<void> _startSocial(FakeOltAuth auth) async {
   final social = await RendezvousCommunity.initialize(
     supabaseUrl: socialUrl,
     anonKey: _anonKey,
-    oltTokenProvider: auth.token,
-    onStockTap: openOltStockPage,
-    stockSearch: searchOltStocks,
+    tokenProvider: auth.token,
+    onStockTap: openStockPage,
+    stockSearch: searchStocks,
   );
   await social.ensureSignedIn();
 }
@@ -103,12 +103,12 @@ void toggleLocale(BuildContext context) => context.getInheritedWidgetOfExactType
 void toggleChatStyle(BuildContext context) =>
     context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleChatStyle();
 
-void openOltStockPage(BuildContext context, String code) {
+void openStockPage(BuildContext context, String code) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => Scaffold(
         appBar: AppBar(title: Text('Halaman saham OLT · $code')),
-        body: CommunityStockFeed(stockCode: code, stockName: oltStocks[code]),
+        body: CommunityStockFeed(stockCode: code, stockName: stockNames[code]),
       ),
     ),
   );
@@ -123,8 +123,8 @@ class _MissingConfigPage extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(24),
         child: Text(
-          'OLT_SOCIAL_ANON_KEY belum diisi.\n\n'
-          'Jalankan dengan:\nflutter run --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>',
+          'OLT_SOCIAL_ANON_KEY is not set.\n\n'
+          'Run with:\nflutter run --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>',
           textAlign: TextAlign.center,
         ),
       ),

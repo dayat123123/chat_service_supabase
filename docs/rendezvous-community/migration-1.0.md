@@ -18,13 +18,14 @@ Rilis 1.0.0 adalah **refactor murni**: nama package dan simbol publik berganti, 
 4. **Opsional:** pasang handler log OLT: `RendezvousCommunity.initialize(logHandler: ..., logLevel: ...)`. Lihat [logging.md](logging.md).
 5. Jalankan `flutter analyze` dan tes OLT.
 
-Callback dan parameter yang memang milik OLT tidak berubah: `oltTokenProvider`, `onStockTap`, `onUserTap`, `onPostTap`, `onRoomTap`, dan `stockSearch`.
+Parameter `oltTokenProvider` menjadi **`tokenProvider`** (isi dan perilakunya sama: kembalikan token sosial yang masih berlaku, atau `null` bila user sudah logout). Callback lain tidak berubah: `onStockTap`, `onUserTap`, `onPostTap`, `onRoomTap`, dan `stockSearch`.
 
 ## 2. Tabel simbol
 
 | 0.3.0 (`olt_social`) | 1.0.0 (`rendezvous_community`) |
 |---|---|
 | `OltSocial` | `RendezvousCommunity` |
+| `OltSocial.initialize(oltTokenProvider: ...)` / `create(oltTokenProvider: ...)` | `RendezvousCommunity.initialize(tokenProvider: ...)` / `create(tokenProvider: ...)` |
 | `OltSocialException`, `OltSocialErrorKind` | `CommunityException`, `CommunityErrorKind` |
 | `OltSocialScope`, `OltSocialDependencies`, `OltSocialCallbacks` | `CommunityScope`, `CommunityDependencies`, `CommunityCallbacks` |
 | `OltSocialTheme` | `CommunityTheme` |
@@ -44,7 +45,7 @@ Callback dan parameter yang memang milik OLT tidak berubah: `oltTokenProvider`, 
 | `OltComposerField`, `OltCountBadge`, `OltDisclaimer`, `OltSkeleton`, `OltEmptyView`, `OltErrorView`, `OltBreakpoints`, `OltNavigator` | nama yang sama dengan prefix `Community` |
 | `OltStockTapCallback`, `OltUserTapCallback`, `OltPostTapCallback`, `OltRoomTapCallback`, `OltStockSearch` | `CommunityStockTapCallback`, `CommunityUserTapCallback`, `CommunityPostTapCallback`, `CommunityRoomTapCallback`, `CommunityStockSearch` |
 
-Helper internal (tidak diekspor) ikut berganti: `showOltError` → `showCommunityError`, `showOltMessage` → `showCommunityMessage`, `confirmOlt` → `confirmCommunityAction`.
+Helper internal (tidak diekspor) ikut berganti: `showOltError` → `showCommunityError`, `showOltMessage` → `showCommunityMessage`, `confirmOlt` → `confirmCommunityAction`, `AuthBridgeClient.exchange(oltToken)` → `exchange(token)`. Di app contoh: `oltStocks`/`olt_stocks.dart` → `stockNames`/`stock_directory.dart`, `searchOltStocks` → `searchStocks`, `openOltStockPage` → `openStockPage`, `OltEmptyHint` → `DetailPlaceholder`.
 
 File juga berganti nama: `olt_social.dart` → `rendezvous_community.dart`, `olt_social_*.dart` → `community_*.dart`, dan `olt_*.dart` → `community_*.dart`. File ARB menjadi `community_id.arb`/`community_en.arb`; kunci dan teksnya tidak berubah.
 
@@ -52,14 +53,13 @@ File juga berganti nama: `olt_social.dart` → `rendezvous_community.dart`, `olt
 
 | Nama | Alasan |
 |---|---|
-| `oltTokenProvider`, `oltToken` | Isinya memang token sosial dari OLT (sisi host) |
 | Topik Realtime `olt-<tabel>-<n>` | Nama topik Realtime tidak boleh berubah (aturan 2.3) |
 | Field `olt_user_id` | Field dari backend/database |
 | `applicationId`, `namespace`, dan package Kotlin `com.rendezvous.olt.olt_social_example` (app contoh Android) | Identitas app di perangkat. Bila diganti, Android menganggapnya app baru, sehingga update tidak terpasang di atas versi lama |
 | AUMID `Rendezvous.Olt.SocialExample` + GUID notifikasi Windows, channel Android `cs_chat` | Identitas notifikasi; mengganti membuat registrasi notifikasi baru |
 | `CompanyName` `com.rendezvous.olt` di `Runner.rc` | Identitas perusahaan, bukan nama package |
 | `--dart-define`/env `OLT_SOCIAL_ANON_KEY`, `OLT_SOCIAL_URL`, `OLT_DUMMY_WS_URL`, `OLT_SOCIAL_IT`, `OLT_SOCIAL_IT_DUMMY`, `OLT_DUMMY_IT`, `OLT_DUMMY_E2E` | Dipakai Makefile, make.ps1, CI, dan perintah developer; mengganti tidak menambah manfaat bagi library |
-| App contoh: `FakeOltAuth`, `DummyOlt*`, `OltEmptyHint`, `openOltStockPage`, `searchOltStocks`, `olt_stocks.dart`, `fake_olt_auth.dart`, `dummy_olt_client.dart` | Meniru kode milik aplikasi OLT (host), bukan bagian library |
+| App contoh: `FakeOltAuth`, `DummyOltClient`/`DummyOltException`/`DummyOltSession`, `dummyOltWsUrl`, `fake_olt_auth.dart`, `dummy_olt_client.dart` | Menamai layanan `dummy-olt` dan login OLT tiruan (host), bukan bagian library |
 | Komentar di `supabase/migrations/0004_posts.sql` | Migrasi yang sudah diterapkan tidak boleh diubah |
 
 ## 4. Data di perangkat (aturan 2.3)
@@ -81,12 +81,16 @@ File juga berganti nama: `olt_social.dart` → `rendezvous_community.dart`, `olt
 | `RendezvousCommunity.instance` (`StateError`) | `OltSocial belum diinisialisasi. Panggil OltSocial.initialize() saat startup.` | `RendezvousCommunity is not initialized; call RendezvousCommunity.initialize() at startup` |
 | `AuthBridgeClient` | `Respons auth-bridge tidak valid (<status>)` | `Auth-bridge returned an invalid response (status <status>)` |
 | `TokenManager.refresh` | `TokenManager sudah ditutup` | `Token manager is closed` |
-| `TokenManager` tanpa token OLT | `Token OLT tidak tersedia (user belum login OLT)` | `OLT token is unavailable because the user is not signed in to OLT` |
+| `TokenManager` tanpa token | `Token OLT tidak tersedia (user belum login OLT)` | `Token provider returned no token because the user is not signed in to the host app` |
 | `PollRepositoryImpl.vote` | `vote_poll kosong` | `vote_poll returned no result` |
 | `CommentRepositoryImpl.create` | `create_comment kosong` | `create_comment returned no rows` |
 | `CommunityUserProfile` (`assert`) | `userId atau username wajib diisi` | `Either userId or username is required` |
 | `toString()` exception | `OltSocialException(...)` | `CommunityException(...)` |
 | Tes | 171 deskripsi tes, nama grup, dan `reason` assertion; 1 `fail`; 2 `StateError` di fake; 1 alasan skip | Bahasa Inggris |
+| App contoh `DummyOltClient` | `OLT dummy tidak dapat dihubungi di <url>. Jalankan stack dengan: …` / `Login gagal` / `Koneksi OLT dummy ditutup sebelum ada balasan` / `OLT dummy tidak menjawab` | `Dummy OLT is unreachable at <url>. Start the stack with: …` / `Sign-in failed` / `Dummy OLT closed the connection before replying` / `Dummy OLT did not respond` |
+| App contoh, snackbar login | `Login OLT gagal: …` / `Gagal masuk ke OLT Social: <exception>` | `OLT sign-in failed: …` / `Rendezvous Community sign-in failed (<kind>, <code>)` (tanpa pesan server mentah) |
+| App contoh, layar konfigurasi | `OLT_SOCIAL_ANON_KEY belum diisi. Jalankan dengan: …` | `OLT_SOCIAL_ANON_KEY is not set. Run with: …` |
+| `tool/license_audit.dart` | `PERIKSA`, `<n> package runtime diperiksa.`, `Ada lisensi yang tidak diizinkan/tidak dikenali…`, `Semua lisensi permisif…` | `REVIEW`, `Checked <n> runtime packages`, `Found disallowed or unrecognized licenses; check the REVIEW rows`, `All licenses are permissive…` |
 
 Pesan dari server (misalnya `message` dari auth-bridge atau `private.api_error`) diteruskan apa adanya di `CommunityException.message`. Pesan ini bukan bagian library dan tidak ditampilkan ke user; UI memetakan `kind`/`code` ke teks lokalisasi.
 

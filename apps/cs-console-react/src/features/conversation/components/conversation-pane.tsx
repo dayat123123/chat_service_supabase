@@ -9,11 +9,19 @@ import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
 import { useNotes } from '@/features/customer/hooks'
 import { GoOnlineButton } from '@/features/presence/components/go-online-button'
-import { useClaimGate } from '@/features/presence/hooks'
+import { useActionGuard, useClaimGate } from '@/features/presence/hooks'
 import { isSuperAdmin, worksTickets } from '@/features/presence/types'
 import { ticketsApi } from '@/features/tickets/api'
-import { useClaimTicket, useTicketAction, useTicketDetail, useTopics } from '@/features/tickets/hooks'
-import type { Ticket } from '@/features/tickets/types'
+import {
+  useClaimTicket,
+  useTicketAction,
+  useTicketDetail,
+  useTicketLists,
+  useTicketUi,
+  useTopics,
+} from '@/features/tickets/hooks'
+import { newerActiveTicket } from '@/features/tickets/logic'
+import { emptyLists, type Ticket } from '@/features/tickets/types'
 
 import { latestCustomerMessage } from '../cache'
 import { useMarkRead, useMembers, useMessages, usePending, useRoom, useSendMessage } from '../hooks'
@@ -38,10 +46,33 @@ function StatusNote({ ticket }: { ticket: Ticket }) {
   )
 }
 
+function NewerTicketBar({ ticket, newer }: { ticket: Ticket; newer: Ticket }) {
+  const { t } = useTranslation()
+  return (
+    <div className={barClass} role="status">
+      <p className="min-w-0 flex-1 text-row text-muted-foreground">
+        {t(
+          ticket.status === 'resolved' ? 'conversation.newerAfterResolved' : 'conversation.newerAfterClosed',
+          {
+            number: newer.ticket_number,
+          },
+        )}
+      </p>
+      <Button size="sm" variant="outline" onClick={() => useTicketUi.getState().select(newer.id)}>
+        {t('conversation.openActiveTicket')}
+      </Button>
+    </div>
+  )
+}
+
 export function ReadOnlyBar({ ticket }: { ticket: Ticket }) {
   const { t } = useTranslation()
   const gate = useClaimGate()
+  const guard = useActionGuard()
   const claim = useClaimTicket()
+  const lists = useTicketLists()
+  const newer = newerActiveTicket(lists.data ?? emptyLists, ticket)
+  if (newer) return <NewerTicketBar ticket={ticket} newer={newer} />
   return (
     <div className={barClass} role="status">
       <p className="min-w-0 flex-1 text-row text-muted-foreground">
@@ -56,8 +87,12 @@ export function ReadOnlyBar({ ticket }: { ticket: Ticket }) {
           {gate.needsOnline ? <GoOnlineButton /> : null}
           <Button
             size="sm"
-            disabled={!gate.canClaim || claim.isPending}
-            onClick={() => claim.mutate(ticket.id)}
+            disabled={claim.isPending}
+            data-blocked={!gate.canClaim || undefined}
+            className="data-[blocked=true]:opacity-60"
+            onClick={() => {
+              if (guard('claim')) claim.mutate(ticket.id)
+            }}
           >
             {claim.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
             {t('tickets.claimTicket')}

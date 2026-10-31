@@ -36,6 +36,7 @@ function stub(target: object, name: string, value: unknown) {
 
 stub(Element.prototype, 'scrollIntoView', vi.fn())
 stub(Element.prototype, 'hasPointerCapture', () => false)
+stub(Element.prototype, 'setPointerCapture', vi.fn())
 stub(Element.prototype, 'releasePointerCapture', vi.fn())
 stub(
   URL,

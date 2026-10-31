@@ -7,6 +7,7 @@ import {
   claimedByOther,
   currentTab,
   findTicket,
+  newerActiveTicket,
   isFiltered,
   matchesFilter,
   noFilter,
@@ -125,6 +126,21 @@ describe('ticket list updates from realtime', () => {
     const next = withoutTicket(lists, 'p1')
     expect(next.open.map((ticket) => ticket.id)).toEqual(['p3old'])
     expect(next.mine).toBe(lists.mine)
+  })
+
+  it('points a finished ticket to the active ticket in the same chat', () => {
+    const closed = ticketFixture({ id: 'old', status: 'closed', room_id: 'room-1' })
+    const active = ticketFixture({ id: 'new', status: 'claimed', room_id: 'room-1' })
+    const otherRoom = ticketFixture({ id: 'other', status: 'claimed', room_id: 'room-2' })
+    const lists = { ...emptyLists, mine: [otherRoom, active] }
+
+    expect(newerActiveTicket(lists, closed)?.id).toBe('new')
+    expect(newerActiveTicket(lists, { ...closed, status: 'resolved' })?.id).toBe('new')
+    expect(newerActiveTicket({ ...emptyLists, open: [{ ...active, status: 'open' }] }, closed)?.id).toBe(
+      'new',
+    )
+    expect(newerActiveTicket(lists, { ...closed, status: 'claimed' })).toBeUndefined()
+    expect(newerActiveTicket({ ...emptyLists, mine: [otherRoom] }, closed)).toBeUndefined()
   })
 
   it('finds tickets in any list and counts unread messages', () => {

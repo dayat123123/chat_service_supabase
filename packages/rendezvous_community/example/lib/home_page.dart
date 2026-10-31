@@ -5,7 +5,7 @@ import 'package:rendezvous_community/rendezvous_community.dart';
 
 import 'fake_olt_auth.dart';
 import 'main.dart';
-import 'olt_stocks.dart';
+import 'stock_directory.dart';
 import 'support_notifications.dart';
 
 class HomePage extends StatefulWidget {
@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           Expanded(
-            child: CommunityStockFeed(key: ValueKey(_stock), stockCode: _stock, stockName: oltStocks[_stock]),
+            child: CommunityStockFeed(key: ValueKey(_stock), stockCode: _stock, stockName: stockNames[_stock]),
           ),
         ],
       ),
@@ -246,7 +246,7 @@ class _TwoPaneStreamState extends State<_TwoPaneStream> {
         Expanded(
           flex: 6,
           child: _selectedPost == null
-              ? const OltEmptyHint()
+              ? const DetailPlaceholder()
               : CommunityPostDetail(key: ValueKey(_selectedPost), postId: _selectedPost!),
         ),
       ],
@@ -293,8 +293,8 @@ class _PostTapOverride implements CommunityDependencies {
   Future<UserSummary> ensureSignedIn() => _base.ensureSignedIn();
 }
 
-class OltEmptyHint extends StatelessWidget {
-  const OltEmptyHint({super.key});
+class DetailPlaceholder extends StatelessWidget {
+  const DetailPlaceholder({super.key});
 
   @override
   Widget build(BuildContext context) => Center(

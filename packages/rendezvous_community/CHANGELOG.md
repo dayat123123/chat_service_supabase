@@ -7,7 +7,8 @@
   `RendezvousCommunity`, `OltSocialException`/`OltSocialErrorKind` menjadi
   `CommunityException`/`CommunityErrorKind`, `OltSocialLocalizations` menjadi
   `CommunityLocalizations`, `context.oltL10n` menjadi `context.communityL10n`,
-  dan widget `Olt*` menjadi `Community*`. Tabel lengkap ada di
+  dan widget `Olt*` menjadi `Community*`. Parameter `oltTokenProvider` menjadi
+  `tokenProvider`. Tabel lengkap ada di
   `docs/rendezvous-community/migration-1.0.md`.
 * Baru: logger terpusat berbasis `package:logging` (BSD-3) dengan logger per
   komponen `RendezvousCommunity.Auth/Chat/Feed/Realtime/Support`.

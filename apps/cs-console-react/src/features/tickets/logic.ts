@@ -60,6 +60,22 @@ export function findTicket(lists: TicketLists, ticketId: string): Ticket | undef
   return lists.transfers_in.find((request) => request.ticket.id === ticketId)?.ticket
 }
 
+const finishedStatuses = new Set(['resolved', 'closed'])
+const activeStatuses = new Set(['open', 'claimed', 'waiting_customer'])
+
+export function newerActiveTicket(
+  lists: TicketLists,
+  ticket: Pick<Ticket, 'id' | 'room_id' | 'status'>,
+): Ticket | undefined {
+  if (!finishedStatuses.has(ticket.status)) return undefined
+  return [...lists.mine, ...lists.open, ...lists.all_active].find(
+    (candidate) =>
+      candidate.id !== ticket.id &&
+      candidate.room_id === ticket.room_id &&
+      activeStatuses.has(candidate.status),
+  )
+}
+
 export function withoutTicket(lists: TicketLists, ticketId: string): TicketLists {
   return { ...lists, open: lists.open.filter((ticket) => ticket.id !== ticketId) }
 }

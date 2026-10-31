@@ -1,6 +1,6 @@
 import 'package:rendezvous_community/rendezvous_community.dart';
 
-const oltStocks = {
+const stockNames = {
   'IHSG': 'Indeks Harga Saham Gabungan',
   'LQ45': 'Indeks LQ45',
   'IDX30': 'Indeks IDX30',
@@ -52,12 +52,12 @@ const oltStocks = {
   'CTRA': 'Ciputra Development Tbk',
 };
 
-Future<List<StockSuggestion>> searchOltStocks(String query) async {
+Future<List<StockSuggestion>> searchStocks(String query) async {
   final q = query.toUpperCase();
   return [
-    for (final MapEntry(key: code, value: name) in oltStocks.entries)
+    for (final MapEntry(key: code, value: name) in stockNames.entries)
       if (code.startsWith(q)) StockSuggestion(code: code, name: name),
-    for (final MapEntry(key: code, value: name) in oltStocks.entries)
+    for (final MapEntry(key: code, value: name) in stockNames.entries)
       if (!code.startsWith(q) && name.toUpperCase().contains(q)) StockSuggestion(code: code, name: name),
   ];
 }

@@ -293,7 +293,7 @@ function ThemeColumn({ theme }: { theme: ThemeName }) {
               late={15}
               meId={sampleAgent.id}
               showOwner={false}
-              claim={item.claimable ? { disabled: false, pending: false, onClaim: noop } : undefined}
+              claim={item.claimable ? { blocked: false, pending: false, onClaim: noop } : undefined}
               onSelect={noop}
             />
           ))}

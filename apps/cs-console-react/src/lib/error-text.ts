@@ -23,6 +23,8 @@ export function errorText(error: unknown): string {
       return t('errors.weakPassword')
     case 'stale_ticket':
       return t('errors.staleTicket')
+    case 'agent_offline':
+      return t('presence.blockedReply')
     case 'secret_request_blocked':
       return e.detail ?? t('errors.secretBlocked')
     default:

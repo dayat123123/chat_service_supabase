@@ -23,14 +23,14 @@ class AuthBridgeClient {
   final bool _ownsHttpClient;
   final Duration timeout;
 
-  Future<SocialSession> exchange(String oltToken) async {
+  Future<SocialSession> exchange(String token) async {
     final http.Response res;
     try {
       res = await _http
           .post(
             _exchangeUri,
             headers: {'apikey': _anonKey, 'Content-Type': 'application/json'},
-            body: jsonEncode({'token': oltToken}),
+            body: jsonEncode({'token': token}),
           )
           .timeout(timeout);
     } catch (e) {

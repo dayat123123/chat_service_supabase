@@ -26,7 +26,7 @@ void main() {
     );
   }
 
-  TokenManager build({String? oltToken = 'olt-token', int ttl = 900, int status = 200}) {
+  TokenManager build({String? token = 'host-token', int ttl = 900, int status = 200}) {
     final client = MockClient((request) async {
       exchangeCalls++;
       expect(request.url.path, '/bridge/v1/exchange');
@@ -40,7 +40,7 @@ void main() {
     });
     return TokenManager(
       bridge: AuthBridgeClient(baseUrl: 'http://localhost:8000/bridge/v1/', anonKey: 'anon', httpClient: client),
-      oltTokenProvider: () async => oltToken,
+      tokenProvider: () async => token,
       clock: () => now,
     );
   }
@@ -51,12 +51,12 @@ void main() {
     sentTokens = [];
   });
 
-  test('exchanges the OLT token and reuses a JWT that is still valid', () async {
+  test('exchanges the token and reuses a JWT that is still valid', () async {
     final tokens = build();
     expect(await tokens.accessToken(), 'jwt-1');
     expect(await tokens.accessToken(), 'jwt-1');
     expect(exchangeCalls, 1);
-    expect(sentTokens, ['olt-token']);
+    expect(sentTokens, ['host-token']);
     expect(tokens.currentSession!.user.username, 'budi');
     await tokens.dispose();
   });
@@ -90,8 +90,8 @@ void main() {
     await tokens.dispose();
   });
 
-  test('without an OLT token -> unauthenticated without calling auth-bridge', () async {
-    final tokens = build(oltToken: null);
+  test('without a token -> unauthenticated without calling auth-bridge', () async {
+    final tokens = build(token: null);
     await expectLater(
       tokens.accessToken(),
       throwsA(isA<CommunityException>().having((e) => e.kind, 'kind', CommunityErrorKind.unauthenticated)),
@@ -100,7 +100,7 @@ void main() {
     await tokens.dispose();
   });
 
-  test('OLT token rejected by auth-bridge -> unauthenticated', () async {
+  test('token rejected by auth-bridge -> unauthenticated', () async {
     final tokens = build(status: 401);
     await expectLater(
       tokens.refresh(),

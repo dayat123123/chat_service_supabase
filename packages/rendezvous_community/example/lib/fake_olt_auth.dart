@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:rendezvous_community/rendezvous_community.dart' show CommunityException;
 
 import 'dummy_olt_client.dart';
 import 'home_page.dart';
@@ -94,16 +95,21 @@ class _LoginPageState extends State<LoginPage> {
     return FakeOltAuth.dummy(client, session.token, session.socialToken);
   });
 
-  Future<void> _proceed(Future<FakeOltAuth> Function() oltLogin) async {
+  Future<void> _proceed(Future<FakeOltAuth> Function() signIn) async {
     setState(() => _busy = true);
     final FakeOltAuth auth;
     try {
-      auth = await oltLogin();
+      auth = await signIn();
       await widget.onSignedIn(auth);
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        final message = e is DummyOltException ? 'Login OLT gagal: ${e.message}' : 'Gagal masuk ke OLT Social: $e';
+        final message = switch (e) {
+          DummyOltException(:final message) => 'OLT sign-in failed: $message',
+          CommunityException(:final kind, :final code) =>
+            'Rendezvous Community sign-in failed (${[kind.name, ?code].join(', ')})',
+          _ => 'Rendezvous Community sign-in failed: $e',
+        };
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
       return;

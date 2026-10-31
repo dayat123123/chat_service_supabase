@@ -53,7 +53,7 @@ class DummyOltClient {
       unawaited(channel.sink.close());
       throw DummyOltException(
         'UNREACHABLE',
-        'OLT dummy tidak dapat dihubungi di $url. Jalankan stack dengan: make up DUMMY_OLT=1 '
+        'Dummy OLT is unreachable at $url. Start the stack with: make up DUMMY_OLT=1 '
             '(Windows: .\\make.ps1 up -DummyOlt)',
       );
     }
@@ -65,13 +65,16 @@ class DummyOltClient {
         if (msg['type'] != replyType || msg['request_id'] != requestId) continue;
         if (msg['status'] != 'OK') {
           final error = msg['error'] as Map<String, dynamic>? ?? const {};
-          throw DummyOltException(error['code'] as String? ?? 'FAILED', error['message'] as String? ?? 'Login gagal');
+          throw DummyOltException(
+            error['code'] as String? ?? 'FAILED',
+            error['message'] as String? ?? 'Sign-in failed',
+          );
         }
         return msg;
       }
-      throw const DummyOltException('CLOSED', 'Koneksi OLT dummy ditutup sebelum ada balasan');
+      throw const DummyOltException('CLOSED', 'Dummy OLT closed the connection before replying');
     } on TimeoutException {
-      throw const DummyOltException('TIMEOUT', 'OLT dummy tidak menjawab');
+      throw const DummyOltException('TIMEOUT', 'Dummy OLT did not respond');
     } finally {
       await channel.sink.close();
     }

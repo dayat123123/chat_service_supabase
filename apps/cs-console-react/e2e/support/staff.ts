@@ -12,14 +12,17 @@ export async function signIn(page: Page, name: StaffName, { online = true }: { o
   if (online && person.roles.includes('cs_agent')) await goOnline(page)
 }
 
-export async function goOnline(page: Page) {
+async function switchStatus(page: Page, status: 'Online' | 'Offline') {
   const trigger = page.getByRole('button', { name: 'Ubah status' })
   await expect(trigger).toBeVisible()
-  if ((await trigger.textContent())?.includes('Online')) return
+  if ((await trigger.textContent())?.includes(status)) return
   await trigger.click()
-  await page.getByRole('menuitem', { name: 'Online', exact: true }).click()
-  await expect(trigger).toContainText('Online')
+  await page.getByRole('menuitem', { name: status, exact: true }).click()
+  await expect(trigger).toContainText(status)
 }
+
+export const goOnline = (page: Page) => switchStatus(page, 'Online')
+export const goOffline = (page: Page) => switchStatus(page, 'Offline')
 
 export async function staffPage(browser: Browser, name: StaffName) {
   const context = await browser.newContext()

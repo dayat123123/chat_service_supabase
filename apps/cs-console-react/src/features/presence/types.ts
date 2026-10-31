@@ -61,3 +61,15 @@ export const canViewTickets = (agent: Pick<AgentProfile, 'roles'>) =>
   worksTickets(agent) || isSuperAdmin(agent)
 export const atCapacity = (agent: Pick<AgentProfile, 'active_tickets' | 'max_active_tickets'>) =>
   agent.active_tickets >= agent.max_active_tickets
+
+export type GuardedAction = 'claim' | 'acceptTransfer' | 'reply'
+export type ActionBlock = 'needOnline' | 'capacity' | 'offline'
+
+export function actionBlock(
+  agent: Pick<AgentProfile, 'status' | 'active_tickets' | 'max_active_tickets'>,
+  action: GuardedAction,
+): ActionBlock | null {
+  if (action === 'reply') return agent.status === 'offline' ? 'offline' : null
+  if (agent.status !== 'online') return 'needOnline'
+  return atCapacity(agent) ? 'capacity' : null
+}

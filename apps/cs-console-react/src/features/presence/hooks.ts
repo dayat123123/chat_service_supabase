@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -11,7 +11,7 @@ import { appEnv, cachedAccessToken } from '@/lib/supabase'
 import { tabs } from '@/lib/tabs'
 
 import { presenceApi } from './api'
-import { atCapacity, type AgentStatus } from './types'
+import { actionBlock, type ActionBlock, type AgentStatus, type GuardedAction } from './types'
 
 const HEARTBEAT_MS = 20_000
 const OFFLINE_CHECK_MS = 60_000
@@ -30,13 +30,44 @@ export function useSetStatus() {
 export function useClaimGate() {
   const agent = useAgent()
   const { t } = useTranslation()
-  const needsOnline = agent.status !== 'online'
-  const reason = needsOnline
-    ? t('tickets.needOnline', { status: t(`presence.${agent.status}`) })
-    : atCapacity(agent)
-      ? t('tickets.atCapacity')
-      : null
-  return { canClaim: reason === null, needsOnline, reason }
+  const block = actionBlock(agent, 'claim')
+  const reason =
+    block === 'needOnline'
+      ? t('tickets.needOnline', { status: t(`presence.${agent.status}`) })
+      : block === 'capacity'
+        ? t('tickets.atCapacity')
+        : null
+  return { canClaim: block === null, needsOnline: block === 'needOnline', reason }
+}
+
+const blockedMessageKeys = {
+  claim: 'presence.blockedClaim',
+  acceptTransfer: 'presence.blockedTransfer',
+  reply: 'presence.blockedReply',
+} as const satisfies Record<GuardedAction, string>
+
+const blockedMessageKey = (action: GuardedAction, block: ActionBlock) =>
+  block === 'capacity' ? 'presence.blockedCapacity' : blockedMessageKeys[action]
+
+export function useActionGuard() {
+  const agent = useAgent()
+  const { t } = useTranslation()
+  const { mutate: setStatus } = useSetStatus()
+  return useCallback(
+    (action: GuardedAction) => {
+      const block = actionBlock(agent, action)
+      if (block === null) return true
+      toast.warning(t(blockedMessageKey(action, block), { status: t(`presence.${agent.status}`) }), {
+        id: `action-blocked-${action}`,
+        action:
+          block === 'capacity'
+            ? undefined
+            : { label: t('presence.goOnline'), onClick: () => setStatus({ status: 'online' }) },
+      })
+      return false
+    },
+    [agent, t, setStatus],
+  )
 }
 
 export function useOnlineAgents(enabled: boolean) {

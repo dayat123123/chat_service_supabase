@@ -40,11 +40,7 @@ void main() {
     final url = Platform.environment['OLT_SOCIAL_URL'] ?? env['SUPABASE_PUBLIC_URL'] ?? 'http://localhost:8000';
     final anonKey = Platform.environment['OLT_SOCIAL_ANON_KEY'] ?? _dockerSecret('anon_key') ?? env['ANON_KEY']!;
     user = (token) {
-      final social = RendezvousCommunity.create(
-        supabaseUrl: url,
-        anonKey: anonKey,
-        oltTokenProvider: () async => token,
-      );
+      final social = RendezvousCommunity.create(supabaseUrl: url, anonKey: anonKey, tokenProvider: () async => token);
       created.add(social);
       return social;
     };

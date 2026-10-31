@@ -101,7 +101,7 @@ void main() {
     final community = await RendezvousCommunity.initialize(
       supabaseUrl: 'http://localhost:8000',
       anonKey: 'anon',
-      oltTokenProvider: () async => null,
+      tokenProvider: () async => null,
       signInEagerly: false,
       trackDelivery: false,
       httpClient: MockClient((_) async => http.Response('{}', 500)),

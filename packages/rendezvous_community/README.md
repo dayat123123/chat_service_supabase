@@ -15,9 +15,9 @@ Langkah memasang package ke app OLT ada di [docs/INTEGRATION.md](../../docs/INTE
 await RendezvousCommunity.initialize(
   supabaseUrl: 'https://social-api.domain.com',
   anonKey: '<ANON_KEY>',
-  oltTokenProvider: () => oltAuth.freshSocialToken(), // token sosial (JWT) dari OLT yang masih berlaku
-  onStockTap: (context, code) => openOltStockPage(context, code),
-  stockSearch: (query) => oltStocks.search(query),   // saran $KODE dari daftar saham milik app
+  tokenProvider: () => hostAuth.freshSocialToken(),  // token sosial (JWT) dari OLT yang masih berlaku
+  onStockTap: (context, code) => openStockPage(context, code),
+  stockSearch: (query) => stockDirectory.search(query), // saran $KODE dari daftar saham milik app
 );
 
 // Widget siap pakai (tanpa Scaffold, tempel di halaman OLT):

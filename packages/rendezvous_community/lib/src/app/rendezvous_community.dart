@@ -77,7 +77,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     required String supabaseUrl,
     required String anonKey,
     String? authBridgeUrl,
-    required Future<String?> Function() oltTokenProvider,
+    required Future<String?> Function() tokenProvider,
     CommunityStockTapCallback? onStockTap,
     CommunityUserTapCallback? onUserTap,
     CommunityPostTapCallback? onPostTap,
@@ -95,7 +95,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
       supabaseUrl: supabaseUrl,
       anonKey: anonKey,
       authBridgeUrl: authBridgeUrl,
-      oltTokenProvider: oltTokenProvider,
+      tokenProvider: tokenProvider,
       onStockTap: onStockTap,
       onUserTap: onUserTap,
       onPostTap: onPostTap,
@@ -115,7 +115,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     required String supabaseUrl,
     required String anonKey,
     String? authBridgeUrl,
-    required Future<String?> Function() oltTokenProvider,
+    required Future<String?> Function() tokenProvider,
     CommunityStockTapCallback? onStockTap,
     CommunityUserTapCallback? onUserTap,
     CommunityPostTapCallback? onPostTap,
@@ -131,7 +131,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
         anonKey: anonKey,
         httpClient: httpClient,
       ),
-      oltTokenProvider: oltTokenProvider,
+      tokenProvider: tokenProvider,
     );
     final client = SupabaseClient(baseUrl, anonKey, accessToken: tokens.accessToken, httpClient: httpClient);
     final api = SupabaseSocialDataSource(client, tokens, supabaseUrl: baseUrl, anonKey: anonKey);

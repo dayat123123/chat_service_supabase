@@ -25,7 +25,7 @@ String? _dockerSecret(String name) {
   return file.existsSync() ? file.readAsStringSync().trim() : null;
 }
 
-Future<Map<String, dynamic>> oltRequest(String wsUrl, Map<String, Object?> message, String replyType) async {
+Future<Map<String, dynamic>> dummyRequest(String wsUrl, Map<String, Object?> message, String replyType) async {
   final socket = await WebSocket.connect(wsUrl).timeout(const Duration(seconds: 5));
   try {
     final requestId = const Uuid().v4();
@@ -40,15 +40,19 @@ Future<Map<String, dynamic>> oltRequest(String wsUrl, Map<String, Object?> messa
   }
 }
 
-Future<({String session, String social})> oltPasswordLogin(String wsUrl, Map<String, String> credentials) async {
-  final res = await oltRequest(wsUrl, {'type': 'login', 'method': 'password', 'payload': credentials}, 'login_result');
+Future<({String session, String social})> passwordLogin(String wsUrl, Map<String, String> credentials) async {
+  final res = await dummyRequest(wsUrl, {
+    'type': 'login',
+    'method': 'password',
+    'payload': credentials,
+  }, 'login_result');
   expect(res['status'], 'OK', reason: 'password login: $res');
   final data = res['data'] as Map<String, dynamic>;
   return (session: data['token'] as String, social: data['social_token'] as String);
 }
 
 Future<String?> renewSocialToken(String wsUrl, String session) async {
-  final res = await oltRequest(wsUrl, {
+  final res = await dummyRequest(wsUrl, {
     'type': 'social_token',
     'payload': {'token': session},
   }, 'social_token_result');
@@ -62,7 +66,7 @@ void main() {
   final created = <RendezvousCommunity>[];
 
   RendezvousCommunity socialWith(Future<String?> Function() tokenProvider) {
-    final social = RendezvousCommunity.create(supabaseUrl: url, anonKey: anonKey, oltTokenProvider: tokenProvider);
+    final social = RendezvousCommunity.create(supabaseUrl: url, anonKey: anonKey, tokenProvider: tokenProvider);
     created.add(social);
     return social;
   }
@@ -84,11 +88,11 @@ void main() {
   final skip = _enabled ? null : 'Set OLT_SOCIAL_IT_DUMMY=1 (stack: make up DUMMY_OLT=1)';
 
   test('dummy OLT password login -> social token -> social session with the seed identity', () async {
-    final login = await oltPasswordLogin(wsUrl, {'username': 'budi_santoso', 'password': 'olt12345'});
+    final login = await passwordLogin(wsUrl, {'username': 'budi_santoso', 'password': 'olt12345'});
     expect(login.session, startsWith('olt_'));
     expect(login.social.split('.'), hasLength(3), reason: 'the social token is a JWT');
 
-    final relogin = await oltRequest(wsUrl, {
+    final relogin = await dummyRequest(wsUrl, {
       'type': 'login',
       'method': 'token',
       'payload': {'token': login.session},
@@ -109,8 +113,8 @@ void main() {
   }, skip: skip);
 
   test('email + password login, then send a DM', () async {
-    final sariLogin = await oltPasswordLogin(wsUrl, {'email': 'sari@olt.test', 'password': 'olt12345'});
-    final budiLogin = await oltPasswordLogin(wsUrl, {'email': 'budi@olt.test', 'password': 'olt12345'});
+    final sariLogin = await passwordLogin(wsUrl, {'email': 'sari@olt.test', 'password': 'olt12345'});
+    final budiLogin = await passwordLogin(wsUrl, {'email': 'budi@olt.test', 'password': 'olt12345'});
     final sari = socialWith(() => renewSocialToken(wsUrl, sariLogin.session));
     final budi = socialWith(() async => budiLogin.social);
     final budiUser = await budi.ensureSignedIn();
@@ -125,8 +129,8 @@ void main() {
   }, skip: skip);
 
   test('a logged-out OLT session gets no new social token -> unauthenticated', () async {
-    final login = await oltPasswordLogin(wsUrl, {'username': 'andi_trader', 'password': 'olt12345'});
-    final logout = await oltRequest(wsUrl, {
+    final login = await passwordLogin(wsUrl, {'username': 'andi_trader', 'password': 'olt12345'});
+    final logout = await dummyRequest(wsUrl, {
       'type': 'logout',
       'payload': {'token': login.session},
     }, 'logout_result');
@@ -141,7 +145,7 @@ void main() {
   }, skip: skip);
 
   test('an OLT session token (not a social token) is rejected -> unauthenticated', () async {
-    final login = await oltPasswordLogin(wsUrl, {'username': 'rina_saham', 'password': 'olt12345'});
+    final login = await passwordLogin(wsUrl, {'username': 'rina_saham', 'password': 'olt12345'});
     final social = socialWith(() async => login.session);
     await expectLater(
       social.ensureSignedIn(),
@@ -150,7 +154,7 @@ void main() {
   }, skip: skip);
 
   test('a wrong password yields no token', () async {
-    final res = await oltRequest(wsUrl, {
+    final res = await dummyRequest(wsUrl, {
       'type': 'login',
       'method': 'password',
       'payload': {'username': 'budi_santoso', 'password': 'salah'},

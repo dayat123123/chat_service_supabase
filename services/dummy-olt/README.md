@@ -35,7 +35,7 @@ Daftar ini juga tersedia lewat `GET http://localhost:8090/api/users`.
 | Token | Bentuk | Dipakai untuk |
 |---|---|---|
 | **Token sesi OLT** | `olt_<base64url(JSON {uid, iat, exp, jti})>.<HMAC-SHA256>`, 24 jam (`DUMMY_OLT_TOKEN_TTL`) | Login ulang ke OLT dan meminta token sosial baru. **Ditolak auth-bridge** |
-| **Token sosial** | JWT `EdDSA`, `kid` `dev-olt-1`, `iss` `olt`, `aud` `olt-social`, 10 menit (`DUMMY_OLT_SOCIAL_TTL`) | Ditukar di `POST /bridge/v1/exchange`. Diberikan app lewat `oltTokenProvider` |
+| **Token sosial** | JWT `EdDSA`, `kid` `dev-olt-1`, `iss` `olt`, `aud` `olt-social`, 10 menit (`DUMMY_OLT_SOCIAL_TTL`) | Ditukar di `POST /bridge/v1/exchange`. Diberikan app lewat `tokenProvider` |
 
 - **Token sesi** stateless: tetap valid setelah restart selama `DUMMY_OLT_SECRET` tidak berubah. Token yang sudah logout dicatat di memori dan ditolak.
 - **Token sosial** tidak bisa dicabut. Pencabutan dilakukan dengan berhenti menerbitkannya: sesi yang logout atau akun yang ditangguhkan tidak mendapat token sosial baru.

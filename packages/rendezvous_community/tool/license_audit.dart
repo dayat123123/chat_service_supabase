@@ -50,11 +50,11 @@ Future<void> main() async {
   for (final name in runtime.toList()..sort()) {
     final source = packages[name]?['source'];
     if (source == 'sdk') {
-      rows.add((name, 'SDK Flutter (BSD)', 'ok'));
+      rows.add((name, 'Flutter SDK (BSD)', 'ok'));
       continue;
     }
     if (source == 'path') {
-      rows.add((name, 'kode repo ini', 'ok'));
+      rows.add((name, 'this repository', 'ok'));
       continue;
     }
     final dir = Directory.fromUri(roots[name]!);
@@ -66,16 +66,16 @@ Future<void> main() async {
     final license = licenseFile == null ? 'MISSING' : classify(licenseFile.readAsStringSync());
     final ok = _allowed.contains(license);
     failed |= !ok;
-    rows.add((name, license, ok ? 'ok' : 'PERIKSA'));
+    rows.add((name, license, ok ? 'ok' : 'REVIEW'));
   }
 
   for (final (name, license, status) in rows) {
     stdout.writeln('${name.padRight(36)} ${license.padRight(18)} $status');
   }
-  stdout.writeln('\n${rows.length} package runtime diperiksa.');
+  stdout.writeln('\nChecked ${rows.length} runtime packages');
   if (failed) {
-    stderr.writeln('Ada lisensi yang tidak diizinkan/tidak dikenali. Periksa baris PERIKSA.');
+    stderr.writeln('Found disallowed or unrecognized licenses; check the REVIEW rows');
     exit(1);
   }
-  stdout.writeln('Semua lisensi permisif (MIT/BSD/Apache-2.0/ISC/Zlib).');
+  stdout.writeln('All licenses are permissive (MIT/BSD/Apache-2.0/ISC/Zlib)');
 }

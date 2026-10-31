@@ -11,14 +11,14 @@ import 'package:rendezvous_community/src/core/logging/community_logger.dart';
 class TokenManager implements SessionTokens {
   TokenManager({
     required this._bridge,
-    required this._oltTokenProvider,
+    required this._tokenProvider,
     this.refreshMargin = const Duration(seconds: 60),
     this.retryDelay = const Duration(seconds: 15),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
   final AuthBridgeClient _bridge;
-  final Future<String?> Function() _oltTokenProvider;
+  final Future<String?> Function() _tokenProvider;
   final DateTime Function() _clock;
   final Duration refreshMargin;
   final Duration retryDelay;
@@ -68,13 +68,13 @@ class TokenManager implements SessionTokens {
   }
 
   Future<SocialSession> _issueSession() async {
-    final oltToken = await _oltTokenProvider();
-    if (oltToken == null || oltToken.isEmpty) {
+    final token = await _tokenProvider();
+    if (token == null || token.isEmpty) {
       throw const CommunityException.unauthenticated(
-        'OLT token is unavailable because the user is not signed in to OLT',
+        'Token provider returned no token because the user is not signed in to the host app',
       );
     }
-    final session = await _bridge.exchange(oltToken);
+    final session = await _bridge.exchange(token);
     if (_disposed) return session;
     _session = session;
     _schedule(session.expiresAt.difference(_clock()) - refreshMargin);
