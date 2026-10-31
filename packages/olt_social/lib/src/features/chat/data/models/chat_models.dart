@@ -15,7 +15,6 @@ ReceiptStatus? parseReceiptStatus(String? value) => value == null ? null : Recei
 const _messageKinds = {
   'text': MessageKind.text,
   'system': MessageKind.system,
-  'card': MessageKind.card,
   'quick_reply': MessageKind.quickReply,
   'help_link': MessageKind.helpLink,
   'identity_request': MessageKind.identityRequest,

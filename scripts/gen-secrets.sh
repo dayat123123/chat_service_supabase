@@ -120,9 +120,6 @@ resolve pg_meta_crypto_key            gen_base64 24
 resolve s3_protocol_access_key_id     gen_hex 16
 resolve s3_protocol_access_key_secret gen_hex 32
 resolve valkey_password               gen_hex 24
-# Customer service (customer-adapter). Produksi: ganti dengan kredensial endpoint data
-# nasabah dari tim OLT (dev: dipakai bersama OLT dummy).
-resolve olt_customer_service_token    gen_hex 32
 
 # Turunan: URI koneksi PostgREST (image tanpa shell membaca file ini lewat @file).
 pooler_host="$(env_get DB_POOLER_HOST)"; pooler_port="$(env_get DB_POOLER_PORT)"; db_name="$(env_get POSTGRES_DB)"

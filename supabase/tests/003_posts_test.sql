@@ -2,8 +2,6 @@
 begin;
 select plan(20);
 
-select tests.create_stock('BBCA');
-select tests.create_stock('GOTO');
 select tests.create_user('alice') as alice \gset
 select tests.create_user('bob_user') as bob \gset
 select tests.create_user('carol') as carol \gset
@@ -21,8 +19,8 @@ select is(
   'Spasi di awal/akhir body dipangkas');
 select results_eq(
   $$select stock_code from post_stocks where post_id = 'a1000000-0000-4000-8000-000000000001' order by 1$$,
-  $$values ('BBCA'::text), ('GOTO'::text)$$,
-  '$KODE diparsing dan hanya kode di tabel stocks yang disimpan');
+  $$values ('BBCA'::text), ('GOTO'::text), ('ZZZZ'::text)$$,
+  '$KODE berformat valid disimpan sebagai label tanpa daftar saham, $100 diabaikan');
 select results_eq(
   $$select user_id from post_mentions where post_id = 'a1000000-0000-4000-8000-000000000001'$$,
   format('values (%L::uuid)', :'bob'),

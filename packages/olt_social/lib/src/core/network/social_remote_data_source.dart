@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:http/http.dart' as http;
 
 import 'package:olt_social/src/core/auth/session_tokens.dart';
 import 'package:olt_social/src/core/error/error_mapper.dart';
@@ -34,7 +32,6 @@ abstract interface class SocialRemoteDataSource {
 
   Future<AuthorizedImage> authorizedObject(String bucket, String path);
 
-  Future<Object?> gatewayJson(String path, {Map<String, String>? query});
 }
 
 class SupabaseSocialDataSource implements SocialRemoteDataSource {
@@ -43,23 +40,19 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
     this._tokens, {
     required String supabaseUrl,
     required this._anonKey,
-    http.Client? httpClient,
   }) : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), ''),
-       _http = httpClient ?? http.Client(),
        _schema = null;
 
   SupabaseSocialDataSource._forSchema(SupabaseSocialDataSource base, String this._schema)
     : _client = base._client,
       _tokens = base._tokens,
       _supabaseUrl = base._supabaseUrl,
-      _anonKey = base._anonKey,
-      _http = base._http;
+      _anonKey = base._anonKey;
 
   final SupabaseClient _client;
   final SessionTokens _tokens;
   final String _supabaseUrl;
   final String _anonKey;
-  final http.Client _http;
   final String? _schema;
 
   @override
@@ -144,31 +137,6 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
   @override
   String publicUrl(String bucket, String path) => _client.storage.from(bucket).getPublicUrl(path);
-
-  @override
-  Future<Object?> gatewayJson(String path, {Map<String, String>? query}) async {
-    try {
-      final uri = Uri.parse('$_supabaseUrl/$path').replace(queryParameters: query);
-      final response = await _http.get(uri, headers: {
-        'apikey': _anonKey,
-        'Authorization': 'Bearer ${await _tokens.accessToken()}',
-      });
-      final body = jsonDecode(utf8.decode(response.bodyBytes));
-      final map = body is Map<String, dynamic> ? body : const <String, dynamic>{};
-      if (response.statusCode == 200 && map['available'] == true) return map['data'];
-      final kind = switch (response.statusCode) {
-        401 => OltSocialErrorKind.unauthenticated,
-        403 => OltSocialErrorKind.forbidden,
-        404 => OltSocialErrorKind.notFound,
-        400 => OltSocialErrorKind.invalidInput,
-        429 => OltSocialErrorKind.rateLimited,
-        _ => OltSocialErrorKind.unavailable,
-      };
-      throw OltSocialException(kind, code: map['code'] as String?, message: map['message'] as String?);
-    } catch (e) {
-      throw mapError(e);
-    }
-  }
 
   @override
   Future<AuthorizedImage> authorizedObject(String bucket, String path) async {

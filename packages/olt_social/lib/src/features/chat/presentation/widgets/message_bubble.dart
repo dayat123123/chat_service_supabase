@@ -159,16 +159,12 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
             Text(l10n.messageDeleted, style: theme.textTheme.bodyMedium?.copyWith(color: fg, fontStyle: FontStyle.italic))
           else ...[
             if (m.attachments.isNotEmpty) AttachmentGrid(attachments: m.attachments, maxHeight: 220),
-            if (m.kind == MessageKind.card)
-              SupportMessageExtras(message: m, color: fg, mine: d.isMine)
-            else ...[
-              if ((m.body ?? '').isNotEmpty)
-                support
-                    ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))
-                    : SocialText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
-              if (m.kind == MessageKind.quickReply || m.kind == MessageKind.helpLink)
-                SupportMessageExtras(message: m, color: fg, mine: d.isMine),
-            ],
+            if ((m.body ?? '').isNotEmpty)
+              support
+                  ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))
+                  : SocialText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
+            if (m.kind == MessageKind.quickReply || m.kind == MessageKind.helpLink)
+              SupportMessageExtras(message: m, color: fg, mine: d.isMine),
           ],
           const SizedBox(height: 2),
           Row(

@@ -48,6 +48,8 @@ export type PendingMessage = {
   createdAt: string
 }
 
+export type SendKind = 'text' | 'quick_reply' | 'help_link'
+
 export type SendResult =
   { status: 'sent'; message: ChatMessage } | { status: 'blocked'; code?: string; message?: string }
 

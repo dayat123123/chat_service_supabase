@@ -10,32 +10,8 @@ class StockRepositoryImpl implements StockRepository {
 
   @override
   Future<Stock?> getStock(String code) async {
-    final rows = await _api.select(
-      'stocks',
-      columns: 'code,name,type,sector,watcher_count',
-      match: {'code': code.toUpperCase()},
-      limit: 1,
-    );
+    final rows = await _api.rpcRows('get_stock', {'p_code': code});
     return rows.isEmpty ? null : StockModel.fromJson(rows.first).toEntity();
-  }
-
-  @override
-  Future<List<Stock>> searchStocks(String query, {int limit = 8}) async {
-    if (query.trim().isEmpty) return const [];
-    final rows = await _api.rpcRows('search_stocks', {'p_query': query, 'p_limit': limit});
-    return [for (final row in rows) StockModel.fromJson(row).toEntity()];
-  }
-
-  @override
-  Future<bool> isWatching(String code) async {
-    final me = await _api.requireUserId();
-    final rows = await _api.select(
-      'stock_watchers',
-      columns: 'stock_code',
-      match: {'user_id': me, 'stock_code': code.toUpperCase()},
-      limit: 1,
-    );
-    return rows.isNotEmpty;
   }
 
   @override

@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$StockModel {
 
- String get code; String get name; String get type; String? get sector; int get watcherCount;
+ String get code; int get watcherCount; bool get watching;
 /// Create a copy of StockModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $StockModelCopyWith<StockModel> get copyWith => _$StockModelCopyWithImpl<StockMo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StockModel&&(identical(other.code, code) || other.code == code)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.sector, sector) || other.sector == sector)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is StockModel&&(identical(other.code, code) || other.code == code)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount)&&(identical(other.watching, watching) || other.watching == watching));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code,name,type,sector,watcherCount);
+int get hashCode => Object.hash(runtimeType,code,watcherCount,watching);
 
 @override
 String toString() {
-  return 'StockModel(code: $code, name: $name, type: $type, sector: $sector, watcherCount: $watcherCount)';
+  return 'StockModel(code: $code, watcherCount: $watcherCount, watching: $watching)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $StockModelCopyWith<$Res>  {
   factory $StockModelCopyWith(StockModel value, $Res Function(StockModel) _then) = _$StockModelCopyWithImpl;
 @useResult
 $Res call({
- String code, String name, String type, String? sector, int watcherCount
+ String code, int watcherCount, bool watching
 });
 
 
@@ -65,14 +65,12 @@ class _$StockModelCopyWithImpl<$Res>
 
 /// Create a copy of StockModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? name = null,Object? type = null,Object? sector = freezed,Object? watcherCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? watcherCount = null,Object? watching = null,}) {
   return _then(_self.copyWith(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
-as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,sector: freezed == sector ? _self.sector : sector // ignore: cast_nullable_to_non_nullable
-as String?,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
-as int,
+as String,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
+as int,watching: null == watching ? _self.watching : watching // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -157,10 +155,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String name,  String type,  String? sector,  int watcherCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  int watcherCount,  bool watching)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _StockModel() when $default != null:
-return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount);case _:
+return $default(_that.code,_that.watcherCount,_that.watching);case _:
   return orElse();
 
 }
@@ -178,10 +176,10 @@ return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String name,  String type,  String? sector,  int watcherCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  int watcherCount,  bool watching)  $default,) {final _that = this;
 switch (_that) {
 case _StockModel():
-return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount);case _:
+return $default(_that.code,_that.watcherCount,_that.watching);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -198,10 +196,10 @@ return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String name,  String type,  String? sector,  int watcherCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  int watcherCount,  bool watching)?  $default,) {final _that = this;
 switch (_that) {
 case _StockModel() when $default != null:
-return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount);case _:
+return $default(_that.code,_that.watcherCount,_that.watching);case _:
   return null;
 
 }
@@ -213,14 +211,12 @@ return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount
 @JsonSerializable()
 
 class _StockModel extends StockModel {
-  const _StockModel({required this.code, required this.name, this.type = 'stock', this.sector, this.watcherCount = 0}): super._();
+  const _StockModel({required this.code, this.watcherCount = 0, this.watching = false}): super._();
   factory _StockModel.fromJson(Map<String, dynamic> json) => _$StockModelFromJson(json);
 
 @override final  String code;
-@override final  String name;
-@override@JsonKey() final  String type;
-@override final  String? sector;
 @override@JsonKey() final  int watcherCount;
+@override@JsonKey() final  bool watching;
 
 /// Create a copy of StockModel
 /// with the given fields replaced by the non-null parameter values.
@@ -235,16 +231,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StockModel&&(identical(other.code, code) || other.code == code)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.sector, sector) || other.sector == sector)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _StockModel&&(identical(other.code, code) || other.code == code)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount)&&(identical(other.watching, watching) || other.watching == watching));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code,name,type,sector,watcherCount);
+int get hashCode => Object.hash(runtimeType,code,watcherCount,watching);
 
 @override
 String toString() {
-  return 'StockModel(code: $code, name: $name, type: $type, sector: $sector, watcherCount: $watcherCount)';
+  return 'StockModel(code: $code, watcherCount: $watcherCount, watching: $watching)';
 }
 
 
@@ -255,7 +251,7 @@ abstract mixin class _$StockModelCopyWith<$Res> implements $StockModelCopyWith<$
   factory _$StockModelCopyWith(_StockModel value, $Res Function(_StockModel) _then) = __$StockModelCopyWithImpl;
 @override @useResult
 $Res call({
- String code, String name, String type, String? sector, int watcherCount
+ String code, int watcherCount, bool watching
 });
 
 
@@ -272,14 +268,12 @@ class __$StockModelCopyWithImpl<$Res>
 
 /// Create a copy of StockModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? name = null,Object? type = null,Object? sector = freezed,Object? watcherCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? watcherCount = null,Object? watching = null,}) {
   return _then(_StockModel(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
-as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as String,sector: freezed == sector ? _self.sector : sector // ignore: cast_nullable_to_non_nullable
-as String?,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
-as int,
+as String,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
+as int,watching: null == watching ? _self.watching : watching // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

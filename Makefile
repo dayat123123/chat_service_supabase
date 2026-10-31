@@ -7,7 +7,7 @@
 #   cluster Docker Swarm (kerangka; dilengkapi Tahap 7)
 # PROD=1 adalah alias lama untuk PROFILE=single.
 # DUMMY_OLT=1 menambahkan OLT dummy + auth-bridge mode websocket (hanya profil dev).
-# CS=1 menyalakan customer service lewat chat (customer-adapter + web CS React) di profil single.
+# CS=1 menyalakan customer service lewat chat (web CS React) di profil single.
 
 PROFILE ?= dev
 ifdef PROD
@@ -46,13 +46,12 @@ ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
                  s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri \
-                 olt_customer_service_token
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-flutter-it-dummy e2e-windows-dummy \
-        test-cs smoke-cs cs-race cs-demo cs-console cs-totp cs-staff cs-console-react test-cs-console e2e-cs-console
+        smoke-cs cs-race cs-demo cs-totp cs-staff cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -97,7 +96,7 @@ migrate: check-config ## Jalankan migrasi baru di supabase/migrations
 seed: check-config ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt test-cs ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt ## Tes backend (pgTAP + Go)
 
 test-db: check-config ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -154,9 +153,8 @@ web-example: check-config ## App example versi web di http://localhost:8081 (?us
 	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8081
 	@echo "App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)"
 
-license-audit: ## Audit lisensi dependensi runtime Flutter: olt_social dan web CS (tolak GPL/AGPL)
+license-audit: ## Audit lisensi dependensi runtime Flutter olt_social (tolak GPL/AGPL)
 	cd $(PKG) && dart run tool/license_audit.dart
-	cd apps/cs-console && dart run ../../$(PKG)/tool/license_audit.dart
 
 # --- OLT dummy (development/testing) -------------------------------------------------
 
@@ -166,9 +164,6 @@ dummy-token: check-config ## Token sesi OLT dummy: make dummy-token U=budi_santo
 smoke-dummy: check-config ## Smoke test auth-bridge mode websocket vs OLT dummy (butuh up DUMMY_OLT=1)
 	$(DUMMY_COMPOSE) run --rm tools smoke-dummy
 
-test-cs: ## Unit test customer-adapter (Go, di container)
-	docker run --rm -v "$(CURDIR)/services/cs:/src" -w /src $(GO_IMG) go test ./...
-
 smoke-cs: check-config ## Smoke test CS chat end-to-end lewat API asli (butuh up DUMMY_OLT=1)
 	$(DUMMY_COMPOSE) run --rm tools smoke-cs
 
@@ -176,17 +171,6 @@ cs-race: check-config ## Tes rebutan klaim tiket CS: DB langsung + 3 replika Pos
 	-@docker rm -f $(RACE_REST) > /dev/null 2>&1
 	@for name in $(RACE_REST); do $(COMPOSE) run -d --no-deps -e PGRST_DB_POOL=3 --name $$name rest > /dev/null || exit 1; done
 	$(TOOLS) cs-race $(foreach name,$(RACE_REST),http://$(name):3000); 	  status=$$?; docker rm -f $(RACE_REST) > /dev/null; exit $$status
-
-cs-console: check-config ## Web CS (Flutter web) di http://localhost:8084 + akun staf dev dengan TOTP (butuh up DUMMY_OLT=1)
-	mkdir -p scripts/cs-demo/runtime
-	@(cat scripts/cs-demo/runtime/staff.json 2>/dev/null || echo '{}') | $(DUMMY_COMPOSE) run --rm -T tools cs-staff \
-	  > scripts/cs-demo/runtime/staff.json.new && mv scripts/cs-demo/runtime/staff.json.new scripts/cs-demo/runtime/staff.json
-	cd apps/cs-console && flutter build web --release --no-web-resources-cdn --pwa-strategy=none \
-	  --dart-define=CS_CONSOLE_ANON_KEY=$(ANON_KEY)
-	@docker rm -f olt-cs-console >/dev/null 2>&1 || true
-	docker run -d --name olt-cs-console --restart unless-stopped -p 127.0.0.1:8084:8084 \
-	  -v "$(CURDIR)/apps/cs-console/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8084
-	@echo "CS Console: http://localhost:8084  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: make cs-totp)"
 
 cs-staff: check-config ## Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
 	mkdir -p scripts/cs-demo/runtime

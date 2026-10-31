@@ -13,16 +13,14 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`docker/`](docker/) | Supabase self-hosted + auth-bridge + Traefik, PgBouncer, Valkey. Profil `dev` / `single` / `cluster`, image di-pin tag + digest |
 | [`supabase/`](supabase/) | Migrasi SQL bernomor, seed development, tes pgTAP |
 | [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token login OLT menjadi JWT Supabase (tanpa login dua kali) |
-| [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri, data nasabah tiruan) untuk menguji auth-bridge mode websocket dan `customer-adapter`. Hanya development/testing |
-| [`services/cs/`](services/cs/README.md) | Go: `customer-adapter` (data nasabah dari OLT untuk chat CS, amankan akun) |
+| [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri) untuk menguji auth-bridge mode websocket. Hanya development/testing |
 | [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
-| [`apps/cs-console/`](apps/cs-console/README.md) | Flutter web: web CS khusus CS, supervisor, dan admin CS (login + TOTP, ambil tiket, chat, catatan internal, info nasabah, dashboard supervisor, laporan + CSV, pengaturan admin). Produksi: hanya lewat VPN |
-| [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS baru (paritas penuh dengan console Flutter, palet Ctrl+K, 3 kolom yang bisa diatur, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
+| [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS khusus CS, supervisor, dan admin CS (login + TOTP, ambil tiket, chat, catatan internal, riwayat tiket nasabah, dashboard supervisor, laporan + CSV, pengaturan admin, palet Ctrl+K, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
 | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
 | [`docs/production-audit.md`](docs/production-audit.md) | Audit terhadap addendum produksi + status per tahap |
-| [`docs/market-integration.md`](docs/market-integration.md) | Rencana integrasi data pasar & portofolio OLT (menunggu info tim OLT) |
+| [`docs/olt-integration.md`](docs/olt-integration.md) | Batas integrasi dengan OLT: server hanya memvalidasi token login (Protokol v1 `login`); order, daftar saham, harga, dan data nasabah tetap di app OLT |
 | [`docs/cs-chat/`](docs/cs-chat/README.md) | Customer service lewat chat + matching engine: status tahap, keputusan, model data, akses, API `cs_api`, kebutuhan data OLT, pertanyaan kepatuhan |
 | [`docs/archive/`](docs/archive/customer-care/README.md) | Arsip pendekatan ticketing yang dibatalkan (dokumen saja; kodenya sudah dihapus lewat migrasi `0026_care_cancel`) |
 | [`docs/PROMPT.md`](docs/PROMPT.md), [`PROMPT-PRODUCTION.md`](docs/PROMPT-PRODUCTION.md), [`PROMPT-FEATURES.md`](docs/PROMPT-FEATURES.md), [`PROMPT-CS-CHAT.md`](docs/PROMPT-CS-CHAT.md) | Spesifikasi proyek: dasar, produksi, fitur lanjutan, dan customer service lewat chat. Versi ticketing yang dibatalkan ada di [`docs/archive/`](docs/archive/PROMPT-CUSTOMER-CARE.md) |
@@ -178,7 +176,7 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `up` / `down` / `ps` / `logs` | Kelola stack; `PROFILE=dev\|single\|cluster` (Windows `-Profile`). `logs s=auth-bridge` / `-Service auth-bridge` untuk satu service |
 | `reset` | **Hapus volume DB & storage**, lalu naik ulang dari nol. Wajib `CONFIRM=yes` (Windows `-Yes`) |
 | `migrate` / `seed` | Jalankan migrasi baru / isi data dummy (idempoten) |
-| `test` | `test-db` + `test-bridge` + `test-dummy-olt` + `test-cs` |
+| `test` | `test-db` + `test-bridge` + `test-dummy-olt` |
 | `test-db` | 504 tes pgTAP: skema, RLS, parser, thread, reaksi, feed, chat, moderasi, realtime/storage, rate limit, integritas konten, admin & sanksi, privasi, role, polling, centang, badge unread, serta CS chat (kalender, state machine sesi, RLS & catatan internal, penyamaran) |
 | `test-bridge` | Unit test Go auth-bridge (di container) |
 | `smoke` | 21 cek end-to-end lewat Kong (exchange, RLS, RPC, storage) |
@@ -198,14 +196,12 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `test-dummy-olt` | Unit test Go OLT dummy (di container) |
 | `test-flutter-it-dummy` | Integration test Flutter dengan token hasil login WebSocket OLT dummy |
 | `e2e-windows-dummy` | E2E app contoh: form login OLT dummy |
-| `test-cs` | Unit test Go `customer-adapter` (di container) |
 | `smoke-cs` | 40 skenario CS chat end-to-end: buka tiket, ambil & rebutan, balas, penyamaran, catatan internal, adapter + OLT dummy, amankan akun, transfer, selesai, rating (butuh `DUMMY_OLT=1`) |
 | `cs-race` | Tes rebutan ambil tiket: 50 CS × 1 tiket dan 200 tiket × 30 CS, langsung ke database dan lewat 3 replika PostgREST |
-| `cs-console` | Web CS di `http://localhost:8084` + akun staf dev dengan TOTP (`scripts/cs-demo/runtime/staff.json`). Butuh Flutter SDK dan `DUMMY_OLT=1` |
 | `cs-console-react` | Web CS React (container nginx) di `http://localhost:8085` + akun staf dev dengan TOTP. Butuh `DUMMY_OLT=1`. Tes: `test-cs-console` (lint, typecheck, unit, build, lisensi), `e2e-cs-console` (Playwright) |
 | `cs-totp` | Kode TOTP saat ini untuk akun staf dev |
 | `cs-demo` | Halaman demo CS (dev) di `http://localhost:8082`: nasabah dan panel CS berdampingan lewat API asli. Stop: `docker rm -f olt-cs-demo` (butuh `DUMMY_OLT=1`) |
-| `up PROFILE=single CS=1` / `-Profile single -Cs` | Nyalakan CS chat (`customer-adapter`) di produksi (di dev selalu aktif). Butuh endpoint OLT nasabah, lihat [docs/cs-chat](docs/cs-chat/README.md) |
+| `up PROFILE=single CS=1` / `-Profile single -Cs` | Nyalakan web CS di produksi (di dev selalu aktif), lihat [docs/cs-chat](docs/cs-chat/README.md) |
 
 Produksi memakai `make up PROFILE=single`: Traefik HTTPS (Let's Encrypt), hanya path API yang publik, dan Studio mati. Lihat [docs/PRODUCTION.md](docs/PRODUCTION.md).
 
@@ -226,6 +222,8 @@ Migrasi ada di `supabase/migrations`. Service `migrate` menjalankannya otomatis 
 | `0009_moderation` | `reports` + `private.report_queue` |
 | `0010_realtime` | Publikasi realtime + otorisasi channel private |
 | `0011_storage` | Bucket `avatars` & `attachments` + policy |
+| `0012`–`0036` | Rate limit, moderasi, privasi, tanda terima chat, polling, chat CS, paginasi room (lihat nama file) |
+| `0037_client_owned_business_data` | Server tidak lagi menyimpan daftar saham (`stocks`, `sync_stocks`, `search_stocks` dihapus; kode saham jadi label, RPC `get_stock` untuk jumlah pemantau), kartu order di chat CS, dan fungsi data nasabah untuk adapter |
 
 **Aturan migrasi:**
 - Tambahkan file dengan nomor berikutnya. **Jangan mengubah file yang sudah jalan**; runner mencatat checksum dan menolak perubahan.

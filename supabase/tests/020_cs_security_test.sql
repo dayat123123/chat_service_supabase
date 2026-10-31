@@ -1,5 +1,5 @@
 begin;
-select plan(67);
+select plan(61);
 
 update cs.tickets set status = 'closed', closed_at = now() where status <> 'closed';
 update cs.agent_status set status = 'offline';
@@ -100,27 +100,13 @@ select is((select count(*)::integer from cs.tickets where id in (:'t1', :'t2')),
   'CS non-pemilik hanya melihat tiket open, bukan tiket milik CS lain');
 select throws_ok(format($$select cs_api.add_note('x', %L)$$, :'t1'), 'PT403', 'notes_forbidden',
   'CS non-pemilik tidak bisa menulis catatan');
-select throws_ok(format($$select cs_api.agent_customer_access(%L, 'profile')$$, :'t1'), 'PT403', 'customer_data_forbidden',
-  'CS non-pemilik tidak bisa membuka data nasabah');
-select throws_ok(format($$select cs_api.agent_customer_access(%L, 'profile')$$, :'t2'), 'PT403', 'customer_data_forbidden',
-  'Pratinjau tiket open tidak membuka data OLT nasabah');
+select hasnt_function('cs_api', 'agent_customer_access', 'Web CS tidak membuka data nasabah dari OLT');
+select hasnt_function('cs_api', 'send_card', 'Chat CS tidak punya kartu order atau transaksi dana');
 
 select tests.authenticate_agent(:'rina');
 select is(jsonb_array_length(cs_api.notes(:'budi')), 2, 'Pemilik melihat catatan tiket dan catatan nasabah');
 select is((select body from public.messages where id = :'budi_msg'), 'Saya tidak bisa masuk, NIK saya 3174********0001',
   'CS hanya melihat pesan yang sudah disamarkan');
-select is(cs_api.agent_customer_access(:'t1', 'profile') ->> 'olt_user_id', 'test:' || :'budi',
-  'Pemilik tiket mendapat akses data nasabah untuk adapter');
-reset role;
-select cs.set_setting('customer_data.profile_views_per_hour', '2', null) as v3 \gset
-select tests.authenticate_agent(:'rina');
-select cs_api.agent_customer_access(:'t1', 'profile') as access2 \gset
-select throws_like(format($$select cs_api.agent_customer_access(%L, 'profile')$$, :'t1'), '%"rate_limited"%',
-  'Pembukaan profil nasabah per CS dibatasi per jam');
-select throws_ok(format($$select cs_api.agent_reveal_access(%L, 'nik', 'iseng')$$, :'t1'), 'PT400', 'invalid_reason',
-  'Membuka data tersamar wajib memilih alasan yang sah');
-select is(cs_api.agent_reveal_access(:'t1', 'nik', 'identity_verification') ->> 'valid_seconds', '300',
-  'Membuka satu field berlaku sementara');
 select ok(private.can_access_topic('cs:agent:' || :'rina') and private.can_access_topic('cs:room:' || :'room')
           and private.can_access_topic('cs:queue'), 'CS join channel miliknya, room tiketnya, dan daftar tiket terbuka');
 select ok(cs.can_read_room_text(:'room') and cs.can_read_room_text(:'room2') and not cs.can_read_room_text(:'room3'),
@@ -135,12 +121,6 @@ select tests.authenticate_agent(:'rina', 'aal1');
 select throws_ok($$select cs_api.ticket_lists()$$, 'PT403', 'agent_required', 'Akun CS tanpa 2FA ditolak');
 
 reset role;
-select is((select count(*)::integer from cs.cs_audit_log
-           where actor_id = :'rina' and action in ('customer_data.profile', 'customer_data.reveal')), 3,
-  'Setiap pembukaan data nasabah tercatat di audit log');
-select is((select details ->> 'field' || '/' || (details ->> 'reason') from cs.cs_audit_log
-           where actor_id = :'rina' and action = 'customer_data.reveal'), 'nik/identity_verification',
-  'Audit mencatat field dan alasan');
 
 select tests.authenticate_agent(:'sinta');
 select ok((select count(*) > 0 from public.messages where room_id = :'room')

@@ -20,7 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-cs', 'smoke-cs', 'cs-race', 'cs-demo', 'cs-console', 'cs-totp',
+                 'smoke-cs', 'cs-race', 'cs-demo', 'cs-totp',
                  'cs-staff', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
@@ -46,8 +46,7 @@ $EnvFile = 'docker/.env'
 $SecretsDir = 'docker/secrets'
 $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
                  'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
-                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri',
-                 'olt_customer_service_token')
+                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri')
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
 $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
 $ToolsImage = 'olt-social/tools:0.1.0'
@@ -177,11 +176,9 @@ switch ($Target) {
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
   Customer service lewat chat (dev: selalu aktif; produksi: -Profile single -Cs)
-  test-cs       Unit test customer-adapter (Go, di container)
   smoke-cs      Smoke test CS chat end-to-end lewat API asli (butuh up -DummyOlt)
   cs-race       Tes rebutan klaim tiket CS: DB langsung + 3 replika PostgREST khusus tes
   cs-demo       Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up -DummyOlt)
-  cs-console    Web CS (Flutter web) di http://localhost:8084 + akun staf dev dengan TOTP (butuh up -DummyOlt)
   cs-totp       Kode TOTP saat ini untuk akun staf dev
   cs-staff      Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
   cs-console-react  Web CS React (container nginx) di http://localhost:8085 (butuh up -DummyOlt)
@@ -222,7 +219,6 @@ switch ($Target) {
         & $PSCommandPath test-db -Profile $DeployProfile
         & $PSCommandPath test-bridge
         & $PSCommandPath test-dummy-olt
-        & $PSCommandPath test-cs
     }
     'test-flutter' {
         Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
@@ -262,11 +258,8 @@ switch ($Target) {
         Write-Host 'App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)'
     }
     'license-audit' {
-        $tool = Join-Path $PSScriptRoot 'packages/olt_social/tool/license_audit.dart'
-        foreach ($dir in 'packages/olt_social', 'apps/cs-console') {
-            Push-Location (Join-Path $PSScriptRoot $dir)
-            try { Invoke-Native 'dart' @('run', $tool) } finally { Pop-Location }
-        }
+        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        try { Invoke-Native 'dart' @('run', 'tool/license_audit.dart') } finally { Pop-Location }
     }
     'smoke' { Assert-Config; Invoke-Tools @('smoke') }
     'backup' {
@@ -329,22 +322,6 @@ switch ($Target) {
                         '-v', "${demo}:/srv:ro", $WebImage, 'caddy', 'file-server', '--root', '/srv', '--listen', ':8082')
         Write-Host 'Demo CS: http://localhost:8082  (stop: docker rm -f olt-cs-demo)'
     }
-    'cs-console' {
-        Assert-Config
-        Update-StaffAccounts
-        $anon = Get-AnonKey
-        $console = Join-Path $PSScriptRoot 'apps/cs-console'
-        Push-Location $console
-        try {
-            Invoke-Native 'flutter' @('build', 'web', '--release', '--no-web-resources-cdn', '--pwa-strategy=none',
-                                      "--dart-define=CS_CONSOLE_ANON_KEY=$anon")
-        } finally { Pop-Location }
-        Remove-Containers @('olt-cs-console')
-        Invoke-Docker @('run', '-d', '--name', 'olt-cs-console', '--restart', 'unless-stopped', '-p', '127.0.0.1:8084:8084',
-                        '-v', "$(Join-Path $console 'build/web'):/srv:ro", $WebImage, 'caddy', 'file-server', '--root', '/srv',
-                        '--listen', ':8084') | Out-Null
-        Write-Host 'CS Console: http://localhost:8084  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: .\make.ps1 cs-totp)'
-    }
     'cs-staff' { Assert-Config; Update-StaffAccounts }
     'cs-console-react' {
         Assert-Config
@@ -367,12 +344,8 @@ switch ($Target) {
     'cs-totp' {
         Assert-Config
         $staffFile = Join-Path $PSScriptRoot 'scripts/cs-demo/runtime/staff.json'
-        if (-not (Test-Path -LiteralPath $staffFile)) { throw 'Akun staf dev belum ada. Jalankan: .\make.ps1 cs-console' }
+        if (-not (Test-Path -LiteralPath $staffFile)) { throw 'Akun staf dev belum ada. Jalankan: .\make.ps1 cs-staff' }
         Get-Content -LiteralPath $staffFile -Raw | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-totp'))
-    }
-    'test-cs' {
-        $src = Join-Path $PSScriptRoot 'services/cs'
-        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
     'test-dummy-olt' {
         $src = Join-Path $PSScriptRoot 'services/dummy-olt'

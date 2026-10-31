@@ -1,6 +1,8 @@
 # Web CS (React)
 
-Konsol customer service OLT untuk CS, supervisor, dan admin CS. React 19 + TypeScript, dibangun Vite menjadi SPA statis dan disajikan nginx non-root. Backend tidak berubah: Supabase (`cs_api`, GoTrue TOTP, Realtime, Storage), `customer-adapter` (`/cs/v1`), dan Edge Function `cs-admin`.
+Konsol customer service OLT untuk CS, supervisor, dan admin CS, sekaligus satu-satunya web CS. React 19 + TypeScript, dibangun Vite menjadi SPA statis dan disajikan nginx non-root. Backend: Supabase (`cs_api`, GoTrue TOTP, Realtime, Storage) dan Edge Function `cs-admin`.
+
+Web CS tidak mengambil data bisnis dari OLT. Profil, order, transaksi dana, dan perangkat nasabah tetap milik aplikasi nasabah, jadi panel info nasabah hanya menampilkan identitas nasabah dari data tiket, riwayat tiket (`customer_history`), dan catatan internal (`notes`).
 
 Rencana dan keputusan: [docs/PROMPT-CS-CONSOLE-REACT.md](../../docs/PROMPT-CS-CONSOLE-REACT.md), [docs/cs-console-audit.md](../../docs/cs-console-audit.md), paritas dengan console Flutter: [docs/cs-console-parity.md](../../docs/cs-console-parity.md). Tampilan: [docs/PROMPT-CS-UI-POLISH.md](../../docs/PROMPT-CS-UI-POLISH.md) dan [docs/cs-ui-audit.md](../../docs/cs-ui-audit.md).
 
@@ -83,8 +85,8 @@ src/
 
 ## Tes
 
-- Unit: logika (quick reply, aturan data rahasia, cache pesan, pengelompokan baris, filter tiket, parser realtime, CSV, rentang laporan, jam layanan) dan komponen (composer, tampilkan data tersamar), klien adapter dengan MSW.
-- E2E (`e2e/`): login + TOTP, rebutan klaim dua CS, chat + lampiran + tanda dibaca, lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor gabung + pindahkan, tangkapan layar terang/gelap termasuk `/dev/ui` (`e2e-artifacts/screens`), uji kinerja 1000 tiket + 5000 pesan.
+- Unit: logika (quick reply, aturan data rahasia, cache pesan, pengelompokan baris, filter tiket, parser realtime, CSV, rentang laporan, jam layanan) dan komponen (composer, gelembung pesan, panel info nasabah), klien data nasabah (`customer_history`, `notes`) dengan MSW.
+- E2E (`e2e/`): login + TOTP, rebutan klaim dua CS, chat + lampiran + tanda dibaca + panel info nasabah (identitas, riwayat tiket, catatan), lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor gabung + pindahkan, tangkapan layar terang/gelap termasuk `/dev/ui` (`e2e-artifacts/screens`), uji kinerja 1000 tiket + 5000 pesan.
 - Kualitas tampilan: kontras WCAG AA dengan axe (`@axe-core/playwright`) di kedua tema, serta tata letak 1366×768, 1920×1080, dan 2560×1440 tanpa scroll horizontal atau teks terpotong (`e2e/a11y.spec.ts`, `e2e/layout.spec.ts`, dan langkah percakapan di `e2e/visual.spec.ts`).
 - Backend membatasi 5 tiket per jam per nasabah. Setiap skenario memakai nasabah OLT dummy yang berbeda, jadi suite penuh bisa dijalankan 5 kali per jam.
 - Uji kinerja menjalankan Chrome tanpa batas vsync agar fps mencerminkan kerja per frame (target ≥ 60 fps, p95 ≤ 16,7 ms).
@@ -104,4 +106,4 @@ Web CS dan API agen berada di satu domain (tanpa CORS) yang hanya menerima IP VP
 
 - React Compiler tidak dipakai, jadi aturan lint `react-hooks/incompatible-library` dimatikan.
 - Lisensi: semua dependensi runtime permisif. `lightningcss` (MPL-2.0) hanya alat build Tailwind dan tidak ikut ke bundle. Font Inter memakai OFL-1.1.
-- Console Flutter (`apps/cs-console`) tetap ada sampai cutover M5 disetujui.
+- Console Flutter lama (`apps/cs-console`) sudah dihapus.

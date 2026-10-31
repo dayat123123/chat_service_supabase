@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_support_scope.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/message_composer.dart';
 import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/support_dialogs.dart';
 import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 
 class SupportComposer extends StatelessWidget {
@@ -50,19 +48,7 @@ class SupportComposer extends StatelessWidget {
               ],
             ),
           ),
-        MessageComposer(
-          onChanged: cubit.checkText,
-          leading: [
-            IconButton(
-              tooltip: l10n.supportAttachOrder,
-              icon: const Icon(Icons.receipt_long_outlined),
-              onPressed: () async {
-                final card = await pickSupportOrder(context, OltSupportScope.of(context).support);
-                if (card != null) await cubit.attachCard(card);
-              },
-            ),
-          ],
-        ),
+        MessageComposer(onChanged: cubit.checkText),
       ],
     );
   }

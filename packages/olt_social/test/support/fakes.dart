@@ -281,11 +281,14 @@ class FakeDependencies implements OltSocialDependencies {
     FakePollRepository? polls,
     ChatRepository? chat,
     NotificationRepository? notifications,
+    StockRepository? stocks,
+    this.callbacks = const OltSocialCallbacks(),
   }) : feed = feed ?? FakeFeedRepository(),
        comments = comments ?? FakeCommentRepository(),
        polls = polls ?? FakePollRepository(),
        chat = chat ?? FakeChatRepository(),
-       notifications = notifications ?? _Unused();
+       notifications = notifications ?? _Unused(),
+       stocks = stocks ?? _Unused();
 
   final _unused = _Unused();
 
@@ -300,7 +303,7 @@ class FakeDependencies implements OltSocialDependencies {
   @override
   ProfileRepository get profiles => _unused;
   @override
-  StockRepository get stocks => _unused;
+  final StockRepository stocks;
   @override
   final NotificationRepository notifications;
   @override
@@ -308,7 +311,7 @@ class FakeDependencies implements OltSocialDependencies {
   @override
   MediaRepository get media => _unused;
   @override
-  OltSocialCallbacks get callbacks => const OltSocialCallbacks();
+  final OltSocialCallbacks callbacks;
   @override
   UserSummary? get currentUser => me;
   @override

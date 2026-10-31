@@ -674,7 +674,7 @@ abstract class OltSocialLocalizations {
   /// No description provided for @stockNotFound.
   ///
   /// In id, this message translates to:
-  /// **'Kode saham tidak dikenal.'**
+  /// **'Kode saham tidak valid.'**
   String get stockNotFound;
 
   /// No description provided for @chats.
@@ -1073,12 +1073,6 @@ abstract class OltSocialLocalizations {
   /// **'Buka panduan'**
   String get supportOpenLink;
 
-  /// No description provided for @supportViewCard.
-  ///
-  /// In id, this message translates to:
-  /// **'Lihat detail'**
-  String get supportViewCard;
-
   /// No description provided for @supportRatePrompt.
   ///
   /// In id, this message translates to:
@@ -1114,18 +1108,6 @@ abstract class OltSocialLocalizations {
   /// In id, this message translates to:
   /// **'Pilih topik agar CS yang tepat langsung membantu Anda.'**
   String get supportPickTopicHint;
-
-  /// No description provided for @supportAttachOrder.
-  ///
-  /// In id, this message translates to:
-  /// **'Lampirkan order'**
-  String get supportAttachOrder;
-
-  /// No description provided for @supportAttached.
-  ///
-  /// In id, this message translates to:
-  /// **'Order {ref} ikut dilampirkan'**
-  String supportAttached(String ref);
 
   /// No description provided for @supportHistory.
   ///
@@ -1312,18 +1294,6 @@ abstract class OltSocialLocalizations {
   /// In id, this message translates to:
   /// **'Chat diakhiri.'**
   String get supportClosed;
-
-  /// No description provided for @supportCardSent.
-  ///
-  /// In id, this message translates to:
-  /// **'Order dilampirkan ke chat.'**
-  String get supportCardSent;
-
-  /// No description provided for @supportNoOrders.
-  ///
-  /// In id, this message translates to:
-  /// **'Tidak ada order terbaru.'**
-  String get supportNoOrders;
 
   /// No description provided for @supportTicketMeta.
   ///

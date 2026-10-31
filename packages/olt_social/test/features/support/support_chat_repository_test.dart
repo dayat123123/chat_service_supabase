@@ -42,9 +42,6 @@ void main() {
 
   SupportChatRepository customer() => SupportChatRepository(cs, rooms: () async => const []);
 
-  SupportChatRepository agent({String? ticket = 't-1'}) =>
-      SupportChatRepository(cs, rooms: () async => const [], ticketOf: (_) => ticket);
-
   test('pesan support membawa jenis, peran pengirim, tiket, dan payload', () async {
     when(() => cs.rpcRows('get_messages', any())).thenAnswer((_) async => [
       messageRow(kind: 'quick_reply', payload: {'options': ['Ya', 'Tidak']}),
@@ -76,40 +73,6 @@ void main() {
     expect(params['p_room_id'], 'r-cs');
     expect(params['p_client_id'], 'cid-1');
     expect(sent.senderRole, SenderRole.customer);
-  });
-
-  test('CS mengirim atas nama tiket yang sedang ia tangani', () async {
-    when(() => cs.rpcValue('agent_send_message', any())).thenAnswer(
-      (_) async => {'status': 'sent', 'message': messageRow()},
-    );
-
-    final sent = await agent().sendMessage('r-cs', body: 'Halo Pak Budi', clientId: 'cid-1');
-
-    final params = verify(() => cs.rpcValue('agent_send_message', captureAny())).captured.single as Map<String, Object?>;
-    expect(params['p_ticket_id'], 't-1');
-    expect(params['p_body'], 'Halo Pak Budi');
-    expect(sent.isOfficial, isTrue);
-  });
-
-  test('pesan CS yang meminta OTP ditahan dan menjadi error contentBlocked', () async {
-    when(() => cs.rpcValue('agent_send_message', any())).thenAnswer(
-      (_) async => {'status': 'blocked', 'code': 'secret_request_blocked', 'message': 'Pesan ditahan'},
-    );
-
-    await expectLater(
-      agent().sendMessage('r-cs', body: 'Kirim OTP Anda', clientId: 'cid-2'),
-      throwsA(isA<OltSocialException>()
-          .having((e) => e.kind, 'kind', OltSocialErrorKind.contentBlocked)
-          .having((e) => e.code, 'code', 'secret_request_blocked')),
-    );
-  });
-
-  test('tanpa tiket yang bisa dibalas, CS tidak mengirim apa pun', () async {
-    await expectLater(
-      agent(ticket: null).sendMessage('r-cs', body: 'Halo', clientId: 'cid-3'),
-      throwsA(isA<OltSocialException>().having((e) => e.code, 'code', 'ticket_not_active')),
-    );
-    verifyNever(() => cs.rpcValue('agent_send_message', any()));
   });
 
   test('anggota staf ditandai resmi dan pesan support tidak bisa dihapus', () async {

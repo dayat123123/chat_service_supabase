@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:olt_social/src/app/olt_social_scope.dart';
 import 'package:olt_social/src/core/text/social_text_parser.dart';
-import 'package:olt_social/src/features/stocks/domain/entities/stock.dart';
+import 'package:olt_social/src/features/stocks/domain/entities/stock_suggestion.dart';
 import 'package:olt_social/src/shared/domain/entities/user.dart';
 import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
 import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
@@ -47,7 +47,7 @@ sealed class _Suggestion {
 
 class _StockSuggestion extends _Suggestion {
   const _StockSuggestion(this.stock);
-  final Stock stock;
+  final StockSuggestion stock;
 }
 
 class _UserSuggestion extends _Suggestion {
@@ -129,7 +129,10 @@ class _OltComposerFieldState extends State<OltComposerField> {
     final id = ++_requestId;
     try {
       final List<_Suggestion> results = token.trigger == r'$'
-          ? [for (final s in await deps.stocks.searchStocks(token.query, limit: 6)) _StockSuggestion(s)]
+          ? [
+              for (final s in (await deps.callbacks.stockSearch?.call(token.query) ?? const <StockSuggestion>[]).take(6))
+                _StockSuggestion(s),
+            ]
           : [for (final u in await deps.profiles.searchUsers(token.query, limit: 6)) _UserSuggestion(u)];
       if (!mounted || id != _requestId) return;
       setState(() {
@@ -185,6 +188,10 @@ class _OltComposerFieldState extends State<OltComposerField> {
                 itemCount: _suggestions.length,
                 itemBuilder: (context, i) {
                   final s = _suggestions[i];
+                  final subtitle = switch (s) {
+                    _StockSuggestion(:final stock) => stock.name,
+                    _UserSuggestion(:final user) => '@${user.username}',
+                  };
                   return ListTile(
                     dense: true,
                     selected: i == _highlight,
@@ -196,14 +203,7 @@ class _OltComposerFieldState extends State<OltComposerField> {
                       _StockSuggestion(:final stock) => '\$${stock.code}',
                       _UserSuggestion(:final user) => user.name,
                     }),
-                    subtitle: Text(
-                      switch (s) {
-                        _StockSuggestion(:final stock) => stock.name,
-                        _UserSuggestion(:final user) => '@${user.username}',
-                      },
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    subtitle: subtitle == null ? null : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
                     onTap: () => _apply(s),
                   );
                 },

@@ -5,11 +5,6 @@ const POLL_MS = 1500;
 const HEARTBEAT_MS = 15000;
 
 const OUTCOMES = [['answered', 'Terjawab'], ['follow_up', 'Perlu tindak lanjut'], ['complaint', 'Pengaduan'], ['other', 'Lainnya']];
-const REVEAL_FIELDS = [['phone', 'No. HP'], ['email', 'Email'], ['nik', 'NIK'], ['rdn_number', 'No. RDN']];
-const REVEAL_REASONS = [
-  ['identity_verification', 'Verifikasi identitas'], ['data_correction', 'Koreksi data'],
-  ['fraud_investigation', 'Investigasi penipuan'], ['regulatory_request', 'Permintaan regulator'],
-];
 const STATUS_LABEL = {
   open: 'Terbuka', claimed: 'Ditangani', waiting_customer: 'Menunggu nasabah', resolved: 'Selesai', closed: 'Ditutup',
 };
@@ -21,7 +16,7 @@ const EVENT_LABEL = {
   waiting_customer: 'Menunggu nasabah', customer_replied: 'Nasabah membalas', owner_away: 'CS pemilik tidak aktif',
   resolved: 'Diselesaikan', reopened: 'Dibuka kembali', closed: 'Ditutup', priority_changed: 'Prioritas berubah',
   flagged: 'Ditandai', rated: 'Dinilai nasabah', secret_request_blocked: 'Pesan CS ditahan',
-  secure_account_requested: 'Amankan akun diminta', fake_cs_reported: 'Laporan CS palsu',
+  fake_cs_reported: 'Laporan CS palsu',
 };
 const TABS = [['open', 'Terbuka'], ['mine', 'Tiket saya'], ['resolved_today', 'Selesai hari ini']];
 
@@ -77,8 +72,6 @@ async function call(url, { method = 'POST', token, body, profile } = {}) {
 }
 
 const rpc = (token, fn, args = {}) => call(`${cfg.api}/rest/v1/rpc/${fn}`, { token, body: args, profile: 'cs_api' });
-const adapter = (token, path, options = {}) =>
-  call(`${cfg.api}/cs/v1${path}`, { method: options.method || 'GET', token, body: options.body });
 
 function toast(message, kind = 'info') {
   const node = h('div', { class: `toast ${kind}` }, message);
@@ -166,7 +159,7 @@ function messageNode(m, viewer, handlers) {
   const url = m.payload?.url;
   return h('div', { class: `msg ${mine ? 'mine' : 'theirs'}` },
     staff ? h('div', { class: 'who' }, m.sender_display_name || 'CS', h('span', { class: 'badge official' }, 'CS Resmi')) : null,
-    m.kind === 'card' ? cardNode(m, handlers) : h('div', { class: 'body' }, m.is_deleted ? '(pesan dihapus)' : m.body || ''),
+    h('div', { class: 'body' }, m.is_deleted ? '(pesan dihapus)' : m.body || ''),
     m.kind === 'help_link' && /^https:\/\//.test(url || '')
       ? h('a', { class: 'link', href: url, target: '_blank', rel: 'noopener noreferrer' }, url) : null,
     m.kind === 'quick_reply'
@@ -175,36 +168,6 @@ function messageNode(m, viewer, handlers) {
       : null,
     m.payload?.masked ? h('div', { class: 'masked' }, `Disamarkan otomatis: ${m.payload.masked.join(', ')}`) : null,
     h('div', { class: 'time' }, clock(new Date(m.created_at))));
-}
-
-function cardNode(m, handlers) {
-  return h('div', { class: 'card-msg' },
-    h('div', { class: 'card-kind' }, m.payload?.card === 'cash_transaction' ? 'Transaksi dana' : 'Order'),
-    h('div', { class: 'card-ref' }, m.payload?.ref || ''),
-    h('button', { type: 'button', class: 'link-btn', onclick: () => handlers.card?.(m.payload) }, 'Lihat detail dari OLT'));
-}
-
-function detailList(data) {
-  return h('dl', { class: 'kv' }, Object.entries(data || {}).map(([key, value]) => [
-    h('dt', {}, key),
-    h('dd', {}, value !== null && typeof value === 'object' ? JSON.stringify(value) : String(value ?? '-')),
-  ]));
-}
-
-function openDialog(title, content) {
-  const dialog = byId('dialog');
-  fill(dialog, h('form', { method: 'dialog', class: 'dialog-body' },
-    h('h3', {}, title), content, h('div', { class: 'dialog-actions' }, h('button', { class: 'primary' }, 'Tutup'))));
-  dialog.showModal();
-}
-
-async function showCard(payload, load) {
-  try {
-    const res = await load(payload);
-    openDialog(`${payload.card === 'cash_transaction' ? 'Transaksi dana' : 'Order'} ${payload.ref}`, detailList(res.data));
-  } catch (err) {
-    fail(err);
-  }
 }
 
 const prioBadge = (priority) => h('span', { class: `prio ${String(priority).toLowerCase()}` }, priority);
@@ -220,7 +183,6 @@ const customer = { user: null, token: null, home: null, messages: new Map(), cur
 
 const customerHandlers = {
   reply: (text) => customerSend(text),
-  card: (payload) => showCard(payload, (p) => adapter(customer.token, `/me/orders/${encodeURIComponent(p.ref)}`)),
 };
 
 function initCustomerPanel() {
@@ -248,11 +210,9 @@ function buildCustomerShell() {
     h('div', { id: 'c-topics', class: 'topics hidden' }),
     h('div', { id: 'c-messages', class: 'messages' }),
     h('div', { id: 'c-rating', class: 'rating hidden' }),
-    h('div', { id: 'c-orders', class: 'orders hidden' }),
     h('div', { class: 'composer' }, input,
       h('button', { type: 'button', class: 'primary', id: 'c-send', onclick: () => customerSend() }, 'Kirim')),
     h('div', { class: 'actions' },
-      h('button', { type: 'button', id: 'c-card', onclick: customerPickOrder }, 'Lampirkan order'),
       h('button', { type: 'button', id: 'c-complaint', onclick: customerComplaint }, 'Ajukan pengaduan'),
       h('button', { type: 'button', class: 'danger-ghost', onclick: customerReportFake }, 'Laporkan CS palsu'),
       h('button', { type: 'button', id: 'c-end', onclick: customerEnd }, 'Akhiri chat')));
@@ -350,7 +310,6 @@ function renderCustomer() {
   fill(byId('c-status'), ...customerHeader(home));
   const resolved = t?.status === 'resolved';
   byId('c-topics').classList.toggle('hidden', active || resolved);
-  byId('c-card').disabled = !active;
   byId('c-complaint').disabled = !active;
   byId('c-end').disabled = !(active || resolved);
   renderRating(t);
@@ -419,37 +378,6 @@ async function customerSend(preset) {
   }
 }
 
-async function customerPickOrder() {
-  const box = byId('c-orders');
-  if (!box.classList.contains('hidden')) {
-    box.classList.add('hidden');
-    return;
-  }
-  try {
-    const res = await adapter(customer.token, '/me/orders?limit=5');
-    const orders = res.data?.orders || [];
-    fill(box, h('div', { class: 'orders-title' }, 'Pilih order dari OLT untuk dilampirkan'),
-      orders.map((o) => h('button', {
-        type: 'button',
-        class: 'order-row',
-        onclick: async () => {
-          box.classList.add('hidden');
-          try {
-            await rpc(customer.token, 'send_card', {
-              p_room_id: customer.home.room_id, p_card: 'order', p_ref: o.order_id, p_client_id: newId(),
-            });
-            await pollCustomer();
-          } catch (err) {
-            fail(err);
-          }
-        },
-      }, `${o.order_id} · ${o.code} ${o.side === 'buy' ? 'Beli' : 'Jual'} · ${o.status}`)));
-    box.classList.remove('hidden');
-  } catch (err) {
-    fail(err);
-  }
-}
-
 async function customerComplaint() {
   if (!window.confirm('Ajukan pengaduan resmi? Waktu pengaduan dicatat dan tenggat penyelesaian dihitung dalam hari kerja.')) return;
   try {
@@ -486,15 +414,10 @@ async function customerEnd() {
 
 const agent = {
   cur: null, me: null, lists: null, tab: 'open', selected: null, detail: null,
-  messages: new Map(), cursor: null, polling: false, side: 'customer', owner: null,
+  messages: new Map(), cursor: null, polling: false, side: 'notes', owner: null,
 };
 
 const tok = () => agent.cur.token;
-
-const agentHandlers = {
-  card: (payload) => showCard(payload, (p) => adapter(tok(),
-    `/agent/tickets/${agent.selected}/customer/${p.card === 'cash_transaction' ? 'cash-transactions' : 'orders'}/${encodeURIComponent(p.ref)}`)),
-};
 
 function initAgentPanel() {
   renderAgentHead();
@@ -732,7 +655,7 @@ async function refreshAgentChat() {
     const list = await rpc(tok(), 'get_messages', args);
     if (mergeMessages(agent.messages, list)) {
       agent.cursor = newestCursor(agent.messages);
-      renderMessages(byId('a-messages'), agent.messages, 'agent', agentHandlers);
+      renderMessages(byId('a-messages'), agent.messages, 'agent', {});
     }
     if (isOwner() && agent.detail.unread_count > 0) await rpc(tok(), 'mark_read', { p_room_id: agent.detail.room_id });
   } catch (err) {
@@ -786,7 +709,7 @@ function resolveTicket() {
 }
 
 function loadSide() {
-  const tabs = [['customer', 'Info nasabah'], ['notes', 'Catatan internal'], ['history', 'Riwayat']];
+  const tabs = [['notes', 'Catatan internal'], ['history', 'Riwayat']];
   fill(byId('a-side'),
     h('div', { class: 'tabs' }, tabs.map(([value, label]) => h('button', {
       type: 'button',
@@ -797,51 +720,7 @@ function loadSide() {
       },
     }, label))),
     h('div', { id: 'a-side-content' }));
-  ({ customer: loadCustomerInfo, notes: loadNotes, history: loadHistory })[agent.side]();
-}
-
-async function loadCustomerInfo() {
-  const box = byId('a-side-content');
-  if (!isOwner()) {
-    fill(box, h('p', { class: 'muted' }, 'Data OLT hanya bisa dibuka oleh CS pemilik tiket yang aktif.'));
-    return;
-  }
-  fill(box, h('p', { class: 'muted' }, 'Memuat data dari OLT…'));
-  const base = `/agent/tickets/${agent.selected}/customer`;
-  const [profile, orders, security] = await Promise.allSettled([
-    adapter(tok(), `${base}/profile`), adapter(tok(), `${base}/orders?limit=5`), adapter(tok(), `${base}/security`),
-  ]);
-  const section = (title, result, render) => [
-    h('h4', {}, title),
-    result.status === 'fulfilled' ? render(result.value.data) : h('p', { class: 'muted' }, result.reason?.message || 'Tidak tersedia'),
-  ];
-  const field = h('select', { 'aria-label': 'Field' }, REVEAL_FIELDS.map(([value, label]) => h('option', { value }, label)));
-  const reason = h('select', { 'aria-label': 'Alasan' }, REVEAL_REASONS.map(([value, label]) => h('option', { value }, label)));
-  const output = h('div', { class: 'reveal-out' });
-  fill(box,
-    section('Profil (tersamar)', profile, (p) => detailList({
-      nama: p.name, kode: p.client_code, email: p.email, hp: p.phone, nik: p.nik,
-      status: p.account_status, kyc: p.kyc_status, rdn: p.rdn ? `${p.rdn.bank} ${p.rdn.number}` : '-',
-    })),
-    h('div', { class: 'reveal' }, field, reason, h('button', {
-      type: 'button',
-      onclick: async () => {
-        try {
-          const res = await adapter(tok(), `${base}/reveal`, { method: 'POST', body: { field: field.value, reason: reason.value } });
-          fill(output, `${res.data.field}: ${res.data.value} · tampil ${Math.round(res.data.valid_seconds / 60)} menit, tercatat di audit log`);
-          setTimeout(() => fill(output, 'Disembunyikan lagi.'), res.data.valid_seconds * 1000);
-        } catch (err) {
-          fail(err);
-        }
-      },
-    }, 'Tampilkan')),
-    output,
-    section('Order terakhir', orders, (data) => (data.orders || []).length
-      ? data.orders.map((o) => h('div', { class: 'list-row' },
-        `${o.order_id} · ${o.code} ${o.side === 'buy' ? 'Beli' : 'Jual'} ${o.lot} lot @ ${o.price} · ${o.status}`
-        + (o.reject_reason ? ` (${o.reject_reason})` : '')))
-      : h('p', { class: 'muted' }, 'Tidak ada order.')),
-    section('Keamanan akun', security, (data) => detailList(data)));
+  ({ notes: loadNotes, history: loadHistory })[agent.side]();
 }
 
 async function loadNotes() {

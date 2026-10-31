@@ -347,7 +347,7 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get stockDiscussion => 'Discuss';
 
   @override
-  String get stockNotFound => 'Unknown stock code.';
+  String get stockNotFound => 'Invalid stock code.';
 
   @override
   String get chats => 'Chats';
@@ -615,9 +615,6 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get supportOpenLink => 'Open guide';
 
   @override
-  String get supportViewCard => 'View details';
-
-  @override
   String get supportRatePrompt => 'Rate this service';
 
   @override
@@ -636,14 +633,6 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   @override
   String get supportPickTopicHint =>
       'Pick a topic so the right agent can help you right away.';
-
-  @override
-  String get supportAttachOrder => 'Attach an order';
-
-  @override
-  String supportAttached(String ref) {
-    return 'Order $ref will be attached';
-  }
 
   @override
   String get supportHistory => 'View chat history';
@@ -749,12 +738,6 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
 
   @override
   String get supportClosed => 'Chat ended.';
-
-  @override
-  String get supportCardSent => 'Order attached to the chat.';
-
-  @override
-  String get supportNoOrders => 'No recent orders.';
 
   @override
   String supportTicketMeta(String date, String status) {

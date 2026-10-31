@@ -525,28 +525,6 @@ services:
             - admin
             - anon
 
-  ## Customer service: data OLT nasabah lewat customer-adapter (izin diputuskan database).
-  ## Wajib apikey + JWT pengguna (nasabah atau agen CS 2FA) di header Authorization.
-  - name: cs-v1
-    _comment: 'customer-adapter: /cs/v1/* -> http://customer-adapter:8080/v1/*'
-    url: http://customer-adapter:8080/v1/
-    routes:
-      - name: cs-v1-all
-        strip_path: true
-        paths:
-          - /cs/v1/
-    plugins:
-      - name: cors
-      - name: key-auth
-        config:
-          hide_credentials: true
-      - name: acl
-        config:
-          hide_groups_header: true
-          allow:
-            - admin
-            - anon
-
   ## Protected Dashboard - catch all remaining routes
   - name: dashboard
     _comment: 'Studio: /* -> http://studio:3000/*'

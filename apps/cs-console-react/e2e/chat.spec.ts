@@ -9,7 +9,7 @@ const png = Buffer.from(
   'base64',
 )
 
-test('balas, tanda dibaca, lampiran gambar, dan pesan nasabah realtime', async ({ page }) => {
+test('balas, tanda dibaca, lampiran, pesan nasabah realtime, dan panel info nasabah', async ({ page }) => {
   const customer = await Customer.login('andi_trader')
   try {
     await signIn(page, 'Nadia')
@@ -18,6 +18,10 @@ test('balas, tanda dibaca, lampiran gambar, dan pesan nasabah realtime', async (
     await claim(page, ticket.id, ticket.ticket_number)
     const log = page.getByRole('log')
     await expect(log.getByText(opening)).toBeVisible()
+
+    const panel = page.getByRole('complementary', { name: 'Info nasabah' })
+    await expect(panel.getByText(`@${customer.username}`)).toBeVisible()
+    await expect(panel.getByRole('heading')).toHaveText(['Riwayat tiket', 'Catatan internal'])
 
     const box = page.getByRole('textbox', { name: 'Balas' })
     const reply = `Baik, kami cek dulu ya ${tag()}`

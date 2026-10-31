@@ -31,7 +31,12 @@ Dasar audit:
 **Penyesuaian akibat urutan ini:**
 - Panel admin (`apps/admin`) menggantikan rencana "UI moderasi di package".
 - Dashboard analitik memakai Perses atau panel admin, bukan Grafana (AGPL).
-- Integrasi OLT memakai satu protokol: [market-integration.md](market-integration.md).
+- Integrasi OLT memakai satu protokol: [olt-integration.md](olt-integration.md).
+
+**Penyesuaian 31 Okt 2026: satu dependensi keluar.** Server hanya memvalidasi token login ke OLT ([olt-integration.md](olt-integration.md)). Akibatnya:
+- Bagian data pasar dan portofolio di [PROMPT-FEATURES.md](PROMPT-FEATURES.md) dibatalkan: `market-adapter`, harga saat posting, sinkron daftar saham, dan badge holder.
+- `customer-adapter` (data nasabah dan aksi akun untuk CS) serta kartu order di chat CS dihapus (migrasi `0037_client_owned_business_data`).
+- Web CS Flutter (`apps/cs-console`) dihapus; web CS kini hanya versi React.
 
 **Tahap 1: yang dikerjakan**
 - **Profil.** `docker/compose.yml` (dasar) ditambah `compose.dev.yml`, `compose.prod.yml`, `stack.cluster.yml` (kerangka), dan `compose.dummy-olt.yml` (tambahan dev). Pemilihan lewat `make up PROFILE=dev|single|cluster`.
@@ -170,7 +175,6 @@ Dasar audit:
 - **E2E `app_test`** tidak lagi menunggu post seed `$ANTM` muncul di urutan teratas feed (rapuh setelah ada post baru), cukup kartu post pertama.
 
 **Tahap 3: dilanjutkan di tahap lain**
-- **F1.** OLT dummy diselaraskan penuh ke Protokol v1 (field `v`, status `ERROR`, kode error v1), bersama `quote`, `instruments`, dan `holdings`. auth-bridge sudah kompatibel karena semua status selain `OK` dianggap gagal.
 - **Tahap 6.**
   - Prometheus men-scrape `auth-bridge:9100/metrics`, dengan alert untuk breaker terbuka, lonjakan `valkey_errors_total`, dan rasio 429.
   - Provenance/SBOM dibuat di CI saat image di-push ke registry, bukan di build lokal.

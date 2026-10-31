@@ -5,6 +5,7 @@ import 'package:olt_social/olt_social.dart';
 
 import 'fake_olt_auth.dart';
 import 'main.dart';
+import 'olt_stocks.dart';
 import 'support_notifications.dart';
 
 class HomePage extends StatefulWidget {
@@ -123,7 +124,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          Expanded(child: OltStockFeed(key: ValueKey(_stock), stockCode: _stock)),
+          Expanded(child: OltStockFeed(key: ValueKey(_stock), stockCode: _stock, stockName: oltStocks[_stock])),
         ],
       ),
       2 => const OltChatList(),
@@ -253,6 +254,7 @@ class _PostTapOverride implements OltSocialDependencies {
     onUserTap: _base.callbacks.onUserTap,
     onRoomTap: _base.callbacks.onRoomTap,
     onPostTap: (_, postId) => _onPost(postId),
+    stockSearch: _base.callbacks.stockSearch,
   );
 
   @override

@@ -63,10 +63,3 @@ export async function rpc<T, K extends keyof Functions = keyof Functions>(
   if (error) throw fromPostgrest(error, status)
   return data
 }
-
-export async function accessToken(): Promise<string> {
-  const { data } = await supabase().auth.getSession()
-  const token = data.session?.access_token
-  if (!token) throw fromPostgrest({ code: 'PGRST301', message: 'session' }, 401)
-  return token
-}

@@ -69,21 +69,8 @@ export type Database = {
         }
         Returns: Json
       }
-      agent_customer_access: {
-        Args: { p_kind: string; p_ticket_id: string }
-        Returns: Json
-      }
       agent_heartbeat: { Args: Record<PropertyKey, never>; Returns: Json }
       agent_me: { Args: Record<PropertyKey, never>; Returns: Json }
-      agent_reveal_access: {
-        Args: { p_field: string; p_reason: string; p_ticket_id: string }
-        Returns: Json
-      }
-      agent_secure_account: { Args: { p_ticket_id: string }; Returns: Json }
-      agent_secure_account_result: {
-        Args: { p_ok: boolean; p_results: Json; p_ticket_id: string }
-        Returns: undefined
-      }
       agent_send_message: {
         Args: {
           p_attachments?: Json
@@ -104,7 +91,6 @@ export type Database = {
       check_sensitive: { Args: { p_text: string }; Returns: Json }
       claim_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       close_ticket: { Args: { p_ticket_id: string }; Returns: Json }
-      customer_data_access: { Args: { p_kind: string }; Returns: Json }
       customer_history: { Args: { p_customer_id: string }; Returns: Json }
       flag_ticket: {
         Args: { p_flag: string; p_ticket_id: string }
@@ -132,8 +118,6 @@ export type Database = {
       online_agents: { Args: Record<PropertyKey, never>; Returns: Json }
       open_ticket: {
         Args: {
-          p_card?: string
-          p_card_ref?: string
           p_complaint?: boolean
           p_language?: string
           p_screen?: string
@@ -182,21 +166,6 @@ export type Database = {
       }
       room_members: { Args: { p_room_id: string }; Returns: Json }
       search_tickets: { Args: { p_query: string }; Returns: Json }
-      send_card: {
-        Args: {
-          p_card: string
-          p_client_id?: string
-          p_ref: string
-          p_room_id: string
-        }
-        Returns: unknown[]
-        SetofOptions: {
-          from: "*"
-          to: "chat_message"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       send_message: {
         Args: {
           p_attachments?: Json

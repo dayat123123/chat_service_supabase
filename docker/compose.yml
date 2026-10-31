@@ -746,7 +746,7 @@ services:
       BREAKER_FAILURE_THRESHOLD: ${AUTH_BRIDGE_BREAKER_FAILURE_THRESHOLD:-5}
       BREAKER_COOLDOWN: ${AUTH_BRIDGE_BREAKER_COOLDOWN:-30}
       OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-websocket}
-      # Kosong = default Protokol v1 (docs/market-integration.md).
+      # Kosong = default Protokol v1 (docs/olt-integration.md).
       OLT_WS_URL: ${OLT_WS_URL:-}
       OLT_WS_TIMEOUT: ${OLT_WS_TIMEOUT:-5}
       OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}
@@ -773,48 +773,7 @@ services:
 
   # --- Customer service lewat chat (docs/cs-chat) -------------------------------
   # Profil compose `cs`: selalu aktif di dev; produksi menyalakannya dengan
-  # CS=1 (Windows: -Cs) setelah endpoint OLT data nasabah siap.
-
-  customer-adapter:
-    <<: *base
-    profiles: [cs]
-    build:
-      context: ../services/cs
-      args:
-        SERVICE: customer-adapter
-    image: olt-social/customer-adapter:0.3.0
-    # app: Kong -> adapter, adapter -> PostgREST. egress: endpoint OLT.
-    networks: [app, egress]
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-      rest:
-        condition: service_healthy
-    stop_grace_period: 45s
-    secrets: [jwt_secret, olt_customer_service_token]
-    environment:
-      APP_ENV: production
-      LOG_LEVEL: ${CS_LOG_LEVEL:-info}
-      PORT: 8080
-      OPS_PORT: 9100
-      JWT_SECRET_FILE: /run/secrets/jwt_secret
-      POSTGREST_URL: http://rest:3000
-      # Endpoint OLT khusus data nasabah (kredensial terpisah dari harga/login).
-      OLT_WS_URL: ${OLT_CUSTOMER_WS_URL:-}
-      OLT_SERVICE_TOKEN_FILE: /run/secrets/olt_customer_service_token
-      OLT_WS_TIMEOUT: ${OLT_CUSTOMER_WS_TIMEOUT:-5}
-      OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}
-      BREAKER_FAILURE_THRESHOLD: 5
-      BREAKER_COOLDOWN: 30
-    healthcheck:
-      test: ["CMD", "/app", "healthcheck"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-    deploy:
-      resources:
-        limits: {cpus: "0.5", memory: 128M, pids: 64}
+  # CS=1 (Windows: -Cs).
 
   # Web CS React (apps/cs-console-react): SPA statis di nginx non-root. Browser
   # agen memanggil API lewat SUPABASE_URL; env.js ditulis saat container start.
@@ -943,5 +902,3 @@ secrets:
     file: ./secrets/valkey_password
   postgrest_db_uri:
     file: ./secrets/postgrest_db_uri
-  olt_customer_service_token:
-    file: ./secrets/olt_customer_service_token

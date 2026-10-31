@@ -4,20 +4,21 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 
 **Status (30 Okt 2026):** semua tahap Revisi CS-2 (R1–R4) sudah berjalan: backend model "ambil tiket", web CS, integrasi aplikasi nasabah, serta dashboard supervisor, laporan, dan pengaturan admin.
 
+**Pembaruan 31 Okt 2026: satu dependensi keluar.** Server hanya memvalidasi token login ke OLT ([olt-integration.md](../olt-integration.md)). `customer-adapter`, kartu order/transaksi dana, panel data nasabah (profil, order, dana, sesi, buka data tersamar, "Amankan akun"), dan web CS Flutter dihapus lewat migrasi `0037_client_owned_business_data`. Web CS kini hanya versi React.
+
 | Tahap | Isi | Status |
 |---|---|---|
-| CS1 | Fondasi: perluasan chat, schema `cs`, RLS, catatan internal, audit log, `customer-adapter` | Selesai |
+| CS1 | Fondasi: perluasan chat, schema `cs`, RLS, catatan internal, audit log (`customer-adapter` dihapus 31 Okt 2026) | Selesai |
 | **R1** | Backend model ambil tiket: `cs.tickets`, klaim atomik, transfer dengan persetujuan, `cs-sweep`, API tiket, tes rebutan | **Selesai** |
-| **R2** | Web CS khusus ([`apps/cs-console`](../../apps/cs-console/README.md)): login + TOTP, 3 kolom, ambil tiket, chat, catatan internal, balasan cepat, info nasabah, notifikasi | **Selesai** |
-| **R3** | Integrasi aplikasi nasabah: modul `support` di `olt_social` (room CS disematkan, pilih topik + kartu order, header status, aksi, rating di chat, tiket saya, notifikasi lokal, antrean offline, peringatan data sensitif). Windows: panel samping. Android: layar penuh | **Selesai** |
+| **R2** | Web CS khusus (versi Flutter, dihapus 31 Okt 2026 setelah cutover ke React): login + TOTP, 3 kolom, ambil tiket, chat, catatan internal, balasan cepat, notifikasi | **Selesai** |
+| **R3** | Integrasi aplikasi nasabah: modul `support` di `olt_social` (room CS disematkan, pilih topik, header status, aksi, rating di chat, tiket saya, notifikasi lokal, antrean offline, peringatan data sensitif). Windows: panel samping. Android: layar penuh | **Selesai** |
 | **R4** | Dashboard supervisor realtime + alert tiket terlambat, laporan + ekspor CSV, pengaturan admin (akun CS, topik, quick reply global, jam layanan & libur, pesan otomatis, lepas otomatis, mode penugasan), halaman demo dev dipindah ke model tiket (bagian 5) | **Selesai** |
-| React | Web CS ditulis ulang dengan React + TypeScript ([`apps/cs-console-react`](../../apps/cs-console-react/README.md), [prompt](../PROMPT-CS-CONSOLE-REACT.md), [paritas](../cs-console-parity.md)). Backend tidak berubah. M1–M4 selesai; console Flutter tetap ada sampai cutover M5 disetujui | **M1–M4 selesai** |
+| React | Web CS ditulis ulang dengan React + TypeScript ([`apps/cs-console-react`](../../apps/cs-console-react/README.md), [prompt](../PROMPT-CS-CONSOLE-REACT.md), [paritas](../cs-console-parity.md)). M1–M5 selesai; console Flutter dihapus 31 Okt 2026 | **Selesai** |
 
 | Dokumen | Untuk |
 |---|---|
-| [olt-data-requirements.md](olt-data-requirements.md) | Tim OLT: data nasabah dan dua aksi yang dibutuhkan `customer-adapter` |
+| [olt-integration.md](../olt-integration.md) | Tim OLT: satu-satunya kebutuhan server, yaitu validasi token login |
 | [compliance-questions.md](compliance-questions.md) | Tim kepatuhan: 19 pertanyaan dengan usulan yang sudah dipakai sebagai pengaturan |
-| [services/cs](../../services/cs/README.md) | Pengembang & operator `customer-adapter` |
 
 ## Keputusan
 
@@ -35,10 +36,10 @@ Pemilik produk mendelegasikan pilihan ke tim. Yang dipilih beserta alasannya:
 5. **Optimistic concurrency.** Aksi yang mengubah tiket (lepas, transfer, selesai, prioritas) bisa mengirim `version`. Bila tiket sudah berubah, aksi ditolak `stale_ticket` dan layar CS memuat ulang tiket.
 6. **Akses CS ke riwayat:** semua CS bisa **pratinjau** pesan tiket `open` (hanya pesan tiket itu, hanya-baca). Pemilik membaca seluruh riwayat room nasabah selama menangani, dan sampai 24 jam setelah tiketnya selesai (`agent.history_hours`). Akses langsung dicabut saat tiket dilepas atau ditransfer.
 7. **Pesan CS tidak bisa diubah nasabah.** Edit dan hapus pesan ditolak (`support_message_locked`), dan hapus akun tidak menghapus riwayat CS, karena transkrip adalah catatan pengaduan. Moderasi (service/admin) tetap bisa menghapus konten ilegal.
-8. **Kartu order/transaksi hanya menyimpan ID.** Isinya diambil langsung dari OLT lewat adapter setiap kali ditampilkan. Aturan "jangan menyimpan lot, nilai, atau harga" tetap berlaku.
+8. **Tidak ada data bisnis OLT di chat CS** (31 Okt 2026). Kartu order/transaksi dihapus. Nasabah menjelaskan masalah lewat teks atau gambar; topik dan asal layar tetap tercatat di tiket.
 9. **Pesan CS yang meminta OTP/PIN/password diblokir tanpa melempar error.** Panggilan mengembalikan `status: blocked`, sehingga audit log dan peringatan ke supervisor tetap tersimpan.
 10. **Room CS disematkan paling atas di daftar chat nasabah**, dengan nama dari pengaturan `brand.support_name` (default "CS OLT") dan badge resmi. Tidak bisa dibisukan atau ditinggalkan.
-11. **"Amankan akun" dijalankan sinkron oleh adapter** dengan `idempotency_key` per tiket. Tidak perlu antrean pekerjaan.
+11. **Data dan aksi akun ada di back-office OLT** (31 Okt 2026). Web CS hanya menampilkan identitas dari token login, riwayat tiket, dan catatan internal; agen membuka back-office OLT untuk data akun atau aksi seperti logout paksa.
 
 ## Model data
 
@@ -46,7 +47,7 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 
 **Perluasan chat yang ada:**
 - `chat_rooms.type` + `support`, kolom `customer_id`, satu room `support` per nasabah (unique index). Semua tiket nasabah ada di room yang sama.
-- `messages` + `kind` (`text`, `system`, `card`, `quick_reply`, `help_link`, `identity_request`, `csat`), `session_id` (menunjuk tiket), `sender_role` (`customer`/`agent`/`supervisor`/`system`), `payload`. Tipe `chat_message` ikut diperluas (kompatibel dengan client lama).
+- `messages` + `kind` (`text`, `system`, `quick_reply`, `help_link`, `identity_request`, `csat`), `session_id` (menunjuk tiket), `sender_role` (`customer`/`agent`/`supervisor`/`system`), `payload`. Tipe `chat_message` ikut diperluas (kompatibel dengan client lama).
 
 **Schema `cs`:**
 
@@ -62,7 +63,7 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 | `quick_replies` | Balasan cepat pribadi/tim/global |
 | `cs_settings`, `cs_settings_history` | Pengaturan berversi (jam layanan, mode penugasan, batas, pesan otomatis ID/EN) |
 | `holidays` | Kalender libur 2026–2027 (nasional, cuti bersama, libur bursa) |
-| `cs_audit_log` | Audit append-only semua aksi CS/supervisor/admin, termasuk membuka data nasabah (partisi bulanan) |
+| `cs_audit_log` | Audit append-only semua aksi CS/supervisor/admin (partisi bulanan) |
 
 ## Status tiket
 
@@ -108,12 +109,11 @@ Semua dicek di server (RLS + fungsi). Akun CS wajib `aal2`. Akun nonaktif langsu
 
 | Untuk | Fungsi |
 |---|---|
-| Nasabah | `topics`, `support_home`, `open_ticket`, `my_tickets`, `ticket_messages`, `send_message`, `send_card`, `get_messages`, `mark_read`, `close_ticket`, `rate_ticket`, `request_complaint`, `report_fake_cs`, `check_sensitive`, `customer_data_access` (adapter) |
-| CS | `agent_me`, `agent_set_status`, `agent_heartbeat`, `ticket_lists` (Terbuka / Saya / Selesai hari ini / transfer masuk & keluar), `search_tickets`, `claim_ticket`, `release_ticket`, `request_transfer`, `respond_transfer`, `cancel_transfer`, `wait_customer`, `resolve_ticket`, `set_ticket_priority`, `flag_ticket`, `agent_send_message` (`text`, `quick_reply`, `help_link`, `card`), `add_note`, `notes`, `ticket_detail`, `customer_history`, `online_agents`, `room_members`, `quick_replies` |
+| Nasabah | `topics`, `support_home`, `open_ticket`, `my_tickets`, `ticket_messages`, `send_message`, `get_messages`, `mark_read`, `close_ticket`, `rate_ticket`, `request_complaint`, `report_fake_cs`, `check_sensitive` |
+| CS | `agent_me`, `agent_set_status`, `agent_heartbeat`, `ticket_lists` (Terbuka / Saya / Selesai hari ini / transfer masuk & keluar), `search_tickets`, `claim_ticket`, `release_ticket`, `request_transfer`, `respond_transfer`, `cancel_transfer`, `wait_customer`, `resolve_ticket`, `set_ticket_priority`, `flag_ticket`, `agent_send_message` (`text`, `quick_reply`, `help_link`), `add_note`, `notes`, `ticket_detail`, `customer_history`, `online_agents`, `room_members`, `quick_replies` |
 | Supervisor | Semua fungsi CS, plus tab "Semua aktif" di `ticket_lists`, `reassign_ticket`, `join_ticket`, `supervisor_overview`, `report_summary` |
 | Admin (`cs_admin`) | `report_summary`, `admin_agents`, `admin_options`, `admin_update_agent`, `admin_topics`, `admin_save_topic`, `admin_quick_replies`, `admin_save_quick_reply`, `admin_settings`, `admin_set_setting`, `admin_holidays`, `admin_save_holiday`, `admin_delete_holiday`. Akun baru dibuat lewat Edge Function `cs-admin` |
 | Layanan (service role) | `service_create_agent`, hanya dipanggil Edge Function `cs-admin` |
-| Adapter (dengan JWT CS) | `agent_customer_access`, `agent_reveal_access`, `agent_secure_account`, `agent_secure_account_result` |
 
 Topik realtime (event dikirim server):
 - `cs:queue`: `ticket_opened`, `ticket_claimed` (+ nama pengambil), `ticket_released`, `ticket_transferred`, `ticket_reassigned`, `ticket_resolved`, `ticket_reopened`, `ticket_closed`, `ticket_updated`, `ticket_message`, serta peringatan supervisor.
@@ -129,9 +129,8 @@ Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
   - Mode penugasan (`claim` / `auto_assign`).
   - Waktu: jendela buka kembali 24 jam, riwayat CS, ambang CS dianggap tidak aktif (10 menit), lepas otomatis saat offline (default mati), kedaluwarsa transfer (10 menit).
   - Penyelesaian: aturan prioritas, tenggat pengaduan, hasil penyelesaian.
-  - Data nasabah: batas akses data nasabah, alasan membuka data, aksi amankan akun.
   - Lainnya: host tautan bantuan dan pesan otomatis ID/EN.
-- Rate limit (`private.rate_limits`, tanpa faktor trust): `cs_ticket` 5 tiket baru/jam, `cs_message` 30 pesan/menit. CS: 30 pembukaan profil dan 10 pembukaan data tersamar per jam.
+- Rate limit (`private.rate_limits`, tanpa faktor trust): `cs_ticket` 5 tiket baru/jam, `cs_message` 30 pesan/menit.
 
 ## Supervisor dan admin (R4)
 
@@ -164,18 +163,16 @@ Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
 - **Jam layanan (WIB) dan hari libur.** Libur nasional dan cuti bersama menutup layanan. Libur bursa hanya menutup pasar.
 - **Pesan otomatis ID/EN.** Hanya variabel yang sudah ada yang boleh dipakai.
 - **Lepas otomatis bila pemilik offline** (default mati), mode penugasan `claim` (default) atau `auto_assign`, dan batas alert supervisor.
-- Hanya kunci pengaturan di atas yang bisa diubah dari console. Retensi, batas akses data nasabah, dan pengaturan lain tetap lewat migrasi. Setiap perubahan tercatat di `cs_settings_history` dan `cs_audit_log`.
+- Hanya kunci pengaturan di atas yang bisa diubah dari console. Retensi dan pengaturan lain tetap lewat migrasi. Setiap perubahan tercatat di `cs_settings_history` dan `cs_audit_log`.
 
 ## Tes
 
 | Perintah | Isi |
 |---|---|
-| `make test-db` | pgTAP 018–023 untuk CS: kalender, alur tiket (83 tes), keamanan & akses (67 tes), masking, anggota room, supervisor & admin (69 tes: dashboard, laporan, nonaktifkan akun, validasi pengaturan, hak akses) |
+| `make test-db` | pgTAP 018–023 untuk CS: kalender, alur tiket (83 tes), keamanan & akses (61 tes), masking, anggota room, supervisor & admin (69 tes: dashboard, laporan, nonaktifkan akun, validasi pengaturan, hak akses) |
 | `make cs-race` | Tes rebutan (Revisi CS-2 bagian 2.3). 50 CS mengambil 1 tiket bersamaan: tepat 1 berhasil, 49 mendapat "Tiket sudah diambil oleh …". 200 tiket × 30 CS acak bersamaan: tidak ada tiket ganda, tidak ada CS melebihi 5 tiket aktif, respons yang diterima CS sama persis dengan pemilik di database. Dijalankan langsung ke fungsi database dan lewat 3 replika PostgREST khusus tes. Data uji dihapus setelahnya |
-| `make test-cs` | Unit test `customer-adapter` |
-| `make smoke-cs` | End-to-end lewat Kong + OLT dummy (40 skenario): buka tiket, ambil, rebutan, balas, OTP diblokir, catatan, lampiran gambar dari CS, data nasabah, transfer, versi kedaluwarsa, selesai, rating |
-| `cd apps/cs-console && flutter test` | Web CS (29 tes): urutan dan filter tiket, kalah rebutan, auth + TOTP, ganti password sementara, akun dicabut saat bekerja, versi tiket kedaluwarsa, dashboard & laporan, CSV aman, akun admin lewat `cs-admin` |
-| `make test-cs-console` | Web CS React: lint, typecheck, 64 unit test, build, bundle awal ≤ 300 KB gzip, lisensi |
+| `make smoke-cs` | End-to-end lewat Kong + OLT dummy (30 pemeriksaan): buka tiket, ambil, rebutan, balas, OTP diblokir, catatan, lampiran gambar dari CS, transfer, versi kedaluwarsa, selesai, rating |
+| `make test-cs-console` | Web CS React: lint, typecheck, 71 unit test, build, bundle awal ≤ 300 KB gzip, lisensi |
 | `make e2e-cs-console` | Web CS React, Playwright vs stack dev (13 tes): login + TOTP, rebutan klaim, chat + lampiran + tanda dibaca, lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor gabung + pindahkan, tampilan terang/gelap, kinerja 1000 tiket + 5000 pesan |
 
 ## Menjalankan
@@ -183,8 +180,7 @@ Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
 ```bash
 make up DUMMY_OLT=1          # Windows: .\make.ps1 up -DummyOlt
 make test-db && make cs-race && make smoke-cs
-make cs-console              # web CS Flutter di http://localhost:8084 (akun dev: scripts/cs-demo/runtime/staff.json)
-make cs-console-react        # web CS React di http://localhost:8085 (akun yang sama, kode TOTP: make cs-totp)
+make cs-console-react        # web CS React di http://localhost:8085 (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: make cs-totp)
 make cs-demo                 # halaman demo (dev) di http://localhost:8082
 ```
 
@@ -192,10 +188,9 @@ make cs-demo                 # halaman demo (dev) di http://localhost:8082
 
 - **GoTrue:** login email + password dinyalakan khusus akun staf yang dibuat admin. Pendaftaran publik tetap mati. Password minimal 12 karakter, dan TOTP wajib karena API CS menuntut `aal2`.
 - **Akun staf dev:** dibuat `scripts/cs-staff-setup.sh` lewat API admin GoTrue (UUID akun = UUID agen), lengkap dengan faktor TOTP terverifikasi: Nadia, Bima, Laras (CS), Sinta (supervisor), Adi (admin). Akun baru di luar itu dibuat admin dari menu Pengaturan → Akun CS.
-- **Widget bersama:** web CS memakai widget chat `olt_social` lewat `OltSupportStaff`, yaitu dependensi dengan sesi GoTrue staf. Repository chat-nya `SupportChatRepository` berbasis `cs_api`. Pesan sistem tampil ringkas di tengah, pesan CS/supervisor bertanda "CS Resmi", dan kartu, pilihan cepat, serta tautan bantuan dirender sesuai `kind`.
 - **Realtime:** daftar tiket dimuat ulang saat ada event `cs:queue`/`cs:agent:<id>`, ditambah polling 30 detik sebagai cadangan.
 
-**Halaman demo** (`scripts/cs-demo`) hanya alat pengembangan dan khusus profil `dev`. UI resminya adalah web CS (R2) dan aplikasi nasabah (R3).
+**Halaman demo** (`scripts/cs-demo`) hanya alat pengembangan dan khusus profil `dev`. UI resminya adalah web CS React dan aplikasi nasabah (R3).
 - Nasabah login dengan token OLT tiruan.
 - Tiga CS demo (Nadia, Bima, Laras) memakai token uji `aal2` berlaku 8 jam, disimpan di `scripts/cs-demo/runtime/` (di-gitignore).
 

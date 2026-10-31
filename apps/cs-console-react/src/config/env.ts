@@ -16,7 +16,6 @@ export type AppEnv = {
   supabaseUrl: string
   anonKey: string
   appEnv: 'development' | 'staging' | 'production'
-  adapterUrl: string
 }
 
 export type EnvResult = { ok: true; env: AppEnv } | { ok: false; problems: string[] }
@@ -26,14 +25,12 @@ export function readEnv(source: Record<string, unknown> | undefined = window.__C
   if (!parsed.success) {
     return { ok: false, problems: parsed.error.issues.map((issue) => issue.path.join('.') || issue.message) }
   }
-  const supabaseUrl = parsed.data.SUPABASE_URL.replace(/\/+$/, '')
   return {
     ok: true,
     env: {
-      supabaseUrl,
+      supabaseUrl: parsed.data.SUPABASE_URL.replace(/\/+$/, ''),
       anonKey: parsed.data.SUPABASE_ANON_KEY,
       appEnv: parsed.data.APP_ENV,
-      adapterUrl: `${supabaseUrl}/cs/v1`,
     },
   }
 }

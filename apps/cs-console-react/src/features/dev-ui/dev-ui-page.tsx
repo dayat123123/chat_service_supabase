@@ -1,4 +1,4 @@
-import { CheckIcon, EyeIcon, LogOutIcon, PanelRightOpenIcon, SearchIcon } from 'lucide-react'
+import { CheckIcon, LogOutIcon, PanelRightOpenIcon, SearchIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -31,18 +31,21 @@ import { toastClasses } from '@/components/ui/toaster'
 import { Composer } from '@/features/conversation/components/composer'
 import { MessageList } from '@/features/conversation/components/message-list'
 import type { SendResult } from '@/features/conversation/types'
-import { InfoRow } from '@/features/customer/components/revealable-value'
+import { CustomerHeader, HistoryList } from '@/features/customer/components/customer-panel'
+import { NoteList } from '@/features/customer/components/notes-section'
 import { TicketRow } from '@/features/tickets/components/ticket-row'
 import { cn } from '@/lib/utils'
 
 import {
   conversationTicket,
   sampleAgent,
+  sampleHistory,
   sampleMessages,
   sampleNotes,
   sampleNow,
   samplePending,
   sampleTickets,
+  sampleTopicName,
 } from './samples'
 
 type ThemeName = 'light' | 'dark'
@@ -186,7 +189,7 @@ function ThemeColumn({ theme }: { theme: ThemeName }) {
           <Button variant="outline">{t('conversation.transfer')}</Button>
           <Button variant="secondary">{t('app.refresh')}</Button>
           <Button variant="ghost">{t('app.cancel')}</Button>
-          <Button variant="destructive">{t('customer.secureAccount')}</Button>
+          <Button variant="destructive">{t('app.delete')}</Button>
           <Button variant="link">{t('auth.useOtherAccount')}</Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -307,7 +310,6 @@ function ThemeColumn({ theme }: { theme: ThemeName }) {
             loadingOlder={false}
             onLoadOlder={noop}
             trustedHost={() => true}
-            onOpenCard={noop}
             onResend={noop}
             onDiscard={noop}
           />
@@ -324,24 +326,13 @@ function ThemeColumn({ theme }: { theme: ThemeName }) {
       </Section>
 
       <Section title={t('devUi.customerPanel')}>
-        <dl className="rounded-lg border bg-subtle px-4 py-2">
-          <InfoRow label={t('customer.fields.name')} value="Sari Wulandari" />
-          <InfoRow
-            label={t('customer.fields.client_code')}
-            value={<span className="font-mono text-xs">****1002</span>}
-            action={
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                className="-my-1 size-6"
-                aria-label={t('customer.reveal')}
-              >
-                <EyeIcon />
-              </Button>
-            }
-          />
-          <InfoRow label={t('customer.fields.account_status')} value="active" />
-        </dl>
+        <div className="overflow-hidden rounded-lg border bg-subtle">
+          <CustomerHeader ticket={conversationTicket} />
+          <div className="flex flex-col gap-3 px-4 py-3">
+            <HistoryList items={sampleHistory} topicName={sampleTopicName} />
+            <NoteList notes={sampleNotes} />
+          </div>
+        </div>
       </Section>
 
       <Section title={t('devUi.metrics')}>

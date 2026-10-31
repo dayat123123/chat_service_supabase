@@ -8,21 +8,13 @@ part 'stock_model.g.dart';
 abstract class StockModel with _$StockModel {
   const factory StockModel({
     required String code,
-    required String name,
-    @Default('stock') String type,
-    String? sector,
     @Default(0) int watcherCount,
+    @Default(false) bool watching,
   }) = _StockModel;
 
   const StockModel._();
 
   factory StockModel.fromJson(Map<String, dynamic> json) => _$StockModelFromJson(json);
 
-  Stock toEntity() => Stock(
-    code: code,
-    name: name,
-    type: type == 'index' ? StockType.marketIndex : StockType.stock,
-    sector: sector,
-    watcherCount: watcherCount,
-  );
+  Stock toEntity() => Stock(code: code, watcherCount: watcherCount, watching: watching);
 }

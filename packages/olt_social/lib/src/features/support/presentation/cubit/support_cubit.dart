@@ -5,13 +5,10 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
 import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
 import 'package:olt_social/src/shared/presentation/load_status.dart';
-import 'package:uuid/uuid.dart';
 
 part 'support_cubit.freezed.dart';
 
-const _uuid = Uuid();
-
-enum SupportNoticeKind { closed, complaintFiled, fakeReported, rated, cardSent }
+enum SupportNoticeKind { closed, complaintFiled, fakeReported, rated }
 
 @freezed
 abstract class SupportState with _$SupportState {
@@ -22,7 +19,6 @@ abstract class SupportState with _$SupportState {
     @Default(false) bool picking,
     @Default(false) bool history,
     @Default(false) bool busy,
-    SupportCard? pendingCard,
     @Default(SensitiveCheck()) SensitiveCheck sensitive,
     Object? error,
     Object? actionError,
@@ -42,12 +38,11 @@ abstract class SupportState with _$SupportState {
 }
 
 class SupportCubit extends Cubit<SupportState> {
-  SupportCubit({required this._support, this.topic, this.card, this.screen, this.language = 'id'})
-    : super(SupportState(pendingCard: card));
+  SupportCubit({required this._support, this.topic, this.screen, this.language = 'id'})
+    : super(const SupportState());
 
   final SupportRepository _support;
   final String? topic;
-  final SupportCard? card;
   final String? screen;
   final String language;
   StreamSubscription<void>? _ticketEvents;
@@ -64,11 +59,7 @@ class SupportCubit extends Cubit<SupportState> {
       emit(state.copyWith(status: LoadStatus.ready, home: home, topics: results[1] as List<SupportTopic>));
       _watch(home.roomId);
       final initialTopic = topic;
-      if (home.active && state.pendingCard != null) {
-        await attachCard(state.pendingCard!);
-      } else if (!home.active && initialTopic != null) {
-        await start(initialTopic);
-      }
+      if (!home.active && initialTopic != null) await start(initialTopic);
     } catch (e) {
       if (!isClosed) emit(state.copyWith(status: LoadStatus.failure, error: e));
     }
@@ -94,12 +85,10 @@ class SupportCubit extends Cubit<SupportState> {
 
   void showHistory() => emit(state.copyWith(picking: false, history: true));
 
-  void setPendingCard(SupportCard? card) => emit(state.copyWith(pendingCard: card));
-
   Future<void> start(String topic) => _act(() async {
-    await _support.openTicket(topic: topic, language: language, screen: screen, card: state.pendingCard);
+    await _support.openTicket(topic: topic, language: language, screen: screen);
     await refresh();
-    if (!isClosed) emit(state.copyWith(picking: false, history: false, pendingCard: null));
+    if (!isClosed) emit(state.copyWith(picking: false, history: false));
   });
 
   Future<void> closeTicket() => _act(() async {
@@ -124,18 +113,6 @@ class SupportCubit extends Cubit<SupportState> {
     await _support.rateTicket(ticketId, rating, comment: comment);
     await refresh();
   }, notice: SupportNoticeKind.rated);
-
-  Future<void> attachCard(SupportCard card) async {
-    final roomId = state.home?.roomId;
-    if (roomId == null || !(state.home?.active ?? false)) {
-      emit(state.copyWith(pendingCard: card));
-      return;
-    }
-    await _act(() async {
-      await _support.sendCard(roomId, card, clientId: _uuid.v4());
-      if (!isClosed) emit(state.copyWith(pendingCard: null));
-    }, notice: SupportNoticeKind.cardSent);
-  }
 
   void checkText(String text) {
     _sensitiveDebounce?.cancel();

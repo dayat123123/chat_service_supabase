@@ -22,19 +22,16 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    # app: dijangkau auth-bridge & customer-adapter. egress: port host untuk app contoh / curl.
+    # app: dijangkau auth-bridge. egress: port host untuk app contoh / curl.
     networks: [app, egress]
     ports:
       - ${EDGE_HTTP_BIND:-127.0.0.1}:${DUMMY_OLT_PORT:-8090}:8090/tcp
-    secrets: [olt_customer_service_token]
     environment:
       PORT: 8090
       DUMMY_OLT_SECRET: ${DUMMY_OLT_SECRET:-dummy-olt-dev-secret-jangan-dipakai-di-produksi}
       DUMMY_OLT_TOKEN_TTL: ${DUMMY_OLT_TOKEN_TTL:-24h}
       DUMMY_OLT_ACCEPT_MOCK_TOKENS: ${DUMMY_OLT_ACCEPT_MOCK_TOKENS:-true}
       DUMMY_OLT_SLOW_DELAY: ${DUMMY_OLT_SLOW_DELAY:-8s}
-      # Data nasabah tiruan untuk customer-adapter (token layanan sama dengan adapter).
-      DUMMY_OLT_CUSTOMER_TOKEN_FILE: /run/secrets/olt_customer_service_token
     healthcheck:
       # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/dummy-olt", "healthcheck"]
@@ -53,12 +50,4 @@ services:
         condition: service_healthy
     environment:
       OLT_MODE: websocket
-      OLT_WS_URL: ws://dummy-olt:8090/ws
-
-  # Customer service: data nasabah, order, dan aksi amankan akun dari OLT dummy.
-  customer-adapter:
-    depends_on:
-      dummy-olt:
-        condition: service_healthy
-    environment:
       OLT_WS_URL: ws://dummy-olt:8090/ws

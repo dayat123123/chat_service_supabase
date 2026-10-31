@@ -11,9 +11,8 @@ import 'package:olt_social/src/features/support/domain/entities/support_ticket.d
 import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
 
 class SupportRepositoryImpl implements SupportRepository {
-  SupportRepositoryImpl(this._api, {required this._cs, this._realtime, required this._notifications});
+  SupportRepositoryImpl({required this._cs, this._realtime, required this._notifications});
 
-  final SocialRemoteDataSource _api;
   final SocialRemoteDataSource _cs;
   final RealtimeGateway? _realtime;
   final NotificationRepository _notifications;
@@ -44,14 +43,11 @@ class SupportRepositoryImpl implements SupportRepository {
     String language = 'id',
     String? screen,
     bool complaint = false,
-    SupportCard? card,
   }) async => _ticket(await _cs.rpcValue('open_ticket', {
     'p_topic': topic,
     'p_language': language,
     'p_screen': screen,
     'p_complaint': complaint,
-    'p_card': card?.wireName,
-    'p_card_ref': card?.ref,
   }));
 
   @override
@@ -83,38 +79,12 @@ class SupportRepositoryImpl implements SupportRepository {
       _ticket(await _cs.rpcValue('report_fake_cs', {'p_description': description}));
 
   @override
-  Future<void> sendCard(String roomId, SupportCard card, {required String clientId}) async {
-    await _cs.rpcRows('send_card', {
-      'p_room_id': roomId,
-      'p_card': card.wireName,
-      'p_ref': card.ref,
-      'p_client_id': clientId,
-    });
-  }
-
-  @override
   Future<SensitiveCheck> checkSensitive(String text) async {
     final result = (await _cs.rpcValue('check_sensitive', {'p_text': text}))! as Map<String, dynamic>;
     return SensitiveCheck(
       masked: result['masked'] == true || result['requests_secret'] == true,
       kinds: [for (final k in result['kinds'] as List<Object?>? ?? const []) '$k'],
     );
-  }
-
-  @override
-  Future<List<SupportOrder>> recentOrders({int limit = 10}) async {
-    final data = await _api.gatewayJson('cs/v1/me/orders', query: {'limit': '$limit'});
-    final orders = ((data as Map<String, dynamic>?)?['orders'] as List<Object?>? ?? const []).cast<Map<String, dynamic>>();
-    return [
-      for (final o in orders)
-        SupportOrder(
-          id: '${o['order_id']}',
-          code: '${o['code'] ?? ''}',
-          side: '${o['side'] ?? ''}',
-          status: '${o['status'] ?? ''}',
-          time: DateTime.tryParse('${o['time'] ?? ''}'),
-        ),
-    ];
   }
 
   @override

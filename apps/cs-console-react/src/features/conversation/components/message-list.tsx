@@ -22,7 +22,6 @@ type Props = {
   onLoadOlder: () => void
   trustedHost: (host: string) => boolean
   onReply?: (message: ChatMessage) => void
-  onOpenCard?: (payload: { card: string; ref: string }) => void
   onResend: (pending: PendingMessage) => void
   onDiscard: (pending: PendingMessage) => void
 }
@@ -40,7 +39,6 @@ export function MessageList({
   onLoadOlder,
   trustedHost,
   onReply,
-  onOpenCard,
   onResend,
   onDiscard,
 }: Props) {
@@ -153,7 +151,6 @@ export function MessageList({
         read={staff && customerReadAt !== null && customerReadAt >= message.created_at}
         trustedHost={trustedHost}
         onReply={onReply}
-        onOpenCard={onOpenCard}
       />
     )
   }

@@ -1,7 +1,6 @@
 begin;
 select plan(12);
 
-select tests.create_stock('BBRI');
 select tests.create_user('ub_alice') as alice \gset
 select tests.create_user('ub_bob') as bob \gset
 select tests.create_user('ub_carol') as carol \gset

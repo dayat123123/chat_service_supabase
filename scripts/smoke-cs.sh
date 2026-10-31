@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Smoke test CS chat end-to-end lewat Kong: nasabah (login OLT dummy) -> cs_api
-# (PostgREST) -> CS 2FA mengambil tiket -> customer-adapter -> OLT dummy.
+# (PostgREST) -> CS 2FA mengambil, membalas, mengalihkan, dan menyelesaikan tiket.
 # Butuh: make up DUMMY_OLT=1 (Windows: .\make.ps1 up -DummyOlt).
 # Batas 5 tiket baru per jam per nasabah berlaku: jangan jalankan lebih dari 5x per jam.
 set -uo pipefail
@@ -43,10 +43,6 @@ login() {
 rpc() {
   curl -sS -o "$BODY" -w '%{http_code}' -X POST "$BASE/rest/v1/rpc/$2" -H "apikey: $ANON_KEY" \
     -H "Authorization: Bearer $1" -H 'Content-Type: application/json' -H "Content-Profile: ${4:-cs_api}" -d "$3"
-}
-
-adapter() {
-  curl -sS -o "$BODY" -w '%{http_code}' "$BASE/cs/v1$2" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $1" "${@:3}"
 }
 
 system_messages() {
@@ -122,25 +118,8 @@ check "catatan internal dan pesan yang diblokir tidak terlihat nasabah" \
 code=$(rpc "$JWT" notes "{\"p_customer_id\":\"$CUSTOMER\"}")
 check "nasabah tidak bisa memanggil API catatan" '[ "$code" = 403 ]'
 
-code=$(adapter "$AGENT_JWT" "/agent/tickets/$TICKET/customer/profile")
-check "adapter memberi profil nasabah dari OLT" '[ "$code" = 200 ] && [ "$(json .data.name)" = "Budi Santoso" ]'
-check "data sensitif nasabah tersamar" '[[ "$(json .data.nik)" == *"*"* ]] && [[ "$(json .data.phone)" == *"*"* ]]'
-code=$(adapter "$JWT" "/agent/tickets/$TICKET/customer/profile")
+code=$(rpc "$JWT" ticket_lists '{}')
 check "token nasabah ditolak di API CS" '[ "$code" = 403 ]'
-code=$(adapter "$AGENT2_JWT" "/agent/tickets/$TICKET/customer/profile")
-check "CS yang bukan pemilik tiket tidak bisa membuka data nasabah" '[ "$code" = 403 ]'
-code=$(adapter "$SUP_JWT" "/agent/tickets/$(uuid)/customer/profile")
-check "tiket yang tidak ada ditolak" '[ "$code" = 403 ]'
-code=$(adapter "$AGENT_JWT" "/agent/tickets/$TICKET/customer/reveal" -X POST -H 'Content-Type: application/json' \
-  -d '{"field":"phone","reason":"identity_verification"}')
-check "membuka satu field dengan alasan" '[ "$code" = 200 ] && [[ "$(json .data.value)" != *"*"* ]]'
-code=$(adapter "$AGENT_JWT" "/agent/tickets/$TICKET/customer/secure-account" -X POST)
-check "amankan akun dijalankan di OLT" '[ "$code" = 200 ] && [ "$(json .data.ok)" = true ]'
-check "nasabah diberi tahu akunnya diamankan" '[ "$(system_messages secured)" = 1 ]'
-code=$(adapter "$JWT" "/me/orders?limit=5")
-check "nasabah memilih order sendiri untuk kartu konteks" '[ "$code" = 200 ] && [ "$(json .available)" = true ]'
-check "akses data nasabah tercatat di audit log" \
-  '[ "$(sql "select count(*) from cs.cs_audit_log where session_id = '"'"'$TICKET'"'"' and (action like '"'"'customer_data.%'"'"' or action like '"'"'secure_account.%'"'"')")" -ge 4 ]'
 
 code=$(rpc "$AGENT_JWT" request_transfer "{\"p_ticket_id\":\"$TICKET\",\"p_to_agent_id\":\"$AGENT2\",\"p_note\":\"Lanjutkan cek perangkat\"}")
 TRANSFER=$(json .id)
@@ -151,8 +130,6 @@ code=$(rpc "$AGENT2_JWT" respond_transfer "{\"p_transfer_id\":\"$TRANSFER\",\"p_
 check "CS tujuan menerima transfer dan menjadi pemilik" '[ "$code" = 200 ] && [ "$(json .owner.id)" = "$AGENT2" ]'
 VERSION=$(json .version)
 check "nasabah diberi tahu tiket dialihkan" '[ "$(system_messages ticket_transferred)" = 1 ]'
-code=$(adapter "$AGENT_JWT" "/agent/tickets/$TICKET/customer/profile")
-check "CS lama kehilangan akses data nasabah setelah transfer" '[ "$code" = 403 ]'
 
 code=$(rpc "$AGENT2_JWT" resolve_ticket "{\"p_ticket_id\":\"$TICKET\",\"p_outcome\":\"answered\",\"p_summary\":\"Perangkat baru diblokir\",\"p_version\":$((VERSION - 1))}")
 check "aksi dengan versi tiket lama ditolak" '[ "$code" = 409 ] && [ "$(json .message)" = stale_ticket ]'

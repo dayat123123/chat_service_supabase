@@ -25,19 +25,6 @@ begin
 end;
 $$;
 
-create or replace function tests.create_stock(p_code text, p_name text default null)
-returns text
-language plpgsql
-security definer
-set search_path = public, extensions, pg_temp
-as $$
-begin
-  insert into public.stocks (code, name) values (p_code, coalesce(p_name, p_code || ' Tbk'))
-  on conflict (code) do nothing;
-  return p_code;
-end;
-$$;
-
 create or replace function tests.authenticate_as(p_user_id uuid)
 returns void
 language plpgsql
