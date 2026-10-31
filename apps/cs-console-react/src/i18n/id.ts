@@ -393,6 +393,7 @@ export const id = {
     colRoles: 'Peran',
     colTeam: 'Tim',
     colTicketLimit: 'Batas tiket',
+    colActions: 'Aksi',
     disabledSince: 'Dinonaktifkan {{time}}',
     accountDisabled: 'Nonaktif',
     addAccountTitle: 'Tambah akun CS',
@@ -417,6 +418,17 @@ export const id = {
     temporaryPassword: 'Password sementara',
     accountCreatedSteps:
       'Serahkan email dan password ini lewat jalur aman. Saat login pertama, CS wajib mengganti password.',
+    resetPassword: 'Reset password',
+    resetPasswordTitle: 'Reset password {{name}}?',
+    resetPasswordBody:
+      'Password lama langsung tidak berlaku. {{name}} mendapat password sementara yang wajib diganti saat login berikutnya.',
+    passwordResetTitle: 'Password direset',
+    passwordResetBody: 'Password sementara untuk {{name}} hanya ditampilkan sekali ini.',
+    passwordResetSteps:
+      'Serahkan password ini lewat jalur aman. Saat login berikutnya, CS wajib menggantinya.',
+    resetDisabled: 'Akun ini nonaktif. Aktifkan akun dulu, lalu reset password.',
+    resetNotFound: 'Akun tidak ditemukan. Daftar akun dimuat ulang.',
+    resetForbidden: 'Hanya Super Admin yang bisa mereset password.',
     topicsDescription:
       'Topik yang dipilih nasabah saat membuat tiket, beserta prioritas default dan skill CS yang dibutuhkan.',
     addTopic: 'Tambah topik',

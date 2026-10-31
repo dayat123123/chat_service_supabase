@@ -17,7 +17,7 @@ Kolom **Tes**: `unit` = Vitest (`src/**/*.test.ts[x]`), `E2E` = Playwright (`e2e
 | Pendaftaran TOTP dengan QR + kunci manual | `second-factor.tsx` → `EnrollPage` | ✅ | manual |
 | Ganti password sementara | `second-factor.tsx` → `PasswordPage` | ✅ | manual |
 | Logout manual | `app/top-bar.tsx` → menu Akun | ✅ | E2E `auth` |
-| Logout idle 30 menit + peringatan 60 detik | `features/auth/components/idle-guard.tsx` (aktivitas dibagi antar tab) | ✅ | manual |
+| Logout idle 30 menit + peringatan 60 detik | `features/auth/components/idle-guard.tsx` (aktivitas dibagi antar tab akun yang sama) | ✅ | manual |
 | Keluar otomatis bila akun dicabut | `features/auth/hooks.ts`, `presence/hooks.ts` (`agent_required` → keluar) | ✅ | manual |
 | Kode pemulihan 2FA | Petunjuk "hubungi admin CS" di halaman TOTP | ⏳ B1 | – |
 | Cache, draf, data tampil, dan pesan tertunda dibersihkan saat keluar | `app/app.tsx`, `app/workspace.tsx` | ✅ | manual |
@@ -28,7 +28,7 @@ Kolom **Tes**: `unit` = Vitest (`src/**/*.test.ts[x]`), `E2E` = Playwright (`e2e
 |---|---|---|---|
 | Online / Sibuk / Istirahat / Offline + alasan | `features/presence/components/status-menu.tsx` | ✅ | E2E (semua skenario mengubah ke Online) |
 | Default Offline setelah login | `features/auth/hooks.ts` | ✅ | E2E `auth` |
-| Heartbeat 20 detik | `presence/hooks.ts` → `useHeartbeat` (hanya tab pemimpin) | ✅ | manual |
+| Heartbeat 20 detik | `presence/hooks.ts` → `useHeartbeat` (satu tab pemimpin per akun) | ✅ | manual |
 | Tiket aktif `n/batas` | `status-menu.tsx` → `ActiveCount` | ✅ | visual |
 | Indikator koneksi realtime | `ConnectionIndicator` (Terhubung / Menyambung ulang / Offline) | ✅ | E2E `reconnect` |
 | Tab ditutup (B4) | Offline lewat `fetch keepalive` hanya bila tab terakhir dan tidak ada tiket aktif; reload < 60 detik mengembalikan status sebelumnya | ✅ | manual |
@@ -131,7 +131,7 @@ B4: memanggil `agent_set_status('offline')` saat tab ditutup akan mengirim "CS s
 | Fitur Flutter | React | Status | Tes |
 |---|---|---|---|
 | Suara + notifikasi browser (tiket baru: semua / prioritas tinggi / mati) | `lib/alerts.ts`, menu lonceng | ✅ | manual |
-| Hanya satu tab yang berbunyi | `lib/tabs.ts` (pemimpin BroadcastChannel) | ✅ | manual |
+| Hanya satu tab per akun yang berbunyi | `lib/tabs.ts` (pemimpin BroadcastChannel per akun) | ✅ | manual |
 | Judul tab `(N) CS Console` | `useDocumentTitle` | ✅ | manual |
 
 ## Baru di React

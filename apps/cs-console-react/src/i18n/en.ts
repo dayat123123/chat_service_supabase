@@ -395,6 +395,7 @@ export const en: Translation = {
     colRoles: 'Roles',
     colTeam: 'Team',
     colTicketLimit: 'Ticket limit',
+    colActions: 'Actions',
     disabledSince: 'Disabled {{time}}',
     accountDisabled: 'Disabled',
     addAccountTitle: 'Add CS account',
@@ -419,6 +420,17 @@ export const en: Translation = {
     temporaryPassword: 'Temporary password',
     accountCreatedSteps:
       'Hand over the email and password through a secure channel. On first sign-in the agent must change the password.',
+    resetPassword: 'Reset password',
+    resetPasswordTitle: 'Reset the password of {{name}}?',
+    resetPasswordBody:
+      'The current password stops working immediately. {{name}} gets a temporary password that must be changed at the next sign-in.',
+    passwordResetTitle: 'Password reset',
+    passwordResetBody: 'The temporary password for {{name}} is shown only this once.',
+    passwordResetSteps:
+      'Hand over this password through a secure channel. The agent must change it at the next sign-in.',
+    resetDisabled: 'This account is disabled. Re-enable it first, then reset the password.',
+    resetNotFound: 'Account not found. The account list was reloaded.',
+    resetForbidden: 'Only a Super Admin can reset passwords.',
     topicsDescription:
       'Topics customers pick when opening a ticket, with default priority and required skill.',
     addTopic: 'Add topic',

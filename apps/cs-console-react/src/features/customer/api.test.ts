@@ -3,7 +3,8 @@ import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import { ApiError } from '@/lib/errors'
-import { initSupabase, supabase } from '@/lib/supabase'
+import { authStorageKey, initSupabase, supabase } from '@/lib/supabase'
+import { memoryStorage } from '@/test/storage'
 
 import { customerApi } from './api'
 
@@ -12,27 +13,13 @@ const customerId = '44444444-4444-4444-8444-444444444444'
 const rpcUrl = (name: string) => `${base}/rest/v1/rpc/${name}`
 const token = 'test-access-token'
 
-function memoryStorage(): Storage {
-  const items = new Map<string, string>()
-  return {
-    get length() {
-      return items.size
-    },
-    clear: () => items.clear(),
-    getItem: (key) => items.get(key) ?? null,
-    key: (index) => [...items.keys()][index] ?? null,
-    removeItem: (key) => void items.delete(key),
-    setItem: (key, value) => void items.set(key, value),
-  }
-}
-
 const server = setupServer()
 
 beforeAll(() => {
   const storage = memoryStorage()
   const now = Math.floor(Date.now() / 1000)
   storage.setItem(
-    'cs-console.auth',
+    authStorageKey(storage),
     JSON.stringify({
       access_token: token,
       refresh_token: 'test-refresh-token',

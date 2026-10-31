@@ -73,6 +73,15 @@ const nadia = { id: 'nadia', display_name: 'Nadia', agent_code: 'CS-0045', statu
 const handled = ticketFixture({ owner: nadia, is_mine: false })
 const open = ticketFixture({ status: 'open', owner: null, is_mine: false, claimed_at: null })
 
+async function moveToBima(user: ReturnType<typeof userEvent.setup>, reason: string) {
+  await user.click(await screen.findByRole('button', { name: 'Pindahkan ke…' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Pindahkan tiket' })
+  await user.click(within(dialog).getByRole('combobox', { name: 'CS tujuan' }))
+  await user.click(await screen.findByRole('option', { name: /Bima/ }))
+  await user.type(within(dialog).getByLabelText('Alasan'), reason)
+  await user.click(within(dialog).getByRole('button', { name: 'Pindahkan ke…' }))
+}
+
 function renderPane(ticket: Ticket, agent = monitorFixture) {
   vi.mocked(ticketsApi.detail).mockResolvedValue(ticket)
   return renderWithProviders(
@@ -105,26 +114,48 @@ describe('ConversationPane', () => {
     vi.mocked(ticketsApi.reassign).mockResolvedValue({ ...handled, owner: { ...nadia, id: 'bima' } })
     renderPane(handled)
 
-    await user.click(await screen.findByRole('button', { name: 'Pindahkan ke…' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Pindahkan tiket' })
-    await user.click(within(dialog).getByRole('combobox', { name: 'CS tujuan' }))
-    await user.click(await screen.findByRole('option', { name: /Bima/ }))
-    await user.type(within(dialog).getByLabelText('Alasan'), 'Bima menangani dana hari ini')
-    await user.click(within(dialog).getByRole('button', { name: 'Pindahkan ke…' }))
+    await moveToBima(user, 'Bima menangani dana hari ini')
 
     await waitFor(() =>
       expect(ticketsApi.reassign).toHaveBeenCalledWith(handled.id, 'bima', 'Bima menangani dana hari ini'),
     )
   })
 
-  it('shows Super Admins an open ticket without a way to claim it', async () => {
+  it('lets Super Admins dispatch an open ticket they cannot claim', async () => {
+    const user = userEvent.setup()
+    vi.mocked(ticketsApi.reassign).mockResolvedValue({
+      ...open,
+      status: 'claimed',
+      owner: { ...nadia, id: 'bima' },
+    })
     renderPane(open)
 
     const bar = (await screen.findByText('Mode pantau')).closest('p')
     expect(bar).toHaveTextContent('Mode pantau · Belum diambil CS')
-    for (const name of ['Ambil tiket', 'Ubah ke Online', 'Pindahkan ke…']) {
+    for (const name of ['Ambil tiket', 'Ubah ke Online']) {
       expect(screen.queryByRole('button', { name })).not.toBeInTheDocument()
     }
+
+    await moveToBima(user, 'Tiket menunggu terlalu lama')
+
+    await waitFor(() =>
+      expect(ticketsApi.reassign).toHaveBeenCalledWith(open.id, 'bima', 'Tiket menunggu terlalu lama'),
+    )
+  })
+
+  it('joins typing and presence only for tickets the agent owns', async () => {
+    const room = vi.spyOn(realtime, 'room')
+    renderPane(handled)
+    await screen.findByText('Mode pantau')
+    expect(room).toHaveBeenLastCalledWith(handled.room_id, expect.anything(), expect.anything(), {
+      signals: false,
+    })
+
+    renderPane(ticketFixture(), agentFixture)
+    await screen.findByRole('textbox', { name: 'Balas' })
+    expect(room).toHaveBeenLastCalledWith(handled.room_id, expect.anything(), expect.anything(), {
+      signals: true,
+    })
   })
 
   it('still gives the owning agent the composer', async () => {

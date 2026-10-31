@@ -3,7 +3,6 @@ import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
 import { Customer } from './support/customer'
-import { member } from './support/env'
 import { audit, checkLayout } from './support/quality'
 import { claim, signIn } from './support/staff'
 import { tag } from './support/text'
@@ -49,20 +48,14 @@ async function eachTheme(page: Page, name: string, show?: () => Promise<void>, h
 test.beforeAll(() => mkdirSync(dir, { recursive: true }))
 
 for (const theme of themes) {
-  test(`login dan verifikasi dua langkah (${theme})`, async ({ browser }) => {
+  test(`login (${theme})`, async ({ browser }) => {
     const context = await browser.newContext()
     await context.addInitScript((value) => localStorage.setItem('cs-console.theme', value), theme)
     const page = await context.newPage()
     const errors = watchErrors(page)
-    const person = member('Laras')
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
     await shoot(page, `login-${theme}`)
-    await page.getByLabel('Email', { exact: true }).fill(person.email)
-    await page.getByLabel('Password', { exact: true }).fill(person.password)
-    await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-    await expect(page.getByLabel('Kode 6 digit')).toBeVisible()
-    await shoot(page, `totp-${theme}`)
     expect(errors).toEqual([])
     await context.close()
   })
@@ -147,11 +140,11 @@ test('ruang kerja tiket, percakapan (kontras + resolusi), dialog, palet, layar s
   }
 })
 
-test('dashboard dan laporan supervisor', async ({ page }) => {
+test('dashboard dan laporan Super Admin', async ({ page }) => {
   const errors = watchErrors(page)
   await signIn(page, 'Sinta')
   await page.getByRole('link', { name: 'Dashboard' }).click()
-  await expect(page.getByRole('heading', { name: 'Dashboard supervisor' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
   await expect(page.getByText('Antrean per prioritas')).toBeVisible()
   await eachTheme(page, 'dashboard')
   await page.getByRole('link', { name: 'Laporan' }).click()
@@ -162,11 +155,12 @@ test('dashboard dan laporan supervisor', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
-test('pengaturan admin', async ({ page }) => {
+test('pengaturan Super Admin', async ({ page }) => {
   const errors = watchErrors(page)
   await signIn(page, 'Adi')
+  await page.getByRole('link', { name: 'Pengaturan' }).click()
   await expect(page.getByRole('heading', { name: 'Akun CS' })).toBeVisible()
-  await expect(page.getByRole('cell', { name: /Nadia/ })).toBeVisible()
+  await expect(page.getByRole('cell', { name: /^Nadia/ })).toBeVisible()
   await eachTheme(page, 'settings-accounts')
   await page.getByRole('button', { name: 'Jam layanan & libur' }).click()
   await expect(page.getByRole('heading', { name: 'Jam layanan (WIB)' })).toBeVisible()

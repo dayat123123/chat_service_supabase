@@ -1,8 +1,8 @@
 import { uuid } from '@/lib/utils'
 
 type Envelope =
-  | { kind: 'alive' | 'bye'; id: string; startedAt: number }
-  | { kind: 'event'; id: string; startedAt: number; topic: string; data: unknown }
+  | { kind: 'alive' | 'bye'; id: string; scope: string | null; startedAt: number }
+  | { kind: 'event'; id: string; scope: string | null; startedAt: number; topic: string; data: unknown }
 
 type Peer = { startedAt: number; seenAt: number }
 
@@ -18,27 +18,37 @@ export class TabCoordinator {
   private channel: BroadcastChannel | null = null
   private timer: number | undefined
   private leader = true
+  private scope: string | null = null
 
   start() {
     if (this.channel || typeof BroadcastChannel === 'undefined') return
     this.channel = new BroadcastChannel('cs-console.tabs')
     this.channel.onmessage = (event: MessageEvent<Envelope>) => this.receive(event.data)
-    this.post({ kind: 'alive', id: this.id, startedAt: this.startedAt })
+    this.announce('alive')
     this.timer = window.setInterval(() => {
-      this.post({ kind: 'alive', id: this.id, startedAt: this.startedAt })
+      this.announce('alive')
       this.prune()
     }, ALIVE_MS)
     window.addEventListener('pagehide', this.onHide)
   }
 
   stop() {
-    this.post({ kind: 'bye', id: this.id, startedAt: this.startedAt })
+    this.announce('bye')
     window.removeEventListener('pagehide', this.onHide)
     window.clearInterval(this.timer)
     this.channel?.close()
     this.channel = null
     this.peers.clear()
     this.updateLeader()
+  }
+
+  setScope(scope: string | null) {
+    if (scope === this.scope) return
+    this.announce('bye')
+    this.scope = scope
+    this.peers.clear()
+    this.updateLeader()
+    this.announce('alive')
   }
 
   isLeader() {
@@ -59,7 +69,7 @@ export class TabCoordinator {
   }
 
   send(topic: string, data: unknown) {
-    this.post({ kind: 'event', id: this.id, startedAt: this.startedAt, topic, data })
+    this.post({ kind: 'event', id: this.id, scope: this.scope, startedAt: this.startedAt, topic, data })
   }
 
   listen(topic: string, listener: (data: unknown) => void) {
@@ -71,7 +81,11 @@ export class TabCoordinator {
     }
   }
 
-  private readonly onHide = () => this.post({ kind: 'bye', id: this.id, startedAt: this.startedAt })
+  private readonly onHide = () => this.announce('bye')
+
+  private announce(kind: 'alive' | 'bye') {
+    this.post({ kind, id: this.id, scope: this.scope, startedAt: this.startedAt })
+  }
 
   private post(message: Envelope) {
     this.channel?.postMessage(message)
@@ -79,14 +93,13 @@ export class TabCoordinator {
 
   private receive(message: Envelope) {
     if (message.id === this.id) return
-    if (message.kind === 'bye') {
-      this.peers.delete(message.id)
-      this.updateLeader()
+    if (message.kind === 'bye' || message.scope !== this.scope) {
+      if (this.peers.delete(message.id)) this.updateLeader()
       return
     }
     const known = this.peers.has(message.id)
     this.peers.set(message.id, { startedAt: message.startedAt, seenAt: Date.now() })
-    if (!known) this.post({ kind: 'alive', id: this.id, startedAt: this.startedAt })
+    if (!known) this.announce('alive')
     this.updateLeader()
     if (message.kind === 'event')
       this.topicListeners.get(message.topic)?.forEach((listener) => listener(message.data))

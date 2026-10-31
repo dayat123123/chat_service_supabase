@@ -25,17 +25,17 @@ async function asStaff(browser: Browser, theme: Theme, name: StaffName, run: (pa
 
 for (const theme of themes) {
   test.describe(`kontras WCAG AA (${theme})`, () => {
-    test('login, verifikasi dua langkah, dan /dev/ui', async ({ browser }) => {
+    test('login, password salah, dan /dev/ui', async ({ browser }) => {
       const { context, page } = await themedPage(browser, theme)
       const person = member('Laras')
       await page.goto('/')
       await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
       await audit(page, `login-${theme}`)
       await page.getByLabel('Email', { exact: true }).fill(person.email)
-      await page.getByLabel('Password', { exact: true }).fill(person.password)
+      await page.getByLabel('Password', { exact: true }).fill('password-yang-salah')
       await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-      await expect(page.getByLabel('Kode 6 digit')).toBeVisible()
-      await audit(page, `totp-${theme}`)
+      await expect(page.getByText('Email atau password salah.')).toBeVisible()
+      await audit(page, `login-error-${theme}`)
       await page.goto('/dev/ui')
       await expect(page.locator('[data-theme-column]')).toHaveCount(2)
       await audit(page, `dev-ui-${theme}`)
@@ -47,13 +47,12 @@ for (const theme of themes) {
         await expect(page.getByRole('region', { name: 'Daftar tiket' })).toBeVisible()
         await audit(page, `tickets-${theme}`)
         await page.getByRole('link', { name: 'Dashboard' }).click()
-        await expect(page.getByRole('heading', { name: 'Dashboard supervisor' })).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
         await audit(page, `dashboard-${theme}`)
         await page.getByRole('link', { name: 'Laporan' }).click()
         await expect(page.getByRole('heading', { name: 'Tiket per hari' })).toBeVisible()
         await audit(page, `reports-${theme}`)
-      })
-      await asStaff(browser, theme, 'Adi', async (page) => {
+        await page.getByRole('link', { name: 'Pengaturan' }).click()
         await expect(page.getByRole('heading', { name: 'Akun CS' })).toBeVisible()
         await audit(page, `settings-${theme}`)
       })

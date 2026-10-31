@@ -16,6 +16,7 @@ import { useOpenTicket, useTicketLists, useTicketRealtime } from '@/features/tic
 import { unreadMine } from '@/features/tickets/logic'
 import { useGlobalHotkeys } from '@/hooks/use-hotkeys'
 import { realtime } from '@/lib/realtime'
+import { tabs } from '@/lib/tabs'
 
 import { TopBar } from './top-bar'
 
@@ -27,6 +28,11 @@ export function Shell() {
   const tickets = canViewTickets(agent)
   const worker = worksTickets(agent)
   const superAdmin = isSuperAdmin(agent)
+
+  useEffect(() => {
+    tabs.setScope(agent.id)
+    return () => tabs.setScope(null)
+  }, [agent.id])
 
   useEffect(() => {
     realtime.start(agent.id, tickets)

@@ -1,7 +1,7 @@
 import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel } from '@supabase/supabase-js'
 import { create } from 'zustand'
 
-import { supabase } from '@/lib/supabase'
+import { reconnectDelay, supabase } from '@/lib/supabase'
 
 export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'offline'
 
@@ -48,7 +48,18 @@ export type RoomHandlers = {
 
 export type RoomHandle = { sendTyping: (typing: boolean) => void; close: () => void }
 
-type Tracked = { channel: RealtimeChannel; joined: boolean; everJoined: boolean; core: boolean }
+type Setup = (channel: RealtimeChannel) => RealtimeChannel
+type OpenOptions = { private?: boolean; presenceKey?: string; onJoined?: (channel: RealtimeChannel) => void }
+type Tracked = {
+  channel: RealtimeChannel | null
+  joined: boolean
+  everJoined: boolean
+  core: boolean
+  tries: number
+  retry: number | undefined
+  setup: Setup
+  options: OpenOptions
+}
 type Payload = Record<string, unknown>
 
 const text = (value: unknown) => (typeof value === 'string' ? value : undefined)
@@ -110,6 +121,7 @@ export function parseQueueEvent(kind: string, payload: Payload): QueueEvent | nu
 
 class RealtimeManager {
   private readonly tracked = new Map<string, Tracked>()
+  private readonly leaving = new Map<string, Promise<unknown>>()
   private readonly listeners = new Set<(event: QueueEvent) => void>()
   private readonly resyncListeners = new Set<() => void>()
   private resyncTimer: number | undefined
@@ -163,36 +175,41 @@ class RealtimeManager {
     roomId: string,
     me: { id: string; username: string; displayName: string },
     handlers: RoomHandlers,
+    { signals: withSignals }: { signals: boolean },
   ): RoomHandle {
     const signals = `room:${roomId}`
     const messages = `room-messages:${roomId}`
     const status = `cs:room:${roomId}`
-    const signalChannel = this.open(
-      signals,
-      false,
-      (channel) =>
-        channel
-          .on('broadcast', { event: 'typing' }, ({ payload }) => {
-            const data = payload as Payload
-            const userId = text(data.user_id)
-            if (!userId || userId === me.id) return
-            handlers.onTyping(
-              { id: userId, name: text(data.display_name) ?? text(data.username) ?? '' },
-              data.typing === true,
-            )
-          })
-          .on('broadcast', { event: 'receipt' }, ({ payload }) => {
-            const data = payload as Payload
-            const userId = text(data.user_id)
-            const lastReadAt = text(data.last_read_at)
-            const lastDeliveredAt = text(data.last_delivered_at)
-            if (userId && lastReadAt && lastDeliveredAt && userId !== me.id) {
-              handlers.onReceipt({ userId, lastReadAt, lastDeliveredAt })
-            }
-          })
-          .on('presence', { event: 'sync' }, () => handlers.onPresence(Object.keys(channel.presenceState()))),
-      { presenceKey: me.id, onJoined: (channel) => void channel.track({ user_id: me.id }) },
-    )
+    if (withSignals) {
+      this.open(
+        signals,
+        false,
+        (channel) =>
+          channel
+            .on('broadcast', { event: 'typing' }, ({ payload }) => {
+              const data = payload as Payload
+              const userId = text(data.user_id)
+              if (!userId || userId === me.id) return
+              handlers.onTyping(
+                { id: userId, name: text(data.display_name) ?? text(data.username) ?? '' },
+                data.typing === true,
+              )
+            })
+            .on('broadcast', { event: 'receipt' }, ({ payload }) => {
+              const data = payload as Payload
+              const userId = text(data.user_id)
+              const lastReadAt = text(data.last_read_at)
+              const lastDeliveredAt = text(data.last_delivered_at)
+              if (userId && lastReadAt && lastDeliveredAt && userId !== me.id) {
+                handlers.onReceipt({ userId, lastReadAt, lastDeliveredAt })
+              }
+            })
+            .on('presence', { event: 'sync' }, () =>
+              handlers.onPresence(Object.keys(channel.presenceState())),
+            ),
+        { presenceKey: me.id, onJoined: (channel) => void channel.track({ user_id: me.id }) },
+      )
+    }
     this.open(
       messages,
       false,
@@ -213,7 +230,7 @@ class RealtimeManager {
     )
     return {
       sendTyping: (typing) => {
-        void signalChannel.send({
+        void this.tracked.get(signals)?.channel?.send({
           type: 'broadcast',
           event: 'typing',
           payload: { user_id: me.id, username: me.username, display_name: me.displayName, typing },
@@ -227,43 +244,80 @@ class RealtimeManager {
     }
   }
 
-  private open(
-    topic: string,
-    core: boolean,
-    setup: (channel: RealtimeChannel) => RealtimeChannel,
-    options: { private?: boolean; presenceKey?: string; onJoined?: (channel: RealtimeChannel) => void } = {},
-  ) {
+  private open(topic: string, core: boolean, setup: Setup, options: OpenOptions = {}) {
     this.close(topic)
+    const entry: Tracked = {
+      channel: null,
+      joined: false,
+      everJoined: false,
+      core,
+      tries: 0,
+      retry: undefined,
+      setup,
+      options,
+    }
+    this.tracked.set(topic, entry)
+    this.join(topic, entry)
+    this.recompute()
+  }
+
+  private join(topic: string, entry: Tracked) {
+    const previous = this.leaving.get(topic)
+    if (previous) {
+      void previous.then(() => {
+        if (this.tracked.get(topic) === entry) this.join(topic, entry)
+      })
+      return
+    }
+    const { options } = entry
     const channel = supabase().channel(topic, {
       config: {
         private: options.private ?? true,
         ...(options.presenceKey ? { presence: { key: options.presenceKey } } : {}),
       },
     })
-    setup(channel)
-    const entry: Tracked = { channel, joined: false, everJoined: false, core }
-    this.tracked.set(topic, entry)
+    entry.setup(channel)
+    entry.channel = channel
     channel.subscribe((state) => {
-      if (this.tracked.get(topic) !== entry) return
+      if (this.tracked.get(topic) !== entry || entry.channel !== channel) return
       if (state === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
         const recovered = entry.everJoined && !entry.joined
         entry.joined = true
         entry.everJoined = true
+        entry.tries = 0
         options.onJoined?.(channel)
         if (recovered && entry.core) this.scheduleResync()
       } else {
         entry.joined = false
+        if (state === REALTIME_SUBSCRIBE_STATES.CLOSED) this.rejoinLater(topic, entry)
       }
       this.recompute()
     })
-    return channel
+  }
+
+  private rejoinLater(topic: string, entry: Tracked) {
+    entry.channel = null
+    entry.tries += 1
+    window.clearTimeout(entry.retry)
+    entry.retry = window.setTimeout(() => {
+      if (this.tracked.get(topic) === entry) this.join(topic, entry)
+    }, reconnectDelay(entry.tries))
   }
 
   private close(topic: string) {
     const entry = this.tracked.get(topic)
     if (!entry) return
     this.tracked.delete(topic)
-    void supabase().removeChannel(entry.channel)
+    window.clearTimeout(entry.retry)
+    if (entry.channel) {
+      const removal = supabase()
+        .removeChannel(entry.channel)
+        .catch(() => undefined)
+      this.leaving.set(topic, removal)
+      void removal.then(() => {
+        if (this.leaving.get(topic) === removal) this.leaving.delete(topic)
+      })
+    }
     this.recompute()
   }
 

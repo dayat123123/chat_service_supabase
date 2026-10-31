@@ -17,6 +17,11 @@ import {
   Switch,
 } from '@/components/ui/controls'
 import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -29,10 +34,12 @@ import { Label } from '@/components/ui/label'
 import { Tooltip } from '@/components/ui/menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAgent } from '@/features/auth/hooks'
+import { errorText } from '@/lib/error-text'
+import { toApiError } from '@/lib/errors'
 import { stamp } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
-import { useAccounts, useAdminOptions, useSaveAccount } from '../hooks'
+import { useAccounts, useAdminOptions, useResetPassword, useSaveAccount } from '../hooks'
 import { isStaffRole, staffRoles, type CreatedAccount, type StaffAccount } from '../types'
 import { ActiveBadge, FieldMessage, FormError, QueryContent, SectionFrame } from './settings-ui'
 
@@ -58,6 +65,17 @@ const createSchema = editSchema.extend({
 })
 
 type AccountForm = z.infer<typeof editSchema>
+
+type IssuedPassword = CreatedAccount & { reason: 'created' | 'reset' }
+
+const resetErrors: Record<
+  string,
+  'settings.resetDisabled' | 'settings.resetNotFound' | 'settings.resetForbidden'
+> = {
+  agent_disabled: 'settings.resetDisabled',
+  agent_not_found: 'settings.resetNotFound',
+  role_forbidden: 'settings.resetForbidden',
+}
 
 function RoleLabel({ role }: { role: string }) {
   const { t } = useTranslation()
@@ -273,7 +291,56 @@ function AccountDialog({
   )
 }
 
-function CreatedDialog({ created, onClose }: { created: CreatedAccount | null; onClose: () => void }) {
+function ResetPasswordDialog({
+  account,
+  onClose,
+  onReset,
+}: {
+  account: StaffAccount
+  onClose: () => void
+  onReset: (reset: CreatedAccount) => void
+}) {
+  const { t } = useTranslation()
+  const reset = useResetPassword()
+  const known = reset.error ? resetErrors[toApiError(reset.error).code] : undefined
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && !reset.isPending && onClose()}>
+      <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogTitle>
+          {t('settings.resetPasswordTitle', { name: account.display_name })}
+        </AlertDialogTitle>
+        <AlertDialogDescription>
+          {t('settings.resetPasswordBody', { name: account.display_name })}
+        </AlertDialogDescription>
+        {reset.error ? (
+          <p role="alert" className="text-row text-destructive">
+            {known ? t(known) : errorText(reset.error)}
+          </p>
+        ) : null}
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <AlertDialogCancel disabled={reset.isPending}>{t('app.cancel')}</AlertDialogCancel>
+          <Button
+            variant="destructive"
+            disabled={reset.isPending}
+            onClick={() =>
+              reset.mutate(account.id, {
+                onSuccess: (result) => {
+                  onClose()
+                  onReset(result)
+                },
+              })
+            }
+          >
+            {reset.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
+            {t('settings.resetPassword')}
+          </Button>
+        </div>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+function PasswordDialog({ issued, onClose }: { issued: IssuedPassword | null; onClose: () => void }) {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
   const copy = (password: string) => {
@@ -282,9 +349,10 @@ function CreatedDialog({ created, onClose }: { created: CreatedAccount | null; o
       .then(() => setCopied(true))
       .catch(() => setCopied(false))
   }
+  const created = issued?.reason === 'created'
   return (
     <Dialog
-      open={created !== null}
+      open={issued !== null}
       onOpenChange={(open) => {
         if (open) return
         setCopied(false)
@@ -292,21 +360,23 @@ function CreatedDialog({ created, onClose }: { created: CreatedAccount | null; o
       }}
     >
       <DialogContent className="sm:max-w-md" onInteractOutside={(event) => event.preventDefault()}>
-        {created ? (
+        {issued ? (
           <>
             <DialogHeader>
               <ShieldCheckIcon className="size-5 text-success" aria-hidden="true" />
-              <DialogTitle>{t('settings.accountCreatedTitle')}</DialogTitle>
+              <DialogTitle>
+                {created ? t('settings.accountCreatedTitle') : t('settings.passwordResetTitle')}
+              </DialogTitle>
               <DialogDescription>
-                {t('settings.accountCreatedBody', {
-                  name: `${created.agent.display_name} (${created.agent.agent_code})`,
+                {t(created ? 'settings.accountCreatedBody' : 'settings.passwordResetBody', {
+                  name: `${issued.agent.display_name} (${issued.agent.agent_code})`,
                 })}
               </DialogDescription>
             </DialogHeader>
             <dl className="flex flex-col gap-3 text-sm">
               <div>
                 <dt className="text-xs font-medium text-muted-foreground">{t('auth.email')}</dt>
-                <dd className="select-all">{created.agent.email}</dd>
+                <dd className="select-all">{issued.agent.email}</dd>
               </div>
               <div>
                 <dt className="text-xs font-medium text-muted-foreground">
@@ -314,13 +384,13 @@ function CreatedDialog({ created, onClose }: { created: CreatedAccount | null; o
                 </dt>
                 <dd className="flex items-center gap-2">
                   <code className="flex-1 rounded-md bg-muted px-2 py-1.5 font-mono text-base tracking-wider select-all">
-                    {created.temporary_password}
+                    {issued.temporary_password}
                   </code>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => copy(created.temporary_password)}
+                    onClick={() => copy(issued.temporary_password)}
                   >
                     {copied ? <CheckIcon /> : <CopyIcon />}
                     {copied ? t('app.copied') : t('app.copy')}
@@ -328,7 +398,9 @@ function CreatedDialog({ created, onClose }: { created: CreatedAccount | null; o
                 </dd>
               </div>
             </dl>
-            <p className="text-xs text-muted-foreground">{t('settings.accountCreatedSteps')}</p>
+            <p className="text-xs text-muted-foreground">
+              {created ? t('settings.accountCreatedSteps') : t('settings.passwordResetSteps')}
+            </p>
             <DialogFooter>
               <Button
                 type="button"
@@ -349,10 +421,14 @@ function CreatedDialog({ created, onClose }: { created: CreatedAccount | null; o
 
 function AccountsTable({
   accounts,
+  meId,
   onEdit,
+  onReset,
 }: {
   accounts: StaffAccount[]
+  meId: string
   onEdit: (account: StaffAccount) => void
+  onReset: (account: StaffAccount) => void
 }) {
   const { t } = useTranslation()
   return (
@@ -366,7 +442,7 @@ function AccountsTable({
           <TableHead className="text-right">{t('settings.colTicketLimit')}</TableHead>
           <TableHead>{t('settings.colStatus')}</TableHead>
           <TableHead>
-            <span className="sr-only">{t('app.edit')}</span>
+            <span className="sr-only">{t('settings.colActions')}</span>
           </TableHead>
         </TableRow>
       </TableHeader>
@@ -407,7 +483,17 @@ function AccountsTable({
                 </span>
               )}
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="text-right whitespace-nowrap">
+              {account.disabled_at === null && account.id !== meId ? (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  aria-label={`${t('settings.resetPassword')} ${account.display_name}`}
+                  onClick={() => onReset(account)}
+                >
+                  {t('settings.resetPassword')}
+                </Button>
+              ) : null}
               <Button variant="ghost" size="xs" onClick={() => onEdit(account)}>
                 {t('app.edit')}
               </Button>
@@ -421,9 +507,11 @@ function AccountsTable({
 
 export function AccountsSection() {
   const { t } = useTranslation()
+  const me = useAgent()
   const accounts = useAccounts()
   const [editing, setEditing] = useState<{ account: StaffAccount | null; key: number } | null>(null)
-  const [created, setCreated] = useState<CreatedAccount | null>(null)
+  const [resetting, setResetting] = useState<StaffAccount | null>(null)
+  const [issued, setIssued] = useState<IssuedPassword | null>(null)
   const open = (account: StaffAccount | null) => setEditing({ account, key: Date.now() })
   return (
     <SectionFrame
@@ -437,7 +525,7 @@ export function AccountsSection() {
       }
     >
       <QueryContent query={accounts}>
-        {(items) => <AccountsTable accounts={items} onEdit={open} />}
+        {(items) => <AccountsTable accounts={items} meId={me.id} onEdit={open} onReset={setResetting} />}
       </QueryContent>
       {editing ? (
         <AccountDialog
@@ -445,10 +533,18 @@ export function AccountsSection() {
           account={editing.account}
           open
           onClose={() => setEditing(null)}
-          onCreated={setCreated}
+          onCreated={(created) => setIssued({ ...created, reason: 'created' })}
         />
       ) : null}
-      <CreatedDialog created={created} onClose={() => setCreated(null)} />
+      {resetting ? (
+        <ResetPasswordDialog
+          key={resetting.id}
+          account={resetting}
+          onClose={() => setResetting(null)}
+          onReset={(reset) => setIssued({ ...reset, reason: 'reset' })}
+        />
+      ) : null}
+      <PasswordDialog issued={issued} onClose={() => setIssued(null)} />
     </SectionFrame>
   )
 }

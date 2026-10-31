@@ -1,7 +1,121 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { parseQueueEvent } from './realtime'
+import { parseQueueEvent, realtime, useConnection, type QueueEvent, type RoomHandlers } from './realtime'
+import type * as SupabaseModule from './supabase'
 import { reconnectDelay } from './supabase'
+
+type Binding = { type: string; event?: string; handler: (message: { payload: unknown }) => void }
+
+class FakeChannel {
+  state: 'closed' | 'joining' | 'joined' | 'leaving' = 'closed'
+  readonly bindings: Binding[] = []
+  readonly sent: unknown[] = []
+  private readonly callbacks: ((state: string) => void)[] = []
+
+  constructor(
+    readonly topic: string,
+    private readonly socket: FakeRealtime,
+  ) {}
+
+  on(type: string, filter: { event?: string }, handler: Binding['handler']) {
+    this.bindings.push({ type, event: filter.event, handler })
+    return this
+  }
+
+  subscribe(callback: (state: string) => void) {
+    if (this.state !== 'closed') return this
+    this.callbacks.push(callback)
+    this.state = 'joining'
+    queueMicrotask(() => {
+      if (this.state !== 'joining') return
+      this.state = 'joined'
+      callback('SUBSCRIBED')
+    })
+    return this
+  }
+
+  send(message: unknown) {
+    this.sent.push(message)
+    return Promise.resolve('ok')
+  }
+
+  track() {
+    return Promise.resolve('ok')
+  }
+
+  presenceState() {
+    return {}
+  }
+
+  broadcast(event: string, payload: unknown) {
+    this.bindings
+      .filter((binding) => binding.type === 'broadcast' && binding.event === event)
+      .forEach((binding) => binding.handler({ payload }))
+  }
+
+  closed() {
+    this.state = 'closed'
+    this.socket.forget(this)
+    this.callbacks.forEach((callback) => callback('CLOSED'))
+  }
+}
+
+class FakeRealtime {
+  channels: FakeChannel[] = []
+  private leaves: (() => void)[] = []
+
+  channel(topic: string) {
+    const existing = this.channels.find((channel) => channel.topic === topic)
+    if (existing) return existing
+    const created = new FakeChannel(topic, this)
+    this.channels.push(created)
+    return created
+  }
+
+  removeChannel(channel: FakeChannel) {
+    channel.state = 'leaving'
+    return new Promise<string>((resolve) => {
+      this.leaves.push(() => {
+        channel.closed()
+        resolve('ok')
+      })
+    })
+  }
+
+  forget(channel: FakeChannel) {
+    this.channels = this.channels.filter((item) => item !== channel)
+  }
+
+  finishLeaves() {
+    const leaves = this.leaves
+    this.leaves = []
+    leaves.forEach((leave) => leave())
+  }
+
+  joined(topic: string) {
+    return this.channels.find((channel) => channel.topic === topic && channel.state === 'joined')
+  }
+}
+
+const fake = vi.hoisted(() => ({ client: undefined as FakeRealtime | undefined }))
+
+vi.mock('@/lib/supabase', async (importOriginal) => ({
+  ...(await importOriginal<typeof SupabaseModule>()),
+  supabase: () => fake.client,
+}))
+
+const me = { id: 'a1', username: 'CS-0001', displayName: 'Nadia' }
+
+function roomHandlers(): RoomHandlers {
+  return {
+    onMessage: vi.fn(),
+    onTyping: vi.fn(),
+    onReceipt: vi.fn(),
+    onPresence: vi.fn(),
+    onTicket: vi.fn(),
+    onMessagesJoined: vi.fn(),
+  }
+}
 
 describe('parseQueueEvent', () => {
   it('parses ticket broadcasts', () => {
@@ -86,5 +200,61 @@ describe('reconnectDelay', () => {
       expect(delay).toBeGreaterThanOrEqual(base * 0.5)
       expect(delay).toBeLessThanOrEqual(base)
     }
+  })
+})
+
+describe('realtime manager', () => {
+  let socket: FakeRealtime
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    socket = new FakeRealtime()
+    fake.client = socket
+  })
+
+  afterEach(() => {
+    realtime.stop()
+    socket.finishLeaves()
+    vi.useRealTimers()
+  })
+
+  it('rejoins a core channel the server closed and keeps delivering its events', async () => {
+    const events: QueueEvent[] = []
+    const stop = realtime.subscribe((event) => events.push(event))
+    realtime.start('a1', true)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(useConnection.getState().state).toBe('connected')
+
+    socket.joined('cs:agent:a1')!.closed()
+    expect(useConnection.getState().state).toBe('reconnecting')
+
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(useConnection.getState().state).toBe('connected')
+    socket.joined('cs:agent:a1')!.broadcast('transfer', { event: 'transfer_requested', ticket_id: 't1' })
+    expect(events).toEqual([expect.objectContaining({ type: 'transfer', ticketId: 't1' })])
+    stop()
+  })
+
+  it('leaves typing and presence out of rooms the agent only watches', async () => {
+    const room = realtime.room('r1', me, roomHandlers(), { signals: false })
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(socket.channels.map((channel) => channel.topic).sort()).toEqual(['cs:room:r1', 'room-messages:r1'])
+    room.sendTyping(true)
+    expect(socket.channels.flatMap((channel) => channel.sent)).toEqual([])
+  })
+
+  it('joins a room again only after the previous channel for that room has left', async () => {
+    const handlers = roomHandlers()
+    realtime.room('r1', me, handlers, { signals: true }).close()
+    const room = realtime.room('r1', me, handlers, { signals: true })
+    await vi.advanceTimersByTimeAsync(0)
+
+    socket.finishLeaves()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(handlers.onMessagesJoined).toHaveBeenCalledTimes(1)
+    room.sendTyping(true)
+    expect(socket.joined('room:r1')!.sent).toHaveLength(1)
   })
 })

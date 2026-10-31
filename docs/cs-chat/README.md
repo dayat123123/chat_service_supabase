@@ -178,7 +178,7 @@ Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
 | `make cs-race` | Tes rebutan (Revisi CS-2 bagian 2.3). 50 CS mengambil 1 tiket bersamaan: tepat 1 berhasil, 49 mendapat "Tiket sudah diambil oleh …". 200 tiket × 30 CS acak bersamaan: tidak ada tiket ganda, tidak ada CS melebihi 5 tiket aktif, respons yang diterima CS sama persis dengan pemilik di database. Dijalankan langsung ke fungsi database dan lewat 3 replika PostgREST khusus tes. Data uji dihapus setelahnya |
 | `make smoke-cs` | End-to-end lewat Kong + OLT dummy (30 pemeriksaan): buka tiket, ambil, rebutan, balas, OTP diblokir, catatan, lampiran gambar dari CS, transfer, versi kedaluwarsa, selesai, rating |
 | `make test-cs-console` | Web CS React: lint, typecheck, 74 unit test, build, bundle awal ≤ 300 KB gzip, lisensi |
-| `make e2e-cs-console` | Web CS React, Playwright vs stack dev (21 tes): login email + password, rebutan klaim, chat + lampiran + tanda dibaca, lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor memantau + memindahkan tiket, tampilan terang/gelap, kinerja 1000 tiket + 5000 pesan |
+| `make e2e-cs-console` | Web CS React, Playwright vs stack dev (22 tes): login email + password, dua akun di dua tab tanpa saling memutus, rebutan klaim, chat + lampiran + tanda dibaca, lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor memantau + memindahkan tiket, tampilan terang/gelap, kinerja 1000 tiket + 5000 pesan |
 
 ## Menjalankan
 

@@ -71,6 +71,7 @@ export function ConversationHeader({
   const [wide, headerRef] = useWide()
   const active = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
   const canChangePriority = active && (owner || superAdmin)
+  const canReassign = superAdmin && !owner && (active || ticket.status === 'open')
   const ownerName = ticket.owner
     ? ticket.owner.id === meId
       ? t('app.you')
@@ -157,7 +158,7 @@ export function ConversationHeader({
             </Tooltip>
           </>
         ) : null}
-        {superAdmin && !owner && active ? (
+        {canReassign ? (
           <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction('reassign')}>
             {t('conversation.reassign')}
           </Button>

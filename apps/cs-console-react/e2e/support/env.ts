@@ -18,7 +18,6 @@ export type StaffMember = {
   email: string
   password: string
   roles: string
-  totp_secret: string
 }
 
 const staffFile = process.env.E2E_STAFF_FILE ?? join(root, 'scripts/cs-demo/runtime/staff.json')
