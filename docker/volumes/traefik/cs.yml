@@ -35,6 +35,15 @@ http:
         certResolver: le
       priority: 80
 
+    cs-nasabah:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/api-nasabah`)
+      service: nasabah-gateway
+      middlewares: [vpn-only, rate-limit, body-api, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 90
+
     cs-console:
       entryPoints: [websecure]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`)
@@ -49,3 +58,7 @@ http:
       loadBalancer:
         servers:
           - url: http://cs-console:8080
+    nasabah-gateway:
+      loadBalancer:
+        servers:
+          - url: http://nasabah-gateway:8080

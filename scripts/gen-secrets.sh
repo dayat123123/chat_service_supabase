@@ -142,6 +142,15 @@ else
   source_of[olt_jwks]=dipertahankan
 fi
 
+# Password akun teknis csAdmin untuk nasabah-gateway (docs/nasabah/README.md). Diisi operator;
+# file kosong = menu Nasabah belum aktif (gateway menjawab 503 not_configured).
+if [ ! -f "$SECRETS_DIR/csadmin_password" ]; then
+  secret_put csadmin_password ""
+  source_of[csadmin_password]="dibuat kosong (isi manual)"
+else
+  source_of[csadmin_password]=dipertahankan
+fi
+
 # Turunan: URI koneksi PostgREST (image tanpa shell membaca file ini lewat @file).
 pooler_host="$(env_get DB_POOLER_HOST)"; pooler_port="$(env_get DB_POOLER_PORT)"; db_name="$(env_get POSTGRES_DB)"
 secret_put postgrest_db_uri "postgres://authenticator:$(secret_get postgres_password)@${pooler_host:-pgbouncer}:${pooler_port:-6432}/${db_name:-postgres}"

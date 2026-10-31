@@ -53,6 +53,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_nasabah_permissions: {
+        Args: { p_agent_id: string; p_permissions: string[] }
+        Returns: Json
+      }
       admin_set_setting: {
         Args: { p_key: string; p_value: Json }
         Returns: Json
@@ -155,6 +159,11 @@ export type Database = {
       }
       mark_read: { Args: { p_room_id: string }; Returns: undefined }
       my_tickets: { Args: Record<PropertyKey, never>; Returns: Json }
+      nasabah_access: { Args: { p_user_id: string }; Returns: Json }
+      nasabah_audit: {
+        Args: { p_action: string; p_details: Json; p_user_id: string }
+        Returns: undefined
+      }
       notes: { Args: { p_customer_id: string }; Returns: Json }
       online_agents: { Args: Record<PropertyKey, never>; Returns: Json }
       open_ticket: {

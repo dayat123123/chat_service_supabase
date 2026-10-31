@@ -38,6 +38,14 @@ http:
       middlewares: [rate-limit, security-headers-ui]
       priority: 1
 
+    # Gateway menu Nasabah, satu origin dengan web CS (tanpa CORS, CSP connect-src 'self').
+    nasabah:
+      entryPoints: [console]
+      rule: PathPrefix(`/api-nasabah`)
+      service: nasabah-gateway
+      middlewares: [rate-limit, body-api, security-headers]
+      priority: 10
+
     # Web CS React di http://localhost:8085; header keamanan & CSP dari nginx-nya.
     cs-console:
       entryPoints: [console]
@@ -51,3 +59,7 @@ http:
       loadBalancer:
         servers:
           - url: http://cs-console:8080
+    nasabah-gateway:
+      loadBalancer:
+        servers:
+          - url: http://nasabah-gateway:8080

@@ -796,6 +796,45 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
+  # Gateway menu Nasabah di web CS (services/nasabah-gateway, docs/nasabah/README.md).
+  # Hanya meneruskan rute staf /online/* ke csAdmin, login dengan akun teknis (CSADMIN_*),
+  # memeriksa permission Nasabah per akun console, dan mencatat aksi di cs_audit_log.
+  # CSADMIN_URL/USERNAME di docker/.env; password di docker/secrets/csadmin_password.
+  # Belum diisi: gateway tetap jalan dan menjawab 503 not_configured.
+  nasabah-gateway:
+    <<: *base
+    profiles: [cs]
+    build:
+      context: ../services/nasabah-gateway
+    image: olt-social/nasabah-gateway:0.1.0
+    # edge: dari Traefik; app: PostgREST; egress: server csAdmin di jaringan lokal.
+    networks: [edge, app, egress]
+    depends_on:
+      rest:
+        condition: service_healthy
+    stop_grace_period: 10s
+    secrets: [jwt_secret, csadmin_password]
+    environment:
+      PORT: 8080
+      LOG_LEVEL: ${NASABAH_GATEWAY_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      CSADMIN_URL: ${CSADMIN_URL:-}
+      CSADMIN_USERNAME: ${CSADMIN_USERNAME:-}
+      CSADMIN_PASSWORD_FILE: /run/secrets/csadmin_password
+      CSADMIN_ACTOR: ${CSADMIN_ACTOR:-agent}
+      CSADMIN_TIMEOUT: ${CSADMIN_TIMEOUT:-15s}
+    healthcheck:
+      # Image distroless: binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/nasabah-gateway", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 64M, pids: 64}
+
   # Service operasional (tidak ikut `up`). Dipakai Makefile/make.ps1:
   #   docker compose run --rm tools migrate|seed|test-db|smoke|backup|restore|psql
   # Semua skrip berjalan di container Linux sehingga host Windows tidak butuh bash/psql.
@@ -896,3 +935,5 @@ secrets:
     file: ./secrets/postgrest_db_uri
   olt_jwks:
     file: ./secrets/olt_jwks
+  csadmin_password:
+    file: ./secrets/csadmin_password

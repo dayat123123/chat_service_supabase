@@ -34,6 +34,8 @@ import { Label } from '@/components/ui/label'
 import { Tooltip } from '@/components/ui/menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAgent } from '@/features/auth/hooks'
+import { useNasabahLabels } from '@/features/nasabah/labels'
+import { nasabahPermissions } from '@/features/nasabah/types'
 import { errorText } from '@/lib/error-text'
 import { toApiError } from '@/lib/errors'
 import { stamp } from '@/lib/time'
@@ -58,6 +60,7 @@ const editSchema = z.object({
     .trim()
     .refine((value) => /^\d{1,2}$/.test(value) && Number(value) >= 1 && Number(value) <= 20),
   active: z.boolean(),
+  nasabah: z.array(z.string()),
 })
 
 const createSchema = editSchema.extend({
@@ -95,6 +98,7 @@ function AccountDialog({
 }) {
   const { t } = useTranslation()
   const me = useAgent()
+  const nasabahLabel = useNasabahLabels()
   const options = useAdminOptions()
   const save = useSaveAccount()
   const editing = account !== null
@@ -109,6 +113,7 @@ function AccountDialog({
       team: account?.team ?? 'general',
       limit: String(account?.max_active_tickets ?? 5),
       active: account ? account.disabled_at === null : true,
+      nasabah: account?.nasabah_permissions ?? [],
     },
   })
   const errors = form.formState.errors
@@ -126,7 +131,8 @@ function AccountDialog({
       disabled: !values.active,
     }
     try {
-      const result = await save.mutateAsync({ id: account?.id ?? null, draft })
+      const nasabah = nasabahPermissions.filter((permission) => values.nasabah.includes(permission))
+      const result = await save.mutateAsync({ id: account?.id ?? null, draft, nasabah })
       onClose()
       if ('temporary_password' in result && typeof result.temporary_password === 'string') {
         onCreated({ agent: result.agent, temporary_password: result.temporary_password })
@@ -255,6 +261,33 @@ function AccountDialog({
               />
             </div>
           </div>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium">{t('settings.nasabahAccess')}</legend>
+            <p className="text-xs text-muted-foreground">{t('settings.nasabahHint')}</p>
+            <Controller
+              control={form.control}
+              name="nasabah"
+              render={({ field }) => (
+                <div className="flex flex-col gap-1.5">
+                  {nasabahPermissions.map((permission) => (
+                    <label key={permission} className="flex items-center gap-2 text-row">
+                      <Checkbox
+                        checked={field.value.includes(permission)}
+                        onCheckedChange={(value) =>
+                          field.onChange(
+                            value === true
+                              ? [...field.value, permission]
+                              : field.value.filter((item) => item !== permission),
+                          )
+                        }
+                      />
+                      {nasabahLabel.permission(permission)}
+                    </label>
+                  ))}
+                </div>
+              )}
+            />
+          </fieldset>
           {editing ? (
             <div className="flex flex-col gap-2">
               <Controller

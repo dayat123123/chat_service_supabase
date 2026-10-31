@@ -29,6 +29,7 @@ import {
 } from '@/features/presence/components/status-menu'
 import {
   canViewTickets,
+  hasNasabah,
   isCompliance,
   isMonitor,
   isSuperAdmin,
@@ -47,6 +48,7 @@ type NavTarget =
   | '/compliance/cases'
   | '/compliance/audit'
   | '/compliance/policy'
+  | '/nasabah'
 
 function NavLink({
   to,
@@ -218,6 +220,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
             <NavLink to="/compliance/policy" label={t('nav.policy')} />
           </>
         ) : null}
+        {hasNasabah(agent) ? <NavLink to="/nasabah" label={t('nav.nasabah')} /> : null}
       </nav>
       <div className="hidden min-w-0 flex-1 justify-center px-2 lg:flex">
         <button

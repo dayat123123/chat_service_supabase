@@ -22,7 +22,12 @@ async function invoke<T>(path: string, method: 'POST' | 'PATCH', body: Record<st
 }
 
 function account(raw: StaffAccount): StaffAccount {
-  return { ...raw, roles: raw.roles ?? [], status: raw.status ?? 'offline' }
+  return {
+    ...raw,
+    roles: raw.roles ?? [],
+    status: raw.status ?? 'offline',
+    nasabah_permissions: raw.nasabah_permissions ?? [],
+  }
 }
 
 export const settingsApi = {
@@ -41,6 +46,13 @@ export const settingsApi = {
     const updated = await invoke<{ agent: StaffAccount }>(`cs-admin/agents/${id}`, 'PATCH', body)
     return account(updated.agent)
   },
+  setNasabahPermissions: async (id: string, permissions: string[]) =>
+    account(
+      await rpc<StaffAccount>('admin_set_nasabah_permissions', {
+        p_agent_id: id,
+        p_permissions: permissions,
+      }),
+    ),
   resetPassword: async (id: string) => {
     const reset = await invoke<CreatedAccount>(`cs-admin/agents/${id}/reset-password`, 'POST', {})
     return { ...reset, agent: account(reset.agent) }

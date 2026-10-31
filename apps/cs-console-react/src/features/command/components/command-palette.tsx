@@ -19,6 +19,7 @@ import {
   StickyNoteIcon,
   TicketIcon,
   Undo2Icon,
+  UsersIcon,
 } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,6 +41,7 @@ import { useSetStatus } from '@/features/presence/hooks'
 import {
   agentStatuses,
   canViewTickets,
+  hasNasabah,
   isCompliance,
   isSuperAdmin,
   worksTickets,
@@ -106,6 +108,7 @@ type SectionTarget =
   | '/compliance/cases'
   | '/compliance/audit'
   | '/compliance/policy'
+  | '/nasabah'
 
 function PaletteBody({
   choose,
@@ -173,6 +176,7 @@ function PaletteBody({
           { label: t('nav.policy'), icon: ShieldCheckIcon, to: '/compliance/policy' as const },
         ]
       : []),
+    ...(hasNasabah(agent) ? [{ label: t('nav.nasabah'), icon: UsersIcon, to: '/nasabah' as const }] : []),
   ]
   const navigation: PaletteItem[] = [
     ...tabs.map((item) => ({

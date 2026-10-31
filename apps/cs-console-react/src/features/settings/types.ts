@@ -14,6 +14,7 @@ export type StaffAccount = {
   disabled_at: string | null
   status: AgentStatus
   active_tickets: number
+  nasabah_permissions: string[]
   created_at: string | null
 }
 

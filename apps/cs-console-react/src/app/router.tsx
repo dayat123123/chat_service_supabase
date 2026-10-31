@@ -7,7 +7,13 @@ import {
 } from '@tanstack/react-router'
 
 import { caseStates, type CaseState } from '@/features/compliance/types'
-import { canViewTickets, isCompliance, isSuperAdmin, type AgentProfile } from '@/features/presence/types'
+import {
+  canViewTickets,
+  hasNasabah,
+  isCompliance,
+  isSuperAdmin,
+  type AgentProfile,
+} from '@/features/presence/types'
 import { appEnv } from '@/lib/supabase'
 
 import { Home, NoAccess } from './home'
@@ -34,7 +40,9 @@ const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   beforeLoad: ({ context }) => {
-    if (!canViewTickets(context.agent) && isCompliance(context.agent)) throw redirect({ to: '/compliance' })
+    if (canViewTickets(context.agent)) return
+    if (isCompliance(context.agent)) throw redirect({ to: '/compliance' })
+    if (hasNasabah(context.agent)) throw redirect({ to: '/nasabah' })
   },
   component: Home,
 })
@@ -111,6 +119,15 @@ const compliancePolicyRoute = createRoute({
   ),
 })
 
+const nasabahRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/nasabah',
+  beforeLoad: ({ context }) => {
+    if (!hasNasabah(context.agent)) throw redirect({ to: '/' })
+  },
+  component: lazyRouteComponent(() => import('@/features/nasabah/components/nasabah-page'), 'NasabahPage'),
+})
+
 const perfRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/__perf',
@@ -129,6 +146,7 @@ const routeTree = rootRoute.addChildren([
   complianceCasesRoute,
   complianceAuditRoute,
   compliancePolicyRoute,
+  nasabahRoute,
   perfRoute,
 ])
 

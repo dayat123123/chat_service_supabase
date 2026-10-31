@@ -19,7 +19,7 @@ param(
                  'test', 'test-db', 'test-bridge', 'test-flutter', 'test-flutter-it',
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
-                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy',
+                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-flutter-it-dummy', 'e2e-windows-dummy',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
@@ -130,6 +130,10 @@ function Assert-Config {
             throw "Secret $name belum ada. Jalankan: .\make.ps1 gen-secrets"
         }
     }
+    $csadminPassword = Join-Path $SecretsDir 'csadmin_password'
+    if (-not (Test-Path -LiteralPath $csadminPassword)) {
+        [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $csadminPassword), '')
+    }
     $placeholders = Select-String -LiteralPath $EnvFile -Pattern '=CHANGE_ME' -SimpleMatch
     if ($placeholders) {
         $placeholders | ForEach-Object { Write-Host $_.Line }
@@ -175,6 +179,7 @@ switch ($Target) {
   dummy-token   Token sosial (JWT) OLT dummy untuk exchange: -User budi_santoso [-Ttl 5m]
   smoke-dummy   Smoke test auth-bridge mode jwt vs token sosial OLT dummy
   test-dummy-olt  Unit test OLT dummy (Go, di container)
+  test-nasabah-gateway  Unit test gateway menu Nasabah (Go, di container)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
@@ -352,6 +357,10 @@ switch ($Target) {
     }
     'test-dummy-olt' {
         $src = Join-Path $PSScriptRoot 'services/dummy-olt'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    'test-nasabah-gateway' {
+        $src = Join-Path $PSScriptRoot 'services/nasabah-gateway'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
     'test-flutter-it-dummy' {

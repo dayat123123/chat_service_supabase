@@ -57,13 +57,27 @@ export function useHolidays(year: number) {
   return useQuery({ queryKey: settingsKeys.holidays(year), queryFn: () => settingsApi.holidays(year) })
 }
 
+const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((item) => b.includes(item))
+
 export function useSaveAccount() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, draft }: { id: string | null; draft: AccountDraft }) =>
-      id === null
-        ? settingsApi.createAccount(draft)
-        : { agent: await settingsApi.updateAccount(id, draft), temporary_password: null },
+    mutationFn: async ({
+      id,
+      draft,
+      nasabah,
+    }: {
+      id: string | null
+      draft: AccountDraft
+      nasabah?: string[]
+    }) => {
+      const saved =
+        id === null
+          ? await settingsApi.createAccount(draft)
+          : { agent: await settingsApi.updateAccount(id, draft), temporary_password: null }
+      if (!nasabah || sameSet(nasabah, saved.agent.nasabah_permissions)) return saved
+      return { ...saved, agent: await settingsApi.setNasabahPermissions(saved.agent.id, nasabah) }
+    },
     onSuccess: ({ agent }) => putAccount(client, agent),
   })
 }

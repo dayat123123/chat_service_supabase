@@ -23,6 +23,7 @@ export type AgentProfile = {
   reason: string | null
   active_tickets: number
   skills: Record<string, number>
+  nasabah_permissions: string[]
   settings: AgentSettings
 }
 
@@ -50,12 +51,15 @@ export function normalizeAgent(raw: AgentProfile): AgentProfile {
     ...raw,
     status: agentStatuses.includes(raw.status) ? raw.status : 'offline',
     roles: raw.roles ?? [],
+    nasabah_permissions: raw.nasabah_permissions ?? [],
     settings: { ...defaultSettings, ...raw.settings },
   }
 }
 
 export const isSuperAdmin = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_super_admin')
 export const worksTickets = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_agent')
+export const hasNasabah = (agent: Pick<AgentProfile, 'nasabah_permissions'>) =>
+  agent.nasabah_permissions.length > 0
 export const isCompliance = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('compliance')
 export const isMonitor = (agent: Pick<AgentProfile, 'roles'>) => isSuperAdmin(agent) && !worksTickets(agent)
 export const canViewTickets = (agent: Pick<AgentProfile, 'roles'>) =>

@@ -28,6 +28,7 @@ function staff(overrides: Partial<StaffAccount>): StaffAccount {
     disabled_at: null,
     status: 'online',
     active_tickets: 1,
+    nasabah_permissions: [],
     created_at: '2026-10-01T02:00:00.000Z',
     ...overrides,
   }
