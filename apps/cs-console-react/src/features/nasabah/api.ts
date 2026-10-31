@@ -125,16 +125,16 @@ export const nasabahApi = {
         Status: approve ? 2 : 0,
       },
     ),
-  openings: async (page: number, filter: OpeningFilter): Promise<Page<OpeningAccount>> =>
+  openings: async (page: number, filter: OpeningFilter, size = PAGE_SIZE): Promise<Page<OpeningAccount>> =>
     toPage(
       await request('GET', '/online/get-list-opening-rekening-online-user', {
         page,
-        size: PAGE_SIZE,
+        size,
         loginId: filter.loginId.trim() || undefined,
         custId: filter.custId.trim() || undefined,
       }),
       page,
-      PAGE_SIZE,
+      size,
     ),
   sendOpeningEmail: (row: Pick<OpeningAccount, 'LoginId' | 'CustId'>) =>
     request<Message>(

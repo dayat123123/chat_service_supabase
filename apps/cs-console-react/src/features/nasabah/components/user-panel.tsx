@@ -244,7 +244,15 @@ function UserBody({ user, onClose }: { user: OnlineUser; onClose: () => void }) 
         </section>
       </div>
       <UserDialog open={editing} user={user} links={linkIds} onClose={() => setEditing(false)} />
-      <LinkDialog open={linking} user={user} links={linkIds} onClose={() => setLinking(false)} />
+      <LinkDialog
+        open={linking}
+        user={user}
+        links={linkIds}
+        names={Object.fromEntries(
+          (links.data ?? []).map((link) => [link.AccountId.trim(), link.AccountName]),
+        )}
+        onClose={() => setLinking(false)}
+      />
       <StatusDialog user={changingStatus ? user : null} onClose={() => setChangingStatus(false)} />
       <Confirm
         open={pending !== null}

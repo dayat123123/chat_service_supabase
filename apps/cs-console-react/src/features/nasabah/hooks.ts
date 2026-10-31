@@ -1,7 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect } from 'react'
+
+import { useAuth } from '@/features/auth/hooks'
+import { presenceApi } from '@/features/presence/api'
 
 import { nasabahApi } from './api'
-import type { Approval, ApprovalFilter, OpeningAccount, OpeningFilter } from './types'
+import {
+  OPENING_PAGE_SIZE,
+  type Approval,
+  type ApprovalFilter,
+  type OpeningAccount,
+  type OpeningFilter,
+} from './types'
 
 export const nasabahKeys = {
   all: ['nasabah'] as const,
@@ -11,8 +21,29 @@ export const nasabahKeys = {
   approvals: (page: number, filter: ApprovalFilter, submitter: string) =>
     ['nasabah', 'approvals', page, filter.status, filter.action, filter.query, submitter] as const,
   approvalLinks: (approvalId: number) => ['nasabah', 'approval-links', approvalId] as const,
-  openings: (page: number, filter: OpeningFilter) =>
-    ['nasabah', 'openings', page, filter.loginId, filter.custId] as const,
+  openings: (page: number, filter: OpeningFilter, size: number) =>
+    ['nasabah', 'openings', page, filter.loginId, filter.custId, size] as const,
+  me: ['nasabah', 'me'] as const,
+}
+
+const sameSet = (a: readonly string[], b: readonly string[]) =>
+  a.length === b.length && a.every((item) => b.includes(item))
+
+export function useFreshPermissions() {
+  const updateAgent = useAuth((state) => state.updateAgent)
+  const me = useQuery({
+    queryKey: nasabahKeys.me,
+    queryFn: presenceApi.me,
+    staleTime: 0,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  })
+  useEffect(() => {
+    const phase = useAuth.getState().phase
+    if (!me.data || phase.kind !== 'ready') return
+    if (sameSet(phase.agent.nasabah_permissions, me.data.nasabah_permissions)) return
+    updateAgent({ ...phase.agent, nasabah_permissions: me.data.nasabah_permissions })
+  }, [me.data, updateAgent])
 }
 
 export function useOnlineUsers(page: number, query: string, enabled = true) {
@@ -61,10 +92,10 @@ export function useApprovalLinks(approvalId: number | undefined) {
   })
 }
 
-export function useOpenings(page: number, filter: OpeningFilter, enabled: boolean) {
+export function useOpenings(page: number, filter: OpeningFilter, enabled: boolean, size = OPENING_PAGE_SIZE) {
   return useQuery({
-    queryKey: nasabahKeys.openings(page, filter),
-    queryFn: () => nasabahApi.openings(page, filter),
+    queryKey: nasabahKeys.openings(page, filter, size),
+    queryFn: () => nasabahApi.openings(page, filter, size),
     enabled,
     placeholderData: (previous) => previous,
     staleTime: 15_000,

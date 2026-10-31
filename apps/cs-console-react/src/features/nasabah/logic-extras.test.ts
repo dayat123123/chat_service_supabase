@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { canChangeStatus, canDecide, incompleteFields, nasabahTabs, statusReasonOk } from './logic'
+import {
+  canChangeStatus,
+  canDecide,
+  groupOpenings,
+  incompleteFields,
+  nasabahTabs,
+  statusReasonOk,
+} from './logic'
 
 describe('online user extras', () => {
   it('opens the users and approvals tabs for the new permissions', () => {
@@ -32,6 +39,22 @@ describe('online user extras', () => {
     ])
     expect(incompleteFields({ Email: 'a@b.c', PhoneNumber: '', BirthDate: '1990-05-01 00:00:00' })).toEqual([
       'phone',
+    ])
+  })
+})
+
+describe('opening groups', () => {
+  it('groups account rows by LoginId in their original order', () => {
+    const rows = [
+      { LoginId: 'alam ', CustId: 'C1', Email: 'a@x.test' },
+      { LoginId: 'Alam', CustId: 'C2', Email: '' },
+      { LoginId: 'budi', CustId: 'C3', Email: 'b@x.test' },
+      { LoginId: 'alam', CustId: 'C4', Email: 'a2@x.test' },
+    ]
+    const groups = groupOpenings(rows)
+    expect(groups.map((g) => [g.loginId, g.rows.map((r) => r.CustId), g.emails])).toEqual([
+      ['alam', ['C1', 'C2', 'C4'], ['a@x.test', 'a2@x.test']],
+      ['budi', ['C3'], ['b@x.test']],
     ])
   })
 })

@@ -8,6 +8,7 @@ import {
   type NasabahPermission,
   type OnlineUser,
   type OnlineUserForm,
+  type OpeningAccount,
   type Page,
   type UserFlag,
   type UserStatus,
@@ -194,4 +195,22 @@ export function approvalPayload(action: ApprovalAction, form: OnlineUserForm, pr
   }
   if (action === 3) return base
   return { ...base, BirthDate: form.birthDate, HandphoneNo: form.phone.trim() }
+}
+
+export type OpeningGroup<T> = { key: string; loginId: string; rows: T[]; emails: string[] }
+
+export function groupOpenings<T extends Pick<OpeningAccount, 'LoginId' | 'Email'>>(
+  rows: T[],
+): OpeningGroup<T>[] {
+  const groups = new Map<string, OpeningGroup<T>>()
+  for (const row of rows) {
+    const loginId = row.LoginId.trim()
+    const key = loginId.toLowerCase()
+    const group = groups.get(key) ?? { key, loginId, rows: [], emails: [] }
+    groups.set(key, group)
+    group.rows.push(row)
+    const email = (row.Email ?? '').trim()
+    if (email && !group.emails.includes(email)) group.emails.push(email)
+  }
+  return [...groups.values()]
 }

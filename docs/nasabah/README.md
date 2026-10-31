@@ -109,7 +109,7 @@ Diatur Super Admin di **Pengaturan → Akun CS → Akses Akun Nasabah** (`cs.age
 | `online_user.status` | Ubah status Online ID langsung (aktif, nonaktif, tangguh transaksi, tangguh login) dengan alasan wajib |
 | `opening_account.send` | Lihat data pembukaan rekening dan kirim emailnya (satu per satu atau beberapa sekaligus) |
 
-Pengajuan sendiri hanya bisa diputuskan dengan `online_user.approve_own`. Pengajuan CS lain hanya dengan `online_user.approve`. Akun yang punya keduanya boleh memutuskan semua pengajuan. csAdmin sendiri tidak memeriksa izin di server, jadi gateway yang menegakkannya.
+Web CS memuat ulang izin akun saat menu dibuka, saat tab kembali aktif, dan setiap 60 detik, jadi perubahan izin berlaku tanpa login ulang. Pengajuan sendiri hanya bisa diputuskan dengan `online_user.approve_own`. Pengajuan CS lain hanya dengan `online_user.approve`. Akun yang punya keduanya boleh memutuskan semua pengajuan. csAdmin sendiri tidak memeriksa izin di server, jadi gateway yang menegakkannya.
 
 ## Isi menu
 
@@ -118,10 +118,11 @@ Menu ada di bar atas sebelum **Pengaturan**.
 - **Ringkasan** di atas tab: jumlah Online ID terdaftar dan pengajuan yang menunggu approval, sesuai izin akun.
 - **Online ID**:
   - daftar dan pencarian, serta detail dengan rekening tertaut;
-  - pengajuan buat/ubah/hapus, kelola rekening tertaut, reset password/PIN, dan **ubah status** cepat;
+  - pengajuan buat/ubah/hapus, reset password/PIN, dan **ubah status** cepat;
+  - kelola rekening tertaut, dengan dialog terbagi: **Sudah tertaut** (hapus centang untuk melepas), **Akan ditautkan**, dan **Tambah rekening** (pencarian katalog), plus ringkasan jumlah setelah disetujui;
   - baris yang email, nomor HP, atau tanggal lahirnya kosong diberi penanda. Sakelar **Hanya data belum lengkap** menyaring halaman yang sedang tampil, dan tombol **Lengkapi data** membuka form pengajuan perubahan.
 - **Approval**: daftar pengajuan dengan filter, detail perubahan rekening, setujui/tolak.
-- **Pembukaan rekening**: daftar per LoginId–rekening. Email bisa dikirim satu per satu, atau centang beberapa baris lalu **Kirim email (n)**; pengiriman berurutan dan hasilnya diringkas.
+- **Pembukaan rekening**: dikelompokkan per LoginId, satu baris per LoginId berisi email, jumlah rekening, dan contoh kode rekening. Pengelompokan dilakukan di klien dari baris yang sudah dimuat; klik baris untuk membuka rekeningnya tanpa request tambahan ke csAdmin. Karena csAdmin memaginasi per baris rekening (urut LoginId), LoginId pertama/terakhir di halaman bisa berlanjut ke halaman sebelah, dan detailnya diberi catatan. Email bisa dikirim satu per satu, atau centang beberapa rekening (boleh lintas LoginId; ada centang semua per LoginId) lalu **Kirim email (n)**. Halaman daftar berisi 100 baris rekening csAdmin.
 
 ## Rute yang dibuka
 

@@ -92,6 +92,7 @@ export type IncompleteField = 'email' | 'phone' | 'birthDate'
 export type Page<T> = { rows: T[]; total: number; page: number; perPage: number; totalPages: number }
 
 export const PAGE_SIZE = 30
+export const OPENING_PAGE_SIZE = 100
 
 export type OnlineUserForm = {
   loginId: string

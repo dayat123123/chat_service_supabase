@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/states'
 import { useAgent } from '@/features/auth/hooks'
 import { cn } from '@/lib/utils'
 
+import { useFreshPermissions } from '../hooks'
 import { nasabahTabs, type NasabahTab } from '../logic'
 import { ApprovalsTab } from './approvals-tab'
 import { NasabahSummary } from './nasabah-summary'
@@ -14,6 +15,7 @@ import { UsersTab } from './users-tab'
 export function NasabahPage() {
   const { t } = useTranslation()
   const agent = useAgent()
+  useFreshPermissions()
   const tabs = nasabahTabs(agent.nasabah_permissions)
   const [chosen, setChosen] = useState<NasabahTab | null>(null)
   const tab = chosen && tabs.includes(chosen) ? chosen : tabs[0]
