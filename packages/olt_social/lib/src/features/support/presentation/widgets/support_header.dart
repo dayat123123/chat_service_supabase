@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/app/olt_support_scope.dart';
 import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
 import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
 import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
@@ -21,7 +20,7 @@ String supportStatusText(OltSocialLocalizations l10n, SupportTicket ticket) => s
   SupportStatus.closed => l10n.supportStatusClosed,
 };
 
-enum _MenuAction { attachOrder, complaint, reportFake, endChat, myTickets, newTicket }
+enum _MenuAction { complaint, reportFake, endChat, myTickets, newTicket }
 
 Color _statusColor(ColorScheme scheme, SupportStatus status) => switch (status) {
   SupportStatus.open => scheme.tertiary,
@@ -88,7 +87,6 @@ class SupportHeader extends StatelessWidget {
                   icon: const Icon(Icons.more_horiz),
                   onSelected: (action) => _onAction(context, action),
                   itemBuilder: (context) => [
-                    if (active) PopupMenuItem(value: _MenuAction.attachOrder, child: Text(l10n.supportAttachOrder)),
                     if (active && ticket?.complaintReceivedAt == null)
                       PopupMenuItem(value: _MenuAction.complaint, child: Text(l10n.supportComplaint)),
                     PopupMenuItem(value: _MenuAction.reportFake, child: Text(l10n.supportReportFake)),
@@ -114,9 +112,6 @@ class SupportHeader extends StatelessWidget {
     final l10n = context.oltL10n;
     final cubit = context.read<SupportCubit>();
     switch (action) {
-      case _MenuAction.attachOrder:
-        final card = await pickSupportOrder(context, OltSupportScope.of(context).support);
-        if (card != null) await cubit.attachCard(card);
       case _MenuAction.complaint:
         if (await confirmSupport(context, message: l10n.supportComplaintConfirm, confirm: l10n.supportComplaint)) {
           await cubit.fileComplaint();

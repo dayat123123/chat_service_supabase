@@ -347,7 +347,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get stockDiscussion => 'Diskusi';
 
   @override
-  String get stockNotFound => 'Kode saham tidak dikenal.';
+  String get stockNotFound => 'Kode saham tidak valid.';
 
   @override
   String get chats => 'Chat';
@@ -597,9 +597,6 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get supportOpenLink => 'Buka panduan';
 
   @override
-  String get supportViewCard => 'Lihat detail';
-
-  @override
   String get supportRatePrompt => 'Beri nilai layanan ini';
 
   @override
@@ -618,14 +615,6 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   @override
   String get supportPickTopicHint =>
       'Pilih topik agar CS yang tepat langsung membantu Anda.';
-
-  @override
-  String get supportAttachOrder => 'Lampirkan order';
-
-  @override
-  String supportAttached(String ref) {
-    return 'Order $ref ikut dilampirkan';
-  }
 
   @override
   String get supportHistory => 'Lihat riwayat chat';
@@ -731,12 +720,6 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
 
   @override
   String get supportClosed => 'Chat diakhiri.';
-
-  @override
-  String get supportCardSent => 'Order dilampirkan ke chat.';
-
-  @override
-  String get supportNoOrders => 'Tidak ada order terbaru.';
 
   @override
   String supportTicketMeta(String date, String status) {

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -103,6 +103,26 @@ describe('Composer', () => {
       }),
     )
     expect(send).not.toHaveBeenCalled()
+  })
+
+  it('offers only help links and quick options as special messages', async () => {
+    const { send, user } = setup()
+    await user.click(screen.getByRole('button', { name: 'Kirim lainnya' }))
+    const items = await screen.findAllByRole('menuitem')
+    expect(items.map((item) => item.textContent)).toEqual(['Tautan bantuan', 'Pilihan cepat'])
+    await user.click(screen.getByRole('menuitem', { name: 'Pilihan cepat' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Kirim pilihan cepat' })
+    await user.type(within(dialog).getByLabelText('Pertanyaan'), 'Dana sudah masuk?')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Pilihan 1' }), 'Sudah')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Pilihan 2' }), 'Belum')
+    await user.click(within(dialog).getByRole('button', { name: 'Kirim' }))
+    await waitFor(() =>
+      expect(send).toHaveBeenCalledWith({
+        body: 'Dana sudah masuk?',
+        kind: 'quick_reply',
+        payload: { options: ['Sudah', 'Belum'] },
+      }),
+    )
   })
 
   it('keeps a draft per ticket', async () => {

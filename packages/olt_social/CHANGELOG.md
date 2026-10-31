@@ -1,3 +1,21 @@
+## 0.3.0
+
+* Prinsip integrasi: server hanya memvalidasi token login ke OLT. Order, daftar
+  dan nama saham, harga, serta data nasabah tetap milik app OLT.
+* Baru: `OltSocial.initialize(stockSearch: ...)` (`OltStockSearch`,
+  `StockSuggestion`) untuk saran `$KODE` dari daftar saham milik app, dan
+  `OltStockFeed(stockName: ...)` untuk nama saham di header.
+* Breaking: `Stock` kini hanya `code`, `watcherCount`, dan `watching`
+  (`StockType`, `name`, `sector` dihapus). `StockRepository.searchStocks` dan
+  `isWatching` dihapus; `getStock` memakai RPC `get_stock`.
+* Breaking: chat CS tanpa kartu order/transaksi dana. `SupportCard`,
+  `SupportCardKind`, `SupportOrder`, parameter `card` di `OltSupportChat`,
+  `OltSupportPage`, dan `openOltSupport`, `SupportRepository.sendCard` dan
+  `recentOrders`, `OltSupportMessageActions.onOpenCard`, serta
+  `MessageKind.card` dihapus. Pesan kartu lama tampil sebagai teks.
+* Breaking: `OltSupportStaff` dihapus karena web CS kini hanya versi React.
+* Membutuhkan migrasi `0037_client_owned_business_data`.
+
 ## 0.2.0
 
 * Builder untuk kustomisasi UI chat: `OltChatBuilders` (pesan, composer, header

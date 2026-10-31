@@ -1,5 +1,5 @@
 import type { ChatMessage, PendingMessage } from '@/features/conversation/types'
-import type { AgentNote } from '@/features/customer/types'
+import type { AgentNote, HistoryItem } from '@/features/customer/types'
 import { defaultSettings, type AgentProfile } from '@/features/presence/types'
 import type { Ticket } from '@/features/tickets/types'
 
@@ -193,9 +193,7 @@ export const sampleMessages: ChatMessage[] = [
     id: 'm6',
     created_at: minutesAgo(10),
     ...staff,
-    kind: 'card',
-    body: 'Order',
-    payload: { card: 'order', ref: 'ORD-20261030-88412' },
+    body: 'Order BBCA yang dipasang pagi ini ya, Kak?',
   }),
   message({
     id: 'm7',
@@ -213,6 +211,42 @@ export const sampleNotes: AgentNote[] = [
     created_at: minutesAgo(8),
     ticket_id: 'dev-conversation',
     author: { display_name: 'Nadia' },
+  },
+]
+
+const sampleTopics: Record<string, string> = {
+  withdrawal: 'Dana & penarikan',
+  account: 'Keamanan akun',
+}
+
+export const sampleTopicName = (code: string) => sampleTopics[code] ?? code
+
+export const sampleHistory: HistoryItem[] = [
+  {
+    id: 'h1',
+    ticket_number: 'CS-20261012-0187',
+    topic: 'withdrawal',
+    status: 'closed',
+    flags: [],
+    created_at: minutesAgo(26_000),
+    resolved_at: minutesAgo(25_950),
+    closed_at: minutesAgo(22_000),
+    outcome: 'answered',
+    rating: 5,
+    agent: 'Bima',
+  },
+  {
+    id: 'h2',
+    ticket_number: 'CS-20260918-0031',
+    topic: 'account',
+    status: 'closed',
+    flags: ['complaint'],
+    created_at: minutesAgo(61_000),
+    resolved_at: minutesAgo(60_800),
+    closed_at: minutesAgo(57_000),
+    outcome: 'answered',
+    rating: null,
+    agent: 'Nadia',
   },
 ]
 

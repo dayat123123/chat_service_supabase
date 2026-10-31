@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
-import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
 import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 
 class SupportRating {
@@ -123,50 +121,6 @@ class _FakeCsDialogState extends State<_FakeCsDialog> {
           child: Text(l10n.supportSend),
         ),
       ],
-    );
-  }
-}
-
-Future<SupportCard?> pickSupportOrder(BuildContext context, SupportRepository support) =>
-    showModalBottomSheet<SupportCard>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => _OrderPicker(support: support),
-    );
-
-class _OrderPicker extends StatelessWidget {
-  const _OrderPicker({required this.support});
-
-  final SupportRepository support;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
-    return SafeArea(
-      child: FutureBuilder<List<SupportOrder>>(
-        future: support.recentOrders(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const SizedBox(height: 160, child: Center(child: CircularProgressIndicator()));
-          }
-          final orders = snapshot.data ?? const <SupportOrder>[];
-          return ListView(
-            shrinkWrap: true,
-            children: [
-              ListTile(title: Text(l10n.supportAttachOrder, style: Theme.of(context).textTheme.titleMedium)),
-              if (snapshot.hasError) ListTile(title: Text(l10n.errorMessage(snapshot.error!))),
-              if (!snapshot.hasError && orders.isEmpty) ListTile(title: Text(l10n.supportNoOrders)),
-              for (final order in orders)
-                ListTile(
-                  leading: const Icon(Icons.receipt_long_outlined),
-                  title: Text('${order.code} · ${order.side}'),
-                  subtitle: Text([order.status, if (order.time != null) l10n.relativeTime(order.time!)].join(' · ')),
-                  onTap: () => Navigator.pop(context, SupportCard(kind: SupportCardKind.order, ref: order.id)),
-                ),
-            ],
-          );
-        },
-      ),
     );
   }
 }

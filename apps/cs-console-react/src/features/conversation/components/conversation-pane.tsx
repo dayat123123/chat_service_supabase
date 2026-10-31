@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/primitives'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
-import { CardDetailDialog, type CardRef } from '@/features/customer/components/card-detail-dialog'
 import { useNotes } from '@/features/customer/hooks'
 import { atCapacity, isSupervisor } from '@/features/presence/types'
 import { ticketsApi } from '@/features/tickets/api'
@@ -117,7 +116,6 @@ function Conversation({
   const topics = useTopics()
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
   const [action, setAction] = useState<TicketAction | null>(null)
-  const [card, setCard] = useState<CardRef | null>(null)
 
   const active = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
   const owner = active && ticket.owner?.id === agent.id
@@ -235,7 +233,6 @@ function Conversation({
           onLoadOlder={() => void messages.fetchNextPage()}
           trustedHost={trustedHost}
           onReply={canReply ? setReplyTo : undefined}
-          onOpenCard={setCard}
           onResend={(item) => void resend(item).catch(() => undefined)}
           onDiscard={discard}
         />
@@ -271,7 +268,6 @@ function Conversation({
           reassign: (agentId, name, reason) => reassign.mutateAsync({ agentId, name, reason }),
         }}
       />
-      <CardDetailDialog ticketId={ticket.id} card={card} onClose={() => setCard(null)} />
     </div>
   )
 }

@@ -10,6 +10,30 @@ import { stamp } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
 import { useAddNote, useNotes } from '../hooks'
+import type { AgentNote } from '../types'
+
+export function NoteList({ notes }: { notes: AgentNote[] }) {
+  const { t } = useTranslation()
+  if (notes.length === 0) return <p className="text-row text-muted-foreground">{t('customer.noNotes')}</p>
+  return (
+    <ul className="flex flex-col gap-1.5">
+      {notes.map((note) => (
+        <li
+          key={note.id}
+          className={cn(
+            'border-l-2 px-2.5 py-1.5',
+            note.kind === 'handover' ? 'border-strong bg-muted' : 'border-note-border bg-note',
+          )}
+        >
+          <div className="tabular text-xs text-muted-foreground">
+            {note.author?.display_name ?? '–'} · {stamp(note.created_at)}
+          </div>
+          <p className="mt-0.5 text-row whitespace-pre-wrap">{note.body}</p>
+        </li>
+      ))}
+    </ul>
+  )
+}
 
 export function NotesSection({ customerId, ticketId }: { customerId: string; ticketId: string }) {
   const { t } = useTranslation()
@@ -59,25 +83,7 @@ export function NotesSection({ customerId, ticketId }: { customerId: string; tic
           {t('customer.addNote')}
         </Button>
       </div>
-      {notes.data?.length === 0 ? (
-        <p className="text-row text-muted-foreground">{t('customer.noNotes')}</p>
-      ) : null}
-      <ul className="flex flex-col gap-1.5">
-        {(notes.data ?? []).map((note) => (
-          <li
-            key={note.id}
-            className={cn(
-              'border-l-2 px-2.5 py-1.5',
-              note.kind === 'handover' ? 'border-strong bg-muted' : 'border-note-border bg-note',
-            )}
-          >
-            <div className="tabular text-xs text-muted-foreground">
-              {note.author?.display_name ?? '–'} · {stamp(note.created_at)}
-            </div>
-            <p className="mt-0.5 text-row whitespace-pre-wrap">{note.body}</p>
-          </li>
-        ))}
-      </ul>
+      {notes.data ? <NoteList notes={notes.data} /> : null}
     </div>
   )
 }

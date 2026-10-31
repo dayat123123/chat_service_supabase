@@ -7,6 +7,7 @@ import 'package:olt_social/src/features/notifications/domain/repositories/notifi
 import 'package:olt_social/src/features/poll/domain/repositories/poll_repository.dart';
 import 'package:olt_social/src/features/post/domain/repositories/comment_repository.dart';
 import 'package:olt_social/src/features/profile/domain/repositories/profile_repository.dart';
+import 'package:olt_social/src/features/stocks/domain/entities/stock_suggestion.dart';
 import 'package:olt_social/src/features/stocks/domain/repositories/stock_repository.dart';
 import 'package:olt_social/src/shared/domain/entities/user.dart';
 
@@ -18,13 +19,16 @@ typedef OltPostTapCallback = void Function(BuildContext context, String postId);
 
 typedef OltRoomTapCallback = void Function(BuildContext context, String roomId);
 
+typedef OltStockSearch = Future<List<StockSuggestion>> Function(String query);
+
 class OltSocialCallbacks {
-  const OltSocialCallbacks({this.onStockTap, this.onUserTap, this.onPostTap, this.onRoomTap});
+  const OltSocialCallbacks({this.onStockTap, this.onUserTap, this.onPostTap, this.onRoomTap, this.stockSearch});
 
   final OltStockTapCallback? onStockTap;
   final OltUserTapCallback? onUserTap;
   final OltPostTapCallback? onPostTap;
   final OltRoomTapCallback? onRoomTap;
+  final OltStockSearch? stockSearch;
 }
 
 abstract interface class OltSocialDependencies {

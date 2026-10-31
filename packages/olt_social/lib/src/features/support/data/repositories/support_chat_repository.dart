@@ -17,7 +17,7 @@ import 'package:olt_social/src/shared/domain/entities/attachment.dart';
 import 'package:olt_social/src/shared/domain/entities/user.dart';
 
 class SupportChatRepository implements ChatRepository {
-  SupportChatRepository(this._cs, {RealtimeGateway? realtime, required this._rooms, this._ticketOf})
+  SupportChatRepository(this._cs, {RealtimeGateway? realtime, required this._rooms})
     : _realtime = realtime,
       _hub = realtime == null ? null : RoomChannelHub(realtime);
 
@@ -25,7 +25,6 @@ class SupportChatRepository implements ChatRepository {
   final RealtimeGateway? _realtime;
   final RoomChannelHub? _hub;
   final Future<List<ChatRoom>> Function() _rooms;
-  final String? Function(String roomId)? _ticketOf;
   final _unreadChanges = StreamController<void>.broadcast();
 
   static const _locked = OltSocialException(OltSocialErrorKind.forbidden, code: 'support_message_locked');
@@ -58,37 +57,14 @@ class SupportChatRepository implements ChatRepository {
     String? replyToId,
     List<Attachment> attachments = const [],
   }) async {
-    final files = [for (final a in attachments) AttachmentModel.fromEntity(a).toJson()];
-    final ticketOf = _ticketOf;
-    if (ticketOf == null) {
-      final rows = await _cs.rpcRows('send_message', {
-        'p_room_id': roomId,
-        'p_body': body,
-        'p_client_id': clientId,
-        'p_reply_to_id': replyToId,
-        'p_attachments': files,
-      });
-      return ChatMessageModel.fromJson(rows.first).toEntity();
-    }
-    final ticketId = ticketOf(roomId);
-    if (ticketId == null) {
-      throw const OltSocialException(OltSocialErrorKind.forbidden, code: 'ticket_not_active');
-    }
-    final result = (await _cs.rpcValue('agent_send_message', {
-      'p_ticket_id': ticketId,
+    final rows = await _cs.rpcRows('send_message', {
+      'p_room_id': roomId,
       'p_body': body,
       'p_client_id': clientId,
       'p_reply_to_id': replyToId,
-      'p_attachments': files,
-    }))! as Map<String, dynamic>;
-    if (result['status'] != 'sent') {
-      throw OltSocialException(
-        OltSocialErrorKind.contentBlocked,
-        code: result['code'] as String?,
-        message: result['message'] as String?,
-      );
-    }
-    return ChatMessageModel.fromJson(result['message'] as Map<String, dynamic>).toEntity();
+      'p_attachments': [for (final a in attachments) AttachmentModel.fromEntity(a).toJson()],
+    });
+    return ChatMessageModel.fromJson(rows.first).toEntity();
   }
 
   @override

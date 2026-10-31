@@ -12,7 +12,7 @@ import { uuid } from '@/lib/utils'
 
 import { conversationApi, PAGE_SIZE } from './api'
 import { collectAfter, insertMessages, newestCursor, orderedMessages, type MessagePages } from './cache'
-import type { ChatMessage, LocalAttachment, PendingMessage, RoomMember, SendResult } from './types'
+import type { ChatMessage, LocalAttachment, PendingMessage, RoomMember, SendKind, SendResult } from './types'
 
 export const conversationKeys = {
   messages: (roomId: string) => ['messages', roomId] as const,
@@ -186,7 +186,7 @@ export type SendRequest = {
   body: string
   files?: LocalAttachment[]
   replyTo?: ChatMessage | null
-  kind?: string
+  kind?: SendKind
   payload?: Record<string, unknown>
 }
 
@@ -195,7 +195,7 @@ export function useSendMessage(ticket: Ticket, meId: string) {
   const run = useCallback(
     async (
       pending: PendingMessage,
-      extra: { kind?: string; payload?: Record<string, unknown> },
+      extra: { kind?: SendKind; payload?: Record<string, unknown> },
     ): Promise<SendResult> => {
       const store = usePending.getState()
       const showPending = !extra.kind || extra.kind === 'text'

@@ -27,8 +27,8 @@ class StockCubit extends Cubit<StockState> {
 
   Future<void> load() async {
     try {
-      final results = await Future.wait([_stocks.getStock(code), _stocks.isWatching(code)]);
-      if (!isClosed) emit(state.copyWith(stock: results[0] as Stock?, watching: results[1]! as bool, loaded: true));
+      final stock = await _stocks.getStock(code);
+      if (!isClosed) emit(state.copyWith(stock: stock, watching: stock?.watching ?? false, loaded: true));
     } catch (e) {
       if (!isClosed) emit(state.copyWith(loaded: true, error: e, errorId: state.errorId + 1));
     }
@@ -39,7 +39,7 @@ class StockCubit extends Cubit<StockState> {
     final stock = state.stock;
     emit(state.copyWith(
       watching: watching,
-      stock: stock?.copyWith(watcherCount: stock.watcherCount + (watching ? 1 : -1)),
+      stock: stock?.copyWith(watcherCount: stock.watcherCount + (watching ? 1 : -1), watching: watching),
     ));
     try {
       watching ? await _stocks.watch(code) : await _stocks.unwatch(code);

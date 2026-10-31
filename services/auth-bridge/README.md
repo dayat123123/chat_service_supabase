@@ -91,7 +91,7 @@ Token berformat `mock:<olt_user_id>:<username>[:<nama tampilan>]`, contohnya `mo
 
 ### `websocket` (produksi)
 
-Default adapter **sama dengan Protokol v1** ([docs/market-integration.md](../../docs/market-integration.md)). Bila OLT memakai protokol itu, cukup isi:
+Default adapter **sama dengan Protokol v1** ([docs/olt-integration.md](../../docs/olt-integration.md)). Bila OLT memakai protokol itu, cukup isi:
 
 ```dotenv
 AUTH_BRIDGE_OLT_MODE=websocket

@@ -11,7 +11,6 @@ abstract interface class SupportRepository {
     String language = 'id',
     String? screen,
     bool complaint = false,
-    SupportCard? card,
   });
 
   Future<List<SupportTicket>> myTickets();
@@ -26,11 +25,7 @@ abstract interface class SupportRepository {
 
   Future<SupportTicket> reportFakeCs(String description);
 
-  Future<void> sendCard(String roomId, SupportCard card, {required String clientId});
-
   Future<SensitiveCheck> checkSensitive(String text);
-
-  Future<List<SupportOrder>> recentOrders({int limit = 10});
 
   Stream<void> watchTicket(String roomId);
 

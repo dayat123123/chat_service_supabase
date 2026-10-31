@@ -7,7 +7,7 @@ select tables_are('public', array[
   'legal_documents', 'messages', 'muted_keywords', 'muted_stocks', 'mutes', 'notifications',
   'post_mentions', 'post_poll_options', 'post_poll_votes', 'post_polls', 'post_stocks', 'posts',
   'profiles', 'reactions', 'reports',
-  'stock_watchers', 'stocks', 'user_consents'
+  'stock_watchers', 'user_consents'
 ], 'Tabel public sesuai skema');
 
 select is(

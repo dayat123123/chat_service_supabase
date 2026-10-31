@@ -4,6 +4,7 @@ import 'package:olt_social/olt_social.dart';
 
 import 'custom_chat_style.dart';
 import 'fake_olt_auth.dart';
+import 'olt_stocks.dart';
 
 const _anonKey = String.fromEnvironment('OLT_SOCIAL_ANON_KEY');
 const _urlOverride = String.fromEnvironment('OLT_SOCIAL_URL');
@@ -77,6 +78,7 @@ Future<void> _startSocial(FakeOltAuth auth) async {
     anonKey: _anonKey,
     oltTokenProvider: () async => auth.currentToken,
     onStockTap: openOltStockPage,
+    stockSearch: searchOltStocks,
   );
   await social.ensureSignedIn();
 }
@@ -111,7 +113,7 @@ void openOltStockPage(BuildContext context, String code) {
     MaterialPageRoute<void>(
       builder: (_) => Scaffold(
         appBar: AppBar(title: Text('Halaman saham OLT · $code')),
-        body: OltStockFeed(stockCode: code),
+        body: OltStockFeed(stockCode: code, stockName: oltStocks[code]),
       ),
     ),
   );

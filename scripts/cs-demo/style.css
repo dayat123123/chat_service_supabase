@@ -271,24 +271,6 @@ textarea { resize: vertical; }
 
 .msg.mine .chips button { background: rgba(255, 255, 255, .15); color: #fff; border-color: rgba(255, 255, 255, .4); }
 
-.card-msg {
-  border: 1px dashed currentColor;
-  border-radius: 8px;
-  padding: 6px 8px;
-}
-
-.card-kind { font-size: 11px; opacity: .8; }
-.card-ref { font-weight: 600; }
-
-.link-btn {
-  border: none;
-  background: none;
-  padding: 0;
-  color: inherit;
-  text-decoration: underline;
-  font-size: 12px;
-}
-
 .rating {
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -301,20 +283,6 @@ textarea { resize: vertical; }
 .stars { display: flex; gap: 4px; }
 .star { font-size: 18px; color: #c9cfdb; padding: 2px 8px; }
 .star.on { color: #f0a500; border-color: #f0a500; }
-
-.orders {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-height: 180px;
-  overflow-y: auto;
-}
-
-.orders-title { font-weight: 600; font-size: 12px; }
-.order-row { text-align: left; }
 
 .composer {
   display: flex;
@@ -471,30 +439,6 @@ textarea { resize: vertical; }
   font-size: 13px;
 }
 
-.kv {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 3px 10px;
-  margin: 0;
-  font-size: 12px;
-}
-
-.kv dt { color: var(--muted); }
-.kv dd { margin: 0; word-break: break-all; }
-
-.reveal {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-
-.reveal-out {
-  font-size: 12px;
-  margin-top: 4px;
-  color: var(--official);
-}
-
 .list-row {
   font-size: 12px;
   padding: 5px 0;
@@ -533,18 +477,6 @@ textarea { resize: vertical; }
 }
 
 .timeline li { margin-bottom: 3px; }
-
-dialog {
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 0;
-  max-width: 520px;
-  width: calc(100% - 32px);
-}
-
-.dialog-body { padding: 16px; }
-.dialog-body h3 { margin: 0 0 10px; }
-.dialog-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
 
 .toasts {
   position: fixed;

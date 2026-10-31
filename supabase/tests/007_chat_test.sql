@@ -1,9 +1,8 @@
 -- Chat: DM tanpa duplikat, keanggotaan & RLS, kirim idempoten, unread, blokir,
 -- grup, room saham, soft delete, rate limit.
 begin;
-select plan(25);
+select plan(28);
 
-select tests.create_stock('BBCA');
 select tests.create_user('alice') as alice \gset
 select tests.create_user('bob_user') as bob \gset
 select tests.create_user('carol') as carol \gset
@@ -97,7 +96,16 @@ select tests.authenticate_as(:'carol');
 select join_stock_room('bbca') as stock_room \gset
 select tests.authenticate_as(:'bob');
 select is(join_stock_room('BBCA'), :'stock_room'::uuid, 'Satu room per kode saham');
-select throws_ok($$select join_stock_room('NOPE')$$, 'PT404', 'stock_not_found', 'Kode saham tidak dikenal ditolak');
+select join_stock_room('nope') as new_room \gset
+select is((select name from chat_rooms where id = :'new_room'), 'NOPE',
+  'Kode saham apa pun dari klien membuka room tanpa daftar saham di server');
+select throws_ok($$select join_stock_room('1X')$$, 'PT400', 'invalid_stock_code', 'Kode saham berformat salah ditolak');
+reset role;
+update private.rate_limits set max_count = 1 where action = 'stock_room_create';
+select tests.authenticate_as(:'bob');
+select throws_like($$select join_stock_room('XYZW')$$, '%"PT429"%"rate_limited"%',
+  'Pembuatan room saham baru dibatasi rate limit');
+select is(join_stock_room('BBCA'), :'stock_room'::uuid, 'Bergabung ke room saham yang sudah ada tidak terkena rate limit');
 
 -- Soft delete pesan & rate limit
 reset role;

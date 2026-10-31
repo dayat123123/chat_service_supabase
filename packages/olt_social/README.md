@@ -4,6 +4,7 @@ Package Flutter berisi fitur sosial & chat untuk Rendezvous OLT (Windows desktop
 Isinya feed saham, komentar berantai, reaksi, mention, follow, watch saham, chat realtime, notifikasi, dan moderasi.
 
 Backend yang dipakai adalah Supabase self-hosted dan auth-bridge. Keduanya ada di repo ini, lihat [README root](../../README.md).
+Satu-satunya panggilan server ke sistem OLT adalah validasi token login. Data bisnis seperti order, daftar dan nama saham, harga, dan data nasabah tetap milik app OLT; package hanya menerima kode saham sebagai label.
 Langkah memasang package ke app OLT ada di [docs/INTEGRATION.md](../../docs/INTEGRATION.md).
 
 ## Pemakaian singkat
@@ -14,11 +15,12 @@ await OltSocial.initialize(
   anonKey: '<ANON_KEY>',
   oltTokenProvider: () async => oltAuth.currentToken, // token login OLT
   onStockTap: (context, code) => openOltStockPage(context, code),
+  stockSearch: (query) => oltStocks.search(query),   // saran $KODE dari daftar saham milik app
 );
 
 // Widget siap pakai (tanpa Scaffold, tempel di halaman OLT):
 const OltStreamFeed();                    // stream umum (Terbaru / Mengikuti)
-const OltStockFeed(stockCode: 'BBCA');    // feed di halaman saham
+const OltStockFeed(stockCode: 'BBCA', stockName: 'Bank Central Asia Tbk');   // feed di halaman saham
 const OltPostDetail(postId: '...');       // post + thread komentar
 const OltComposePost(initialStock: 'BBCA');
 const OltChatList();                      // multi-panel di layar lebar
@@ -44,6 +46,7 @@ supportedLocales: OltSocialLocalizations.supportedLocales,
 | Keyboard desktop | Di composer post, komentar, dan chat: Enter mengirim, Shift+Enter membuat baris baru. Autocomplete bisa dipilih dengan ↑/↓ dan Enter/Tab |
 | Hover | Sorotan komentar. Aksi balas/hapus pesan muncul saat kursor di atas gelembung |
 | `$KODE` & `@user` | Bisa diketuk lewat `onStockTap` / `onUserTap`. Bila callback tidak diisi, halaman bawaan yang dibuka |
+| Data saham | Server tidak menyimpan daftar saham. Kode apa pun yang berformat `$KODE` (huruf di depan, 2–12 huruf/angka) dipakai sebagai label untuk feed, pantau, dan room saham. Saran saat mengetik `$` datang dari `stockSearch` milik app (tanpa callback: tidak ada saran). Nama saham di header `OltStockFeed` datang dari `stockName`; server hanya memberi jumlah pemantau |
 | Thread komentar | Garis indentasi per level. Mulai level 4, indentasi berhenti dan muncul "Lanjutkan thread". Tersedia "Lihat N balasan lainnya" dan collapse/expand per cabang |
 | Optimistic update | Like post/komentar, follow, watch, dan kirim pesan. Bila server gagal, perubahan dibatalkan dan SnackBar ditampilkan |
 | Chat | Centang ala WhatsApp: jam (mengirim), ✓ (sampai server), ✓✓ abu-abu (sudah diterima perangkat penerima yang online), ✓✓ biru (sudah dibaca). Di grup, centang naik setelah **semua** anggota menerima/membaca; room saham hanya ✓. Badge belum dibaca per room, balas pesan, reconnect otomatis dengan pengisian celah pesan dan tanda terima |
@@ -152,10 +155,10 @@ Builder juga bisa dipasang per widget: `OltChatList(builders: ...)` atau `OltCha
 Aturan pakai:
 - **Handler `null` berarti aksinya tidak berlaku.** Contohnya `onDelete` untuk pesan orang lain, atau `onRetry` untuk pesan yang sudah terkirim. Pasang langsung ke `onPressed` supaya tombol otomatis nonaktif.
 - **Teks sudah terlokalisasi:** waktu, teks mengetik, pratinjau "Anda: …", subjudul header, pesan kosong, dan pesan error.
-- **Kembalikan `fallback` untuk yang tidak ingin digambar sendiri**, misalnya pesan sistem, kartu order, dan pilihan cepat dari CS.
-- **Composer kustom sebaiknya menampilkan `extraActions`.** Chat CS memakainya untuk tombol lampirkan order.
+- **Kembalikan `fallback` untuk yang tidak ingin digambar sendiri**, misalnya pesan sistem, tautan bantuan, dan pilihan cepat dari CS.
+- **Composer kustom sebaiknya menampilkan `extraActions`.** Tombol tambahan dari `leading` milik pemanggil (`MessageComposer`) masuk lewat sini.
 - **Tile kustom wajib menampilkan `OfficialBadge` untuk room CS** (`room.pinned` bernilai `true`) supaya nasabah tetap bisa membedakan CS resmi dari akun palsu. Room CS selalu ada di urutan teratas daftar.
-- **Pesan dari CS wajib tetap memperlihatkan penanda resmi.** Cara paling aman: kembalikan `fallback` bila `message.senderRole != null`, karena tampilan bawaan sudah memuat label CS Resmi, kartu, pilihan cepat, dan rating.
+- **Pesan dari CS wajib tetap memperlihatkan penanda resmi.** Cara paling aman: kembalikan `fallback` bila `message.senderRole != null`, karena tampilan bawaan sudah memuat label CS Resmi, tautan bantuan, pilihan cepat, dan rating.
 - **Widget `header:` dan `composer:` di `OltChatRoom` tetap didukung** dan didahulukan dari builder.
 - **Builder ikut terbawa ke halaman yang dibuka package:** room di layar sempit, chat CS, dan riwayat tiket.
 - **Komponen siap pakai untuk UI sendiri:** `OltComposerField` (Enter mengirim, autocomplete `$KODE`/`@user`), `SocialText`, `AttachmentGrid`, `ReceiptIcon`, `OltAvatar`, `OltRoomAvatar`, `OltCountBadge`.

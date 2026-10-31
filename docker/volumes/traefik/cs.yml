@@ -28,7 +28,7 @@ http:
 
     cs-api:
       entryPoints: [websecure]
-      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/cs/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/storage/v1`))
+      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/storage/v1`))
       service: kong
       middlewares: [vpn-only, rate-limit, body-api, hsts, security-headers]
       tls:

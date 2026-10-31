@@ -43,16 +43,14 @@ AppNotification notification(String id, {bool support = true, bool read = false}
 );
 
 void main() {
-  late MockApi api;
   late MockApi cs;
   late _MockNotifications notifications;
   late SupportRepositoryImpl repo;
 
   setUp(() {
-    api = mockApi();
     cs = mockApi();
     notifications = _MockNotifications();
-    repo = SupportRepositoryImpl(api, cs: cs, notifications: notifications);
+    repo = SupportRepositoryImpl(cs: cs, notifications: notifications);
   });
 
   test('beranda support memetakan tiket aktif, status, dan CS yang menangani', () async {
@@ -76,20 +74,15 @@ void main() {
     expect(home.showsConversation(DateTime.utc(2026, 10, 30)), isTrue);
   });
 
-  test('membuka tiket mengirim topik, asal layar, dan kartu order', () async {
+  test('membuka tiket hanya mengirim topik dan asal layar, tanpa data bisnis klien', () async {
     when(() => cs.rpcValue('open_ticket', any())).thenAnswer((_) async => ticketView(status: 'open'));
 
-    final ticket = await repo.openTicket(
-      topic: 'orders',
-      screen: 'order_detail',
-      card: const SupportCard(kind: SupportCardKind.order, ref: 'ORD-1'),
-    );
+    final ticket = await repo.openTicket(topic: 'orders', screen: 'order_detail');
 
     final params = verify(() => cs.rpcValue('open_ticket', captureAny())).captured.single as Map<String, Object?>;
+    expect(params.keys, unorderedEquals(['p_topic', 'p_language', 'p_screen', 'p_complaint']));
     expect(params, containsPair('p_topic', 'orders'));
     expect(params, containsPair('p_screen', 'order_detail'));
-    expect(params, containsPair('p_card', 'order'));
-    expect(params, containsPair('p_card_ref', 'ORD-1'));
     expect(ticket.queueAhead, 2);
   });
 
@@ -98,19 +91,6 @@ void main() {
       (_) async => {'masked': false, 'kinds': <Object?>[], 'preview': 'x', 'requests_secret': true},
     );
     expect((await repo.checkSensitive('kode OTP')).masked, isTrue);
-  });
-
-  test('order terbaru diambil dari adapter lewat gateway', () async {
-    when(() => api.gatewayJson('cs/v1/me/orders', query: any(named: 'query'))).thenAnswer((_) async => {
-      'orders': [
-        {'order_id': 'ORD-1', 'code': 'BBCA', 'side': 'buy', 'status': 'rejected', 'time': '2026-10-30T03:00:00Z'},
-      ],
-    });
-
-    final orders = await repo.recentOrders();
-
-    expect(orders.single.id, 'ORD-1');
-    expect(orders.single.code, 'BBCA');
   });
 
   test('notifikasi lokal hanya untuk pesan support baru yang belum dibaca', () async {

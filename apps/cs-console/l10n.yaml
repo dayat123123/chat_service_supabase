@@ -1,8 +1,0 @@
-arb-dir: lib/src/l10n/arb
-template-arb-file: console_id.arb
-output-dir: lib/src/l10n/gen
-output-localization-file: console_localizations.dart
-output-class: ConsoleLocalizations
-preferred-supported-locales:
-  - id
-nullable-getter: false

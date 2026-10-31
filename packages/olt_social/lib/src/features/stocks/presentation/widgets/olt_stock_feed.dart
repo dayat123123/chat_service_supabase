@@ -9,9 +9,11 @@ import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
 
 class OltStockFeed extends StatelessWidget {
-  const OltStockFeed({super.key, required this.stockCode, this.showHeader = true});
+  const OltStockFeed({super.key, required this.stockCode, this.stockName, this.showHeader = true});
 
   final String stockCode;
+
+  final String? stockName;
 
   final bool showHeader;
 
@@ -29,7 +31,7 @@ class OltStockFeed extends StatelessWidget {
           emptyMessage: context.oltL10n.stockFeedEmpty(code),
           header: Column(
             children: [
-              if (showHeader) const _StockHeader(),
+              if (showHeader) _StockHeader(name: stockName),
               ComposePromptCard(initialStock: code),
             ],
           ),
@@ -40,7 +42,9 @@ class OltStockFeed extends StatelessWidget {
 }
 
 class _StockHeader extends StatelessWidget {
-  const _StockHeader();
+  const _StockHeader({this.name});
+
+  final String? name;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +72,7 @@ class _StockHeader extends StatelessWidget {
                     Text('\$${cubit.code}', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                     if (stock != null)
                       Text(
-                        '${stock.name} · ${l10n.watchers(stock.watcherCount)}',
+                        [?name, l10n.watchers(stock.watcherCount)].join(' · '),
                         style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,

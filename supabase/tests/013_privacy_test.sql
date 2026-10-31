@@ -7,7 +7,7 @@ update private.rate_limits set max_count = 100 where action = 'post' and window_
 select tests.create_user('pv_ani') as ani \gset
 select tests.create_user('pv_budi') as budi \gset
 select tests.create_user('pv_cici') as cici \gset
-select tests.create_stock('GOTO') as goto \gset
+select 'GOTO' as goto \gset
 insert into private.user_private (user_id, email) values (:'cici', 'cici@example.com');
 
 select tests.authenticate_as(:'budi');

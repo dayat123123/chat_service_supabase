@@ -42,14 +42,14 @@ ACME_EMAIL=ops@domain.com
 SUPABASE_PUBLIC_URL=https://social-api.domain.com
 API_EXTERNAL_URL=https://social-api.domain.com/auth/v1
 OLT_WS_URL=wss://<server-olt>/<path>
-# OLT_WS_* lain: kosongkan bila OLT memakai Protokol v1 (docs/market-integration.md);
+# OLT_WS_* lain: kosongkan bila OLT memakai Protokol v1 (docs/olt-integration.md);
 # isi hanya bila formatnya berbeda (services/auth-bridge/README.md)
 ```
 
 ```bash
 # 3. Jalankan (Traefik otomatis meminta sertifikat; DNS A-record harus sudah mengarah ke VPS)
 make up PROFILE=single
-make seed PROFILE=single   # OPSIONAL: hanya untuk staging. Di produksi isi stocks lewat sync_stocks.
+make seed PROFILE=single   # OPSIONAL: data contoh, hanya untuk staging
 make anon-key              # ANON_KEY untuk build app OLT
 ```
 
@@ -63,25 +63,12 @@ Catatan:
   3. Buka `http://localhost:8000` di browser.
   4. Login dengan `DASHBOARD_USERNAME` dan password di `docker/secrets/dashboard_password`.
   5. Setelah selesai: `make admin-down PROFILE=single`.
-- **Customer service lewat chat mati secara default di profil single.** Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`) setelah dua hal berikut siap:
-  1. `docker/.env`: isi `OLT_CUSTOMER_WS_URL` (`wss://`, endpoint data nasabah dari tim OLT), dan `docker/secrets/olt_customer_service_token` dengan kredensial dari tim OLT.
-  2. Route publik `/cs/v1` belum dibuka di profil single. Route ini dibuka bersama aplikasi nasabah (CS3); API agen hanya lewat VPN (CS4).
-
-  Schema `cs_api` sudah ada di `PGRST_DB_SCHEMAS` default. Detail: [docs/cs-chat](cs-chat/README.md).
-- **Web CS React** ([`apps/cs-console-react`](../apps/cs-console-react/README.md)) ikut menyala dengan `CS=1` lewat overlay `docker/compose.cs.yml`. Isi di `docker/.env`:
-  1. `CS_CONSOLE_DOMAIN`: domain khusus web CS. Web CS dan API agen (`/auth/v1`, `/cs/v1`, `/functions/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`) disajikan di domain ini, jadi tidak perlu CORS.
+- **Customer service lewat chat.** Chat CS nasabah memakai schema `cs_api` lewat `/rest/v1` dan Realtime (sudah ada di `PGRST_DB_SCHEMAS` default), jadi tidak butuh service tambahan. Server tidak mengambil data nasabah dari OLT; agen membuka back-office OLT bila butuh data akun ([olt-integration.md](olt-integration.md)). Detail: [docs/cs-chat](cs-chat/README.md).
+- **Web CS React** ([`apps/cs-console-react`](../apps/cs-console-react/README.md)) mati secara default di profil single. Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`), yang memakai overlay `docker/compose.cs.yml`. Isi di `docker/.env`:
+  1. `CS_CONSOLE_DOMAIN`: domain khusus web CS. Web CS dan API agen (`/auth/v1`, `/functions/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`) disajikan di domain ini, jadi tidak perlu CORS.
   2. `VPN_SOURCE_RANGES`: rentang IP klien VPN, dipisah koma. Semua router domain ini (`docker/volumes/traefik/cs.yml`) memakai `ipAllowList`; IP lain mendapat 403.
 
   Sertifikat memakai Let's Encrypt HTTP-01 seperti `PROXY_DOMAIN`, jadi DNS publik domain ini harus mengarah ke server. Klien VPN me-resolve domain yang sama ke IP server di jaringan VPN. Header keamanan dan CSP diatur nginx container `cs-console` berdasarkan `SUPABASE_URL`.
-- **Sinkronisasi daftar saham dari sistem OLT.** Ini memakai service key, jadi hanya dijalankan dari server lewat port admin:
-
-  ```bash
-  SERVICE_ROLE_KEY=$(cat docker/secrets/service_role_key)
-  curl -X POST http://127.0.0.1:8000/rest/v1/rpc/sync_stocks \
-    -H "apikey: $SERVICE_ROLE_KEY" -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
-    -H 'Content-Type: application/json' \
-    -d '{"p_stocks":[{"code":"BBCA","name":"Bank Central Asia Tbk","sector":"Financials"}]}'
-  ```
 
 ## 3. Backup & restore
 
@@ -235,16 +222,15 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 
 **Data & operasional**
 - [ ] Cron backup aktif, salinan offsite tersedia, restore sudah diuji.
-- [ ] Daftar saham tersinkron (`sync_stocks`). Daftar kata terlarang dan rate limit sudah ditinjau tim compliance.
+- [ ] Daftar kata terlarang dan rate limit sudah ditinjau tim compliance.
 - [ ] Prosedur moderasi (bagian 5) sudah disosialisasikan.
 - [ ] DNS dan sertifikat HTTPS valid (Traefik memperbarui otomatis).
 
 **Customer service lewat chat (sebelum dibuka untuk nasabah; lihat [docs/cs-chat](cs-chat/README.md))**
-- [ ] Revisi CS-2 (R1–R4) selesai. `make test-db`, `make test-cs`, `make cs-race`, dan `make smoke-cs` lulus di staging. `make cs-race` mencakup tes rebutan lewat beberapa replika API.
+- [ ] Revisi CS-2 (R1–R4) selesai. `make test-db`, `make cs-race`, dan `make smoke-cs` lulus di staging. `make cs-race` mencakup tes rebutan lewat beberapa replika API.
 - [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
 - [ ] Kalender libur tahun berjalan dan tahun depan sudah diperiksa kepatuhan (`cs.holidays.verified = true`), termasuk libur bursa dari pengumuman BEI.
-- [ ] `customer-adapter` terhubung ke endpoint OLT nasabah asli (`wss://`) dengan kredensial terpisah, dan sudah diuji di UAT OLT.
-- [ ] API agen (`cs_api.agent_*`, `/cs/v1/agent/*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses lewat VPN: uji dari luar VPN harus mendapat 403. Agen login dengan email + TOTP, dan pendaftaran publik GoTrue tetap mati.
+- [ ] API agen (`cs_api.agent_*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses lewat VPN: uji dari luar VPN harus mendapat 403. Agen login dengan email + TOTP, dan pendaftaran publik GoTrue tetap mati.
 - [ ] `make test-cs-console` lulus dan E2E web CS (`make e2e-cs-console`) lulus di staging.
 - [ ] Endpoint login GoTrue (`/auth/v1/token`, `/auth/v1/factors`, `/auth/v1/user`) hanya dari VPN. Nasabah tidak memakainya karena JWT nasabah diterbitkan auth-bridge.
 - [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari VPN. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.

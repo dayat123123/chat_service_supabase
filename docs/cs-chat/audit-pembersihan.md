@@ -1,5 +1,7 @@
 # Audit Pembersihan: Hasil Pendekatan Ticketing yang Dibatalkan
 
+> **Catatan 31 Okt 2026:** dokumen historis. `customer-adapter`, kartu order, dan panel data nasabah sudah dihapus karena server hanya boleh memvalidasi token ke OLT ([olt-integration.md](../olt-integration.md)).
+
 > **Untuk:** pemilik produk, untuk disetujui sebelum CS1.
 > **Dasar:** [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) bagian 9. Pendekatan lama ada di [archive/PROMPT-CUSTOMER-CARE.md](../archive/PROMPT-CUSTOMER-CARE.md).
 > **Status (30 Okt 2026):** disetujui pemilik produk ("lakukan yang terbaik sesuai rekomendasi") dan **sudah dieksekusi**. Hasilnya ada di [bagian 4](#4-hasil-eksekusi).

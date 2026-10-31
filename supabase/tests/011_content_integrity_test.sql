@@ -8,7 +8,7 @@ update private.rate_limits set max_count = 100 where action = 'post' and window_
 
 select tests.create_user('ci_ani') as ani \gset
 select tests.create_user('ci_budi') as budi \gset
-select tests.create_stock('BBCA') as bbca \gset
+select 'BBCA' as bbca \gset
 select tests.create_admin('compliance_admin') as compliance \gset
 
 -- client_id idempoten -------------------------------------------------------

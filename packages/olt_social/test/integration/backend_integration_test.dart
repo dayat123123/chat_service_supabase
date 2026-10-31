@@ -72,11 +72,14 @@ void main() {
     expect(stock.items.every((p) => p.stockCodes.contains('BBCA')), isTrue);
   }, skip: skip);
 
-  test('thread seed 5 level & pencarian saham', () async {
+  test('thread seed 5 level & pemantau saham tanpa daftar saham di server', () async {
     final thread = await budi.comments.getThread('a0000000-0000-4000-8000-000000000001', maxDepth: 10, repliesLimit: 10);
     expect(thread.map((c) => c.depth).reduce((a, b) => a > b ? a : b), 4);
-    final stocks = await budi.stocks.searchStocks('bb');
-    expect(stocks.map((s) => s.code), contains('BBCA'));
+    final stock = await budi.stocks.getStock('bbca');
+    expect(stock?.code, 'BBCA');
+    expect(stock?.watcherCount, greaterThanOrEqualTo(2));
+    expect(stock?.watching, isTrue);
+    expect(await budi.stocks.getStock('1X'), isNull);
   }, skip: skip);
 
   test('komentar baru diterima realtime oleh pemilik post', () async {

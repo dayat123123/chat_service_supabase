@@ -3,7 +3,7 @@ import { rpc, supabase } from '@/lib/supabase'
 import { uuid } from '@/lib/utils'
 
 import { AFTER_LIMIT } from './cache'
-import type { Attachment, ChatMessage, QuickReply, RoomMember, SendResult } from './types'
+import type { Attachment, ChatMessage, QuickReply, RoomMember, SendKind, SendResult } from './types'
 
 export const PAGE_SIZE = 50
 
@@ -33,7 +33,7 @@ export type SendInput = {
   ticketId: string
   body: string
   clientId: string
-  kind?: string
+  kind?: SendKind
   payload?: Record<string, unknown>
   replyToId?: string
   attachments?: Attachment[]

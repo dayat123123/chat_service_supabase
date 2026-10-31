@@ -44,8 +44,6 @@ const _topics = [
 void main() {
   late _MockSupport support;
 
-  setUpAll(() => registerFallbackValue(const SupportCard(kind: SupportCardKind.order, ref: 'x')));
-
   setUp(() {
     support = _MockSupport();
     when(() => support.topics(language: any(named: 'language'))).thenAnswer((_) async => _topics);
@@ -63,7 +61,6 @@ void main() {
       language: any(named: 'language'),
       screen: any(named: 'screen'),
       complaint: any(named: 'complaint'),
-      card: any(named: 'card'),
     )).thenAnswer((_) async => ticket(status: SupportStatus.open));
     when(() => support.home()).thenAnswer((_) async => home(current: ticket(status: SupportStatus.open)));
 
@@ -74,35 +71,35 @@ void main() {
     await cubit.close();
   });
 
-  test('tombol bantuan kontekstual: topik dan kartu order ikut terisi saat tiket dibuat', () async {
+  test('tombol bantuan kontekstual: topik dan asal layar ikut terisi saat tiket dibuat', () async {
     when(() => support.home()).thenAnswer((_) async => home(roomId: null));
     when(() => support.openTicket(
       topic: any(named: 'topic'),
       language: any(named: 'language'),
       screen: any(named: 'screen'),
       complaint: any(named: 'complaint'),
-      card: any(named: 'card'),
     )).thenAnswer((_) async => ticket(status: SupportStatus.open));
-    const card = SupportCard(kind: SupportCardKind.order, ref: 'ORD-9');
-    final cubit = SupportCubit(support: support, topic: 'orders', card: card, screen: 'order_detail');
+    final cubit = SupportCubit(support: support, topic: 'orders', screen: 'order_detail');
 
     await cubit.load();
 
-    verify(() => support.openTicket(topic: 'orders', language: 'id', screen: 'order_detail', card: card)).called(1);
-    expect(cubit.state.pendingCard, isNull);
+    verify(() => support.openTicket(topic: 'orders', language: 'id', screen: 'order_detail')).called(1);
     await cubit.close();
   });
 
-  test('tiket aktif: kartu order langsung dikirim ke chat', () async {
+  test('tiket aktif: tombol bantuan kontekstual membuka tiket yang sedang berjalan', () async {
     when(() => support.home()).thenAnswer((_) async => home(current: ticket()));
-    when(() => support.sendCard(any(), any(), clientId: any(named: 'clientId'))).thenAnswer((_) async {});
-    final cubit = SupportCubit(support: support);
+    final cubit = SupportCubit(support: support, topic: 'orders', screen: 'order_detail');
+
     await cubit.load();
 
-    await cubit.attachCard(const SupportCard(kind: SupportCardKind.order, ref: 'ORD-2'));
-
-    verify(() => support.sendCard('r-cs', any(), clientId: any(named: 'clientId'))).called(1);
-    expect(cubit.state.notice, SupportNoticeKind.cardSent);
+    verifyNever(() => support.openTicket(
+      topic: any(named: 'topic'),
+      language: any(named: 'language'),
+      screen: any(named: 'screen'),
+      complaint: any(named: 'complaint'),
+    ));
+    expect(cubit.state.showsConversation(DateTime.now()), isTrue);
     await cubit.close();
   });
 
@@ -147,7 +144,7 @@ void main() {
     await chat.dispose();
   });
 
-  testWidgets('tanpa tiket aktif tampil pilihan topik', (tester) async {
+  testWidgets('tanpa tiket aktif tampil pilihan topik tanpa lampirkan order', (tester) async {
     when(() => support.home()).thenAnswer((_) async => home(roomId: null));
     final chat = FakeChatRepository();
     await tester.pumpWidget(MaterialApp(
@@ -165,7 +162,7 @@ void main() {
 
     expect(find.text('Apa yang bisa kami bantu?'), findsOneWidget);
     expect(find.text('Deposit/Tarik Dana'), findsOneWidget);
-    expect(find.text('Lampirkan order'), findsOneWidget);
+    expect(find.text('Lampirkan order'), findsNothing);
     await chat.dispose();
   });
 }

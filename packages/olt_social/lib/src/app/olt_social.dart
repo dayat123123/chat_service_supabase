@@ -80,6 +80,7 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
     OltUserTapCallback? onUserTap,
     OltPostTapCallback? onPostTap,
     OltRoomTapCallback? onRoomTap,
+    OltStockSearch? stockSearch,
     bool signInEagerly = true,
     bool trackDelivery = true,
     http.Client? httpClient,
@@ -94,6 +95,7 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
       onUserTap: onUserTap,
       onPostTap: onPostTap,
       onRoomTap: onRoomTap,
+      stockSearch: stockSearch,
       trackDelivery: trackDelivery,
       httpClient: httpClient,
     );
@@ -113,6 +115,7 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
     OltUserTapCallback? onUserTap,
     OltPostTapCallback? onPostTap,
     OltRoomTapCallback? onRoomTap,
+    OltStockSearch? stockSearch,
     bool trackDelivery = true,
     http.Client? httpClient,
   }) {
@@ -131,12 +134,11 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
       tokens,
       supabaseUrl: baseUrl,
       anonKey: anonKey,
-      httpClient: httpClient,
     );
     final realtime = RealtimeGateway(client);
     final notifications = NotificationRepositoryImpl(api, realtime);
     final cs = api.inSchema('cs_api');
-    final support = SupportRepositoryImpl(api, cs: cs, realtime: realtime, notifications: notifications);
+    final support = SupportRepositoryImpl(cs: cs, realtime: realtime, notifications: notifications);
 
     final social = OltSocial._(
       client: client,
@@ -147,6 +149,7 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
         onUserTap: onUserTap,
         onPostTap: onPostTap,
         onRoomTap: onRoomTap,
+        stockSearch: stockSearch,
       ),
       feed: FeedRepositoryImpl(api, realtime),
       comments: CommentRepositoryImpl(api, realtime),

@@ -21,8 +21,6 @@ export function errorText(error: unknown): string {
       return t('errors.sessionExpired')
     case 'unavailable':
       return t('errors.unavailable')
-    case 'olt_unavailable':
-      return t('errors.oltUnavailable')
     case 'same_password':
       return t('errors.samePassword')
     case 'weak_password':

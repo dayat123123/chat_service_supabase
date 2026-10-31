@@ -16,7 +16,6 @@ export const agentFixture: AgentProfile = {
   skills: {},
   settings: {
     ...defaultSettings,
-    reveal_reasons: { verification: { id: 'Verifikasi nasabah', en: 'Customer verification' } },
     outcomes: { answered: { id: 'Terjawab', en: 'Answered' } },
   },
 }

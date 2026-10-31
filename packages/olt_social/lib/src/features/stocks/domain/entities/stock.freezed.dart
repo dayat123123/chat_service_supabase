@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Stock {
 
- String get code; String get name; StockType get type; String? get sector; int get watcherCount;
+ String get code; int get watcherCount; bool get watching;
 /// Create a copy of Stock
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $StockCopyWith<Stock> get copyWith => _$StockCopyWithImpl<Stock>(this as Stock, 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Stock&&(identical(other.code, code) || other.code == code)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.sector, sector) || other.sector == sector)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Stock&&(identical(other.code, code) || other.code == code)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount)&&(identical(other.watching, watching) || other.watching == watching));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,code,name,type,sector,watcherCount);
+int get hashCode => Object.hash(runtimeType,code,watcherCount,watching);
 
 @override
 String toString() {
-  return 'Stock(code: $code, name: $name, type: $type, sector: $sector, watcherCount: $watcherCount)';
+  return 'Stock(code: $code, watcherCount: $watcherCount, watching: $watching)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $StockCopyWith<$Res>  {
   factory $StockCopyWith(Stock value, $Res Function(Stock) _then) = _$StockCopyWithImpl;
 @useResult
 $Res call({
- String code, String name, StockType type, String? sector, int watcherCount
+ String code, int watcherCount, bool watching
 });
 
 
@@ -62,14 +62,12 @@ class _$StockCopyWithImpl<$Res>
 
 /// Create a copy of Stock
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? name = null,Object? type = null,Object? sector = freezed,Object? watcherCount = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? watcherCount = null,Object? watching = null,}) {
   return _then(_self.copyWith(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
-as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as StockType,sector: freezed == sector ? _self.sector : sector // ignore: cast_nullable_to_non_nullable
-as String?,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
-as int,
+as String,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
+as int,watching: null == watching ? _self.watching : watching // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -154,10 +152,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  String name,  StockType type,  String? sector,  int watcherCount)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String code,  int watcherCount,  bool watching)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Stock() when $default != null:
-return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount);case _:
+return $default(_that.code,_that.watcherCount,_that.watching);case _:
   return orElse();
 
 }
@@ -175,10 +173,10 @@ return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  String name,  StockType type,  String? sector,  int watcherCount)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String code,  int watcherCount,  bool watching)  $default,) {final _that = this;
 switch (_that) {
 case _Stock():
-return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount);case _:
+return $default(_that.code,_that.watcherCount,_that.watching);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -195,10 +193,10 @@ return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  String name,  StockType type,  String? sector,  int watcherCount)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String code,  int watcherCount,  bool watching)?  $default,) {final _that = this;
 switch (_that) {
 case _Stock() when $default != null:
-return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount);case _:
+return $default(_that.code,_that.watcherCount,_that.watching);case _:
   return null;
 
 }
@@ -210,14 +208,12 @@ return $default(_that.code,_that.name,_that.type,_that.sector,_that.watcherCount
 
 
 class _Stock implements Stock {
-  const _Stock({required this.code, required this.name, this.type = StockType.stock, this.sector, this.watcherCount = 0});
+  const _Stock({required this.code, this.watcherCount = 0, this.watching = false});
   
 
 @override final  String code;
-@override final  String name;
-@override@JsonKey() final  StockType type;
-@override final  String? sector;
 @override@JsonKey() final  int watcherCount;
+@override@JsonKey() final  bool watching;
 
 /// Create a copy of Stock
 /// with the given fields replaced by the non-null parameter values.
@@ -229,16 +225,16 @@ _$StockCopyWith<_Stock> get copyWith => __$StockCopyWithImpl<_Stock>(this, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Stock&&(identical(other.code, code) || other.code == code)&&(identical(other.name, name) || other.name == name)&&(identical(other.type, type) || other.type == type)&&(identical(other.sector, sector) || other.sector == sector)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Stock&&(identical(other.code, code) || other.code == code)&&(identical(other.watcherCount, watcherCount) || other.watcherCount == watcherCount)&&(identical(other.watching, watching) || other.watching == watching));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,code,name,type,sector,watcherCount);
+int get hashCode => Object.hash(runtimeType,code,watcherCount,watching);
 
 @override
 String toString() {
-  return 'Stock(code: $code, name: $name, type: $type, sector: $sector, watcherCount: $watcherCount)';
+  return 'Stock(code: $code, watcherCount: $watcherCount, watching: $watching)';
 }
 
 
@@ -249,7 +245,7 @@ abstract mixin class _$StockCopyWith<$Res> implements $StockCopyWith<$Res> {
   factory _$StockCopyWith(_Stock value, $Res Function(_Stock) _then) = __$StockCopyWithImpl;
 @override @useResult
 $Res call({
- String code, String name, StockType type, String? sector, int watcherCount
+ String code, int watcherCount, bool watching
 });
 
 
@@ -266,14 +262,12 @@ class __$StockCopyWithImpl<$Res>
 
 /// Create a copy of Stock
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? name = null,Object? type = null,Object? sector = freezed,Object? watcherCount = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? watcherCount = null,Object? watching = null,}) {
   return _then(_Stock(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
-as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
-as StockType,sector: freezed == sector ? _self.sector : sector // ignore: cast_nullable_to_non_nullable
-as String?,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
-as int,
+as String,watcherCount: null == watcherCount ? _self.watcherCount : watcherCount // ignore: cast_nullable_to_non_nullable
+as int,watching: null == watching ? _self.watching : watching // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

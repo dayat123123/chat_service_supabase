@@ -4,7 +4,6 @@
 begin;
 select plan(13);
 
-select tests.create_stock('BBCA');
 select tests.create_user('alice') as alice \gset
 select tests.create_user('bob_user') as bob \gset
 select tests.create_user('carol') as carol \gset

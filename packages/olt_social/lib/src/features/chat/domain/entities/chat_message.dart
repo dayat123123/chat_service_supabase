@@ -6,7 +6,7 @@ part 'chat_message.freezed.dart';
 
 enum MessageStatus { sending, sent, failed }
 
-enum MessageKind { text, system, card, quickReply, helpLink, identityRequest, csat }
+enum MessageKind { text, system, quickReply, helpLink, identityRequest, csat }
 
 enum SenderRole { customer, agent, supervisor, system }
 

@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
   EllipsisIcon,
-  FileTextIcon,
   LinkIcon,
   ListChecksIcon,
   LoaderCircleIcon,
@@ -484,9 +483,6 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
                 <ToolButton label={t('composer.attach')} onClick={() => fileInput.current?.click()}>
                   <PaperclipIcon />
                 </ToolButton>
-                <ToolButton label={t('composer.sendCard')} onClick={() => setSpecial('card')}>
-                  <FileTextIcon />
-                </ToolButton>
                 <ToolButton label={t('composer.insertQuickReply')} onClick={startQuickReply}>
                   <SlashIcon />
                 </ToolButton>
@@ -546,7 +542,6 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
       />
       <SpecialMessageDialog
         kind={special}
-        ticketId={ticket.id}
         onClose={() => setSpecial(null)}
         onSend={(message) => void sendSpecial(message)}
       />

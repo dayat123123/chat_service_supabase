@@ -4,7 +4,6 @@ import 'package:olt_social/src/app/olt_social_scope.dart';
 import 'package:olt_social/src/app/olt_support_scope.dart';
 import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/olt_chat_room.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
 import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
 import 'package:olt_social/src/features/support/presentation/widgets/support_composer.dart';
 import 'package:olt_social/src/features/support/presentation/widgets/support_dialogs.dart';
@@ -20,10 +19,9 @@ import 'package:uuid/uuid.dart';
 const _uuid = Uuid();
 
 class OltSupportChat extends StatelessWidget {
-  const OltSupportChat({super.key, this.topic, this.card, this.screen, this.onClose});
+  const OltSupportChat({super.key, this.topic, this.screen, this.onClose});
 
   final String? topic;
-  final SupportCard? card;
   final String? screen;
   final VoidCallback? onClose;
 
@@ -32,7 +30,7 @@ class OltSupportChat extends StatelessWidget {
     final support = OltSupportScope.of(context).support;
     final language = Localizations.localeOf(context).languageCode == 'en' ? 'en' : 'id';
     return BlocProvider(
-      create: (_) => SupportCubit(support: support, topic: topic, card: card, screen: screen, language: language)..load(),
+      create: (_) => SupportCubit(support: support, topic: topic, screen: screen, language: language)..load(),
       child: _SupportView(onClose: onClose),
     );
   }
@@ -48,7 +46,6 @@ class _SupportView extends StatelessWidget {
     SupportNoticeKind.complaintFiled => l10n.supportComplaintFiled,
     SupportNoticeKind.fakeReported => l10n.supportFakeReported,
     SupportNoticeKind.rated => l10n.supportRated,
-    SupportNoticeKind.cardSent => l10n.supportCardSent,
   };
 
   @override
@@ -119,20 +116,19 @@ class _Conversation extends StatelessWidget {
 }
 
 class OltSupportPage extends StatelessWidget {
-  const OltSupportPage({super.key, this.topic, this.card, this.screen});
+  const OltSupportPage({super.key, this.topic, this.screen});
 
   final String? topic;
-  final SupportCard? card;
   final String? screen;
 
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.oltL10n.supportTitle)),
-    body: SafeArea(top: false, child: OltSupportChat(topic: topic, card: card, screen: screen)),
+    body: SafeArea(top: false, child: OltSupportChat(topic: topic, screen: screen)),
   );
 }
 
-Future<void> openOltSupport(BuildContext context, {String? topic, SupportCard? card, String? screen}) {
+Future<void> openOltSupport(BuildContext context, {String? topic, String? screen}) {
   final deps = OltSocialScope.of(context);
   final support = OltSupportScope.of(context);
   final carry = carryChatBuilders(context);
@@ -142,7 +138,7 @@ Future<void> openOltSupport(BuildContext context, {String? topic, SupportCard? c
         dependencies: deps,
         child: OltSupportScope(
           dependencies: support,
-          child: OltSupportPage(topic: topic, card: card, screen: screen),
+          child: OltSupportPage(topic: topic, screen: screen),
         ),
       ),
     ),

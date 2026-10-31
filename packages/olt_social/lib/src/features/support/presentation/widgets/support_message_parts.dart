@@ -149,7 +149,6 @@ class SupportMessageExtras extends StatelessWidget {
   Widget build(BuildContext context) {
     final actions = OltSupportMessageActions.maybeOf(context);
     return switch (message.kind) {
-      MessageKind.card => _CardTile(message: message, color: color, onOpen: actions?.onOpenCard),
       MessageKind.quickReply => _QuickReplies(
         options: [for (final o in (message.payload['options'] as List<Object?>? ?? const [])) '$o'],
         onSelected: mine ? null : actions?.onQuickReply,
@@ -157,55 +156,6 @@ class SupportMessageExtras extends StatelessWidget {
       MessageKind.helpLink => _HelpLink(url: message.payload['url'] as String?, onOpen: actions?.onOpenLink),
       _ => const SizedBox.shrink(),
     };
-  }
-}
-
-class _CardTile extends StatelessWidget {
-  const _CardTile({required this.message, required this.color, required this.onOpen});
-
-  final ChatMessage message;
-  final Color color;
-  final void Function(String card, String ref)? onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final card = message.payload['card'] as String? ?? '';
-    final ref = message.payload['ref'] as String? ?? '';
-    final open = onOpen;
-    return Container(
-      margin: const EdgeInsets.only(top: 2, bottom: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: open == null || ref.isEmpty ? null : () => open(card, ref),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(card == 'order' ? Icons.receipt_long_outlined : Icons.account_balance_wallet_outlined, color: color),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  message.body ?? ref,
-                  style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w600),
-                ),
-              ),
-              if (open != null) ...[
-                const SizedBox(width: 10),
-                Text(context.oltL10n.supportViewCard, style: theme.textTheme.labelSmall?.copyWith(color: color)),
-                Icon(Icons.chevron_right, size: 18, color: color),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 

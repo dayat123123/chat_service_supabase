@@ -106,33 +106,6 @@ function SafeLink({
   )
 }
 
-export function OrderCard({
-  card,
-  onOpen,
-}: {
-  card: { card: string; ref: string }
-  onOpen?: (card: { card: string; ref: string }) => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <div className="flex min-w-52 flex-col gap-1 rounded-lg border bg-background p-2.5 text-foreground">
-      <span className="text-label font-medium text-muted-foreground uppercase">
-        {card.card === 'cash_transaction' ? t('conversation.cardCash') : t('conversation.cardOrder')}
-      </span>
-      <span className="truncate font-mono text-row">{card.ref}</span>
-      {onOpen ? (
-        <button
-          type="button"
-          onClick={() => onOpen(card)}
-          className="self-start rounded-sm text-xs underline decoration-strong underline-offset-4 outline-none hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
-        >
-          {t('conversation.openCard')}
-        </button>
-      ) : null}
-    </div>
-  )
-}
-
 type BubbleProps = {
   message: ChatMessage
   staff: boolean
@@ -141,7 +114,6 @@ type BubbleProps = {
   read: boolean
   trustedHost: (host: string) => boolean
   onReply?: (message: ChatMessage) => void
-  onOpenCard?: (payload: { card: string; ref: string }) => void
 }
 
 export const MessageBubble = memo(function MessageBubble({
@@ -152,7 +124,6 @@ export const MessageBubble = memo(function MessageBubble({
   read,
   trustedHost,
   onReply,
-  onOpenCard,
 }: BubbleProps) {
   const { t } = useTranslation()
   const name = message.sender_display_name ?? message.sender_username ?? ''
@@ -162,13 +133,6 @@ export const MessageBubble = memo(function MessageBubble({
   const masked = Array.isArray(message.payload.masked)
     ? message.payload.masked.filter((field): field is string => typeof field === 'string')
     : []
-  const card =
-    message.kind === 'card' && typeof message.payload.ref === 'string'
-      ? {
-          card: typeof message.payload.card === 'string' ? message.payload.card : 'order',
-          ref: message.payload.ref,
-        }
-      : null
   const url =
     message.kind === 'help_link' && typeof message.payload.url === 'string' ? message.payload.url : null
   const status = read ? t('conversation.read') : t('conversation.sent')
@@ -217,9 +181,7 @@ export const MessageBubble = memo(function MessageBubble({
                 ))}
               </div>
             ) : null}
-            {card ? (
-              <OrderCard card={card} onOpen={onOpenCard} />
-            ) : message.is_deleted ? (
+            {message.is_deleted ? (
               <p className="italic opacity-80">{t('conversation.deleted')}</p>
             ) : message.body ? (
               <p className="break-words whitespace-pre-wrap">{message.body}</p>

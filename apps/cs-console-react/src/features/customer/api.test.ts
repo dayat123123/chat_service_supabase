@@ -8,8 +8,8 @@ import { initSupabase, supabase } from '@/lib/supabase'
 import { customerApi } from './api'
 
 const base = 'http://cs.test'
-const ticketId = '22222222-2222-4222-8222-222222222222'
-const route = `${base}/cs/v1/agent/tickets/${ticketId}/customer`
+const customerId = '44444444-4444-4444-8444-444444444444'
+const rpcUrl = (name: string) => `${base}/rest/v1/rpc/${name}`
 const token = 'test-access-token'
 
 function memoryStorage(): Storage {
@@ -50,15 +50,7 @@ beforeAll(() => {
       },
     }),
   )
-  initSupabase(
-    {
-      supabaseUrl: base,
-      anonKey: 'anon-key-for-tests-000000',
-      appEnv: 'development',
-      adapterUrl: `${base}/cs/v1`,
-    },
-    storage,
-  )
+  initSupabase({ supabaseUrl: base, anonKey: 'anon-key-for-tests-000000', appEnv: 'development' }, storage)
   server.listen({ onUnhandledFrame: 'error' })
 })
 
@@ -69,50 +61,67 @@ afterAll(async () => {
   await supabase().auth.stopAutoRefresh()
 })
 
-describe('customer adapter client', () => {
-  it('sends the agent token and unwraps the envelope', async () => {
+describe('customer data client', () => {
+  it('reads the ticket history from cs_api with the agent token', async () => {
+    const item = {
+      id: '55555555-5555-4555-8555-555555555555',
+      ticket_number: 'CS-000101',
+      topic: 'order',
+      status: 'closed',
+      flags: [],
+      created_at: '2026-10-01T02:00:00.000Z',
+      resolved_at: '2026-10-01T03:00:00.000Z',
+      closed_at: '2026-10-02T03:00:00.000Z',
+      outcome: 'answered',
+      rating: 5,
+      agent: 'Rina',
+    }
     server.use(
-      http.get(`${route}/profile`, ({ request }) => {
+      http.post(rpcUrl('customer_history'), async ({ request }) => {
         expect(request.headers.get('authorization')).toBe(`Bearer ${token}`)
         expect(request.headers.get('apikey')).toBe('anon-key-for-tests-000000')
-        return HttpResponse.json({ available: true, data: { name: 'Budi Santoso', nik: '3174********0001' } })
+        expect(request.headers.get('content-profile')).toBe('cs_api')
+        expect(await request.json()).toEqual({ p_customer_id: customerId })
+        return HttpResponse.json([item])
       }),
     )
-    await expect(customerApi.profile(ticketId)).resolves.toEqual({
-      name: 'Budi Santoso',
-      nik: '3174********0001',
-    })
+    await expect(customerApi.history(customerId)).resolves.toEqual([item])
   })
 
-  it('reports OLT outages separately from other errors', async () => {
-    server.use(http.get(`${route}/orders`, () => HttpResponse.json({ available: false }, { status: 503 })))
-    await expect(customerApi.orders(ticketId)).rejects.toMatchObject({ code: 'olt_unavailable' })
-  })
-
-  it('maps an expired session and adapter errors', async () => {
+  it('reads the agent notes for the customer', async () => {
     server.use(
-      http.get(`${route}/sessions`, () => HttpResponse.json({ code: 'unauthorized' }, { status: 401 })),
-      http.get(`${route}/security`, () =>
-        HttpResponse.json({ code: 'not_owner', message: 'Hanya pemilik tiket' }, { status: 403 }),
+      http.post(rpcUrl('notes'), async ({ request }) => {
+        expect(await request.json()).toEqual({ p_customer_id: customerId })
+        return HttpResponse.json([
+          { id: 'n1', kind: 'note', body: 'Minta ditelepon balik', created_at: '2026-10-30T02:00:00.000Z' },
+        ])
+      }),
+    )
+    await expect(customerApi.notes(customerId)).resolves.toMatchObject([{ id: 'n1', kind: 'note' }])
+  })
+
+  it('maps API errors and an expired session', async () => {
+    server.use(
+      http.post(rpcUrl('customer_history'), () =>
+        HttpResponse.json(
+          { code: 'PT403', message: 'agent_required', details: 'Butuh akun CS aktif dengan 2FA', hint: null },
+          { status: 403 },
+        ),
+      ),
+      http.post(rpcUrl('notes'), () =>
+        HttpResponse.json(
+          { code: 'PGRST301', message: 'JWT expired', details: null, hint: null },
+          { status: 401 },
+        ),
       ),
     )
-    await expect(customerApi.sessions(ticketId)).rejects.toMatchObject({ code: 'session_expired' })
-    const error: unknown = await customerApi.security(ticketId).catch((reason: unknown) => reason)
+    const error: unknown = await customerApi.history(customerId).catch((reason: unknown) => reason)
     expect(error).toBeInstanceOf(ApiError)
-    expect(error).toMatchObject({ code: 'not_owner', detail: 'Hanya pemilik tiket', status: 403 })
-  })
-
-  it('posts the reveal reason and returns a time-boxed value', async () => {
-    server.use(
-      http.post(`${route}/reveal`, async ({ request }) => {
-        expect(await request.json()).toEqual({ field: 'nik', reason: 'verification' })
-        return HttpResponse.json({ available: true, data: { value: '3174012345670001', valid_seconds: 120 } })
-      }),
-    )
-    const before = Date.now()
-    const revealed = await customerApi.reveal(ticketId, 'nik', 'verification')
-    expect(revealed.value).toBe('3174012345670001')
-    expect(revealed.until).toBeGreaterThanOrEqual(before + 120_000)
-    expect(revealed.until).toBeLessThanOrEqual(Date.now() + 120_000)
+    expect(error).toMatchObject({
+      code: 'agent_required',
+      detail: 'Butuh akun CS aktif dengan 2FA',
+      status: 403,
+    })
+    await expect(customerApi.notes(customerId)).rejects.toMatchObject({ code: 'session_expired' })
   })
 })

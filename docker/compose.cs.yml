@@ -1,6 +1,6 @@
 # Overlay produksi untuk web CS React:  make up PROFILE=single CS=1
 #
-# Web CS dan API agen (/auth/v1, /cs/v1, /functions/v1/cs-admin, REST, Realtime,
+# Web CS dan API agen (/auth/v1, /functions/v1/cs-admin, REST, Realtime,
 # Storage) disajikan di satu domain CS_CONSOLE_DOMAIN yang HANYA menerima IP dari
 # VPN_SOURCE_RANGES (Traefik ipAllowList). Satu origin: tanpa CORS.
 # Lihat docs/PRODUCTION.md bagian web CS.

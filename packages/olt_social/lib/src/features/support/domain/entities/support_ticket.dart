@@ -66,28 +66,6 @@ abstract class SupportTopic with _$SupportTopic {
   }) = _SupportTopic;
 }
 
-enum SupportCardKind { order, cashTransaction }
-
-@freezed
-abstract class SupportCard with _$SupportCard {
-  const factory SupportCard({required SupportCardKind kind, required String ref}) = _SupportCard;
-
-  const SupportCard._();
-
-  String get wireName => kind == SupportCardKind.order ? 'order' : 'cash_transaction';
-}
-
-@freezed
-abstract class SupportOrder with _$SupportOrder {
-  const factory SupportOrder({
-    required String id,
-    required String code,
-    required String side,
-    required String status,
-    DateTime? time,
-  }) = _SupportOrder;
-}
-
 @freezed
 abstract class SensitiveCheck with _$SensitiveCheck {
   const factory SensitiveCheck({
