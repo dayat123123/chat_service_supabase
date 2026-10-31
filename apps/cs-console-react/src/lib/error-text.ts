@@ -8,6 +8,7 @@ const nasabahCodes = [
   'integration_refused',
   'upstream_unavailable',
   'upstream_error',
+  'upstream_outdated',
   'demo_only',
   'self_approval',
   'approval_not_found',

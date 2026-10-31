@@ -4,6 +4,7 @@ import { TicketStatusText } from '@/components/badges'
 import { ErrorState } from '@/components/states'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/controls'
 import { Avatar, Skeleton } from '@/components/ui/primitives'
+import { CustomerAccount } from '@/features/nasabah/components/customer-account'
 import { useTopicName } from '@/features/tickets/hooks'
 import { customerName, type Ticket } from '@/features/tickets/types'
 import { shortDate } from '@/lib/time'
@@ -90,7 +91,8 @@ export function CustomerPanel({ ticket }: { ticket: Ticket }) {
       <CustomerHeader ticket={ticket} />
       <div className="min-h-0 flex-1 overflow-y-auto px-4">
         {customerId ? (
-          <Accordion type="multiple" defaultValue={['history', 'notes']}>
+          <Accordion type="multiple" defaultValue={['account', 'history', 'notes']}>
+            <CustomerAccount ticketId={ticket.id} />
             <AccordionItem value="history">
               <AccordionTrigger>{t('customer.history')}</AccordionTrigger>
               <AccordionContent>

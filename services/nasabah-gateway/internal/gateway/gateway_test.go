@@ -351,3 +351,16 @@ func TestQueryRulesDropUnknownAndRejectUnsafeValues(t *testing.T) {
 		t.Fatalf("status %d code %q calls %d", rec.Code, errorCode(t, rec), len(up.calls))
 	}
 }
+
+func TestReportsAnOutdatedUpstreamWhenARouteIsMissing(t *testing.T) {
+	g, store, _ := setup(t, http.StatusNotFound, "")
+	rec := do(g, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "bima", nil), "")
+	if rec.Code != http.StatusBadGateway || errorCode(t, rec) != "upstream_outdated" || len(store.audits) != 0 {
+		t.Fatalf("status %d code %q", rec.Code, errorCode(t, rec))
+	}
+	g2, _, _ := setup(t, http.StatusNotFound, `{"message":"Online user not found.","data":null}`)
+	rec = do(g2, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "bima", nil), "")
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "Online user not found") {
+		t.Fatalf("a JSON 404 from csAdmin must pass through, got %d %s", rec.Code, rec.Body.String())
+	}
+}

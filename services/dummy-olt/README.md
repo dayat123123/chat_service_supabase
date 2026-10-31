@@ -27,6 +27,8 @@ Semua akun memakai password **`olt12345`**. Login bisa dengan username atau emai
 | 1008 | `rudi.setiawan` | rudi@olt.test | Username bertitik: auth-bridge menyanitasi menjadi `rudi_setiawan` |
 | 1009 | `akun_suspend` | suspend@olt.test | **Ditangguhkan**: login dan permintaan token sosial ditolak (`ACCOUNT_SUSPENDED`) |
 | 1010 | `lambat_test` | lambat@olt.test | Login token WebSocket dijawab setelah **8 detik**, untuk menguji timeout di sisi app |
+| 1011 | `hidayat` | hidayatullah10070@gmail.com | Sama dengan LoginId `hidayat` di csAdmin uji, untuk menguji info Akun Nasabah di panel tiket |
+| 1012 | `hidayat2` | hidayatullah100702@gmail.com | User uji kedua; bila LoginId-nya tidak ada di csAdmin, bagian Akun Nasabah di panel tiket tidak tampil |
 
 Daftar ini juga tersedia lewat `GET http://localhost:8090/api/users`.
 

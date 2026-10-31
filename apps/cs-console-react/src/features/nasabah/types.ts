@@ -54,6 +54,18 @@ export type OnlineUser = {
 
 export type LinkedAccount = { AccountId: string; AccountName: string; Created: string; CreatedBy: string }
 
+export type ProfileAccount = LinkedAccount & {
+  Branch: string
+  RDNAccount: string
+  RDNBank: string
+  InvestorNo: string
+  KSEIId: string
+}
+
+export type OnlineUserProfile = OnlineUser & { Accounts: ProfileAccount[] }
+
+export type TicketLogin = { login_id: string; source: 'olt' | 'profile' }
+
 export type ApprovalLink = LinkedAccount & { ActionType: number }
 
 export type CatalogAccount = { CustId: string; Name: string; StaffId: string; Branch: string }

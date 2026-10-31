@@ -1,3 +1,4 @@
+import { useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -17,7 +18,8 @@ export function NasabahPage() {
   const agent = useAgent()
   useFreshPermissions()
   const tabs = nasabahTabs(agent.nasabah_permissions)
-  const [chosen, setChosen] = useState<NasabahTab | null>(null)
+  const search: { q?: string } = useSearch({ strict: false })
+  const [chosen, setChosen] = useState<NasabahTab | null>(search.q ? 'users' : null)
   const tab = chosen && tabs.includes(chosen) ? chosen : tabs[0]
 
   if (!tab) return <EmptyState className="h-full" title={t('nasabah.noAccess')} />
@@ -56,7 +58,7 @@ export function NasabahPage() {
           ))}
         </div>
         <div role="tabpanel" id={`nasabah-panel-${tab}`} aria-labelledby={`nasabah-tab-${tab}`}>
-          {tab === 'users' ? <UsersTab /> : null}
+          {tab === 'users' ? <UsersTab key={search.q ?? ''} initialQuery={search.q ?? ''} /> : null}
           {tab === 'approvals' ? <ApprovalsTab /> : null}
           {tab === 'opening' ? <OpeningTab /> : null}
         </div>

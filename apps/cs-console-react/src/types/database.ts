@@ -249,6 +249,7 @@ export type Database = {
       }
       supervisor_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       support_home: { Args: Record<PropertyKey, never>; Returns: Json }
+      ticket_customer_login: { Args: { p_ticket_id: string }; Returns: Json }
       ticket_detail: { Args: { p_ticket_id: string }; Returns: Json }
       ticket_lists: { Args: Record<PropertyKey, never>; Returns: Json }
       ticket_messages: {

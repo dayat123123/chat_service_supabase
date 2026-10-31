@@ -52,7 +52,7 @@ make web-example                # Windows: .\make.ps1 web-example
 
 Perintah ini mem-build app ke `build/web`, lalu menyajikannya lewat container Caddy `olt-web-example` di `http://localhost:8081`. Setelah mengubah kode, jalankan lagi untuk build ulang. Untuk menghentikan: `docker rm -f olt-web-example`.
 
-- `http://localhost:8081/?user=sari_invest` langsung masuk sebagai Sari (token mock). Nilai lain: `budi_santoso`, `andi_trader`, `rina_saham`, `dewi_cuan`, atau id OLT-nya (mis. `1002`).
+- `http://localhost:8081/?user=sari_invest` langsung masuk sebagai Sari (token mock). Nilai lain: `budi_santoso`, `andi_trader`, `rina_saham`, `dewi_cuan`, `hidayat` (LoginId csAdmin uji), `hidayat2`, atau id OLT-nya (mis. `1002`).
 - Sesi hanya disimpan di memori tab, jadi tiap tab bisa menjadi user berbeda. Chat, indikator mengetik, like, komentar, dan notifikasi realtime bisa dicoba antara tab dengan tab, atau tab dengan app Windows.
 - Form "Login OLT dummy" juga berfungsi di web (stack `make up DUMMY_OLT=1`).
 - Untuk development dengan hot reload: `flutter run -d chrome --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY>`.

@@ -157,6 +157,11 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.fail(w, route, err)
 		return
 	}
+	if status == http.StatusNotFound && !json.Valid(payload) {
+		g.opts.Log.Error("Customer admin service does not know this route", "action", route.Action, "path", path)
+		writeError(w, http.StatusBadGateway, "upstream_outdated", "Customer admin service does not support this action yet")
+		return
+	}
 	if route.Audit && status < 300 {
 		g.audit(userID, route, req)
 	}

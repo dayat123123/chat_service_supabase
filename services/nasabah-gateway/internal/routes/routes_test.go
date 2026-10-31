@@ -240,3 +240,21 @@ func TestSelfApprovalNeedsTheApproveOwnPermission(t *testing.T) {
 		t.Error("the decision route must admit approve_own holders")
 	}
 }
+
+func TestSingleOnlineUserLookupIsAReaderRouteThatIsAudited(t *testing.T) {
+	r := route("/online/get-online-user")
+	if r.Method != http.MethodGet || !r.Audit || !slices.Contains(r.SubjectFields, "loginId") {
+		t.Fatalf("route = %+v", r)
+	}
+	for _, perm := range []string{View, Manage, Demo, Approve, ApproveOwn, Status} {
+		if !slices.Contains(r.Permissions, perm) {
+			t.Errorf("readers with %s must see the customer card", perm)
+		}
+	}
+	if slices.Contains(r.Permissions, Opening) {
+		t.Error("opening-only accounts must not read customer profiles")
+	}
+	if !r.Query["loginId"].MatchString("budi.s") || r.Query["loginId"].MatchString("a' OR 1=1") || len(r.Query) != 1 {
+		t.Errorf("query rules = %v", r.Query)
+	}
+}

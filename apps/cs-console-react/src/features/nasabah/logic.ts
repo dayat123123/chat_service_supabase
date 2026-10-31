@@ -51,6 +51,17 @@ export const canResetCredentials = (perms: readonly string[]) => has(perms, 'onl
 
 export const canChangeStatus = (perms: readonly string[]) => has(perms, 'online_user.status')
 
+export const canViewProfiles = (perms: readonly string[]) =>
+  has(
+    perms,
+    'online_user.view',
+    'online_user.manage',
+    'online_user.demo',
+    'online_user.approve',
+    'online_user.approve_own',
+    'online_user.status',
+  )
+
 export const statusReasonOk = (reason: string) => {
   const length = [...reason.trim()].length
   return length >= 10 && length <= 200

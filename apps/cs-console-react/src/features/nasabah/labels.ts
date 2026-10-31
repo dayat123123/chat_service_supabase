@@ -37,6 +37,8 @@ export function useNasabahLabels() {
       return key ? t(`nasabah.statuses.${key}`) : String(value)
     },
     flag: (key: UserFlag) => t(`nasabah.flags.${key}`),
+    flagList: (keys: UserFlag[]) =>
+      keys.length > 0 ? keys.map((key) => t(`nasabah.flags.${key}`)).join(', ') : t('nasabah.detail.noFlags'),
     action: (value: number) => {
       const key = actionKeys[value]
       return key ? t(`nasabah.actions.${key}`) : String(value)

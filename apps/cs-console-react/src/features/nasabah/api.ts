@@ -1,5 +1,5 @@
 import { ApiError } from '@/lib/errors'
-import { supabase } from '@/lib/supabase'
+import { rpc, supabase } from '@/lib/supabase'
 
 import { toList, toPage, userSearch } from './logic'
 import {
@@ -11,8 +11,10 @@ import {
   type LinkedAccount,
   type OnlineUser,
   type OpeningAccount,
+  type OnlineUserProfile,
   type OpeningFilter,
   type Page,
+  type TicketLogin,
 } from './types'
 
 const BASE = '/api-nasabah'
@@ -82,6 +84,13 @@ export const nasabahApi = {
       page,
       PAGE_SIZE,
     ),
+  ticketLogin: (ticketId: string) => rpc<TicketLogin>('ticket_customer_login', { p_ticket_id: ticketId }),
+  onlineUser: async (loginId: string) =>
+    (
+      await request<{ data: OnlineUserProfile }>('GET', '/online/get-online-user', {
+        loginId: loginId.trim(),
+      })
+    ).data,
   linkedAccounts: async (loginId: string) =>
     toList<LinkedAccount>(await request('GET', '/online/get-linked-account-online-user', { loginId })),
   catalog: async () => toList<CatalogAccount>(await request('GET', '/online/get-list-link-account')),

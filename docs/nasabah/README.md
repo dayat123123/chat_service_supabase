@@ -74,6 +74,22 @@ integration {
 
 **Ganti kunci:** buat kunci baru (hapus `docker/secrets/csadmin_signing_key`, jalankan `gen-secrets`), ganti `public_key` di csAdmin, restart csAdmin, lalu restart gateway. `gen-secrets --force` juga membuat kunci baru.
 
+## Endpoint csAdmin `GET /online/get-online-user`
+
+Ditambahkan di `cdAdminEL.cc` untuk panel tiket: `?loginId=<LoginId>` (1–50 karakter, wajib token valid).
+- Pencarian **persis** (bukan `LIKE`) dengan query berparameter, tidak peka huruf besar/kecil (`COLLATE SQL_Latin1_General_CP1_CI_AS`) di `dbo.V_LoginInfo`.
+- Respons `data` berisi kolom yang sama dengan `get-list-online-user`, ditambah `Accounts`: daftar `TAccountLinked` yang di-join ke `V_Account` (`AccountId`, `AccountName`, `Branch`, `RDNAccount`, `RDNBank`, `InvestorNo`, `KSEIId`, `Created`, `CreatedBy`).
+- `404 {"message":"Online user not found."}` bila LoginId tidak ada.
+
+## Mencocokkan nasabah tiket dengan LoginId csAdmin
+
+Nasabah tiket adalah profil aplikasi sosial yang dibuat dari token OLT. Username profil disanitasi (karakter selain `A-Za-z0-9_` menjadi `_`), jadi tidak selalu sama dengan LoginId. Karena itu:
+- `public.upsert_olt_profile` (migrasi `0048`) menyimpan `preferred_username` asli dari token OLT ke `private.user_private.olt_username` setiap kali nasabah login.
+- RPC `cs_api.ticket_customer_login(p_ticket_id)` hanya untuk akun CS yang boleh membaca tiket itu (aturan sama dengan `ticket_detail`). Hasilnya `{login_id, source}`:
+  - `source = olt`: dari username login asli;
+  - `source = profile`: jatuh ke username profil bila nasabah belum login ulang sejak migrasi ini.
+- **Asumsi:** username login OLT sama dengan LoginId online user di csAdmin.
+
 ## Konfigurasi gateway
 
 | Tempat | Kunci | Isi |
@@ -121,6 +137,13 @@ Menu ada di bar atas sebelum **Pengaturan**.
   - pengajuan buat/ubah/hapus, reset password/PIN, dan **ubah status** cepat;
   - kelola rekening tertaut, dengan dialog terbagi: **Sudah tertaut** (hapus centang untuk melepas), **Akan ditautkan**, dan **Tambah rekening** (pencarian katalog), plus ringkasan jumlah setelah disetujui;
   - baris yang email, nomor HP, atau tanggal lahirnya kosong diberi penanda. Sakelar **Hanya data belum lengkap** menyaring halaman yang sedang tampil, dan tombol **Lengkapi data** membuka form pengajuan perubahan.
+- **Panel info nasabah di tiket**: bagian **Akun Nasabah** paling atas, untuk akun yang punya izin baca (view/manage/demo/approve/approve_own/status). Isinya:
+  - LoginId, tipe, dan status;
+  - email dan HP dengan tanda terverifikasi, tanggal lahir, tanggal terdaftar, salah password/PIN, dan hak akses aplikasi;
+  - rekening tertaut dengan nama, cabang, RDN, bank, dan SID (4 pertama, lalu **Tampilkan semua**);
+  - tautan **Buka di Akun Nasabah** (`/nasabah?q=<LoginId>`).
+
+  Bila LoginId nasabah tidak ada di csAdmin, bagian ini tidak ditampilkan sama sekali.
 - **Approval**: daftar pengajuan dengan filter, detail perubahan rekening, setujui/tolak.
 - **Pembukaan rekening**: dikelompokkan per LoginId, satu baris per LoginId berisi email, jumlah rekening, dan contoh kode rekening. Pengelompokan dilakukan di klien dari baris yang sudah dimuat; klik baris untuk membuka rekeningnya tanpa request tambahan ke csAdmin. Karena csAdmin memaginasi per baris rekening (urut LoginId), LoginId pertama/terakhir di halaman bisa berlanjut ke halaman sebelah, dan detailnya diberi catatan. Email bisa dikirim satu per satu, atau centang beberapa rekening (boleh lintas LoginId; ada centang semua per LoginId) lalu **Kirim email (n)**. Halaman daftar berisi 100 baris rekening csAdmin.
 
@@ -137,6 +160,7 @@ Parameter lain dibuang, dan nilai yang tidak lolos dijawab `400 invalid_query` t
 | Rute csAdmin | Aksi audit | Izin | Guard di gateway |
 |---|---|---|---|
 | `GET /online/get-list-online-user` | – | view/manage/demo/approve/approve_own/status | – |
+| `GET /online/get-online-user` | `nasabah.online_user.profile` | view/manage/demo/approve/approve_own/status | Endpoint baru csAdmin; `loginId` divalidasi; satu user persis + rekening tertaut |
 | `GET /online/get-linked-account-online-user` | `nasabah.online_user.linked_accounts` | idem | – |
 | `GET /online/get-list-link-account` | – | manage | – |
 | `POST /online/create-approval-login` | `nasabah.approval.create` | manage, demo | Demo-only: tipe akun 0, tanpa tautan rekening, dan Online ID yang diubah/dihapus memang akun demo |
@@ -147,6 +171,8 @@ Parameter lain dibuang, dan nilai yang tidak lolos dijawab `400 invalid_query` t
 | `POST /online/approve-approval-login` | `nasabah.approval.decide` | approve, approve_own | Pengajuan harus masih pending; LoginId, jenis, dan email diambil dari pengajuan asli; pengajuan sendiri butuh approve_own, pengajuan CS lain butuh approve |
 | `GET /online/get-list-opening-rekening-online-user` | – | opening | – |
 | `POST /online/send-email-opening-account-with-rekening` | `nasabah.opening_account.send_email` | opening | Pasangan LoginId–rekening harus ada |
+
+Bila csAdmin menjawab 404 tanpa JSON (rute belum ada karena server csAdmin belum diperbarui), gateway menjawab `502 upstream_outdated`. Dengan begitu web CS tidak salah menampilkan "tidak ditemukan".
 
 Kolom pelaku (`CreatedBy`, `ApprovedBy`, `ModifiedBy`, `CSLoginId`) selalu ditimpa gateway dengan kode CS console (mis. `CS-0045`); nilai dari browser diabaikan. Audit mencatat:
 - CS yang sebenarnya;

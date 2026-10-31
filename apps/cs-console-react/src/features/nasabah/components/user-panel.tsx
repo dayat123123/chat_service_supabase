@@ -162,9 +162,7 @@ function UserBody({ user, onClose }: { user: OnlineUser; onClose: () => void }) 
           <Fact label={t('nasabah.detail.retries')}>
             {t('nasabah.detail.retryValue', { password: user.ErrorPwdRetry, pin: user.ErrorPinRetry })}
           </Fact>
-          <Fact label={t('nasabah.detail.flags')}>
-            {flags.length > 0 ? flags.map(label.flag).join(', ') : '–'}
-          </Fact>
+          <Fact label={t('nasabah.detail.flags')}>{label.flagList(flags)}</Fact>
         </dl>
         <div className="flex flex-wrap gap-2 border-b px-5 py-3">
           {canEditUser(perms, user) ? (

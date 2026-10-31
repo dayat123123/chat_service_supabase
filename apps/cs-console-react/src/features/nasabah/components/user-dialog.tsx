@@ -206,6 +206,7 @@ function UserForm({ user, links, onDone }: { user: OnlineUser | null; links: str
       </div>
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1.5 text-sm font-medium">{t('nasabah.form.flags')}</legend>
+        <p className="-mt-1 text-xs text-muted-foreground">{t('nasabah.form.flagsHint')}</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {userFlags.map((flag) => (
             <label key={flag.key} className="flex items-center gap-2 text-row">

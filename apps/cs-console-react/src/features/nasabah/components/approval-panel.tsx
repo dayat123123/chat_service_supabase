@@ -124,7 +124,7 @@ function ApprovalBody({ approval, onClose }: { approval: Approval; onClose: () =
           {approval.AccountExpired ? (
             <Fact label={t('nasabah.detail.expired')}>{legacyStamp(approval.AccountExpired)}</Fact>
           ) : null}
-          <Fact label={t('nasabah.detail.flags')}>{flags.map(label.flag).join(', ')}</Fact>
+          <Fact label={t('nasabah.detail.flags')}>{label.flagList(flags)}</Fact>
           <Fact label={t('nasabah.approvals.colSubmitter')}>
             {approval.CreatedBy} · {legacyStamp(approval.Created)}
           </Fact>

@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 
 import { useAuth } from '@/features/auth/hooks'
 import { presenceApi } from '@/features/presence/api'
+import { toApiError } from '@/lib/errors'
 
 import { nasabahApi } from './api'
 import {
@@ -24,6 +25,8 @@ export const nasabahKeys = {
   openings: (page: number, filter: OpeningFilter, size: number) =>
     ['nasabah', 'openings', page, filter.loginId, filter.custId, size] as const,
   me: ['nasabah', 'me'] as const,
+  ticketLogin: (ticketId: string) => ['nasabah', 'ticket-login', ticketId] as const,
+  profile: (loginId: string) => ['nasabah', 'profile', loginId.toLowerCase()] as const,
 }
 
 const sameSet = (a: readonly string[], b: readonly string[]) =>
@@ -99,6 +102,25 @@ export function useOpenings(page: number, filter: OpeningFilter, enabled: boolea
     enabled,
     placeholderData: (previous) => previous,
     staleTime: 15_000,
+  })
+}
+
+export function useTicketLogin(ticketId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: nasabahKeys.ticketLogin(ticketId),
+    queryFn: () => nasabahApi.ticketLogin(ticketId),
+    enabled,
+    staleTime: 5 * 60_000,
+  })
+}
+
+export function useOnlineUserProfile(loginId: string | undefined) {
+  return useQuery({
+    queryKey: nasabahKeys.profile(loginId ?? ''),
+    queryFn: () => nasabahApi.onlineUser(loginId ?? ''),
+    enabled: Boolean(loginId),
+    staleTime: 30_000,
+    retry: (count, error) => toApiError(error).status !== 404 && count < 1,
   })
 }
 

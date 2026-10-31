@@ -122,6 +122,8 @@ const compliancePolicyRoute = createRoute({
 const nasabahRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/nasabah',
+  validateSearch: (search: Record<string, unknown>): { q?: string } =>
+    typeof search.q === 'string' && search.q.trim() ? { q: search.q.trim() } : {},
   beforeLoad: ({ context }) => {
     if (!hasNasabah(context.agent)) throw redirect({ to: '/' })
   },

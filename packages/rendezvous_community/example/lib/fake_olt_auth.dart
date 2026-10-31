@@ -46,6 +46,8 @@ const demoUsers = [
   ('1003', 'andi_trader', 'Andi Pratama'),
   ('1004', 'rina_saham', 'Rina Kartika'),
   ('1005', 'dewi_cuan', 'Dewi Lestari'),
+  ('1011', 'hidayat', 'Hidayat'),
+  ('1012', 'hidayat2', 'Hidayat 2'),
 ];
 
 class LoginPage extends StatefulWidget {

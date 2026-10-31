@@ -27,11 +27,11 @@ const statusTone: Record<number, string> = {
   3: 'text-danger',
 }
 
-export function UsersTab() {
+export function UsersTab({ initialQuery = '' }: { initialQuery?: string }) {
   const { t } = useTranslation()
   const agent = useAgent()
   const label = useNasabahLabels()
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
   const [page, setPage] = useState(1)
   const [selected, setSelected] = useState<OnlineUser | null>(null)
   const [creating, setCreating] = useState(false)

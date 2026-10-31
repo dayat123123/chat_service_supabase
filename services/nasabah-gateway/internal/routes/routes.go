@@ -54,6 +54,8 @@ var readers = []string{View, Manage, Demo, Approve, ApproveOwn, Status}
 var Online = []gateway.Route{
 	{Method: http.MethodGet, Path: "/online/get-list-online-user", Action: "online_user.list", Permissions: readers,
 		Query: with(paging, query{"loginId": idRe, "email": emailRe})},
+	{Method: http.MethodGet, Path: "/online/get-online-user", Action: "online_user.profile", Permissions: readers,
+		Query: query{"loginId": idRe}, SubjectFields: []string{"loginId"}, Audit: true},
 	{Method: http.MethodGet, Path: "/online/get-linked-account-online-user", Action: "online_user.linked_accounts",
 		Permissions: readers, Query: query{"loginId": idRe}, SubjectFields: []string{"loginId"}, Audit: true},
 	{Method: http.MethodGet, Path: "/online/get-list-link-account", Action: "account.catalog", Permissions: []string{Manage},
