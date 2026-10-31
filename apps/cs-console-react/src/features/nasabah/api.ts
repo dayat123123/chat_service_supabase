@@ -1,20 +1,13 @@
 import { ApiError } from '@/lib/errors'
 import { supabase } from '@/lib/supabase'
 
-import { csUserPayload, toList, toPage, userSearch } from './logic'
+import { toList, toPage, userSearch } from './logic'
 import {
   PAGE_SIZE,
   type Approval,
   type ApprovalFilter,
   type ApprovalLink,
   type CatalogAccount,
-  type CreatedCsUser,
-  type CsLog,
-  type CsLogFilter,
-  type CsUser,
-  type CsUserFilter,
-  type CsUserForm,
-  type GatewayInfo,
   type LinkedAccount,
   type OnlineUser,
   type OpeningAccount,
@@ -48,7 +41,7 @@ const statusCode: Record<number, string> = {
 }
 
 async function request<T>(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT',
   path: string,
   query: Query = {},
   body?: unknown,
@@ -159,49 +152,5 @@ export const nasabahApi = {
       '/online/update-status-online-user',
       {},
       { LoginId: loginId.trim(), Status: status, Reason: reason.trim() },
-    ),
-  info: () => request<GatewayInfo>('GET', '/gateway/info'),
-  csUsers: async (page: number, filter: CsUserFilter): Promise<Page<CsUser>> =>
-    toPage(
-      await request('GET', '/cs/get-list-customer-service', {
-        page,
-        size: PAGE_SIZE,
-        loginId: filter.loginId.trim() || undefined,
-        employeeId: filter.employeeId.trim() || undefined,
-      }),
-      page,
-      PAGE_SIZE,
-    ),
-  createCsUser: async (form: CsUserForm): Promise<CreatedCsUser> =>
-    (
-      await request<{ data?: CreatedCsUser | null }>(
-        'POST',
-        '/cs/create-customer-service-account',
-        {},
-        csUserPayload(form, true),
-      )
-    ).data ?? {},
-  updateCsUser: (form: CsUserForm) =>
-    request<Message>('PUT', '/cs/update-customer-service-account', {}, csUserPayload(form, false)),
-  setCsPassword: (loginId: string, password: string) =>
-    request<Message>(
-      'PUT',
-      '/cs/change-password-customer-service-account',
-      {},
-      { LoginId: loginId.trim(), Password: password },
-    ),
-  deleteCsUser: (loginId: string) =>
-    request<Message>('DELETE', '/cs/delete-customer-service-account', { loginId: loginId.trim() }),
-  csLogs: async (page: number, filter: CsLogFilter): Promise<Page<CsLog>> =>
-    toPage(
-      await request('GET', '/cs/get-customer-service-logs', {
-        page,
-        size: PAGE_SIZE,
-        logType: filter.logType >= 0 ? filter.logType : undefined,
-        csLoginId: filter.csLoginId.trim() || undefined,
-        loginId: filter.loginId.trim() || undefined,
-      }),
-      page,
-      PAGE_SIZE,
     ),
 }

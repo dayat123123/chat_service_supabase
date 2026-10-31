@@ -26,11 +26,6 @@ const (
 	maxResponseBody = 16 << 20
 )
 
-const (
-	ActorAgent   = "agent"
-	ActorService = "service"
-)
-
 type Request struct {
 	Grant  *access.Grant
 	Actor  string
@@ -40,12 +35,9 @@ type Request struct {
 
 type Caller interface {
 	Get(ctx context.Context, path string, query url.Values) (int, []byte, error)
-	Do(ctx context.Context, method, path string, query url.Values, body any) (int, []byte, error)
 }
 
 type Guard func(ctx context.Context, call Caller, req *Request) error
-
-type After func(ctx context.Context, call Caller, req *Request, payload []byte) ([]byte, error)
 
 type Rejection struct {
 	Status  int
@@ -61,11 +53,9 @@ type Route struct {
 	Action        string
 	Permissions   []string
 	ActorFields   []string
-	ActorQuery    []string
 	SubjectFields []string
 	Query         map[string]*regexp.Regexp
 	Guard         Guard
-	After         After
 	Audit         bool
 }
 
@@ -74,7 +64,6 @@ type Options struct {
 	Grants    access.Store
 	JWTSecret []byte
 	Upstream  *csadmin.Session
-	ActorMode string
 	Client    *http.Client
 	Log       *slog.Logger
 	Now       func() time.Time
@@ -95,9 +84,6 @@ func New(opts Options) *Gateway {
 	if opts.Log == nil {
 		opts.Log = slog.New(slog.DiscardHandler)
 	}
-	if opts.ActorMode == "" {
-		opts.ActorMode = ActorAgent
-	}
 	routes := make(map[string]Route, len(opts.Routes))
 	for _, r := range opts.Routes {
 		routes[r.Method+" "+r.Path] = r
@@ -108,10 +94,6 @@ func New(opts Options) *Gateway {
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	started := g.opts.Now()
 	path := strings.TrimPrefix(r.URL.Path, Prefix)
-	if r.Method == http.MethodGet && r.URL.Path == Prefix+"/gateway/info" {
-		g.info(w, r)
-		return
-	}
 	route, ok := g.routes[r.Method+" "+path]
 	if !strings.HasPrefix(r.URL.Path, Prefix+"/") || !ok {
 		writeError(w, http.StatusNotFound, "route_not_found", "Route is not available through the gateway")
@@ -151,10 +133,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid_query", err.Error())
 		return
 	}
-	req := &Request{Grant: grant, Actor: g.actor(grant), Query: query, Fields: fields}
-	for _, f := range route.ActorQuery {
-		req.Query.Set(f, req.Actor)
-	}
+	req := &Request{Grant: grant, Actor: grant.AgentCode, Query: query, Fields: fields}
 	if req.Fields != nil {
 		for _, f := range route.ActorFields {
 			req.Fields[f] = req.Actor
@@ -178,11 +157,6 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		g.fail(w, route, err)
 		return
 	}
-	if route.After != nil && status < 300 {
-		if payload, err = route.After(r.Context(), g, req, payload); err != nil {
-			g.opts.Log.Error("Follow-up step failed after a successful request", "action", route.Action, "error", err)
-		}
-	}
 	if route.Audit && status < 300 {
 		g.audit(userID, route, req)
 	}
@@ -195,46 +169,8 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(payload)
 }
 
-func (g *Gateway) info(w http.ResponseWriter, r *http.Request) {
-	userID, err := g.authenticate(r)
-	if err != nil {
-		writeError(w, http.StatusUnauthorized, "unauthorized", "Console session is missing or expired")
-		return
-	}
-	grant, err := g.opts.Grants.Grant(r.Context(), userID)
-	if err != nil {
-		writeError(w, http.StatusServiceUnavailable, "access_unavailable", "Customer access check is unavailable")
-		return
-	}
-	if grant == nil {
-		writeError(w, http.StatusForbidden, "no_access", "Console account has no customer access")
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "no-store")
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"configured":       g.opts.Upstream.Configured(),
-		"service_login_id": g.opts.Upstream.LoginID(),
-		"actor":            g.actor(grant),
-		"actor_mode":       g.opts.ActorMode,
-	})
-}
-
-func (g *Gateway) ServiceLoginID() string { return g.opts.Upstream.LoginID() }
-
 func (g *Gateway) Get(ctx context.Context, path string, query url.Values) (int, []byte, error) {
 	return g.call(ctx, http.MethodGet, path, query.Encode(), nil)
-}
-
-func (g *Gateway) Do(ctx context.Context, method, path string, query url.Values, body any) (int, []byte, error) {
-	var raw []byte
-	if body != nil {
-		var err error
-		if raw, err = json.Marshal(body); err != nil {
-			return 0, nil, err
-		}
-	}
-	return g.call(ctx, method, path, query.Encode(), raw)
 }
 
 func filterQuery(route Route, in url.Values) (url.Values, error) {
@@ -255,21 +191,14 @@ func filterQuery(route Route, in url.Values) (url.Values, error) {
 	return out, nil
 }
 
-func (g *Gateway) actor(grant *access.Grant) string {
-	if g.opts.ActorMode == ActorService || grant.AgentCode == "" {
-		return g.opts.Upstream.LoginID()
-	}
-	return grant.AgentCode
-}
-
 func (g *Gateway) fail(w http.ResponseWriter, route Route, err error) {
 	var rejection *Rejection
 	switch {
 	case errors.As(err, &rejection):
 		writeError(w, rejection.Status, rejection.Code, rejection.Message)
-	case errors.Is(err, csadmin.ErrLoginFailed):
-		g.opts.Log.Error("Customer admin service rejected the gateway account", "action", route.Action, "error", err)
-		writeError(w, http.StatusServiceUnavailable, "upstream_login_failed", "Customer admin service rejected the gateway account")
+	case errors.Is(err, csadmin.ErrRefused):
+		g.opts.Log.Error("Customer admin service refused the integration assertion", "action", route.Action, "error", err)
+		writeError(w, http.StatusServiceUnavailable, "integration_refused", "Customer admin service refused the gateway integration key")
 	default:
 		g.opts.Log.Error("Customer admin service is unreachable", "action", route.Action, "error", err)
 		writeError(w, http.StatusBadGateway, "upstream_unavailable", "Customer admin service is unreachable")

@@ -142,14 +142,10 @@ else
   source_of[olt_jwks]=dipertahankan
 fi
 
-# Password akun teknis csAdmin untuk nasabah-gateway (docs/nasabah/README.md). Diisi operator;
-# file kosong = menu Nasabah belum aktif (gateway menjawab 503 not_configured).
-if [ ! -f "$SECRETS_DIR/csadmin_password" ]; then
-  secret_put csadmin_password ""
-  source_of[csadmin_password]="dibuat kosong (isi manual)"
-else
-  source_of[csadmin_password]=dipertahankan
-fi
+# Kunci penanda tangan token integrasi csAdmin untuk nasabah-gateway (docs/nasabah/README.md).
+# Kunci publiknya diisi di blok integration { public_key } pada csAdminEL.cfg.
+resolve csadmin_signing_key           gen_ed25519
+csadmin_public_key="$(secret_get csadmin_signing_key | openssl pkey -pubout -outform DER | openssl enc -base64 -A | tr -d '=')"
 
 # Turunan: URI koneksi PostgREST (image tanpa shell membaca file ini lewat @file).
 pooler_host="$(env_get DB_POOLER_HOST)"; pooler_port="$(env_get DB_POOLER_PORT)"; db_name="$(env_get POSTGRES_DB)"
@@ -187,3 +183,4 @@ if [ "$force" = true ]; then
   echo "gen-secrets: PERINGATAN --force: secret baru tidak cocok dengan volume DB lama. Jalankan 'make reset'."
 fi
 echo "gen-secrets: ANON_KEY untuk client Flutter ada di docker/secrets/anon_key (make anon-key)."
+echo "gen-secrets: isi public_key di blok integration csAdminEL.cfg dengan: $csadmin_public_key"

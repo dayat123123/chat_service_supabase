@@ -5,7 +5,7 @@ const nasabahCodes = [
   'no_access',
   'permission_denied',
   'not_configured',
-  'upstream_login_failed',
+  'integration_refused',
   'upstream_unavailable',
   'upstream_error',
   'demo_only',
@@ -19,11 +19,6 @@ const nasabahCodes = [
   'invalid_user_status',
   'status_reason_required',
   'invalid_login_id',
-  'invalid_employee_id',
-  'invalid_email',
-  'invalid_permissions',
-  'weak_cs_password',
-  'service_account_locked',
 ] as const
 
 type NasabahCode = (typeof nasabahCodes)[number]

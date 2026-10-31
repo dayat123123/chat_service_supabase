@@ -118,6 +118,7 @@ function AccountDialog({
   })
   const errors = form.formState.errors
   const active = useWatch({ control: form.control, name: 'active' })
+  const csAccount = useWatch({ control: form.control, name: 'roles' }).includes('cs_agent')
   const disabling = editing && !active && account.disabled_at === null
   const message = (value?: string) => (value ? t(value as Message) : undefined)
 
@@ -131,7 +132,9 @@ function AccountDialog({
       disabled: !values.active,
     }
     try {
-      const nasabah = nasabahPermissions.filter((permission) => values.nasabah.includes(permission))
+      const nasabah = values.roles.includes('cs_agent')
+        ? nasabahPermissions.filter((permission) => values.nasabah.includes(permission))
+        : []
       const result = await save.mutateAsync({ id: account?.id ?? null, draft, nasabah })
       onClose()
       if ('temporary_password' in result && typeof result.temporary_password === 'string') {
@@ -261,33 +264,35 @@ function AccountDialog({
               />
             </div>
           </div>
-          <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-medium">{t('settings.nasabahAccess')}</legend>
-            <p className="text-xs text-muted-foreground">{t('settings.nasabahHint')}</p>
-            <Controller
-              control={form.control}
-              name="nasabah"
-              render={({ field }) => (
-                <div className="flex flex-col gap-1.5">
-                  {nasabahPermissions.map((permission) => (
-                    <label key={permission} className="flex items-center gap-2 text-row">
-                      <Checkbox
-                        checked={field.value.includes(permission)}
-                        onCheckedChange={(value) =>
-                          field.onChange(
-                            value === true
-                              ? [...field.value, permission]
-                              : field.value.filter((item) => item !== permission),
-                          )
-                        }
-                      />
-                      {nasabahLabel.permission(permission)}
-                    </label>
-                  ))}
-                </div>
-              )}
-            />
-          </fieldset>
+          {csAccount ? (
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-medium">{t('settings.nasabahAccess')}</legend>
+              <p className="text-xs text-muted-foreground">{t('settings.nasabahHint')}</p>
+              <Controller
+                control={form.control}
+                name="nasabah"
+                render={({ field }) => (
+                  <div className="flex flex-col gap-1.5">
+                    {nasabahPermissions.map((permission) => (
+                      <label key={permission} className="flex items-center gap-2 text-row">
+                        <Checkbox
+                          checked={field.value.includes(permission)}
+                          onCheckedChange={(value) =>
+                            field.onChange(
+                              value === true
+                                ? [...field.value, permission]
+                                : field.value.filter((item) => item !== permission),
+                            )
+                          }
+                        />
+                        {nasabahLabel.permission(permission)}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              />
+            </fieldset>
+          ) : null}
           {editing ? (
             <div className="flex flex-col gap-2">
               <Controller

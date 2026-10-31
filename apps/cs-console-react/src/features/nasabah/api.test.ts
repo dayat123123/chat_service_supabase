@@ -73,33 +73,6 @@ describe('nasabahApi', () => {
     await expect(nasabahApi.catalog()).rejects.toMatchObject({ code: 'upstream_error' })
   })
 
-  it('manages csAdmin CS accounts through the gateway', async () => {
-    reply(200, { message: 'Successfully created', data: { TemporaryPassword: 'Tmp9xYzabcDEFg' } })
-    const form = { loginId: ' rina ', employeeId: 'E-9', email: 'rina@olt.test', status: 1, permissions: 3 }
-    expect(await nasabahApi.createCsUser(form)).toEqual({ TemporaryPassword: 'Tmp9xYzabcDEFg' })
-    const [createUrl, createInit] = fetchMock.mock.calls[0] ?? []
-    expect(createUrl).toBe('/api-nasabah/cs/create-customer-service-account')
-    expect(JSON.parse(createInit?.body as string)).toEqual({
-      LoginId: 'rina',
-      EmployeeId: 'E-9',
-      Email: 'rina@olt.test',
-      Permissions: 3,
-    })
-
-    reply(200, { message: 'ok', data: null })
-    await nasabahApi.deleteCsUser(' rina ')
-    const [deleteUrl, deleteInit] = fetchMock.mock.calls[1] ?? []
-    expect(deleteUrl).toBe('/api-nasabah/cs/delete-customer-service-account?loginId=rina')
-    expect(deleteInit?.method).toBe('DELETE')
-    expect(deleteInit?.body).toBeUndefined()
-
-    reply(200, '{"message": "No data available"}')
-    await nasabahApi.csLogs(1, { logType: -1, csLoginId: 'CS-1', loginId: '' })
-    expect(fetchMock.mock.calls[2]?.[0]).toBe(
-      '/api-nasabah/cs/get-customer-service-logs?page=1&size=30&csLoginId=CS-1',
-    )
-  })
-
   it('changes an online user status with the reason', async () => {
     reply(200, { message: 'Success update status online user for loginId budi.', data: null })
     await nasabahApi.setStatus(' budi ', 3, ' Akses mencurigakan dari luar negeri ')

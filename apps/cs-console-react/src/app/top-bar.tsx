@@ -204,9 +204,10 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
           <>
             <NavLink to="/dashboard" label={t('nav.dashboard')} count={attention || undefined} />
             <NavLink to="/reports" label={t('nav.reports')} />
-            <NavLink to="/settings" label={t('nav.settings')} />
           </>
         ) : null}
+        {hasNasabah(agent) ? <NavLink to="/nasabah" label={t('nav.nasabah')} /> : null}
+        {superAdmin ? <NavLink to="/settings" label={t('nav.settings')} /> : null}
         {compliance ? (
           <>
             <NavLink to="/compliance" label={t('nav.overview')} />
@@ -220,7 +221,6 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
             <NavLink to="/compliance/policy" label={t('nav.policy')} />
           </>
         ) : null}
-        {hasNasabah(agent) ? <NavLink to="/nasabah" label={t('nav.nasabah')} /> : null}
       </nav>
       <div className="hidden min-w-0 flex-1 justify-center px-2 lg:flex">
         <button

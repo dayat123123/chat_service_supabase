@@ -97,6 +97,23 @@ describe('AccountsSection', () => {
     expect(screen.queryByText('Sementara-12345678')).not.toBeInTheDocument()
   })
 
+  it('offers customer account access only to CS-role accounts', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<AccountsSection />, monitorFixture)
+
+    await user.click(
+      within(await screen.findByRole('row', { name: /Nadia/ })).getByRole('button', { name: 'Ubah' }),
+    )
+    const agentForm = await screen.findByRole('dialog', { name: 'Ubah akun Nadia' })
+    expect(within(agentForm).getByRole('group', { name: 'Akses Akun Nasabah' })).toBeInTheDocument()
+    expect(within(agentForm).getByRole('checkbox', { name: /Approve pengajuan sendiri/ })).toBeInTheDocument()
+    await user.click(within(agentForm).getByRole('button', { name: 'Batal' }))
+
+    await user.click(within(screen.getByRole('row', { name: /Sinta/ })).getByRole('button', { name: 'Ubah' }))
+    const adminForm = await screen.findByRole('dialog', { name: 'Ubah akun Sinta' })
+    expect(within(adminForm).queryByRole('group', { name: 'Akses Akun Nasabah' })).not.toBeInTheDocument()
+  })
+
   it.each([
     ['agent_disabled', 409, 'Akun ini nonaktif. Aktifkan akun dulu, lalu reset password.'],
     ['agent_not_found', 404, 'Akun tidak ditemukan. Daftar akun dimuat ulang.'],

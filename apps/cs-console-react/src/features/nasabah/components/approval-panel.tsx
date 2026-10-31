@@ -98,8 +98,9 @@ function ApprovalBody({ approval, onClose }: { approval: Approval; onClose: () =
   const [decision, setDecision] = useState<'approve' | 'reject' | null>(null)
   const perms = agent.nasabah_permissions
   const allowed = canDecide(perms, approval, agent.agent_code)
-  const self =
-    approval.Status === 1 && has(perms, 'online_user.approve') && isSelfSubmitted(approval, agent.agent_code)
+  const own = isSelfSubmitted(approval, agent.agent_code)
+  const blocked =
+    approval.Status === 1 && !allowed && has(perms, 'online_user.approve', 'online_user.approve_own')
   const flags = flagsOf(approval.Permissions)
 
   return (
@@ -133,7 +134,7 @@ function ApprovalBody({ approval, onClose }: { approval: Approval; onClose: () =
             </Fact>
           ) : null}
         </dl>
-        {allowed || self ? (
+        {allowed || blocked ? (
           <div className="flex flex-wrap items-center gap-2 border-b px-5 py-3">
             <Button size="sm" disabled={!allowed} onClick={() => setDecision('approve')}>
               <CheckIcon />
@@ -143,8 +144,10 @@ function ApprovalBody({ approval, onClose }: { approval: Approval; onClose: () =
               <XIcon />
               {t('nasabah.approvals.reject')}
             </Button>
-            {self ? (
-              <p className="w-full text-xs text-muted-foreground">{t('nasabah.approvals.selfNote')}</p>
+            {blocked ? (
+              <p className="w-full text-xs text-muted-foreground">
+                {own ? t('nasabah.approvals.selfNote') : t('nasabah.approvals.othersNote')}
+              </p>
             ) : null}
           </div>
         ) : null}

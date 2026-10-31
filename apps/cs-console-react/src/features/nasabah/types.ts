@@ -3,10 +3,9 @@ export const nasabahPermissions = [
   'online_user.manage',
   'online_user.demo',
   'online_user.approve',
+  'online_user.approve_own',
   'online_user.status',
   'opening_account.send',
-  'cs_user.manage',
-  'cs_log.view',
 ] as const
 export type NasabahPermission = (typeof nasabahPermissions)[number]
 
@@ -87,88 +86,6 @@ export type OpeningAccount = {
   KSEIID: string
   Email: string
 }
-
-export const csFlags = [
-  { bit: 0, key: 'createCsLogin' },
-  { bit: 1, key: 'createOnlineUser' },
-  { bit: 2, key: 'approveOnlineUser' },
-  { bit: 3, key: 'createDemoAccount' },
-  { bit: 4, key: 'viewCsLogs' },
-  { bit: 5, key: 'approvalOpeningAccount' },
-  { bit: 6, key: 'viewReports' },
-  { bit: 7, key: 'sendOlUserDisclaimer' },
-  { bit: 8, key: 'viewCustomerRatio' },
-] as const
-export type CsFlag = (typeof csFlags)[number]['key']
-export const ALL_CS_FLAGS = 511
-
-export const csUserStatuses = [1, 0] as const
-
-export type CsUser = {
-  LoginId: string
-  EmployeeId: string
-  Email: string
-  Status: number
-  Permissions: number
-  Created: string
-  LastModified: string
-  LastLogin: string
-  CreatedBy: string
-  ModifiedBy: string
-}
-
-export type CsUserForm = {
-  loginId: string
-  employeeId: string
-  email: string
-  status: number
-  permissions: number
-}
-
-export type CsUserFilter = { loginId: string; employeeId: string }
-
-export type CreatedCsUser = { TemporaryPassword?: string; TemporaryPasswordError?: boolean }
-
-export const csLogTypes = [
-  'loginFailed',
-  'loginSucceeded',
-  'logout',
-  'createCs',
-  'editCs',
-  'deleteCs',
-  'createOnline',
-  'editOnline',
-  'deleteOnline',
-  'approveOnline',
-  'rejectOnline',
-  'resetPin',
-  'resetPassword',
-  'resetPinPassword',
-  'openingApprovalEmail',
-  'linkAccount',
-  'approveLink',
-  'disclaimer',
-  'customerRatio',
-  'approveUnlink',
-  'unlinkAccount',
-  'openingEmail',
-  'forgotEmail',
-] as const
-export type CsLogType = (typeof csLogTypes)[number]
-
-export type CsLog = {
-  LogId: number
-  CSLoginId: string
-  LoginId: string
-  LogTime: string
-  ApprovalId: number
-  LogType: number
-  LogDesc: string
-}
-
-export type CsLogFilter = { logType: number; csLoginId: string; loginId: string }
-
-export type GatewayInfo = { configured: boolean; service_login_id: string; actor: string; actor_mode: string }
 
 export type IncompleteField = 'email' | 'phone' | 'birthDate'
 

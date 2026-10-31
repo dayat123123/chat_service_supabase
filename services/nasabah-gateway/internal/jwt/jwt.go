@@ -1,6 +1,7 @@
 package jwt
 
 import (
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -30,6 +31,15 @@ func Sign(header, claims map[string]any, secret []byte) (string, error) {
 	}
 	input := b64.EncodeToString(head) + "." + b64.EncodeToString(payload)
 	return input + "." + b64.EncodeToString(mac(input, secret)), nil
+}
+
+func SignEdDSA(claims map[string]any, key ed25519.PrivateKey) (string, error) {
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		return "", fmt.Errorf("encode claims: %w", err)
+	}
+	input := b64.EncodeToString([]byte(`{"alg":"EdDSA","typ":"JWT"}`)) + "." + b64.EncodeToString(payload)
+	return input + "." + b64.EncodeToString(ed25519.Sign(key, []byte(input))), nil
 }
 
 func Verify(token string, secret []byte, now time.Time) (map[string]any, error) {

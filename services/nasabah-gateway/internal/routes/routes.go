@@ -2,36 +2,28 @@ package routes
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
-	"net/mail"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 
 	"olt-social/nasabah-gateway/internal/gateway"
 )
 
 const (
-	View     = "online_user.view"
-	Manage   = "online_user.manage"
-	Demo     = "online_user.demo"
-	Approve  = "online_user.approve"
-	Status   = "online_user.status"
-	Opening  = "opening_account.send"
-	CSManage = "cs_user.manage"
-	CSLogs   = "cs_log.view"
+	View       = "online_user.view"
+	Manage     = "online_user.manage"
+	Demo       = "online_user.demo"
+	Approve    = "online_user.approve"
+	ApproveOwn = "online_user.approve_own"
+	Status     = "online_user.status"
+	Opening    = "opening_account.send"
 )
 
-const (
-	demoLoginType = 0
-	allCSFlags    = 511
-)
+const demoLoginType = 0
 
 var (
 	pageRe  = regexp.MustCompile(`^[1-9][0-9]{0,5}$`)
@@ -40,7 +32,6 @@ var (
 	emailRe = regexp.MustCompile(`^[A-Za-z0-9._@+-]{1,100}$`)
 	smallRe = regexp.MustCompile(`^-?[0-9]{1,2}$`)
 	numRe   = regexp.MustCompile(`^[0-9]{1,18}$`)
-	loginRe = regexp.MustCompile(`^[A-Za-z0-9._]{3,50}$`)
 )
 
 type query = map[string]*regexp.Regexp
@@ -58,7 +49,7 @@ func with(base query, extra query) query {
 	return out
 }
 
-var readers = []string{View, Manage, Demo, Approve, Status}
+var readers = []string{View, Manage, Demo, Approve, ApproveOwn, Status}
 
 var Online = []gateway.Route{
 	{Method: http.MethodGet, Path: "/online/get-list-online-user", Action: "online_user.list", Permissions: readers,
@@ -77,34 +68,18 @@ var Online = []gateway.Route{
 		Permissions: []string{Status}, Query: query{}, ActorFields: []string{"ModifiedBy"},
 		SubjectFields: []string{"LoginId", "Status", "Reason"}, Guard: quickStatus, Audit: true},
 	{Method: http.MethodGet, Path: "/online/get-list-approval-online-user", Action: "approval.list",
-		Permissions: []string{Approve, Manage, Demo},
+		Permissions: []string{Approve, ApproveOwn, Manage, Demo},
 		Query:       with(paging, query{"status": smallRe, "actionType": smallRe, "loginId": idRe, "createdBy": idRe})},
 	{Method: http.MethodGet, Path: "/online/get-approval-linked-account-online-user", Action: "approval.linked_accounts",
-		Permissions: []string{Approve, Manage, Demo}, Query: query{"approvalId": numRe}},
+		Permissions: []string{Approve, ApproveOwn, Manage, Demo}, Query: query{"approvalId": numRe}},
 	{Method: http.MethodPost, Path: "/online/approve-approval-login", Action: "approval.decide",
-		Permissions: []string{Approve}, Query: query{}, ActorFields: []string{"ApprovedBy"},
+		Permissions: []string{Approve, ApproveOwn}, Query: query{}, ActorFields: []string{"ApprovedBy"},
 		SubjectFields: []string{"ApprovalId", "LoginId", "Status"}, Guard: approvalDecision, Audit: true},
 	{Method: http.MethodGet, Path: "/online/get-list-opening-rekening-online-user", Action: "opening_account.list",
 		Permissions: []string{Opening}, Query: with(paging, query{"loginId": idRe, "custId": idRe})},
 	{Method: http.MethodPost, Path: "/online/send-email-opening-account-with-rekening", Action: "opening_account.send_email",
 		Permissions: []string{Opening}, Query: query{}, ActorFields: []string{"CSLoginId"},
 		SubjectFields: []string{"LoginId", "CustId"}, Guard: openingPair, Audit: true},
-	{Method: http.MethodGet, Path: "/cs/get-list-customer-service", Action: "cs_user.list", Permissions: []string{CSManage},
-		Query: with(paging, query{"loginId": idRe, "employeeId": idRe})},
-	{Method: http.MethodPost, Path: "/cs/create-customer-service-account", Action: "cs_user.create",
-		Permissions: []string{CSManage}, Query: query{}, ActorFields: []string{"CreatedBy"},
-		SubjectFields: []string{"LoginId", "Permissions"}, Guard: csAccount(true), After: temporaryPassword, Audit: true},
-	{Method: http.MethodPut, Path: "/cs/update-customer-service-account", Action: "cs_user.update",
-		Permissions: []string{CSManage}, Query: query{}, ActorFields: []string{"ModifiedBy"},
-		SubjectFields: []string{"LoginId", "Permissions", "Status"}, Guard: csAccount(false), Audit: true},
-	{Method: http.MethodPut, Path: "/cs/change-password-customer-service-account", Action: "cs_user.password",
-		Permissions: []string{CSManage}, Query: query{}, ActorFields: []string{"ModifiedBy"},
-		SubjectFields: []string{"LoginId"}, Guard: csPassword, Audit: true},
-	{Method: http.MethodDelete, Path: "/cs/delete-customer-service-account", Action: "cs_user.delete",
-		Permissions: []string{CSManage}, Query: query{"loginId": idRe}, ActorQuery: []string{"modifiedBy"},
-		SubjectFields: []string{"loginId"}, Guard: csDelete, Audit: true},
-	{Method: http.MethodGet, Path: "/cs/get-customer-service-logs", Action: "cs_log.list", Permissions: []string{CSLogs},
-		Query: with(paging, query{"logType": smallRe, "csLoginId": idRe, "loginId": idRe})},
 }
 
 func reject(status int, code, message string) error {
@@ -196,8 +171,12 @@ func approvalDecision(ctx context.Context, call gateway.Caller, req *gateway.Req
 		if number(row["ApprovalId"]) != id {
 			continue
 		}
-		if strings.EqualFold(strings.TrimSpace(text(row["CreatedBy"])), req.Actor) {
+		own := strings.EqualFold(strings.TrimSpace(text(row["CreatedBy"])), req.Actor)
+		if own && !req.Grant.Allows([]string{ApproveOwn}) {
 			return reject(http.StatusForbidden, "self_approval", "The submitter of an approval cannot decide it")
+		}
+		if !own && !req.Grant.Allows([]string{Approve}) {
+			return reject(http.StatusForbidden, "permission_denied", "This account may only decide its own submissions")
 		}
 		req.Fields["LoginId"] = text(row["LoginId"])
 		req.Fields["ActionType"] = number(row["ActionType"])
@@ -228,150 +207,6 @@ func openingPair(ctx context.Context, call gateway.Caller, req *gateway.Request)
 		}
 	}
 	return reject(http.StatusNotFound, "opening_account_not_found", "This account is not linked to the online user")
-}
-
-func serviceAccount(req *gateway.Request, loginID string, service string) error {
-	if service != "" && strings.EqualFold(strings.TrimSpace(loginID), service) {
-		return reject(http.StatusForbidden, "service_account_locked", "The gateway service account cannot be changed from the console")
-	}
-	return nil
-}
-
-func csAccount(create bool) gateway.Guard {
-	return func(_ context.Context, call gateway.Caller, req *gateway.Request) error {
-		loginID := strings.TrimSpace(text(req.Fields["LoginId"]))
-		if !loginRe.MatchString(loginID) {
-			return reject(http.StatusBadRequest, "invalid_login_id", "LoginId must be 3-50 letters, digits, dots or underscores")
-		}
-		if err := serviceAccount(req, loginID, serviceLogin(call)); err != nil {
-			return err
-		}
-		employeeID := strings.TrimSpace(text(req.Fields["EmployeeId"]))
-		if employeeID == "" || len(employeeID) > 50 {
-			return reject(http.StatusBadRequest, "invalid_employee_id", "EmployeeId is required (max 50 characters)")
-		}
-		email := strings.TrimSpace(text(req.Fields["Email"]))
-		if _, err := mail.ParseAddress(email); err != nil || len(email) > 255 || strings.ContainsAny(email, " <>") {
-			return reject(http.StatusBadRequest, "invalid_email", "A valid email address is required")
-		}
-		perms := number(req.Fields["Permissions"])
-		if perms < 0 || perms > allCSFlags {
-			return reject(http.StatusBadRequest, "invalid_permissions", "Permissions must be a bitmask between 0 and 511")
-		}
-		req.Fields["LoginId"] = loginID
-		req.Fields["EmployeeId"] = employeeID
-		req.Fields["Email"] = email
-		req.Fields["Permissions"] = perms
-		if create {
-			delete(req.Fields, "Password")
-			delete(req.Fields, "Status")
-			return nil
-		}
-		status := number(req.Fields["Status"])
-		if status < 0 || status > 3 {
-			return reject(http.StatusBadRequest, "invalid_user_status", "Status must be 0, 1, 2 or 3")
-		}
-		req.Fields["Status"] = status
-		return nil
-	}
-}
-
-func csPassword(_ context.Context, call gateway.Caller, req *gateway.Request) error {
-	loginID := strings.TrimSpace(text(req.Fields["LoginId"]))
-	if !loginRe.MatchString(loginID) {
-		return reject(http.StatusBadRequest, "invalid_login_id", "LoginId is required")
-	}
-	if err := serviceAccount(req, loginID, serviceLogin(call)); err != nil {
-		return err
-	}
-	if !strongPassword(text(req.Fields["Password"])) {
-		return reject(http.StatusBadRequest, "weak_cs_password", "Password must be 6-20 characters with upper and lower case letters and no spaces")
-	}
-	req.Fields["LoginId"] = loginID
-	return nil
-}
-
-func csDelete(_ context.Context, call gateway.Caller, req *gateway.Request) error {
-	loginID := req.Query.Get("loginId")
-	if loginID == "" {
-		return reject(http.StatusBadRequest, "invalid_login_id", "loginId is required")
-	}
-	return serviceAccount(req, loginID, serviceLogin(call))
-}
-
-func temporaryPassword(ctx context.Context, call gateway.Caller, req *gateway.Request, payload []byte) ([]byte, error) {
-	password, err := GeneratePassword()
-	if err != nil {
-		return payload, err
-	}
-	status, _, err := call.Do(ctx, http.MethodPut, "/cs/change-password-customer-service-account", nil, map[string]any{
-		"LoginId": req.Fields["LoginId"], "Password": password, "ModifiedBy": req.Actor,
-	})
-	var envelope map[string]any
-	if json.Unmarshal(payload, &envelope) != nil {
-		return payload, fmt.Errorf("decode create response")
-	}
-	data, _ := envelope["data"].(map[string]any)
-	if data == nil {
-		data = map[string]any{}
-	}
-	if err != nil || status != http.StatusOK {
-		data["TemporaryPasswordError"] = true
-		envelope["data"] = data
-		out, _ := json.Marshal(envelope)
-		if err == nil {
-			err = fmt.Errorf("set temporary password: status %d", status)
-		}
-		return out, err
-	}
-	data["TemporaryPassword"] = password
-	envelope["data"] = data
-	return json.Marshal(envelope)
-}
-
-const passwordAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
-
-func GeneratePassword() (string, error) {
-	for {
-		buf := make([]byte, 14)
-		for i := range buf {
-			n, err := rand.Int(rand.Reader, big.NewInt(int64(len(passwordAlphabet))))
-			if err != nil {
-				return "", err
-			}
-			buf[i] = passwordAlphabet[n.Int64()]
-		}
-		if candidate := string(buf); strongPassword(candidate) && strings.ContainsAny(candidate, "23456789") {
-			return candidate, nil
-		}
-	}
-}
-
-func strongPassword(password string) bool {
-	if n := len([]rune(password)); n < 6 || n > 20 {
-		return false
-	}
-	var upper, lower bool
-	for _, r := range password {
-		switch {
-		case unicode.IsSpace(r):
-			return false
-		case unicode.IsUpper(r):
-			upper = true
-		case unicode.IsLower(r):
-			lower = true
-		}
-	}
-	return upper && lower
-}
-
-type serviceNamer interface{ ServiceLoginID() string }
-
-func serviceLogin(call gateway.Caller) string {
-	if s, ok := call.(serviceNamer); ok {
-		return s.ServiceLoginID()
-	}
-	return ""
 }
 
 func findOnlineUser(ctx context.Context, call gateway.Caller, loginID string) (map[string]any, error) {

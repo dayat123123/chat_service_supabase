@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 import { formatDay } from '@/lib/time'
 
-import { csLogTypes, type CsFlag, type IncompleteField, type NasabahPermission, type UserFlag } from './types'
+import type { IncompleteField, NasabahPermission, UserFlag } from './types'
 
 const loginTypeKeys = ['demo', 'client', 'sales', 'branch', 'csAll', 'csBranch'] as const
 const statusKeys = ['inactive', 'active', 'suspendTrading', 'suspendLogin'] as const
@@ -47,12 +47,6 @@ export function useNasabahLabels() {
     },
     permission: (value: NasabahPermission) =>
       t(`nasabah.permissions.${value.replace('.', '_') as 'online_user_view'}`),
-    csFlag: (key: CsFlag) => t(`nasabah.csFlags.${key}`),
-    csStatus: (value: number) => (value === 1 ? t('nasabah.csUsers.active') : t('nasabah.csUsers.inactive')),
-    logType: (value: number) => {
-      const key = csLogTypes[value]
-      return key ? t(`nasabah.logTypes.${key}`) : t('nasabah.logTypes.unknown', { value })
-    },
     incomplete: (key: IncompleteField) => t(`nasabah.incomplete.${key}`),
   }
 }

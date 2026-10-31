@@ -130,9 +130,9 @@ function Assert-Config {
             throw "Secret $name belum ada. Jalankan: .\make.ps1 gen-secrets"
         }
     }
-    $csadminPassword = Join-Path $SecretsDir 'csadmin_password'
-    if (-not (Test-Path -LiteralPath $csadminPassword)) {
-        [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $csadminPassword), '')
+    $csadminSigningKey = Join-Path $SecretsDir 'csadmin_signing_key'
+    if (-not (Test-Path -LiteralPath $csadminSigningKey)) {
+        [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $csadminSigningKey), '')
     }
     $placeholders = Select-String -LiteralPath $EnvFile -Pattern '=CHANGE_ME' -SimpleMatch
     if ($placeholders) {

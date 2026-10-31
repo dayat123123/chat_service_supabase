@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -12,32 +13,9 @@ import (
 	"olt-social/nasabah-gateway/internal/gateway"
 )
 
-type write struct {
-	method, path string
-	query        url.Values
-	body         any
-}
-
 type fakeCaller struct {
 	replies map[string]string
-	codes   map[string]int
 	queries []url.Values
-	writes  []write
-	service string
-}
-
-func (f *fakeCaller) ServiceLoginID() string { return f.service }
-
-func (f *fakeCaller) Do(_ context.Context, method, path string, query url.Values, body any) (int, []byte, error) {
-	f.writes = append(f.writes, write{method: method, path: path, query: query, body: body})
-	return f.status(path), []byte(`{"message":"ok","data":null}`), nil
-}
-
-func (f *fakeCaller) status(path string) int {
-	if code, ok := f.codes[path]; ok {
-		return code
-	}
-	return http.StatusOK
 }
 
 func (f *fakeCaller) Get(_ context.Context, path string, query url.Values) (int, []byte, error) {
@@ -73,19 +51,20 @@ func route(path string) gateway.Route {
 
 func TestOnlyStaffRoutesAreExposed(t *testing.T) {
 	for _, r := range Online {
-		if !strings.HasPrefix(r.Path, "/online/") && !strings.HasPrefix(r.Path, "/cs/") || len(r.Permissions) == 0 {
-			t.Errorf("route %s %s must be an /online or /cs route with permissions", r.Method, r.Path)
+		if !strings.HasPrefix(r.Path, "/online/") || len(r.Permissions) == 0 {
+			t.Errorf("route %s %s must be an /online route with permissions", r.Method, r.Path)
 		}
 		if r.Query == nil {
 			t.Errorf("route %s must declare its allowed query parameters", r.Path)
 		}
-		if r.Method != http.MethodGet && (len(r.ActorFields)+len(r.ActorQuery) == 0 || !r.Audit) {
+		if r.Method != http.MethodGet && (len(r.ActorFields) == 0 || !r.Audit) {
 			t.Errorf("write route %s must set the actor and be audited", r.Path)
 		}
 	}
 	for _, blocked := range []string{"/online/send-email-opening-account",
 		"/online/send-email-forget-password-and-pin-online-user", "/online/register-account-online-user",
-		"/cs/login", "/cs/logout", "/cs/reset-password", "/cs/get-campaigns"} {
+		"/cs/login", "/cs/get-list-customer-service", "/cs/create-customer-service-account",
+		"/cs/get-customer-service-logs", "/integration/token"} {
 		for _, r := range Online {
 			if r.Path == blocked {
 				t.Errorf("%s must not be exposed", blocked)
@@ -96,12 +75,10 @@ func TestOnlyStaffRoutesAreExposed(t *testing.T) {
 
 func TestQueryRulesRejectFilterInjection(t *testing.T) {
 	cases := map[string]map[string]string{
-		"/online/get-list-online-user":                    {"loginId": "a' OR '1'='1", "email": "x%' --"},
+		"/online/get-list-online-user":                    {"loginId": "a' OR '1'='1", "email": "x%' --", "size": "1000"},
 		"/online/get-list-approval-online-user":           {"status": "1; DROP", "createdBy": "x'"},
 		"/online/get-approval-linked-account-online-user": {"approvalId": "1 OR 1=1"},
 		"/online/get-list-opening-rekening-online-user":   {"custId": "C%"},
-		"/cs/get-list-customer-service":                   {"loginId": "a'--", "size": "1000"},
-		"/cs/get-customer-service-logs":                   {"logType": "1 OR 1=1", "csLoginId": "%"},
 	}
 	for path, params := range cases {
 		rules := route(path).Query
@@ -116,7 +93,7 @@ func TestQueryRulesRejectFilterInjection(t *testing.T) {
 			}
 		}
 	}
-	if !route("/cs/get-customer-service-logs").Query["logType"].MatchString("-1") ||
+	if !route("/online/get-list-approval-online-user").Query["actionType"].MatchString("-1") ||
 		!route("/online/get-list-online-user").Query["email"].MatchString("budi+1@olt.test") {
 		t.Error("legitimate filters must stay accepted")
 	}
@@ -142,122 +119,6 @@ func TestQuickStatusNeedsAReasonAndAnExistingUser(t *testing.T) {
 		if code := rejection(t, guard(context.Background(), users, request([]string{Status}, "CS-1", fields))); code != name {
 			t.Errorf("%s: got %s", name, code)
 		}
-	}
-}
-
-func TestCSAccountsAreValidatedAndTheServiceAccountIsLocked(t *testing.T) {
-	create := route("/cs/create-customer-service-account").Guard
-	update := route("/cs/update-customer-service-account").Guard
-	caller := &fakeCaller{service: "gomi"}
-	valid := func() map[string]any {
-		return map[string]any{"LoginId": " sinta.w ", "EmployeeId": "E-01", "Email": "sinta@olt.test", "Permissions": 511.0,
-			"Password": "Secret12", "Status": 2.0}
-	}
-
-	req := request([]string{CSManage}, "CS-1", valid())
-	if err := create(context.Background(), caller, req); err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := req.Fields["Password"]; ok || req.Fields["Status"] != nil || req.Fields["LoginId"] != "sinta.w" {
-		t.Fatalf("create must drop password/status and trim the login, got %v", req.Fields)
-	}
-	req = request([]string{CSManage}, "CS-1", valid())
-	if err := update(context.Background(), caller, req); err != nil || req.Fields["Status"] != int64(2) {
-		t.Fatalf("update: %v %v", err, req.Fields)
-	}
-
-	for code, mutate := range map[string]func(map[string]any){
-		"invalid_login_id":       func(f map[string]any) { f["LoginId"] = "a'b" },
-		"service_account_locked": func(f map[string]any) { f["LoginId"] = "GOMI" },
-		"invalid_employee_id":    func(f map[string]any) { f["EmployeeId"] = " " },
-		"invalid_email":          func(f map[string]any) { f["Email"] = "Sinta <sinta@olt.test>" },
-		"invalid_permissions":    func(f map[string]any) { f["Permissions"] = 512.0 },
-	} {
-		fields := valid()
-		mutate(fields)
-		if got := rejection(t, update(context.Background(), caller, request([]string{CSManage}, "CS-1", fields))); got != code {
-			t.Errorf("%s: got %s", code, got)
-		}
-	}
-	fields := valid()
-	fields["Status"] = 7.0
-	if got := rejection(t, update(context.Background(), caller, request([]string{CSManage}, "CS-1", fields))); got != "invalid_user_status" {
-		t.Errorf("status: got %s", got)
-	}
-}
-
-func TestCSPasswordsFollowThePolicyAndSkipTheServiceAccount(t *testing.T) {
-	guard := route("/cs/change-password-customer-service-account").Guard
-	caller := &fakeCaller{service: "gomi"}
-	if err := guard(context.Background(), caller, request([]string{CSManage}, "CS-1", map[string]any{"LoginId": "sinta", "Password": "Rahasia9"})); err != nil {
-		t.Fatal(err)
-	}
-	for password, code := range map[string]string{"short": "weak_cs_password", "alllower99": "weak_cs_password", "Has Space1": "weak_cs_password",
-		"Waytoolongpassword12345": "weak_cs_password"} {
-		if got := rejection(t, guard(context.Background(), caller, request([]string{CSManage}, "CS-1", map[string]any{"LoginId": "sinta", "Password": password}))); got != code {
-			t.Errorf("%q: got %s", password, got)
-		}
-	}
-	if got := rejection(t, guard(context.Background(), caller, request([]string{CSManage}, "CS-1", map[string]any{"LoginId": "gomi", "Password": "Rahasia9"}))); got != "service_account_locked" {
-		t.Errorf("service account: got %s", got)
-	}
-}
-
-func TestCSDeleteNeedsALoginAndSkipsTheServiceAccount(t *testing.T) {
-	guard := route("/cs/delete-customer-service-account").Guard
-	caller := &fakeCaller{service: "gomi"}
-	req := &gateway.Request{Grant: &access.Grant{Permissions: []string{CSManage}}, Actor: "CS-1", Query: url.Values{"loginId": {"sinta"}}}
-	if err := guard(context.Background(), caller, req); err != nil {
-		t.Fatal(err)
-	}
-	req.Query = url.Values{"loginId": {"Gomi"}}
-	if got := rejection(t, guard(context.Background(), caller, req)); got != "service_account_locked" {
-		t.Errorf("service account: got %s", got)
-	}
-	req.Query = url.Values{}
-	if got := rejection(t, guard(context.Background(), caller, req)); got != "invalid_login_id" {
-		t.Errorf("missing login: got %s", got)
-	}
-}
-
-func TestNewCSAccountsReceiveARandomTemporaryPassword(t *testing.T) {
-	after := route("/cs/create-customer-service-account").After
-	caller := &fakeCaller{}
-	req := request([]string{CSManage}, "CS-7", map[string]any{"LoginId": "sinta"})
-	out, err := after(context.Background(), caller, req, []byte(`{"message":"Successfully created","data":{}}`))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(caller.writes) != 1 || caller.writes[0].method != http.MethodPut || caller.writes[0].path != "/cs/change-password-customer-service-account" {
-		t.Fatalf("writes = %+v", caller.writes)
-	}
-	body := caller.writes[0].body.(map[string]any)
-	password, _ := body["Password"].(string)
-	if body["LoginId"] != "sinta" || body["ModifiedBy"] != "CS-7" || !strongPassword(password) {
-		t.Fatalf("password change body = %v", body)
-	}
-	if !strings.Contains(string(out), `"TemporaryPassword":"`+password+`"`) || !strings.Contains(string(out), "Successfully created") {
-		t.Fatalf("response = %s", out)
-	}
-
-	failing := &fakeCaller{codes: map[string]int{"/cs/change-password-customer-service-account": http.StatusInternalServerError}}
-	out, err = after(context.Background(), failing, req, []byte(`{"message":"Successfully created","data":{}}`))
-	if err == nil || !strings.Contains(string(out), `"TemporaryPasswordError":true`) || strings.Contains(string(out), "TemporaryPassword\":\"") {
-		t.Fatalf("failed follow-up: %v %s", err, out)
-	}
-}
-
-func TestGeneratedPasswordsAreStrongAndUnique(t *testing.T) {
-	seen := map[string]bool{}
-	for range 200 {
-		p, err := GeneratePassword()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strongPassword(p) || len(p) != 14 || strings.ContainsAny(p, "0O1lI") || seen[p] {
-			t.Fatalf("weak or repeated password %q", p)
-		}
-		seen[p] = true
 	}
 }
 
@@ -352,5 +213,30 @@ func TestOpeningEmailsRequireAnExistingLoginAccountPair(t *testing.T) {
 	}
 	if code := rejection(t, guard(context.Background(), &fakeCaller{}, request([]string{Opening}, "CS-1", map[string]any{"LoginId": "budi", "CustId": "C001"}))); code != "opening_account_not_found" {
 		t.Errorf("empty upstream list: %s", code)
+	}
+}
+
+func TestSelfApprovalNeedsTheApproveOwnPermission(t *testing.T) {
+	guard := route("/online/approve-approval-login").Guard
+	approvals := &fakeCaller{replies: map[string]string{
+		"/online/get-list-approval-online-user": `{"data":[{"ApprovalId":41,"LoginId":"budi","ActionType":1,"Email":"budi@olt.test","CreatedBy":"CS-0045"},{"ApprovalId":42,"LoginId":"budi","ActionType":2,"Email":"budi@olt.test","CreatedBy":"CS-0046"}],"message":"ok"}`,
+	}}
+	own := map[string]any{"ApprovalId": 41.0, "LoginId": "budi", "Status": 2.0}
+	other := map[string]any{"ApprovalId": 42.0, "LoginId": "budi", "Status": 2.0}
+
+	if err := guard(context.Background(), approvals, request([]string{ApproveOwn}, "CS-0045", own)); err != nil {
+		t.Errorf("approve_own may decide its own submission: %v", err)
+	}
+	if code := rejection(t, guard(context.Background(), approvals, request([]string{ApproveOwn}, "CS-0045", other))); code != "permission_denied" {
+		t.Errorf("approve_own alone must not decide others' submissions: %s", code)
+	}
+	if err := guard(context.Background(), approvals, request([]string{Approve, ApproveOwn}, "CS-0045", own)); err != nil {
+		t.Errorf("both permissions may decide their own submission: %v", err)
+	}
+	if code := rejection(t, guard(context.Background(), approvals, request([]string{Approve}, "CS-0045", own))); code != "self_approval" {
+		t.Errorf("approve alone must not decide its own submission: %s", code)
+	}
+	if !slices.Contains(route("/online/approve-approval-login").Permissions, ApproveOwn) {
+		t.Error("the decision route must admit approve_own holders")
 	}
 }

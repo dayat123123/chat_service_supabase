@@ -60,7 +60,7 @@ help: ## Tampilkan daftar target
 check-config:
 	@test -f $(ENV) || { echo "docker/.env belum ada. Jalankan: make gen-secrets"; exit 1; }
 	@for s in $(SECRET_NAMES); do test -s $(SECRETS)/$$s || { echo "Secret $$s belum ada. Jalankan: make gen-secrets"; exit 1; }; done
-	@test -f $(SECRETS)/csadmin_password || : > $(SECRETS)/csadmin_password
+	@test -f $(SECRETS)/csadmin_signing_key || : > $(SECRETS)/csadmin_signing_key
 	@! grep -q '=CHANGE_ME' $(ENV) || { echo "docker/.env masih berisi CHANGE_ME:"; grep '=CHANGE_ME' $(ENV); exit 1; }
 	@if [ "$(PROFILE)" != dev ]; then for k in PROXY_DOMAIN ACME_EMAIL; do \
 	  grep -qE "^$$k=.+" $(ENV) || { echo "Profil $(PROFILE): $$k wajib diisi di docker/.env"; exit 1; }; done; fi

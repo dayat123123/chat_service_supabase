@@ -1,11 +1,8 @@
 import {
-  ALL_CS_FLAGS,
   CLIENT,
   DEMO,
   type Approval,
   type ApprovalAction,
-  type CsUser,
-  type CsUserForm,
   type IncompleteField,
   type LoginType,
   type NasabahPermission,
@@ -14,11 +11,10 @@ import {
   type Page,
   type UserFlag,
   type UserStatus,
-  csFlags,
   userFlags,
 } from './types'
 
-export type NasabahTab = 'users' | 'approvals' | 'opening' | 'cs_users' | 'cs_logs'
+export type NasabahTab = 'users' | 'approvals' | 'opening'
 
 export const has = (perms: readonly string[], ...wanted: NasabahPermission[]) =>
   wanted.some((perm) => perms.includes(perm))
@@ -32,14 +28,14 @@ export function nasabahTabs(perms: readonly string[]): NasabahTab[] {
       'online_user.manage',
       'online_user.demo',
       'online_user.approve',
+      'online_user.approve_own',
       'online_user.status',
     )
   )
     tabs.push('users')
-  if (has(perms, 'online_user.approve', 'online_user.manage', 'online_user.demo')) tabs.push('approvals')
+  if (has(perms, 'online_user.approve', 'online_user.approve_own', 'online_user.manage', 'online_user.demo'))
+    tabs.push('approvals')
   if (has(perms, 'opening_account.send')) tabs.push('opening')
-  if (has(perms, 'cs_user.manage')) tabs.push('cs_users')
-  if (has(perms, 'cs_log.view')) tabs.push('cs_logs')
   return tabs
 }
 
@@ -77,7 +73,11 @@ export const canDecide = (
   perms: readonly string[],
   approval: Pick<Approval, 'Status' | 'CreatedBy'>,
   agentCode: string,
-) => has(perms, 'online_user.approve') && approval.Status === 1 && !isSelfSubmitted(approval, agentCode)
+) =>
+  approval.Status === 1 &&
+  (isSelfSubmitted(approval, agentCode)
+    ? has(perms, 'online_user.approve_own')
+    : has(perms, 'online_user.approve'))
 
 export function userSearch(query: string): Record<string, string> {
   const value = query.trim()
@@ -194,69 +194,4 @@ export function approvalPayload(action: ApprovalAction, form: OnlineUserForm, pr
   }
   if (action === 3) return base
   return { ...base, BirthDate: form.birthDate, HandphoneNo: form.phone.trim() }
-}
-
-export const csFlagsOf = (permissions: number) =>
-  csFlags.filter((flag) => (permissions & (1 << flag.bit)) !== 0).map((flag) => flag.key)
-
-export const isServiceAccount = (loginId: string, serviceLoginId: string | undefined) =>
-  Boolean(serviceLoginId) && loginId.trim().toLowerCase() === (serviceLoginId ?? '').trim().toLowerCase()
-
-export function csFormFromUser(user: CsUser): CsUserForm {
-  return {
-    loginId: user.LoginId.trim(),
-    employeeId: (user.EmployeeId ?? '').trim(),
-    email: (user.Email ?? '').trim(),
-    status: user.Status,
-    permissions: user.Permissions ?? 0,
-  }
-}
-
-export const emptyCsForm = (): CsUserForm => ({
-  loginId: '',
-  employeeId: '',
-  email: '',
-  status: 1,
-  permissions: 0,
-})
-
-export type CsFormProblem = 'loginId' | 'employeeId' | 'email' | 'permissions'
-
-export function csFormProblems(form: CsUserForm): CsFormProblem[] {
-  const problems: CsFormProblem[] = []
-  if (!/^[A-Za-z0-9._]{3,50}$/.test(form.loginId.trim())) problems.push('loginId')
-  const employee = form.employeeId.trim()
-  if (!employee || employee.length > 50) problems.push('employeeId')
-  const email = form.email.trim()
-  if (!emailPattern.test(email) || email.length > 255) problems.push('email')
-  if (!Number.isInteger(form.permissions) || form.permissions < 0 || form.permissions > ALL_CS_FLAGS)
-    problems.push('permissions')
-  return problems
-}
-
-export function csUserPayload(form: CsUserForm, create: boolean) {
-  const base = {
-    LoginId: form.loginId.trim(),
-    EmployeeId: form.employeeId.trim(),
-    Email: form.email.trim(),
-    Permissions: form.permissions,
-  }
-  return create ? base : { ...base, Status: form.status }
-}
-
-export function passwordOk(password: string) {
-  const length = [...password].length
-  return (
-    length >= 6 && length <= 20 && !/\s/.test(password) && /[A-Z]/.test(password) && /[a-z]/.test(password)
-  )
-}
-
-const passwordAlphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'
-
-export function generatePassword(length = 14): string {
-  for (;;) {
-    const bytes = crypto.getRandomValues(new Uint32Array(length))
-    const candidate = Array.from(bytes, (n) => passwordAlphabet[n % passwordAlphabet.length]).join('')
-    if (passwordOk(candidate) && /\d/.test(candidate)) return candidate
-  }
 }

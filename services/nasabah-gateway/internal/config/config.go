@@ -1,28 +1,33 @@
 package config
 
 import (
+	"crypto/ed25519"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"olt-social/nasabah-gateway/internal/csadmin"
 )
 
+var clientIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,50}$`)
+
 type Config struct {
-	Port            int
-	LogLevel        slog.Level
-	JWTSecret       []byte
-	JWTIssuer       string
-	PostgRESTURL    string
-	CSAdminURL      string
-	CSAdminUsername string
-	CSAdminPassword string
-	CSAdminActor    string
-	CSAdminTimeout  time.Duration
-	AccessCacheTTL  time.Duration
+	Port              int
+	LogLevel          slog.Level
+	JWTSecret         []byte
+	JWTIssuer         string
+	PostgRESTURL      string
+	CSAdminURL        string
+	CSAdminClientID   string
+	CSAdminSigningKey ed25519.PrivateKey
+	CSAdminTimeout    time.Duration
+	AccessCacheTTL    time.Duration
 }
 
 func Load() (Config, error) {
@@ -32,12 +37,17 @@ func Load() (Config, error) {
 		JWTIssuer:       stringEnv("JWT_ISSUER", "supabase"),
 		PostgRESTURL:    urlEnv("POSTGREST_URL", "http://rest:3000", &errs),
 		CSAdminURL:      urlEnv("CSADMIN_URL", "", &errs),
-		CSAdminUsername: stringEnv("CSADMIN_USERNAME", ""),
-		CSAdminPassword: secretEnv("CSADMIN_PASSWORD", &errs),
-		CSAdminActor:    stringEnv("CSADMIN_ACTOR", "agent"),
+		CSAdminClientID: stringEnv("CSADMIN_CLIENT_ID", "web-cs"),
 		CSAdminTimeout:  durationEnv("CSADMIN_TIMEOUT", 15*time.Second, &errs),
 		AccessCacheTTL:  durationEnv("ACCESS_CACHE_TTL", 30*time.Second, &errs),
 		JWTSecret:       []byte(secretEnv("JWT_SECRET", &errs)),
+	}
+	if pem := secretEnv("CSADMIN_SIGNING_KEY", &errs); pem != "" {
+		key, err := csadmin.ParsePrivateKey([]byte(pem))
+		if err != nil {
+			errs = append(errs, fmt.Errorf("CSADMIN_SIGNING_KEY: %w", err))
+		}
+		cfg.CSAdminSigningKey = key
 	}
 	if err := cfg.LogLevel.UnmarshalText([]byte(stringEnv("LOG_LEVEL", "info"))); err != nil {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
@@ -45,8 +55,8 @@ func Load() (Config, error) {
 	if len(cfg.JWTSecret) < 32 {
 		errs = append(errs, errors.New("JWT_SECRET must be at least 32 characters"))
 	}
-	if cfg.CSAdminActor != "agent" && cfg.CSAdminActor != "service" {
-		errs = append(errs, errors.New("CSADMIN_ACTOR must be agent or service"))
+	if !clientIDPattern.MatchString(cfg.CSAdminClientID) {
+		errs = append(errs, errors.New("CSADMIN_CLIENT_ID must be 1-50 letters, digits, dots, dashes or underscores"))
 	}
 	if cfg.CSAdminTimeout < time.Second || cfg.CSAdminTimeout > time.Minute {
 		errs = append(errs, errors.New("CSADMIN_TIMEOUT must be between 1s and 1m"))

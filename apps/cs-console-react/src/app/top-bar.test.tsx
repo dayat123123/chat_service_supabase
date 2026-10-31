@@ -41,4 +41,21 @@ describe('TopBar', () => {
     expect(screen.queryByText(/^Aktif \d+\/\d+$/)).not.toBeInTheDocument()
     expect(navLinks()).toEqual(['Tiket', 'Dashboard', 'Laporan', 'Pengaturan'])
   })
+
+  it('places Akun Nasabah right before Pengaturan for CS accounts with customer access', () => {
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, {
+      ...monitorFixture,
+      roles: ['cs_agent', 'cs_super_admin'],
+      nasabah_permissions: ['online_user.view'],
+    })
+    expect(navLinks()).toEqual(['Tiket', 'Dashboard', 'Laporan', 'Akun Nasabah', 'Pengaturan'])
+  })
+
+  it('shows Akun Nasabah after Tiket to plain CS accounts with customer access', () => {
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, {
+      ...agentFixture,
+      nasabah_permissions: ['online_user.view'],
+    })
+    expect(navLinks()).toEqual(['Tiket', 'Akun Nasabah'])
+  })
 })

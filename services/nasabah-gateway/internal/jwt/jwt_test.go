@@ -1,6 +1,8 @@
 package jwt
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"errors"
 	"strings"
 	"testing"
@@ -56,5 +58,32 @@ func TestHasAudience(t *testing.T) {
 	}
 	if HasAudience(map[string]any{"aud": "anon"}, "authenticated") {
 		t.Error("wrong audience accepted")
+	}
+}
+
+func TestSignEdDSAProducesAVerifiableEd25519Token(t *testing.T) {
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	token, err := SignEdDSA(map[string]any{"iss": "web-cs", "jti": "a1"}, private)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		t.Fatalf("token = %q", token)
+	}
+	head, _ := b64.DecodeString(parts[0])
+	if string(head) != `{"alg":"EdDSA","typ":"JWT"}` {
+		t.Fatalf("header = %s", head)
+	}
+	sig, _ := b64.DecodeString(parts[2])
+	if !ed25519.Verify(public, []byte(parts[0]+"."+parts[1]), sig) {
+		t.Fatal("signature must verify with the public key")
+	}
+	payload, _ := b64.DecodeString(parts[1])
+	if !strings.Contains(string(payload), `"iss":"web-cs"`) {
+		t.Fatalf("payload = %s", payload)
 	}
 }

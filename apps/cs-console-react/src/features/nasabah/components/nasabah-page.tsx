@@ -7,8 +7,6 @@ import { cn } from '@/lib/utils'
 
 import { nasabahTabs, type NasabahTab } from '../logic'
 import { ApprovalsTab } from './approvals-tab'
-import { CsLogsTab } from './cs-logs-tab'
-import { CsUsersTab } from './cs-users-tab'
 import { NasabahSummary } from './nasabah-summary'
 import { OpeningTab } from './opening-tab'
 import { UsersTab } from './users-tab'
@@ -59,8 +57,6 @@ export function NasabahPage() {
           {tab === 'users' ? <UsersTab /> : null}
           {tab === 'approvals' ? <ApprovalsTab /> : null}
           {tab === 'opening' ? <OpeningTab /> : null}
-          {tab === 'cs_users' ? <CsUsersTab /> : null}
-          {tab === 'cs_logs' ? <CsLogsTab /> : null}
         </div>
       </div>
     </div>

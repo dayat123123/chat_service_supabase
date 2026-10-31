@@ -1,8 +1,9 @@
 begin;
-select plan(16);
+select plan(18);
 
 select tests.create_agent('Nadia', '{cs_agent}', '{"general": 2}') as nadia \gset
 select tests.create_agent('Sinta', '{cs_super_admin}', '{}') as sinta \gset
+select tests.create_agent('Bima', '{cs_agent}', '{"general": 2}') as bima \gset
 select agent_code as nadia_code from cs.agents where user_id = :'nadia' \gset
 
 select tests.authenticate_service();
@@ -20,10 +21,12 @@ select throws_ok(format($$select cs_api.admin_set_nasabah_permissions(%L, '{onli
   'PT400', 'invalid_permission', 'Permission Nasabah yang tidak dikenal ditolak');
 select is(cs_api.admin_set_nasabah_permissions(:'nadia', '{online_user.manage,online_user.view,online_user.view}') -> 'nasabah_permissions',
   '["online_user.manage", "online_user.view"]'::jsonb, 'Super Admin memberi permission Nasabah (urut, tanpa duplikat)');
-select is(cs_api.admin_set_nasabah_permissions(:'sinta', '{cs_user.manage,cs_log.view}') -> 'nasabah_permissions',
-  '["cs_log.view", "cs_user.manage"]'::jsonb, 'Super Admin memberi permission kelola akun CS dan log csAdmin');
-select is(cs_api.admin_set_nasabah_permissions(:'sinta', '{online_user.status,cs_log.view}') -> 'nasabah_permissions',
-  '["cs_log.view", "online_user.status"]'::jsonb, 'Super Admin memberi permission ubah status cepat online user');
+select throws_ok(format($$select cs_api.admin_set_nasabah_permissions(%L, '{online_user.view}')$$, :'sinta'),
+  'PT400', 'not_cs_agent', 'Akses Nasabah hanya untuk akun yang berperan CS');
+select throws_ok(format($$select cs_api.admin_set_nasabah_permissions(%L, '{cs_user.manage}')$$, :'bima'),
+  'PT400', 'invalid_permission', 'Permission kelola akun CS csAdmin sudah dicabut');
+select is(cs_api.admin_set_nasabah_permissions(:'bima', '{online_user.approve_own,online_user.status}') -> 'nasabah_permissions',
+  '["online_user.approve_own", "online_user.status"]'::jsonb, 'Super Admin memberi izin approve pengajuan sendiri dan ubah status');
 select ok((select bool_or(a -> 'nasabah_permissions' ? 'online_user.manage') from jsonb_array_elements(cs_api.admin_agents()) a),
   'Daftar akun CS menampilkan permission Nasabah');
 
@@ -43,6 +46,10 @@ select is((select actor_id::text || '|' || actor_type || '|' || (details -> 'sub
   :'nadia' || '|agent|budi|nasabah-gateway', 'Audit mencatat CS yang sebenarnya, bukan akun teknis csAdmin');
 select is((select count(*)::integer from cs.cs_audit_log where action = 'agent.nasabah_permissions' and details ->> 'agent' = :'nadia'), 1,
   'Perubahan permission Nasabah tercatat di audit log');
+
+update cs.agents set roles = '{compliance}' where user_id = :'bima';
+select is((select nasabah_permissions from cs.agents where user_id = :'bima'), '{}'::text[],
+  'Peran CS dicabut, akses Nasabah ikut hilang');
 
 update cs.agents set disabled_at = now() where user_id = :'nadia';
 select tests.authenticate_service();

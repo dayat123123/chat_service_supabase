@@ -47,7 +47,7 @@ describe('nasabah logic', () => {
       'approvals',
       'opening',
     ])
-    expect(nasabahTabs(['cs_user.manage', 'cs_log.view'])).toEqual(['cs_users', 'cs_logs'])
+    expect(nasabahTabs(['cs_user.manage', 'cs_log.view'])).toEqual([])
     expect(canEditUser(['online_user.demo'], { LoginType: 0 })).toBe(true)
     expect(canEditUser(['online_user.demo'], { LoginType: 1 })).toBe(false)
     expect(canLinkAccounts(['online_user.manage'], { LoginType: 1 })).toBe(true)

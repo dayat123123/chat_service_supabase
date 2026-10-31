@@ -165,9 +165,10 @@ function PaletteBody({
       ? [
           { label: t('nav.dashboard'), icon: LayoutDashboardIcon, to: '/dashboard' as const },
           { label: t('nav.reports'), icon: BarChart3Icon, to: '/reports' as const },
-          { label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const },
         ]
       : []),
+    ...(hasNasabah(agent) ? [{ label: t('nav.nasabah'), icon: UsersIcon, to: '/nasabah' as const }] : []),
+    ...(superAdmin ? [{ label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const }] : []),
     ...(compliance
       ? [
           { label: t('nav.overview'), icon: GaugeIcon, to: '/compliance' as const },
@@ -176,7 +177,6 @@ function PaletteBody({
           { label: t('nav.policy'), icon: ShieldCheckIcon, to: '/compliance/policy' as const },
         ]
       : []),
-    ...(hasNasabah(agent) ? [{ label: t('nav.nasabah'), icon: UsersIcon, to: '/nasabah' as const }] : []),
   ]
   const navigation: PaletteItem[] = [
     ...tabs.map((item) => ({

@@ -1,15 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { nasabahApi } from './api'
-import type {
-  Approval,
-  ApprovalFilter,
-  CsLogFilter,
-  CsUserFilter,
-  CsUserForm,
-  OpeningAccount,
-  OpeningFilter,
-} from './types'
+import type { Approval, ApprovalFilter, OpeningAccount, OpeningFilter } from './types'
 
 export const nasabahKeys = {
   all: ['nasabah'] as const,
@@ -21,11 +13,6 @@ export const nasabahKeys = {
   approvalLinks: (approvalId: number) => ['nasabah', 'approval-links', approvalId] as const,
   openings: (page: number, filter: OpeningFilter) =>
     ['nasabah', 'openings', page, filter.loginId, filter.custId] as const,
-  info: ['nasabah', 'info'] as const,
-  csUsers: (page: number, filter: CsUserFilter) =>
-    ['nasabah', 'cs-users', page, filter.loginId, filter.employeeId] as const,
-  csLogs: (page: number, filter: CsLogFilter) =>
-    ['nasabah', 'cs-logs', page, filter.logType, filter.csLoginId, filter.loginId] as const,
 }
 
 export function useOnlineUsers(page: number, query: string, enabled = true) {
@@ -122,49 +109,4 @@ export function useChangeStatus() {
       nasabahApi.setStatus(loginId, status, reason),
     onSuccess: refresh,
   })
-}
-
-export function useGatewayInfo() {
-  return useQuery({ queryKey: nasabahKeys.info, queryFn: nasabahApi.info, staleTime: 5 * 60_000 })
-}
-
-export function useCsUsers(page: number, filter: CsUserFilter, enabled: boolean) {
-  return useQuery({
-    queryKey: nasabahKeys.csUsers(page, filter),
-    queryFn: () => nasabahApi.csUsers(page, filter),
-    enabled,
-    placeholderData: (previous) => previous,
-    staleTime: 15_000,
-  })
-}
-
-export function useCsLogs(page: number, filter: CsLogFilter, enabled: boolean) {
-  return useQuery({
-    queryKey: nasabahKeys.csLogs(page, filter),
-    queryFn: () => nasabahApi.csLogs(page, filter),
-    enabled,
-    placeholderData: (previous) => previous,
-    staleTime: 10_000,
-  })
-}
-
-export function useSaveCsUser() {
-  const refresh = useRefresh()
-  return useMutation({
-    mutationFn: ({ form, create }: { form: CsUserForm; create: boolean }) =>
-      create ? nasabahApi.createCsUser(form) : nasabahApi.updateCsUser(form).then(() => ({})),
-    onSuccess: refresh,
-  })
-}
-
-export function useSetCsPassword() {
-  return useMutation({
-    mutationFn: ({ loginId, password }: { loginId: string; password: string }) =>
-      nasabahApi.setCsPassword(loginId, password),
-  })
-}
-
-export function useDeleteCsUser() {
-  const refresh = useRefresh()
-  return useMutation({ mutationFn: nasabahApi.deleteCsUser, onSuccess: refresh })
 }
