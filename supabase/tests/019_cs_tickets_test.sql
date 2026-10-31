@@ -253,10 +253,11 @@ reset role;
 select cs.set_setting('service.hours',
   (select jsonb_object_agg(d::text, '["08:00", "20:00"]'::jsonb) from generate_series(1, 7) d
    where d <> extract(isodow from now() at time zone 'Asia/Jakarta')), null) as v6 \gset
+update cs.agent_status set status = 'offline';
 select tests.authenticate_as(:'andi');
 select cs_api.open_ticket('technical', 'en') ->> 'room_id' as room3 \gset
 select ok((select bool_and(m.body like '%We are currently closed. An agent will reply from %')
-           from cs_api.get_messages(:'room3'::uuid) m), 'Di luar jam layanan, info jam buka digabung dalam pesan tiket dibuka');
+           from cs_api.get_messages(:'room3'::uuid) m), 'Di luar jam layanan tanpa CS Online, info jam buka digabung dalam pesan tiket dibuka');
 
 reset role;
 select ok((select array_agg(distinct type) from cs.session_events where session_id = :'t1')

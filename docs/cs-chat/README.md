@@ -52,7 +52,7 @@ Pemilik produk mendelegasikan pilihan ke tim. Yang dipilih beserta alasannya:
 
 ## Model data
 
-Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessions`, `0029_cs_api`, `0030_cs_session_detail`, `0031_cs_concurrency`, `0032_cs_tickets` (model ambil tiket), `0033_cs_tickets_api`, `0034_cs_room_members`, `0035_cs_supervisor_admin` (dashboard, laporan, pengaturan admin), `0037_client_owned_business_data` (hapus kartu order dan fungsi data nasabah), `0038_cs_supervisor_monitor_only`, `0039_cs_super_admin_without_totp`, `0040_cs_auto_assign_immediate`, `0041_cs_offline_agent_reply`, `0042_cs_compliance` (menu Kepatuhan). RLS aktif di semua tabel `cs` (termasuk partisi).
+Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessions`, `0029_cs_api`, `0030_cs_session_detail`, `0031_cs_concurrency`, `0032_cs_tickets` (model ambil tiket), `0033_cs_tickets_api`, `0034_cs_room_members`, `0035_cs_supervisor_admin` (dashboard, laporan, pengaturan admin), `0037_client_owned_business_data` (hapus kartu order dan fungsi data nasabah), `0038_cs_supervisor_monitor_only`, `0039_cs_super_admin_without_totp`, `0040_cs_auto_assign_immediate`, `0041_cs_offline_agent_reply`, `0042_cs_compliance` (menu Kepatuhan), `0043_cs_auto_assign_reachable` (penugasan otomatis di luar jam layanan). RLS aktif di semua tabel `cs` (termasuk partisi).
 
 **Perluasan chat yang ada:**
 - `chat_rooms.type` + `support`, kolom `customer_id`, satu room `support` per nasabah (unique index). Semua tiket nasabah ada di room yang sama.
@@ -96,6 +96,7 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 - Pesan `agent` hanya diterima dari pemilik tiket aktif. Super admin tidak mengirim pesan; pesan `supervisor` lama tetap tampil di riwayat.
 - Job pg_cron `cs-sweep` (tiap 10 detik): kedaluwarsakan transfer, tutup tiket `resolved` yang lewat 24 jam, lepas otomatis (bila diaktifkan), penugasan otomatis (bila mode `auto_assign`).
 - Penugasan otomatis berjalan **langsung** di akhir transaksi (constraint trigger deferred, migrasi `0040`) saat tiket masuk antrean, CS menjadi Online atau punya slot kosong, dan saat mode diubah ke `auto_assign`. Penugasan tercatat sebagai aksi `system`. `cs-sweep` tetap menjadi jaring pengaman, misalnya untuk CS yang heartbeat-nya baru segar lagi. CS yang mendapat tiket diberi bunyi dan notifikasi "Tiket baru ditugaskan ke Anda" di web CS.
+- Penugasan otomatis tidak dibatasi jam layanan (migrasi `0043_cs_auto_assign_reachable`): selama ada CS yang Online, punya slot kosong, menguasai bahasa tiket, dan heartbeat web CS-nya lebih baru dari `assignment.heartbeat_seconds` (90 detik), tiket langsung dibagikan, termasuk di luar jam layanan. Urutannya: level skill topik tertinggi, lalu tiket aktif paling sedikit, lalu yang paling lama tidak mendapat tiket. Batas 90 detik dipilih karena browser memperlambat tab di latar belakang hingga sekitar satu heartbeat per menit. Pesan "Saat ini di luar jam layanan" hanya ditambahkan ke pesan tiket dibuka bila tidak ada CS yang bisa melayani.
 
 **Prioritas awal:** prioritas default topik, dinaikkan oleh flag (`fraud` → P1, `complaint` → maks P2) dan kata kunci di pesan pertama (`priority.rules`, mis. "dibobol", "penipuan" → P1 + fraud; "tidak bisa order" di jam bursa → P1).
 
