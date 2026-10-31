@@ -19,7 +19,9 @@ import {
 } from '@/components/ui/menu'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
-import { atCapacity, isSupervisor } from '@/features/presence/types'
+import { GoOnlineButton } from '@/features/presence/components/go-online-button'
+import { useClaimGate } from '@/features/presence/hooks'
+import { isSupervisor } from '@/features/presence/types'
 import { useDebounced, useNow } from '@/hooks/use-now'
 import { usePreferences } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -157,7 +159,8 @@ export function TicketColumn() {
     () => visibleTickets(data, tab, filter, searching ? (results.data ?? []) : null),
     [data, tab, filter, searching, results.data],
   )
-  const canClaim = agent.status === 'online' && !atCapacity(agent)
+  const gate = useClaimGate()
+  const canClaim = gate.canClaim
 
   const tabs: { value: TicketTab; label: string; count: number }[] = [
     { value: 'open', label: t('tickets.open'), count: data.open.length },
@@ -300,11 +303,15 @@ export function TicketColumn() {
           onChange={updateFilter}
           onClear={() => setFilter(noFilter)}
         />
-        {tab === 'open' && !searching && !canClaim ? (
-          <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {tab === 'open' && !searching && gate.reason ? (
+          <div
+            role="status"
+            className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground"
+          >
             <Dot tone="warn" />
-            {agent.status !== 'online' ? t('tickets.needOnline') : t('tickets.atCapacity')}
-          </p>
+            <span className="min-w-0 flex-1">{gate.reason}</span>
+            {gate.needsOnline ? <GoOnlineButton size="xs" /> : null}
+          </div>
         ) : null}
         {searching ? (
           <p className="text-xs text-muted-foreground" aria-live="polite">

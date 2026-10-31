@@ -9,7 +9,9 @@ import { Skeleton } from '@/components/ui/primitives'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
 import { useNotes } from '@/features/customer/hooks'
-import { atCapacity, isSupervisor } from '@/features/presence/types'
+import { GoOnlineButton } from '@/features/presence/components/go-online-button'
+import { useClaimGate } from '@/features/presence/hooks'
+import { isSupervisor } from '@/features/presence/types'
 import { ticketsApi } from '@/features/tickets/api'
 import { useClaimTicket, useTicketAction, useTicketDetail, useTopics } from '@/features/tickets/hooks'
 import type { Ticket } from '@/features/tickets/types'
@@ -30,7 +32,7 @@ import { Composer } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { MessageList } from './message-list'
 
-function ReadOnlyBar({
+export function ReadOnlyBar({
   ticket,
   canJoin,
   joining,
@@ -42,9 +44,8 @@ function ReadOnlyBar({
   onJoin: () => void
 }) {
   const { t } = useTranslation()
-  const agent = useAgent()
+  const gate = useClaimGate()
   const claim = useClaimTicket()
-  const canClaim = agent.status === 'online' && !atCapacity(agent)
   const owned = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
   return (
     <div
@@ -53,7 +54,7 @@ function ReadOnlyBar({
     >
       <p className="min-w-0 flex-1 text-row text-muted-foreground">
         {ticket.status === 'open' ? (
-          t('conversation.readOnlyPreview')
+          (gate.reason ?? t('conversation.readOnlyPreview'))
         ) : ticket.status === 'resolved' ? (
           t('conversation.resolvedNote')
         ) : ticket.status === 'closed' ? (
@@ -67,10 +68,17 @@ function ReadOnlyBar({
         )}
       </p>
       {ticket.status === 'open' ? (
-        <Button size="sm" disabled={!canClaim || claim.isPending} onClick={() => claim.mutate(ticket.id)}>
-          {claim.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
-          {t('tickets.claimTicket')}
-        </Button>
+        <>
+          {gate.needsOnline ? <GoOnlineButton /> : null}
+          <Button
+            size="sm"
+            disabled={!gate.canClaim || claim.isPending}
+            onClick={() => claim.mutate(ticket.id)}
+          >
+            {claim.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
+            {t('tickets.claimTicket')}
+          </Button>
+        </>
       ) : owned && canJoin ? (
         <Button size="sm" variant="outline" disabled={joining} onClick={onJoin}>
           {t('conversation.join')}

@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { useAgent, useAuth } from '@/features/auth/hooks'
@@ -10,7 +11,7 @@ import { appEnv, cachedAccessToken } from '@/lib/supabase'
 import { tabs } from '@/lib/tabs'
 
 import { presenceApi } from './api'
-import type { AgentStatus } from './types'
+import { atCapacity, type AgentStatus } from './types'
 
 const HEARTBEAT_MS = 20_000
 const OFFLINE_CHECK_MS = 60_000
@@ -24,6 +25,18 @@ export function useSetStatus() {
     onSuccess: (agent) => updateAgent(agent),
     onError: (error) => toast.error(errorText(error)),
   })
+}
+
+export function useClaimGate() {
+  const agent = useAgent()
+  const { t } = useTranslation()
+  const needsOnline = agent.status !== 'online'
+  const reason = needsOnline
+    ? t('tickets.needOnline', { status: t(`presence.${agent.status}`) })
+    : atCapacity(agent)
+      ? t('tickets.atCapacity')
+      : null
+  return { canClaim: reason === null, needsOnline, reason }
 }
 
 export function useOnlineAgents(enabled: boolean) {
