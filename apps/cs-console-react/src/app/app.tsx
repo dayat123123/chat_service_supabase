@@ -5,7 +5,7 @@ import { lazy, Suspense, useEffect, useState } from 'react'
 import { TooltipProvider } from '@/components/ui/menu'
 import { AppToaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/features/auth/components/login-page'
-import { EnrollPage, PasswordPage, TotpPage } from '@/features/auth/components/second-factor'
+import { PasswordPage } from '@/features/auth/components/password-page'
 import { onSignedOut, useAuth } from '@/features/auth/hooks'
 import { usePreferences, watchSystemTheme } from '@/lib/preferences'
 import { createQueryClient } from '@/lib/query-client'
@@ -49,10 +49,6 @@ function AuthGate() {
       return <Loading />
     case 'signedOut':
       return <LoginPage reason={phase.reason} idleMinutes={30} />
-    case 'totp':
-      return <TotpPage />
-    case 'enroll':
-      return <EnrollPage secret={phase.secret} qr={phase.qr} />
     case 'password':
       return <PasswordPage />
     case 'ready':

@@ -134,7 +134,7 @@ function AlertsCard({ items }: { items: SettingEntry[] }) {
   ]
   const valid = fields.every((field) => inRange(field.value, 1, 240))
   return (
-    <SettingsCard title={t('settings.supervisorAlerts')}>
+    <SettingsCard title={t('settings.superAdminAlerts')}>
       <div className="flex flex-wrap items-end gap-4">
         {fields.map((field) => (
           <div key={field.id} className="flex w-72 flex-col gap-1.5">

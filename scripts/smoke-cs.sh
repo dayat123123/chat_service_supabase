@@ -56,7 +56,7 @@ fi
 
 ensure_agent "$AGENT" "Smoke Agen" "{cs_agent}" general '{"general": 2, "account": 2}'
 ensure_agent "$AGENT2" "Smoke Agen Dua" "{cs_agent}" general '{"general": 2, "account": 2}'
-ensure_agent "$SUPERVISOR" "Smoke Supervisor" "{cs_supervisor}" general '{"general": 2, "account": 2}'
+ensure_agent "$SUPERVISOR" "Smoke Supervisor" "{cs_super_admin}" general '{"general": 2, "account": 2}'
 AGENT_JWT=$(agent_jwt "$AGENT")
 AGENT2_JWT=$(agent_jwt "$AGENT2")
 SUP_JWT=$(agent_jwt "$SUPERVISOR")

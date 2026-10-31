@@ -167,7 +167,7 @@ function AccountDialog({
               render={({ field }) => (
                 <div className="grid grid-cols-2 gap-2">
                   {staffRoles.map((role) => {
-                    const locked = self && role === 'cs_admin'
+                    const locked = self && role === 'cs_super_admin'
                     const checked = field.value.includes(role)
                     return (
                       <label
@@ -364,7 +364,6 @@ function AccountsTable({
           <TableHead>{t('settings.colRoles')}</TableHead>
           <TableHead>{t('settings.colTeam')}</TableHead>
           <TableHead className="text-right">{t('settings.colTicketLimit')}</TableHead>
-          <TableHead>{t('settings.colTwoFactor')}</TableHead>
           <TableHead>{t('settings.colStatus')}</TableHead>
           <TableHead>
             <span className="sr-only">{t('app.edit')}</span>
@@ -390,16 +389,6 @@ function AccountsTable({
             <TableCell>{account.team ?? '–'}</TableCell>
             <TableCell className="tabular text-right">
               {account.active_tickets}/{account.max_active_tickets}
-            </TableCell>
-            <TableCell>
-              {account.totp ? (
-                <span className="inline-flex items-center gap-1 text-success">
-                  <ShieldCheckIcon className="size-3.5" aria-hidden="true" />
-                  {t('settings.twoFactorOn')}
-                </span>
-              ) : (
-                <span className="text-destructive">{t('settings.twoFactorPending')}</span>
-              )}
             </TableCell>
             <TableCell>
               {account.disabled_at ? (

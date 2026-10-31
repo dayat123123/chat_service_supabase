@@ -6,13 +6,23 @@ Web CS tidak mengambil data bisnis dari OLT. Profil, order, transaksi dana, dan 
 
 Rencana dan keputusan: [docs/PROMPT-CS-CONSOLE-REACT.md](../../docs/PROMPT-CS-CONSOLE-REACT.md), [docs/cs-console-audit.md](../../docs/cs-console-audit.md), paritas dengan console Flutter: [docs/cs-console-parity.md](../../docs/cs-console-parity.md). Tampilan: [docs/PROMPT-CS-UI-POLISH.md](../../docs/PROMPT-CS-UI-POLISH.md) dan [docs/cs-ui-audit.md](../../docs/cs-ui-audit.md).
 
+## Peran
+
+| Peran                        | Di web CS                                                                                                                     |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| CS (`cs_agent`)              | Status kerja dan batas tiket aktif, ambil tiket, balas nasabah, catatan internal, tunggu nasabah, lepas, transfer, selesaikan |
+| Supervisor (`cs_supervisor`) | Hanya memantau, tidak menangani tiket                                                                                         |
+| Admin CS (`cs_admin`)        | Pengaturan dan laporan                                                                                                        |
+
+Supervisor bekerja dalam mode pantau: top bar menampilkan "Mode pantau" sebagai ganti status kerja dan jumlah tiket aktif. Supervisor membuka dashboard dan laporan, membaca semua tiket hanya-baca (tab Semua aktif dan Terbuka), membaca dan menambah catatan internal, mengubah prioritas tiket aktif, dan memindahkan tiket aktif ke CS lewat "Pindahkan ke…". Supervisor tidak mengambil, membalas, melepas, mentransfer, menunggu nasabah, atau menyelesaikan tiket, dan tidak pernah menerima tiket. Akun yang juga berperan CS tetap bekerja sebagai CS, dengan tambahan tab Semua aktif dan aksi Pindahkan ke….
+
 ## Menjalankan
 
 Prasyarat: stack dev dengan OLT dummy dan akun staf dev.
 
 ```bash
 make up DUMMY_OLT=1          # Windows: .\make.ps1 up -DummyOlt
-make cs-staff                # akun Nadia, Bima, Laras (CS), Sinta (supervisor), Adi (admin)
+make cs-staff                # akun Nadia, Bima, Laras (CS), Sinta (supervisor, mode pantau), Adi (admin)
 make cs-console-react        # container nginx -> http://localhost:8085
 make cs-totp                 # kode TOTP saat ini untuk akun dev
 ```
@@ -85,8 +95,8 @@ src/
 
 ## Tes
 
-- Unit: logika (quick reply, aturan data rahasia, cache pesan, pengelompokan baris, filter tiket, parser realtime, CSV, rentang laporan, jam layanan) dan komponen (composer, gelembung pesan, panel info nasabah), klien data nasabah (`customer_history`, `notes`) dengan MSW.
-- E2E (`e2e/`): login + TOTP, rebutan klaim dua CS, chat + lampiran + tanda dibaca + panel info nasabah (identitas, riwayat tiket, catatan), lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor gabung + pindahkan, tangkapan layar terang/gelap termasuk `/dev/ui` (`e2e-artifacts/screens`), uji kinerja 1000 tiket + 5000 pesan.
+- Unit: logika (quick reply, aturan data rahasia, cache pesan, pengelompokan baris, filter tiket, tab per peran, parser realtime, CSV, rentang laporan, jam layanan) dan komponen (composer, gelembung pesan, panel info nasabah, serta top bar, daftar tiket, dan percakapan untuk CS dan mode pantau supervisor), klien data nasabah (`customer_history`, `notes`) dengan MSW.
+- E2E (`e2e/`): login + TOTP, rebutan klaim dua CS, chat + lampiran + tanda dibaca + panel info nasabah (identitas, riwayat tiket, catatan), lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor mode pantau (hanya-baca) + pindahkan, tangkapan layar terang/gelap termasuk `/dev/ui` (`e2e-artifacts/screens`), uji kinerja 1000 tiket + 5000 pesan.
 - Kualitas tampilan: kontras WCAG AA dengan axe (`@axe-core/playwright`) di kedua tema, serta tata letak 1366×768, 1920×1080, dan 2560×1440 tanpa scroll horizontal atau teks terpotong (`e2e/a11y.spec.ts`, `e2e/layout.spec.ts`, dan langkah percakapan di `e2e/visual.spec.ts`).
 - Backend membatasi 5 tiket per jam per nasabah. Setiap skenario memakai nasabah OLT dummy yang berbeda, jadi suite penuh bisa dijalankan 5 kali per jam.
 - Uji kinerja menjalankan Chrome tanpa batas vsync agar fps mencerminkan kerja per frame (target ≥ 60 fps, p95 ≤ 16,7 ms).

@@ -1,8 +1,19 @@
+import { isSuperAdmin, worksTickets, type AgentProfile } from '@/features/presence/types'
 import type { QueueEvent } from '@/lib/realtime'
 
 import type { Ticket, TicketFilter, TicketLists, TicketTab } from './types'
 
 export const noFilter: TicketFilter = { topic: null, priority: null, flag: null }
+
+export function ticketTabs(agent: Pick<AgentProfile, 'roles'>): TicketTab[] {
+  if (!worksTickets(agent)) return isSuperAdmin(agent) ? ['all_active', 'open'] : []
+  const tabs: TicketTab[] = ['open', 'mine', 'resolved_today']
+  return isSuperAdmin(agent) ? [...tabs, 'all_active'] : tabs
+}
+
+export function currentTab(tabs: TicketTab[], chosen: TicketTab | null): TicketTab {
+  return chosen !== null && tabs.includes(chosen) ? chosen : (tabs[0] ?? 'open')
+}
 
 export function isFiltered(filter: TicketFilter) {
   return filter.topic !== null || filter.priority !== null || filter.flag !== null

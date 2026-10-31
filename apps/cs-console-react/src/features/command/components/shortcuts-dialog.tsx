@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Kbd } from '@/components/ui/primitives'
+import { useAgent } from '@/features/auth/hooks'
+import { worksTickets } from '@/features/presence/types'
 
 import { useOverlays } from '../bus'
 
@@ -17,8 +19,11 @@ const shortcuts = [
   { keys: ['?'], label: 'help' },
 ] as const
 
+const workerOnly = new Set<string>(['claim', 'reply', 'note', 'resolve', 'send'])
+
 export function ShortcutsDialog() {
   const { t } = useTranslation()
+  const worker = worksTickets(useAgent())
   const open = useOverlays((state) => state.shortcuts)
   const setOpen = useOverlays((state) => state.setShortcuts)
   return (
@@ -28,18 +33,20 @@ export function ShortcutsDialog() {
           <DialogTitle>{t('shortcuts.title')}</DialogTitle>
         </DialogHeader>
         <dl className="flex flex-col divide-y">
-          {shortcuts.map((shortcut) => (
-            <div key={shortcut.label} className="flex items-center justify-between gap-4 py-2">
-              <dt className="text-sm">{t(`shortcuts.${shortcut.label}`)}</dt>
-              <dd className="flex items-center gap-1">
-                {shortcut.keys.map((key) => (
-                  <Kbd key={key} className="h-6 min-w-6 px-1.5 text-xs">
-                    {key}
-                  </Kbd>
-                ))}
-              </dd>
-            </div>
-          ))}
+          {shortcuts
+            .filter((shortcut) => worker || !workerOnly.has(shortcut.label))
+            .map((shortcut) => (
+              <div key={shortcut.label} className="flex items-center justify-between gap-4 py-2">
+                <dt className="text-sm">{t(`shortcuts.${shortcut.label}`)}</dt>
+                <dd className="flex items-center gap-1">
+                  {shortcut.keys.map((key) => (
+                    <Kbd key={key} className="h-6 min-w-6 px-1.5 text-xs">
+                      {key}
+                    </Kbd>
+                  ))}
+                </dd>
+              </div>
+            ))}
         </dl>
       </DialogContent>
     </Dialog>

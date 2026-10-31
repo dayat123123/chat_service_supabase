@@ -115,12 +115,12 @@ class RealtimeManager {
   private resyncTimer: number | undefined
   private started = false
 
-  start(agentId: string, handlesTickets: boolean) {
+  start(agentId: string, viewsTickets: boolean) {
     this.stop()
     this.started = true
     window.addEventListener('online', this.onOnline)
     window.addEventListener('offline', this.recompute)
-    if (handlesTickets) {
+    if (viewsTickets) {
       this.open('cs:queue', true, (channel) =>
         channel
           .on('broadcast', { event: 'ticket' }, ({ payload }) => this.emit('ticket', payload as Payload))

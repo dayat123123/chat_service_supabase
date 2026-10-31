@@ -24,6 +24,7 @@ export type Database = {
       admin_holidays: { Args: { p_year: number }; Returns: Json }
       admin_options: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_quick_replies: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_reset_password: { Args: { p_agent_id: string }; Returns: Json }
       admin_save_holiday: {
         Args: { p_day: string; p_kind: string; p_name: string }
         Returns: Json
@@ -111,7 +112,6 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      join_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       mark_read: { Args: { p_room_id: string }; Returns: undefined }
       my_tickets: { Args: Record<PropertyKey, never>; Returns: Json }
       notes: { Args: { p_customer_id: string }; Returns: Json }

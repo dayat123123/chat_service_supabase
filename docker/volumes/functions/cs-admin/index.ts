@@ -77,10 +77,10 @@ function temporaryPassword(length = 20): string {
   return chars.join('')
 }
 
-async function requireAdmin(token: string): Promise<string> {
+async function requireSuperAdmin(token: string): Promise<string> {
   const me = (await rpc('agent_me', token, {})) as Json
   const roles = Array.isArray(me.roles) ? me.roles : []
-  if (!roles.includes('cs_admin')) throw new ApiError(403, 'role_forbidden', 'Peran Anda tidak cukup untuk aksi ini')
+  if (!roles.includes('cs_super_admin')) throw new ApiError(403, 'role_forbidden', 'Peran Anda tidak cukup untuk aksi ini')
   return String(me.id)
 }
 
@@ -127,22 +127,40 @@ async function updateAgent(token: string, agentId: string, body: Json): Promise<
   return Response.json({ agent })
 }
 
+async function resetPassword(token: string, agentId: string): Promise<Response> {
+  if (!uuidPattern.test(agentId)) throw new ApiError(400, 'invalid_agent', 'ID akun CS tidak valid')
+  const agent = await rpc('admin_reset_password', token, { p_agent_id: agentId })
+  const password = temporaryPassword()
+  await authAdmin('PUT', `users/${agentId}`, { password, user_metadata: { must_change_password: true } })
+  console.log(`cs-admin: password akun CS ${agentId} direset`)
+  return Response.json({ agent, temporary_password: password })
+}
+
+async function readBody(req: Request): Promise<Json> {
+  const text = await req.text()
+  if (!text.trim()) return {}
+  try {
+    const body: unknown = JSON.parse(text)
+    if (body && typeof body === 'object' && !Array.isArray(body)) return body as Json
+  } catch {
+    throw new ApiError(400, 'invalid_body', 'Isi permintaan harus JSON')
+  }
+  throw new ApiError(400, 'invalid_body', 'Isi permintaan harus JSON')
+}
+
 async function handle(req: Request): Promise<Response> {
   const token = (req.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '')
   if (!token) throw new ApiError(401, 'session_expired', 'Sesi berakhir, silakan login ulang')
   const parts = new URL(req.url).pathname.split('/').filter(Boolean)
-  if (parts[0] !== 'cs-admin' || parts[1] !== 'agents' || parts.length > 3) {
+  const reset = parts.length === 4 && parts[3] === 'reset-password'
+  if (parts[0] !== 'cs-admin' || parts[1] !== 'agents' || (parts.length > 3 && !reset)) {
     throw new ApiError(404, 'not_found', 'Alamat tidak dikenal')
   }
-  let body: Json = {}
-  try {
-    body = (await req.json()) as Json
-  } catch {
-    throw new ApiError(400, 'invalid_body', 'Isi permintaan harus JSON')
-  }
-  const adminId = await requireAdmin(token)
+  const body = await readBody(req)
+  const adminId = await requireSuperAdmin(token)
   if (req.method === 'POST' && parts.length === 2) return await createAgent(adminId, body)
   if (req.method === 'PATCH' && parts.length === 3) return await updateAgent(token, parts[2], body)
+  if (req.method === 'POST' && reset) return await resetPassword(token, parts[2])
   throw new ApiError(405, 'method_not_allowed', 'Metode tidak didukung')
 }
 

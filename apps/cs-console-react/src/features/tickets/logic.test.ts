@@ -4,10 +4,12 @@ import { ticketFixture } from '@/test/fixtures'
 
 import {
   claimedByOther,
+  currentTab,
   findTicket,
   isFiltered,
   matchesFilter,
   noFilter,
+  ticketTabs,
   unreadMine,
   visibleTickets,
   withoutTicket,
@@ -61,6 +63,28 @@ describe('ticket filters', () => {
       'p3new',
       'p1',
     ])
+  })
+})
+
+describe('ticket tabs per role', () => {
+  it('gives agents their own tabs and Super Admins watching all active tickets', () => {
+    expect(ticketTabs({ roles: ['cs_agent'] })).toEqual(['open', 'mine', 'resolved_today'])
+    expect(ticketTabs({ roles: ['cs_agent', 'cs_super_admin'] })).toEqual([
+      'open',
+      'mine',
+      'resolved_today',
+      'all_active',
+    ])
+    expect(ticketTabs({ roles: ['cs_super_admin'] })).toEqual(['all_active', 'open'])
+    expect(ticketTabs({ roles: ['compliance'] })).toEqual([])
+  })
+
+  it('falls back to the first tab of the role when none or an unavailable tab is chosen', () => {
+    const monitor = ticketTabs({ roles: ['cs_super_admin'] })
+    expect(currentTab(monitor, null)).toBe('all_active')
+    expect(currentTab(monitor, 'mine')).toBe('all_active')
+    expect(currentTab(monitor, 'open')).toBe('open')
+    expect(currentTab(ticketTabs({ roles: ['cs_agent'] }), null)).toBe('open')
   })
 })
 

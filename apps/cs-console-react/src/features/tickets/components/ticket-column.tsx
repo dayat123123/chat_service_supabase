@@ -21,7 +21,7 @@ import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
 import { GoOnlineButton } from '@/features/presence/components/go-online-button'
 import { useClaimGate } from '@/features/presence/hooks'
-import { isSupervisor } from '@/features/presence/types'
+import { worksTickets } from '@/features/presence/types'
 import { useDebounced, useNow } from '@/hooks/use-now'
 import { usePreferences } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -34,8 +34,8 @@ import {
   useTopicName,
   useTopics,
 } from '../hooks'
-import { isFiltered, noFilter, visibleTickets } from '../logic'
-import { emptyLists, ticketFlags, ticketPriorities, type TicketFilter, type TicketTab } from '../types'
+import { currentTab, isFiltered, noFilter, ticketTabs, visibleTickets } from '../logic'
+import { emptyLists, tabLabelKeys, ticketFlags, ticketPriorities, type TicketFilter } from '../types'
 import { TicketRow } from './ticket-row'
 import { TransferInbox } from './transfer-inbox'
 
@@ -143,10 +143,20 @@ function FilterChips({
 export function TicketColumn() {
   const { t } = useTranslation()
   const agent = useAgent()
-  const supervisor = isSupervisor(agent)
+  const worker = worksTickets(agent)
   const now = useNow()
   const density = usePreferences((state) => state.density)
-  const { tab, filter, query, selectedId, leaving, setTab, setFilter, setQuery, select } = useTicketUi()
+  const {
+    tab: chosen,
+    filter,
+    query,
+    selectedId,
+    leaving,
+    setTab,
+    setFilter,
+    setQuery,
+    select,
+  } = useTicketUi()
   const lists = useTicketLists()
   const topics = useTopics()
   const topicName = useTopicName()
@@ -155,6 +165,8 @@ export function TicketColumn() {
   const claim = useClaimTicket()
   const data = lists.data ?? emptyLists
   const searching = search.length >= 2
+  const available = ticketTabs(agent)
+  const tab = currentTab(available, chosen)
   const tickets = useMemo(
     () => visibleTickets(data, tab, filter, searching ? (results.data ?? []) : null),
     [data, tab, filter, searching, results.data],
@@ -162,14 +174,7 @@ export function TicketColumn() {
   const gate = useClaimGate()
   const canClaim = gate.canClaim
 
-  const tabs: { value: TicketTab; label: string; count: number }[] = [
-    { value: 'open', label: t('tickets.open'), count: data.open.length },
-    { value: 'mine', label: t('tickets.mine'), count: data.mine.length },
-    { value: 'resolved_today', label: t('tickets.resolvedToday'), count: data.resolved_today.length },
-    ...(supervisor
-      ? [{ value: 'all_active' as const, label: t('tickets.allActive'), count: data.all_active.length }]
-      : []),
-  ]
+  const tabs = available.map((value) => ({ value, label: t(tabLabelKeys[value]), count: data[value].length }))
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const virtualizer = useVirtualizer({
@@ -203,7 +208,7 @@ export function TicketColumn() {
     'previous',
     useCallback(() => move(-1), [move]),
   )
-  useCommandHandler('claim', claimSelected)
+  useCommandHandler('claim', worker ? claimSelected : null)
 
   const empty = searching
     ? t('tickets.emptyFiltered')
@@ -303,7 +308,7 @@ export function TicketColumn() {
           onChange={updateFilter}
           onClear={() => setFilter(noFilter)}
         />
-        {tab === 'open' && !searching && gate.reason ? (
+        {worker && tab === 'open' && !searching && gate.reason ? (
           <div
             role="status"
             className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground"
@@ -353,7 +358,7 @@ export function TicketColumn() {
                     showOwner={tab === 'all_active' || searching}
                     leavingName={leaving[ticket.id]}
                     claim={
-                      ticket.status === 'open'
+                      worker && ticket.status === 'open'
                         ? {
                             disabled: !canClaim,
                             pending: claim.isPending && claim.variables === ticket.id,

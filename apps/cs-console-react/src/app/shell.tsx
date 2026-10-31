@@ -9,7 +9,7 @@ import { CommandPalette } from '@/features/command/components/command-palette'
 import { ShortcutsDialog } from '@/features/command/components/shortcuts-dialog'
 import { useConsoleAlerts, useDocumentTitle, useOverdueAlerts } from '@/features/notifications/hooks'
 import { useHeartbeat, useResumeStatus, useStatusOnClose } from '@/features/presence/hooks'
-import { handlesTickets, isSupervisor } from '@/features/presence/types'
+import { canViewTickets, isSuperAdmin, worksTickets } from '@/features/presence/types'
 import { useSupervisorOverview } from '@/features/supervisor/hooks'
 import { attentionCount } from '@/features/supervisor/types'
 import { useOpenTicket, useTicketLists, useTicketRealtime } from '@/features/tickets/hooks'
@@ -24,8 +24,9 @@ export function Shell() {
   const agent = useAgent()
   const client = useQueryClient()
   const openTicket = useOpenTicket()
-  const tickets = handlesTickets(agent)
-  const supervisor = isSupervisor(agent)
+  const tickets = canViewTickets(agent)
+  const worker = worksTickets(agent)
+  const superAdmin = isSuperAdmin(agent)
 
   useEffect(() => {
     realtime.start(agent.id, tickets)
@@ -40,15 +41,15 @@ export function Shell() {
     [client],
   )
 
-  useTicketRealtime(agent.id, tickets, supervisor)
+  useTicketRealtime(agent.id, tickets, superAdmin)
   useHeartbeat()
-  useStatusOnClose()
-  useResumeStatus()
+  useStatusOnClose(worker)
+  useResumeStatus(worker)
   useGlobalHotkeys(tickets)
-  useConsoleAlerts({ supervisor, onOpenTicket: openTicket })
+  useConsoleAlerts({ superAdmin, onOpenTicket: openTicket })
 
   const lists = useTicketLists(tickets)
-  const overview = useSupervisorOverview(supervisor)
+  const overview = useSupervisorOverview(superAdmin)
   useOverdueAlerts(overview.data?.overdue, openTicket)
   useDocumentTitle(lists.data ? unreadMine(lists.data) : 0, t('app.title'))
 

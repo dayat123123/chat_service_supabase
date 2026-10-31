@@ -192,7 +192,7 @@ services:
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
       # User OLT tidak signup lewat GoTrue; JWT diterbitkan auth-bridge.
-      # Login email + password hanya untuk akun staf (CS/admin) yang dibuat admin, wajib TOTP (aal2).
+      # Login email + password hanya untuk akun staf. Web CS tidak memakai TOTP; admin moderasi tetap wajib TOTP (aal2).
       GOTRUE_DISABLE_SIGNUP: "true"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_PASSWORD_MIN_LENGTH: "12"
@@ -819,7 +819,7 @@ services:
     configs:
       - source: with-secrets
         target: /opt/olt/with-secrets.sh
-    # jwt_secret: smoke-cs menandatangani JWT agen uji (2FA) seperti GoTrue.
+    # jwt_secret: smoke-cs, akun staf dev, dan bootstrap super admin menandatangani JWT seperti GoTrue.
     secrets: [postgres_password, anon_key, jwt_secret]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "bash", "/olt/scripts/tools.sh"]
     volumes:

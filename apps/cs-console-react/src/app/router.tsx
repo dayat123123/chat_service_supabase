@@ -6,13 +6,17 @@ import {
   redirect,
 } from '@tanstack/react-router'
 
-import { handlesTickets, isAdmin, isSupervisor, type AgentProfile } from '@/features/presence/types'
+import { isSuperAdmin, type AgentProfile } from '@/features/presence/types'
 import { appEnv } from '@/lib/supabase'
 
 import { Home, NoAccess } from './home'
 import { Shell } from './shell'
 
 type RouterContext = { agent: AgentProfile }
+
+const superAdminOnly = ({ context }: { context: RouterContext }) => {
+  if (!isSuperAdmin(context.agent)) throw redirect({ to: '/' })
+}
 
 const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Shell,
@@ -22,19 +26,13 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
 const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
-  beforeLoad: ({ context }) => {
-    if (handlesTickets(context.agent)) return
-    if (isAdmin(context.agent)) throw redirect({ to: '/settings' })
-  },
   component: Home,
 })
 
 const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/dashboard',
-  beforeLoad: ({ context }) => {
-    if (!isSupervisor(context.agent)) throw redirect({ to: '/' })
-  },
+  beforeLoad: superAdminOnly,
   component: lazyRouteComponent(
     () => import('@/features/supervisor/components/dashboard-page'),
     'DashboardPage',
@@ -44,18 +42,14 @@ const dashboardRoute = createRoute({
 const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reports',
-  beforeLoad: ({ context }) => {
-    if (!isSupervisor(context.agent) && !isAdmin(context.agent)) throw redirect({ to: '/' })
-  },
+  beforeLoad: superAdminOnly,
   component: lazyRouteComponent(() => import('@/features/reports/components/reports-page'), 'ReportsPage'),
 })
 
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
-  beforeLoad: ({ context }) => {
-    if (!isAdmin(context.agent)) throw redirect({ to: '/' })
-  },
+  beforeLoad: superAdminOnly,
   component: lazyRouteComponent(() => import('@/features/settings/components/settings-page'), 'SettingsPage'),
 })
 

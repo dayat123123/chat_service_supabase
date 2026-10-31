@@ -34,10 +34,9 @@ export const en: Translation = {
     unavailable: 'The service is unavailable. Try again shortly.',
     sessionExpired: 'Your session ended, please sign in again.',
     invalidLogin: 'Wrong email or password.',
-    invalidCode: 'The code is invalid or has expired.',
     tooManyAttempts: 'Too many attempts. Please wait a moment.',
     secretBlocked:
-      'Message held: agents must never ask for OTP, PIN, or password. A supervisor has been notified.',
+      'Message held: agents must never ask for OTP, PIN, or password. A Super Admin has been notified.',
     samePassword: 'The new password must differ from the temporary password.',
     weakPassword: 'Password is too weak, use a longer combination.',
     staleTicket: 'The ticket has changed. Reloaded the latest data.',
@@ -50,8 +49,7 @@ export const en: Translation = {
   },
   auth: {
     loginTitle: 'Sign in to CS Console',
-    loginSubtitle:
-      'For OLT agents, supervisors, and CS admins only. Access through the internal network (VPN).',
+    loginSubtitle: 'For OLT agents and Super Admins only. Access through the internal network (VPN).',
     email: 'Email',
     password: 'Password',
     showPassword: 'Show password',
@@ -60,17 +58,6 @@ export const en: Translation = {
     signingIn: 'Checking…',
     signOut: 'Sign out',
     useOtherAccount: 'Use another account',
-    totpTitle: 'Two-step verification',
-    totpSubtitle: 'Enter the 6-digit code from your authenticator app.',
-    code: '6-digit code',
-    verify: 'Verify',
-    enrollTitle: 'Turn on two-step verification',
-    enrollSubtitle:
-      'CS accounts must use an authenticator app. Scan this QR code or enter the key below manually, then type the 6-digit code it shows.',
-    manualKey: 'Manual key',
-    enrollActivate: 'Activate & sign in',
-    qrAlt: 'Authenticator QR code',
-    recoveryHint: 'Lost your authenticator? Ask a CS admin to reset your 2FA.',
     passwordTitle: 'Change password',
     passwordSubtitle: 'Your account still uses a temporary password. Choose a new one before you start.',
     newPassword: 'New password',
@@ -87,7 +74,6 @@ export const en: Translation = {
     stayIn: 'Stay signed in',
     emailRequired: 'Enter your email',
     passwordRequired: 'Enter your password',
-    codeInvalid: 'The code has 6 digits',
   },
   presence: {
     online: 'Online',
@@ -109,11 +95,13 @@ export const en: Translation = {
     reconnecting: 'Reconnecting…',
     offlineNetwork: 'Offline',
     connectionHint: 'Realtime connection status',
+    monitorMode: 'Monitor mode',
+    monitorHint:
+      'Super Admins monitor tickets and agents without claiming, replying to, or resolving tickets.',
   },
   roles: {
     cs_agent: 'Agent',
-    cs_supervisor: 'Supervisor',
-    cs_admin: 'CS admin',
+    cs_super_admin: 'Super Admin',
     compliance: 'Compliance',
   },
   nav: {
@@ -123,7 +111,7 @@ export const en: Translation = {
     settings: 'Settings',
     attention: '{{count}} tickets need attention',
     account: 'Account',
-    noAccess: 'This account role has no menus in the CS console. Contact a CS admin.',
+    noAccess: 'This account role has no menus in the CS console. Contact a Super Admin.',
     searchHint: 'Search tickets or customers…',
   },
   tickets: {
@@ -200,8 +188,7 @@ export const en: Translation = {
     resolvedNote:
       'Ticket resolved. If the customer replies within the reopen window, it returns to the owner.',
     closedNote: 'Ticket closed. The next customer message opens a new ticket.',
-    join: 'Join',
-    joined: 'You joined this ticket.',
+    monitorUnclaimed: 'Not claimed by an agent yet',
     reassign: 'Move to…',
     waitCustomer: 'Wait for customer',
     release: 'Release',
@@ -316,7 +303,7 @@ export const en: Translation = {
     ticketRow: '{{number}} · {{topic}} · {{status}}',
   },
   dashboard: {
-    title: 'Supervisor dashboard',
+    title: 'Dashboard',
     stale: 'Update failed, data may be outdated',
     updatedAt: 'Updated {{time}}',
     statOpen: 'Open tickets',
@@ -408,9 +395,6 @@ export const en: Translation = {
     colRoles: 'Roles',
     colTeam: 'Team',
     colTicketLimit: 'Ticket limit',
-    colTwoFactor: '2FA',
-    twoFactorOn: 'TOTP on',
-    twoFactorPending: 'Not enrolled',
     disabledSince: 'Disabled {{time}}',
     accountDisabled: 'Disabled',
     addAccountTitle: 'Add CS account',
@@ -424,7 +408,7 @@ export const en: Translation = {
     accountActive: 'Account active',
     disableWarning:
       'This account can no longer sign in. Its {{count}} active tickets return to the queue marked "Akun CS dinonaktifkan".',
-    selfLocked: 'You cannot disable your own account or remove your own admin role.',
+    selfLocked: 'You cannot disable your own account or remove your own Super Admin role.',
     createAccount: 'Create account',
     rolesRequired: 'Pick at least one role',
     invalidEmail: 'Invalid email format',
@@ -434,7 +418,7 @@ export const en: Translation = {
     accountCreatedBody: '{{name}} is ready. The temporary password is shown only this once.',
     temporaryPassword: 'Temporary password',
     accountCreatedSteps:
-      'Hand over the email and password through a secure channel. On first sign-in the agent must change the password and enroll 2FA (TOTP).',
+      'Hand over the email and password through a secure channel. On first sign-in the agent must change the password.',
     topicsDescription:
       'Topics customers pick when opening a ticket, with default priority and required skill.',
     addTopic: 'Add topic',
@@ -510,7 +494,7 @@ export const en: Translation = {
     messageInvalid: 'Use 2–500 characters',
     lastChangedBy: 'Last changed {{time}} by {{name}}',
     lastChanged: 'Last changed {{time}}',
-    assignmentDescription: 'Control how tickets reach agents and when supervisors are alerted.',
+    assignmentDescription: 'Control how tickets reach agents and when Super Admins are alerted.',
     assignmentMode: 'Assignment mode',
     modeClaim: 'Claim tickets (default)',
     modeClaimHint: 'Agents pick and claim tickets from the Open list.',
@@ -520,7 +504,7 @@ export const en: Translation = {
     autoReleaseHint:
       'Off by default. When on, tickets of agents offline longer than this return to the queue.',
     autoReleaseMinutes: 'Offline limit (minutes, 1–1440)',
-    supervisorAlerts: 'Supervisor alerts',
+    superAdminAlerts: 'Super Admin alerts',
     alertUnclaimed: 'Ticket unclaimed for more than (minutes)',
     alertP1: 'P1 ticket unclaimed for more than (minutes)',
   },
@@ -605,6 +589,7 @@ export const en: Translation = {
     status: 'Status and priority',
     ticketRows: 'Ticket rows',
     conversation: 'Conversation and composer',
+    monitor: 'Super Admin monitor mode',
     customerPanel: 'Customer info',
     metrics: 'Summary numbers and tables',
     overlays: 'Dialogs, menus, and toasts',

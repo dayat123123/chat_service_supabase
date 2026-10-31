@@ -51,7 +51,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-flutter-it-dummy e2e-windows-dummy \
-        smoke-cs cs-race cs-demo cs-totp cs-staff cs-console-react test-cs-console e2e-cs-console
+        smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -172,14 +172,17 @@ cs-race: check-config ## Tes rebutan klaim tiket CS: DB langsung + 3 replika Pos
 	@for name in $(RACE_REST); do $(COMPOSE) run -d --no-deps -e PGRST_DB_POOL=3 --name $$name rest > /dev/null || exit 1; done
 	$(TOOLS) cs-race $(foreach name,$(RACE_REST),http://$(name):3000); 	  status=$$?; docker rm -f $(RACE_REST) > /dev/null; exit $$status
 
-cs-staff: check-config ## Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
+cs-bootstrap-admin: check-config ## Super admin web CS pertama: make cs-bootstrap-admin EMAIL=nama@domain NAME="Nama" [FORCE=1] [PROFILE=single]
+	@$(TOOLS) cs-bootstrap-admin "$(EMAIL)" "$(NAME)" $(if $(FORCE),--force)
+
+cs-staff: check-config ## Akun staf dev (CS dan super admin) di scripts/cs-demo/runtime/staff.json
 	mkdir -p scripts/cs-demo/runtime
 	@(cat scripts/cs-demo/runtime/staff.json 2>/dev/null || echo '{}') | $(DUMMY_COMPOSE) run --rm -T tools cs-staff \
 	  > scripts/cs-demo/runtime/staff.json.new && mv scripts/cs-demo/runtime/staff.json.new scripts/cs-demo/runtime/staff.json
 
 cs-console-react: cs-staff ## Web CS React (container nginx) di http://localhost:8085 (butuh up DUMMY_OLT=1)
 	$(COMPOSE) up -d --build --wait traefik cs-console
-	@echo "Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: make cs-totp)"
+	@echo "Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json)"
 
 test-cs-console: ## Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
 	docker run --rm -v "$(CURDIR)/apps/cs-console-react:/app" -v /app/node_modules -v /app/dist -w /app $(NODE_IMG) \
@@ -187,9 +190,6 @@ test-cs-console: ## Lint, typecheck, unit test, build, ukuran bundle, lisensi we
 
 e2e-cs-console: cs-console-react ## E2E Playwright web CS React vs stack dev (butuh up DUMMY_OLT=1, Node 24 + Chromium Playwright)
 	cd apps/cs-console-react && E2E_BASE_URL=http://localhost:8085 npx playwright test
-
-cs-totp: check-config ## Kode TOTP saat ini untuk akun staf dev
-	@$(DUMMY_COMPOSE) run --rm -T tools cs-totp < scripts/cs-demo/runtime/staff.json
 
 cs-demo: check-config ## Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up DUMMY_OLT=1)
 	mkdir -p scripts/cs-demo/runtime

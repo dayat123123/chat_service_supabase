@@ -94,6 +94,13 @@ export type SupportTopic = { code: string; name: string; help_url: string | null
 
 export type TicketTab = 'open' | 'mine' | 'resolved_today' | 'all_active'
 
+export const tabLabelKeys = {
+  open: 'tickets.open',
+  mine: 'tickets.mine',
+  resolved_today: 'tickets.resolvedToday',
+  all_active: 'tickets.allActive',
+} as const satisfies Record<TicketTab, string>
+
 export type TicketFilter = { topic: string | null; priority: string | null; flag: string | null }
 
 export const emptyLists: TicketLists = {

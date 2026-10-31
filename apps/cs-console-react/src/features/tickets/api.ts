@@ -42,7 +42,6 @@ export const ticketsApi = {
       p_priority: priority,
       p_version: ticket.version,
     }),
-  join: (ticketId: string) => rpc<Ticket>('join_ticket', { p_ticket_id: ticketId }),
   reassign: (ticketId: string, toAgentId: string, reason: string) =>
     rpc<Ticket>('reassign_ticket', { p_ticket_id: ticketId, p_to_agent_id: toAgentId, p_reason: reason }),
   topics: (language: string) => rpc<SupportTopic[]>('topics', { p_language: language }),

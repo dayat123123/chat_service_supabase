@@ -11,7 +11,6 @@ import type { AuthPhase, AuthState, SignOutReason } from './types'
 type AuthActions = {
   start: () => Promise<void>
   signIn: (email: string, password: string) => Promise<void>
-  verify: (code: string) => Promise<void>
   changePassword: (password: string) => Promise<void>
   signOut: (reason?: SignOutReason) => Promise<void>
   updateAgent: (agent: AgentProfile) => void
@@ -82,18 +81,6 @@ export const useAuth = create<AuthState & AuthActions>((set, get) => {
       set({ busy: true, error: null })
       try {
         await authApi.signIn(email.trim(), password)
-        await advance(true)
-      } catch (error) {
-        set({ busy: false, error: toApiError(error) })
-      }
-    },
-
-    verify: async (code) => {
-      const phase = get().phase
-      if (phase.kind !== 'totp' && phase.kind !== 'enroll') return
-      set({ busy: true, error: null })
-      try {
-        await authApi.verify(phase.factorId, code.trim())
         await advance(true)
       } catch (error) {
         set({ busy: false, error: toApiError(error) })

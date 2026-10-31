@@ -16,11 +16,8 @@ vi.mock('@/features/presence/api', async (importOriginal) => {
 
 const openTicket = ticketFixture({ status: 'open', owner: null })
 
-function renderBar(agent = agentFixture) {
-  return renderWithProviders(
-    <ReadOnlyBar ticket={openTicket} canJoin={false} joining={false} onJoin={() => undefined} />,
-    agent,
-  )
+function renderBar(agent = agentFixture, ticket = openTicket) {
+  return renderWithProviders(<ReadOnlyBar ticket={ticket} />, agent)
 }
 
 describe('ReadOnlyBar', () => {
@@ -59,5 +56,18 @@ describe('ReadOnlyBar', () => {
     expect(screen.getByText('Batas tiket aktif Anda sudah penuh.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Ambil tiket' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Ubah ke Online' })).not.toBeInTheDocument()
+  })
+
+  it('tiket milik CS lain hanya-baca tanpa tombol Gabung, juga bagi CS yang Super Admin', () => {
+    renderBar(
+      { ...agentFixture, roles: ['cs_agent', 'cs_super_admin'] },
+      ticketFixture({
+        owner: { id: 'bima', display_name: 'Bima', agent_code: 'CS-0046', status: 'online' },
+        is_mine: false,
+      }),
+    )
+
+    expect(screen.getByRole('status')).toHaveTextContent('Ditangani oleh Bima')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 })

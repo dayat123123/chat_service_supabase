@@ -29,10 +29,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { toastClasses } from '@/components/ui/toaster'
 import { Composer } from '@/features/conversation/components/composer'
+import { MonitorBar } from '@/features/conversation/components/conversation-pane'
 import { MessageList } from '@/features/conversation/components/message-list'
 import type { SendResult } from '@/features/conversation/types'
 import { CustomerHeader, HistoryList } from '@/features/customer/components/customer-panel'
 import { NoteList } from '@/features/customer/components/notes-section'
+import { MonitorIndicator } from '@/features/presence/components/status-menu'
 import { TicketRow } from '@/features/tickets/components/ticket-row'
 import { cn } from '@/lib/utils'
 
@@ -322,6 +324,15 @@ function ThemeColumn({ theme }: { theme: ThemeName }) {
             onTyping={noop}
             onStopTyping={noop}
           />
+        </div>
+      </Section>
+
+      <Section title={t('devUi.monitor')}>
+        <div className="flex items-center">
+          <MonitorIndicator />
+        </div>
+        <div className="overflow-hidden rounded-lg border bg-background pt-4">
+          <MonitorBar ticket={conversationTicket} />
         </div>
       </Section>
 

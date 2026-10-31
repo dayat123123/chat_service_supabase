@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 
 import { EmptyState } from '@/components/states'
 import { useAgent } from '@/features/auth/hooks'
-import { handlesTickets } from '@/features/presence/types'
+import { canViewTickets } from '@/features/presence/types'
 import { TicketsPage } from '@/features/tickets/components/tickets-page'
 
 export function NoAccess() {
@@ -12,5 +12,5 @@ export function NoAccess() {
 
 export function Home() {
   const agent = useAgent()
-  return handlesTickets(agent) ? <TicketsPage /> : <NoAccess />
+  return canViewTickets(agent) ? <TicketsPage /> : <NoAccess />
 }

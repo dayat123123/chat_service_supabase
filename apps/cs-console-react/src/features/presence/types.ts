@@ -54,9 +54,10 @@ export function normalizeAgent(raw: AgentProfile): AgentProfile {
   }
 }
 
-export const isSupervisor = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_supervisor')
-export const isAdmin = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_admin')
-export const handlesTickets = (agent: Pick<AgentProfile, 'roles'>) =>
-  agent.roles.includes('cs_agent') || agent.roles.includes('cs_supervisor')
+export const isSuperAdmin = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_super_admin')
+export const worksTickets = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('cs_agent')
+export const isMonitor = (agent: Pick<AgentProfile, 'roles'>) => isSuperAdmin(agent) && !worksTickets(agent)
+export const canViewTickets = (agent: Pick<AgentProfile, 'roles'>) =>
+  worksTickets(agent) || isSuperAdmin(agent)
 export const atCapacity = (agent: Pick<AgentProfile, 'active_tickets' | 'max_active_tickets'>) =>
   agent.active_tickets >= agent.max_active_tickets

@@ -1,6 +1,6 @@
 import type { AgentStatus } from '@/features/presence/types'
 
-export const staffRoles = ['cs_agent', 'cs_supervisor', 'cs_admin', 'compliance'] as const
+export const staffRoles = ['cs_agent', 'cs_super_admin', 'compliance'] as const
 export type StaffRole = (typeof staffRoles)[number]
 
 export type StaffAccount = {
@@ -14,7 +14,6 @@ export type StaffAccount = {
   disabled_at: string | null
   status: AgentStatus
   active_tickets: number
-  totp: boolean
   created_at: string | null
 }
 

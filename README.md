@@ -15,7 +15,7 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token login OLT menjadi JWT Supabase (tanpa login dua kali) |
 | [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri) untuk menguji auth-bridge mode websocket. Hanya development/testing |
 | [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
-| [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS khusus CS, supervisor, dan admin CS (login + TOTP, ambil tiket, chat, catatan internal, riwayat tiket nasabah, dashboard supervisor, laporan + CSV, pengaturan admin, palet Ctrl+K, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
+| [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS untuk CS dan super admin (login email + password, ambil tiket, chat, catatan internal, riwayat tiket nasabah; super admin memantau dashboard, laporan + CSV, mengelola akun CS dan pengaturan, palet Ctrl+K, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
 | [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
@@ -198,8 +198,8 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `e2e-windows-dummy` | E2E app contoh: form login OLT dummy |
 | `smoke-cs` | 40 skenario CS chat end-to-end: buka tiket, ambil & rebutan, balas, penyamaran, catatan internal, adapter + OLT dummy, amankan akun, transfer, selesai, rating (butuh `DUMMY_OLT=1`) |
 | `cs-race` | Tes rebutan ambil tiket: 50 CS × 1 tiket dan 200 tiket × 30 CS, langsung ke database dan lewat 3 replika PostgREST |
-| `cs-console-react` | Web CS React (container nginx) di `http://localhost:8085` + akun staf dev dengan TOTP. Butuh `DUMMY_OLT=1`. Tes: `test-cs-console` (lint, typecheck, unit, build, lisensi), `e2e-cs-console` (Playwright) |
-| `cs-totp` | Kode TOTP saat ini untuk akun staf dev |
+| `cs-bootstrap-admin` | Super admin web CS pertama (semua profil): `EMAIL=... NAME="..."` (Windows: `-Email ... -Name "..."`). Password sementara dicetak sekali |
+| `cs-console-react` | Web CS React (container nginx) di `http://localhost:8085` + akun staf dev. Butuh `DUMMY_OLT=1`. Tes: `test-cs-console` (lint, typecheck, unit, build, lisensi), `e2e-cs-console` (Playwright) |
 | `cs-demo` | Halaman demo CS (dev) di `http://localhost:8082`: nasabah dan panel CS berdampingan lewat API asli. Stop: `docker rm -f olt-cs-demo` (butuh `DUMMY_OLT=1`) |
 | `up PROFILE=single CS=1` / `-Profile single -Cs` | Nyalakan web CS di produksi (di dev selalu aktif), lihat [docs/cs-chat](docs/cs-chat/README.md) |
 

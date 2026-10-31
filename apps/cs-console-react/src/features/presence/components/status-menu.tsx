@@ -1,4 +1,4 @@
-import { ChevronDownIcon, LoaderCircleIcon } from 'lucide-react'
+import { ChevronDownIcon, EyeIcon, LoaderCircleIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -144,6 +144,18 @@ export function ActiveCount() {
         )}
       >
         {t('presence.activeTickets', { count: agent.active_tickets, max: agent.max_active_tickets })}
+      </span>
+    </Tooltip>
+  )
+}
+
+export function MonitorIndicator() {
+  const { t } = useTranslation()
+  return (
+    <Tooltip content={t('presence.monitorHint')}>
+      <span className="inline-flex h-8 items-center gap-1.5 px-2 text-row whitespace-nowrap text-muted-foreground">
+        <EyeIcon className="size-4" />
+        {t('presence.monitorMode')}
       </span>
     </Tooltip>
   )

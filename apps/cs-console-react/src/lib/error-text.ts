@@ -7,10 +7,6 @@ export function errorText(error: unknown): string {
   switch (e.code) {
     case 'invalid_credentials':
       return t('errors.invalidLogin')
-    case 'mfa_verification_failed':
-    case 'mfa_challenge_expired':
-    case 'mfa_verification_rejected':
-      return t('errors.invalidCode')
     case 'over_request_rate_limit':
     case 'too_many_requests':
     case 'rate_limited':

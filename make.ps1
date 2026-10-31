@@ -20,8 +20,8 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'smoke-cs', 'cs-race', 'cs-demo', 'cs-totp',
-                 'cs-staff', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
+                 'smoke-cs', 'cs-race', 'cs-demo',
+                 'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
@@ -36,6 +36,8 @@ param(
     # Customer service lewat chat di profil single (di profil dev selalu aktif).
     [switch]$Cs,
     [string]$User = 'budi_santoso',
+    [string]$Email = '',
+    [string]$Name = '',
     [string]$Ttl = ''
 )
 
@@ -179,8 +181,8 @@ switch ($Target) {
   smoke-cs      Smoke test CS chat end-to-end lewat API asli (butuh up -DummyOlt)
   cs-race       Tes rebutan klaim tiket CS: DB langsung + 3 replika PostgREST khusus tes
   cs-demo       Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up -DummyOlt)
-  cs-totp       Kode TOTP saat ini untuk akun staf dev
-  cs-staff      Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
+  cs-staff      Akun staf dev (CS dan super admin) di scripts/cs-demo/runtime/staff.json
+  cs-bootstrap-admin  Super admin web CS pertama: -Email nama@domain -Name "Nama" [-Force] [-Profile single]
   cs-console-react  Web CS React (container nginx) di http://localhost:8085 (butuh up -DummyOlt)
   test-cs-console   Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
   e2e-cs-console    E2E Playwright web CS React vs stack dev (butuh up -DummyOlt, Node 24 + Chromium Playwright)
@@ -323,11 +325,17 @@ switch ($Target) {
         Write-Host 'Demo CS: http://localhost:8082  (stop: docker rm -f olt-cs-demo)'
     }
     'cs-staff' { Assert-Config; Update-StaffAccounts }
+    'cs-bootstrap-admin' {
+        Assert-Config
+        $arguments = @('cs-bootstrap-admin', $Email, $Name)
+        if ($Force) { $arguments += '--force' }
+        Invoke-Tools $arguments
+    }
     'cs-console-react' {
         Assert-Config
         Update-StaffAccounts
         Invoke-Compose @('up', '-d', '--build', '--wait', 'traefik', 'cs-console')
-        Write-Host 'Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: .\make.ps1 cs-totp)'
+        Write-Host 'Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json)'
     }
     'test-cs-console' {
         $src = Join-Path $PSScriptRoot 'apps/cs-console-react'
@@ -340,12 +348,6 @@ switch ($Target) {
         $env:E2E_BASE_URL = 'http://localhost:8085'
         try { Invoke-Native 'npx' @('playwright', 'test') }
         finally { Remove-Item Env:E2E_BASE_URL; Pop-Location }
-    }
-    'cs-totp' {
-        Assert-Config
-        $staffFile = Join-Path $PSScriptRoot 'scripts/cs-demo/runtime/staff.json'
-        if (-not (Test-Path -LiteralPath $staffFile)) { throw 'Akun staf dev belum ada. Jalankan: .\make.ps1 cs-staff' }
-        Get-Content -LiteralPath $staffFile -Raw | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-totp'))
     }
     'test-dummy-olt' {
         $src = Join-Path $PSScriptRoot 'services/dummy-olt'

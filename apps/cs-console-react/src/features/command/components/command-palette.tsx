@@ -35,14 +35,14 @@ import { useAgent } from '@/features/auth/hooks'
 import { useSetStatus } from '@/features/presence/hooks'
 import {
   agentStatuses,
-  handlesTickets,
-  isAdmin,
-  isSupervisor,
+  canViewTickets,
+  isSuperAdmin,
+  worksTickets,
   type AgentStatus,
 } from '@/features/presence/types'
 import { useTicketLists, useTicketSearch, useTicketUi, useTopicName } from '@/features/tickets/hooks'
-import { byPriorityThenWait } from '@/features/tickets/logic'
-import { customerName, type Ticket, type TicketTab } from '@/features/tickets/types'
+import { byPriorityThenWait, ticketTabs } from '@/features/tickets/logic'
+import { customerName, tabLabelKeys, type Ticket } from '@/features/tickets/types'
 import { useDebounced } from '@/hooks/use-now'
 import { usePreferences } from '@/lib/preferences'
 
@@ -103,9 +103,9 @@ function PaletteBody({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const agent = useAgent()
-  const tickets = handlesTickets(agent)
-  const supervisor = isSupervisor(agent)
-  const admin = isAdmin(agent)
+  const tickets = canViewTickets(agent)
+  const worker = worksTickets(agent)
+  const superAdmin = isSuperAdmin(agent)
   const topicName = useTopicName()
   const lists = useTicketLists(tickets)
   const setStatus = useSetStatus()
@@ -141,24 +141,14 @@ function PaletteBody({
       run: () => window.setTimeout(() => runCommand(item.command), 0),
     }))
 
-  const tabs: { tab: TicketTab; label: string }[] = tickets
+  const tabs = ticketTabs(agent).map((tab) => ({ tab, label: t(tabLabelKeys[tab]) }))
+  const sections: { label: string; icon: Icon; to: '/dashboard' | '/reports' | '/settings' }[] = superAdmin
     ? [
-        { tab: 'open', label: t('tickets.open') },
-        { tab: 'mine', label: t('tickets.mine') },
-        { tab: 'resolved_today', label: t('tickets.resolvedToday') },
-        ...(supervisor ? [{ tab: 'all_active' as const, label: t('tickets.allActive') }] : []),
+        { label: t('nav.dashboard'), icon: LayoutDashboardIcon, to: '/dashboard' },
+        { label: t('nav.reports'), icon: BarChart3Icon, to: '/reports' },
+        { label: t('nav.settings'), icon: SettingsIcon, to: '/settings' },
       ]
     : []
-  const sections: {
-    show: boolean
-    label: string
-    icon: Icon
-    to: '/dashboard' | '/reports' | '/settings'
-  }[] = [
-    { show: supervisor, label: t('nav.dashboard'), icon: LayoutDashboardIcon, to: '/dashboard' },
-    { show: supervisor || admin, label: t('nav.reports'), icon: BarChart3Icon, to: '/reports' },
-    { show: admin, label: t('nav.settings'), icon: SettingsIcon, to: '/settings' },
-  ]
   const navigation: PaletteItem[] = [
     ...tabs.map((item) => ({
       id: `tab:${item.tab}`,
@@ -169,17 +159,15 @@ function PaletteBody({
         void navigate({ to: '/' })
       },
     })),
-    ...sections
-      .filter((section) => section.show)
-      .map((section) => ({
-        id: `nav:${section.to}`,
-        label: t('command.goTo', { section: section.label }),
-        icon: section.icon,
-        run: () => void navigate({ to: section.to }),
-      })),
+    ...sections.map((section) => ({
+      id: `nav:${section.to}`,
+      label: t('command.goTo', { section: section.label }),
+      icon: section.icon,
+      run: () => void navigate({ to: section.to }),
+    })),
   ]
 
-  const statuses: { id: string; label: string; status: AgentStatus }[] = tickets
+  const statuses: { id: string; label: string; status: AgentStatus }[] = worker
     ? agentStatuses
         .filter((status) => status !== agent.status)
         .map((status) => ({

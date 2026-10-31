@@ -12,7 +12,7 @@ export async function signIn(page: Page, name: StaffName, { online = true }: { o
   await page.getByLabel('Kode 6 digit').fill(await freshTotp(person.totp_secret))
   await page.getByRole('button', { name: 'Verifikasi' }).click()
   await expect(page.getByRole('button', { name: 'Akun', exact: true })).toBeVisible()
-  if (online && !person.roles.includes('cs_admin')) await goOnline(page)
+  if (online && person.roles.includes('cs_agent')) await goOnline(page)
 }
 
 export async function goOnline(page: Page) {

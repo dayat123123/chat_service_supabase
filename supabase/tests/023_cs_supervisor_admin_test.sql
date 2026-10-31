@@ -16,8 +16,8 @@ select tests.create_user('sa_sari') as sari \gset
 select tests.create_user('sa_tono') as tono \gset
 select tests.create_agent('Rina', '{cs_agent}', '{"general": 2}') as rina \gset
 select tests.create_agent('Dimas', '{cs_agent}', '{"general": 1}') as dimas \gset
-select tests.create_agent('Sinta', '{cs_supervisor}', '{"general": 3}') as sinta \gset
-select tests.create_agent('Adi', '{cs_admin}', '{}') as adi \gset
+select tests.create_agent('Sinta', '{cs_super_admin}', '{"general": 3}') as sinta \gset
+select tests.create_agent('Adi', '{cs_super_admin}', '{}') as adi \gset
 
 select tests.authenticate_as(:'budi');
 select cs_api.open_ticket('account') ->> 'id' as t1 \gset
@@ -64,7 +64,7 @@ select is((select (x ->> 'active_tickets')::integer from jsonb_array_elements(:'
 select is((select x ->> 'status' from jsonb_array_elements(:'ov'::jsonb -> 'agents') x
            where x ->> 'id' = :'dimas'), 'online', 'Daftar CS menampilkan status');
 select ok(not exists (select 1 from jsonb_array_elements(:'ov'::jsonb -> 'agents') x where x ->> 'id' = :'adi'),
-  'Admin tanpa peran CS tidak masuk daftar CS');
+  'Super admin tidak masuk daftar CS');
 
 reset role;
 select tests.authenticate_agent(:'rina');
@@ -101,7 +101,7 @@ select lives_ok(format('select cs_api.report_summary(%L, %L)', :'today', :'today
 
 reset role;
 select tests.authenticate_agent(:'sinta');
-select throws_ok('select cs_api.admin_agents()', 'PT403', 'role_forbidden', 'Supervisor tidak bisa membuka pengaturan akun');
+select lives_ok('select cs_api.admin_agents()', 'Super admin mengelola akun CS');
 reset role;
 select tests.authenticate_agent(:'adi');
 select ok(exists (select 1 from jsonb_array_elements(cs_api.admin_agents()) x
@@ -133,12 +133,12 @@ select throws_ok('select cs_api.agent_me()', 'PT403', 'agent_required', 'Akun no
 
 reset role;
 select tests.authenticate_agent(:'adi');
-select is(cs_api.admin_update_agent(:'rina', 'Rina Putri', '{cs_agent,cs_supervisor}', 'general', 4, false) ->> 'disabled_at',
+select is(cs_api.admin_update_agent(:'rina', 'Rina Putri', '{cs_agent}', 'general', 4, false) ->> 'disabled_at',
   null, 'Admin mengaktifkan kembali akun CS');
 reset role;
 select is((select display_name from public.profiles where id = :'rina'), 'Rina Putri', 'Nama profil CS ikut diperbarui');
 select tests.authenticate_agent(:'adi');
-select throws_ok(format('select cs_api.admin_update_agent(%L, %L, %L, %L, 3, true)', :'adi', 'Adi', '{cs_admin}', 'general'),
+select throws_ok(format('select cs_api.admin_update_agent(%L, %L, %L, %L, 3, true)', :'adi', 'Adi', '{cs_super_admin}', 'general'),
   'PT400', 'cannot_change_self', 'Admin tidak bisa menonaktifkan akunnya sendiri');
 select throws_ok(format('select cs_api.admin_update_agent(%L, %L, %L, %L, 3, false)', :'adi', 'Adi', '{cs_agent}', 'general'),
   'PT400', 'cannot_change_self', 'Admin tidak bisa melepas peran adminnya sendiri');
@@ -230,7 +230,7 @@ select tests.authenticate_as(:'budi');
 select throws_ok('select cs_api.admin_agents()', 'PT403', 'agent_required', 'Nasabah tidak bisa membuka pengaturan admin');
 reset role;
 select tests.authenticate_agent(:'adi', 'aal1');
-select throws_ok('select cs_api.admin_settings()', 'PT403', 'agent_required', 'Admin tanpa 2FA ditolak');
+select lives_ok('select cs_api.admin_settings()', 'Super admin cukup login email + password, tanpa 2FA');
 
 select * from finish();
 rollback;

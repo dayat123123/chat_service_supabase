@@ -21,8 +21,14 @@ import {
 import { Avatar, Kbd } from '@/components/ui/primitives'
 import { useAgent, useAuth } from '@/features/auth/hooks'
 import { useOverlays } from '@/features/command/bus'
-import { ActiveCount, ConnectionIndicator, StatusMenu } from '@/features/presence/components/status-menu'
-import { handlesTickets, isAdmin, isSupervisor } from '@/features/presence/types'
+import {
+  ActiveCount,
+  ConnectionIndicator,
+  MonitorIndicator,
+  StatusMenu,
+} from '@/features/presence/components/status-menu'
+import { canViewTickets, isMonitor, isSuperAdmin, worksTickets } from '@/features/presence/types'
+import { isStaffRole } from '@/features/settings/types'
 import { notificationPermission, playSound, requestNotificationPermission } from '@/lib/alerts'
 import { usePreferences, type Density, type Theme, type TicketAlerts } from '@/lib/preferences'
 
@@ -90,9 +96,7 @@ function AccountMenu() {
   const { theme, density, language, setTheme, setDensity, setLanguage } = usePreferences()
   const setShortcuts = useOverlays((state) => state.setShortcuts)
   const roles = agent.roles
-    .filter((role): role is 'cs_agent' | 'cs_supervisor' | 'cs_admin' | 'compliance' =>
-      ['cs_agent', 'cs_supervisor', 'cs_admin', 'compliance'].includes(role),
-    )
+    .filter(isStaffRole)
     .map((role) => t(`roles.${role}`))
     .join(' · ')
   return (
@@ -162,19 +166,22 @@ export function TopBar({ attention }: { attention: number }) {
   const { t } = useTranslation()
   const agent = useAgent()
   const setPalette = useOverlays((state) => state.setPalette)
-  const tickets = handlesTickets(agent)
-  const supervisor = isSupervisor(agent)
-  const admin = isAdmin(agent)
+  const tickets = canViewTickets(agent)
+  const worker = worksTickets(agent)
+  const monitor = isMonitor(agent)
+  const superAdmin = isSuperAdmin(agent)
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3 lg:px-4">
       <Logo className="mr-2 hidden sm:flex" />
       <nav aria-label="Menu" className="flex items-center">
         {tickets ? <NavLink to="/" label={t('nav.tickets')} /> : null}
-        {supervisor ? (
-          <NavLink to="/dashboard" label={t('nav.dashboard')} count={attention || undefined} />
+        {superAdmin ? (
+          <>
+            <NavLink to="/dashboard" label={t('nav.dashboard')} count={attention || undefined} />
+            <NavLink to="/reports" label={t('nav.reports')} />
+            <NavLink to="/settings" label={t('nav.settings')} />
+          </>
         ) : null}
-        {supervisor || admin ? <NavLink to="/reports" label={t('nav.reports')} /> : null}
-        {admin ? <NavLink to="/settings" label={t('nav.settings')} /> : null}
       </nav>
       <div className="hidden min-w-0 flex-1 justify-center px-2 lg:flex">
         <button
@@ -189,12 +196,13 @@ export function TopBar({ attention }: { attention: number }) {
       </div>
       <div className="ml-auto flex items-center gap-1 lg:ml-0">
         <ConnectionIndicator />
-        {tickets ? (
+        {worker ? (
           <>
             <StatusMenu />
             <ActiveCount />
           </>
         ) : null}
+        {monitor ? <MonitorIndicator /> : null}
         <AlertsMenu />
         <AccountMenu />
       </div>

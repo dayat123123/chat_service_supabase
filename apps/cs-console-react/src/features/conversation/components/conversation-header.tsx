@@ -40,7 +40,7 @@ type Props = {
   ticket: Ticket
   meId: string
   owner: boolean
-  supervisor: boolean
+  superAdmin: boolean
   customerOnline: boolean
   infoOpen: boolean
   busy: boolean
@@ -55,7 +55,7 @@ export function ConversationHeader({
   ticket,
   meId,
   owner,
-  supervisor,
+  superAdmin,
   customerOnline,
   infoOpen,
   busy,
@@ -70,7 +70,7 @@ export function ConversationHeader({
   const now = useNow(30_000)
   const [wide, headerRef] = useWide()
   const active = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
-  const canChangePriority = active && (owner || supervisor)
+  const canChangePriority = active && (owner || superAdmin)
   const ownerName = ticket.owner
     ? ticket.owner.id === meId
       ? t('app.you')
@@ -157,7 +157,7 @@ export function ConversationHeader({
             </Tooltip>
           </>
         ) : null}
-        {supervisor && !owner && active ? (
+        {superAdmin && !owner && active ? (
           <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction('reassign')}>
             {t('conversation.reassign')}
           </Button>

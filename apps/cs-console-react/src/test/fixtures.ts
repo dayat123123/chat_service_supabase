@@ -20,6 +20,16 @@ export const agentFixture: AgentProfile = {
   },
 }
 
+export const monitorFixture: AgentProfile = {
+  ...agentFixture,
+  id: '66666666-6666-4666-8666-666666666666',
+  agent_code: 'SA01',
+  display_name: 'Sinta',
+  roles: ['cs_super_admin'],
+  status: 'offline',
+  active_tickets: 0,
+}
+
 export function ticketFixture(overrides: Partial<Ticket> = {}): Ticket {
   return {
     id: '22222222-2222-4222-8222-222222222222',

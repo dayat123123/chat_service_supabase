@@ -11,9 +11,9 @@ import { minutesSince } from '@/lib/time'
 
 type Alert = { sound: AlertSound; title: string; body: string; ticketId: string; always?: boolean }
 
-export function useConsoleAlerts(options: { supervisor: boolean; onOpenTicket: (ticketId: string) => void }) {
+export function useConsoleAlerts(options: { superAdmin: boolean; onOpenTicket: (ticketId: string) => void }) {
   const { t } = useTranslation()
-  const { supervisor, onOpenTicket } = options
+  const { superAdmin, onOpenTicket } = options
   const openRef = useRef(onOpenTicket)
   useEffect(() => {
     openRef.current = onOpenTicket
@@ -76,7 +76,7 @@ export function useConsoleAlerts(options: { supervisor: boolean; onOpenTicket: (
             }),
           )
         }
-      } else if (event.type === 'alert' && supervisor) {
+      } else if (event.type === 'alert' && superAdmin) {
         raise({
           sound: 'ticket',
           title:
@@ -87,7 +87,7 @@ export function useConsoleAlerts(options: { supervisor: boolean; onOpenTicket: (
         })
       }
     })
-  }, [supervisor, t])
+  }, [superAdmin, t])
 }
 
 export function useOverdueAlerts(overdue: Ticket[] | undefined, onOpenTicket: (ticketId: string) => void) {
