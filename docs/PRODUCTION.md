@@ -13,11 +13,11 @@ Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per
                  ▼
                Kong ──▶ PostgREST, Storage, Edge Functions ──▶ PgBouncer ──▶ Postgres 17
                  │      Realtime ─────────────────────────────────────────▶ Postgres
-                 │      auth-bridge ──▶ WebSocket OLT        Valkey (rate limit, cache)
+                 │      auth-bridge (verifikasi token sosial OLT lokal, JWKS)   Valkey (rate limit, cache)
  127.0.0.1:8000 ─┘ entrypoint admin: Studio & semua path (SSH tunnel / WireGuard)
 ```
 
-- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik, auth-bridge, dan Edge Functions yang tersambung ke network `egress`.
+- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik dan Edge Functions yang tersambung ke network `egress`. auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
 - Semua container read-only, non-root (kecuali entrypoint Postgres), `cap_drop: ALL`, `no-new-privileges`, dan punya batas CPU/memori/pids.
 - Rahasia hanya dari Docker secrets di `docker/secrets/`.
 
@@ -41,9 +41,8 @@ PROXY_DOMAIN=social-api.domain.com
 ACME_EMAIL=ops@domain.com
 SUPABASE_PUBLIC_URL=https://social-api.domain.com
 API_EXTERNAL_URL=https://social-api.domain.com/auth/v1
-OLT_WS_URL=wss://<server-olt>/<path>
-# OLT_WS_* lain: kosongkan bila OLT memakai Protokol v1 (docs/olt-integration.md);
-# isi hanya bila formatnya berbeda (services/auth-bridge/README.md)
+# auth-bridge mode jwt (default): tidak ada alamat OLT yang perlu diisi.
+# OLT_JWT_ISSUER / OLT_JWT_AUDIENCE hanya diubah bila OLT memakai nilai lain (docs/olt-integration.md).
 ```
 
 ```bash
@@ -55,7 +54,8 @@ make anon-key              # ANON_KEY untuk build app OLT
 
 Catatan:
 - **Uji sertifikat dulu.** Uji dengan `ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory` agar tidak kena rate limit Let's Encrypt. Setelah berhasil, hapus baris itu, lalu hapus volume `olt-social_traefik-acme`.
-- **Mode mock tidak bisa dipakai.** Profil single selalu menjalankan auth-bridge dengan `APP_ENV=production`, dan auth-bridge menolak start bila `AUTH_BRIDGE_OLT_MODE=mock`. Default profil single adalah `websocket`.
+- **Mode mock tidak bisa dipakai.** Profil single selalu menjalankan auth-bridge dengan `APP_ENV=production`, dan auth-bridge menolak start bila `AUTH_BRIDGE_OLT_MODE=mock`. Default profil single adalah `jwt`.
+- **Ganti kunci publik OLT.** Sebelum `make up`, timpa `docker/secrets/olt_jwks` dengan JWKS dari tim OLT (bagian 2 [olt-integration.md](olt-integration.md)). `make gen-secrets` tidak pernah menimpa JWKS produksi. Kunci dev (`kid` berawalan `dev-`) ditolak di produksi, jadi auth-bridge tidak mau start bila file ini lupa diganti.
 - **Rahasia ada di `docker/secrets/`.** Folder ini harus `chmod 700` dan dimiliki deployer. Isinya tidak pernah masuk `.env`, image, atau `docker inspect`.
 - **Membuka Studio** (default mati):
   1. Nyalakan Studio: `make admin-up PROFILE=single`.
@@ -211,7 +211,7 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 **Keamanan**
 - [ ] `docker/secrets/` berisi rahasia hasil `make gen-secrets`, tidak di-commit, dan folder hanya bisa dibuka deployer (`chmod 700`).
 - [ ] `docker/.env` tidak berisi rahasia; `PROXY_DOMAIN` dan `ACME_EMAIL` terisi.
-- [ ] `OLT_WS_URL` mengarah ke server OLT asli, sudah diuji dengan token OLT asli.
+- [ ] `docker/secrets/olt_jwks` berisi JWKS dari OLT (bukan kunci dev), dan exchange sudah diuji dengan token sosial yang diterbitkan OLT asli.
 - [ ] OLT dummy tidak berjalan (`docker ps` tidak menampilkan `dummy-olt`).
 - [ ] `https://domain/` dan `https://domain/auth/v1/health` mengembalikan 404. `http://domain/` di-redirect ke HTTPS.
 - [ ] Studio mati (`make admin-down PROFILE=single`), dan port admin hanya terikat ke `127.0.0.1`.

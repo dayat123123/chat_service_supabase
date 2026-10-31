@@ -33,7 +33,7 @@ Dasar audit:
 - Dashboard analitik memakai Perses atau panel admin, bukan Grafana (AGPL).
 - Integrasi OLT memakai satu protokol: [olt-integration.md](olt-integration.md).
 
-**Penyesuaian 31 Okt 2026: satu dependensi keluar.** Server hanya memvalidasi token login ke OLT ([olt-integration.md](olt-integration.md)). Akibatnya:
+**Penyesuaian 31 Okt 2026: satu dependensi keluar.** Server hanya memverifikasi token login dari OLT ([olt-integration.md](olt-integration.md)). Sejak 31 Okt sore verifikasinya lokal (token sosial bertanda tangan, auth-bridge mode `jwt`), jadi tidak ada panggilan keluar sama sekali. Akibatnya:
 - Bagian data pasar dan portofolio di [PROMPT-FEATURES.md](PROMPT-FEATURES.md) dibatalkan: `market-adapter`, harga saat posting, sinkron daftar saham, dan badge holder.
 - `customer-adapter` (data nasabah dan aksi akun untuk CS) serta kartu order di chat CS dihapus (migrasi `0037_client_owned_business_data`).
 - Web CS Flutter (`apps/cs-console`) dihapus; web CS kini hanya versi React.

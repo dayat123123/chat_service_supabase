@@ -147,3 +147,54 @@ func TestLoadWebSocketValid(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLoadJWTMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "olt_jwks")
+	if err := os.WriteFile(path, []byte(`{"keys":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("JWT_SECRET", secret)
+	t.Setenv("OLT_MODE", "jwt")
+	t.Setenv("OLT_JWT_JWKS_FILE", path)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := cfg.OLT
+	if string(o.JWKS) != `{"keys":[]}` || o.JWTIssuer != "olt" || o.JWTAudience != "olt-social" ||
+		o.JWTMaxTTL.Seconds() != 900 || o.JWTLeeway.Seconds() != 30 {
+		t.Fatalf("konfigurasi jwt = %+v", o)
+	}
+}
+
+func TestLoadRejectsIncompleteJWTMode(t *testing.T) {
+	cases := map[string]struct {
+		env  map[string]string
+		want string
+	}{
+		"tanpa JWKS": {
+			map[string]string{"OLT_MODE": "jwt"},
+			"OLT_JWT_JWKS_FILE",
+		},
+		"file JWKS tidak ada": {
+			map[string]string{"OLT_MODE": "jwt", "OLT_JWT_JWKS_FILE": filepath.Join(t.TempDir(), "tidak-ada")},
+			"OLT_JWT_JWKS_FILE",
+		},
+		"umur maksimal tidak valid": {
+			map[string]string{"OLT_MODE": "jwt", "OLT_JWT_MAX_TTL": "0"},
+			"OLT_JWT_MAX_TTL",
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("JWT_SECRET", secret)
+			for k, v := range c.env {
+				t.Setenv(k, v)
+			}
+			_, err := Load()
+			if err == nil || !strings.Contains(err.Error(), c.want) {
+				t.Fatalf("err = %v, want mengandung %q", err, c.want)
+			}
+		})
+	}
+}

@@ -4,7 +4,7 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 
 **Status (30 Okt 2026):** semua tahap Revisi CS-2 (R1–R4) sudah berjalan: backend model "ambil tiket", web CS, integrasi aplikasi nasabah, serta dashboard supervisor, laporan, dan pengaturan admin.
 
-**Pembaruan 31 Okt 2026: satu dependensi keluar.** Server hanya memvalidasi token login ke OLT ([olt-integration.md](../olt-integration.md)). `customer-adapter`, kartu order/transaksi dana, panel data nasabah (profil, order, dana, sesi, buka data tersamar, "Amankan akun"), dan web CS Flutter dihapus lewat migrasi `0037_client_owned_business_data`. Web CS kini hanya versi React.
+**Pembaruan 31 Okt 2026: satu dependensi keluar.** Server hanya memverifikasi token sosial yang ditandatangani OLT, secara lokal tanpa memanggil OLT ([olt-integration.md](../olt-integration.md)). `customer-adapter`, kartu order/transaksi dana, panel data nasabah (profil, order, dana, sesi, buka data tersamar, "Amankan akun"), dan web CS Flutter dihapus lewat migrasi `0037_client_owned_business_data`. Web CS kini hanya versi React.
 
 **Pembaruan 31 Okt 2026: super admin hanya memantau dan mengelola.** Peran supervisor dan admin CS digabung menjadi **super admin** (`cs_super_admin`), dan login web CS cukup email + password tanpa TOTP (migrasi `0038_cs_supervisor_monitor_only` dan `0039_cs_super_admin_without_totp`). Super admin:
 - tidak mengambil, membalas, menyelesaikan, melepas, atau mentransfer tiket, dan tidak pernah menerima tiket lewat transfer, pemindahan, atau pembagian otomatis;
@@ -22,7 +22,7 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 
 | Dokumen | Untuk |
 |---|---|
-| [olt-integration.md](../olt-integration.md) | Tim OLT: satu-satunya kebutuhan server, yaitu validasi token login |
+| [olt-integration.md](../olt-integration.md) | Tim OLT: satu-satunya kebutuhan server, yaitu token sosial bertanda tangan saat login |
 | [compliance-questions.md](compliance-questions.md) | Tim kepatuhan: 19 pertanyaan dengan usulan yang sudah dipakai sebagai pengaturan |
 
 ## Keputusan
@@ -89,6 +89,7 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 - Pesan nasabah tanpa tiket aktif membuka tiket baru dengan topik default di room yang sama. Pesan yang datang bersamaan dilayani berurutan lewat kunci baris tiket terakhir: selalu tepat satu tiket aktif per nasabah.
 - Pesan `agent` hanya diterima dari pemilik tiket aktif. Super admin tidak mengirim pesan; pesan `supervisor` lama tetap tampil di riwayat.
 - Job pg_cron `cs-sweep` (tiap 10 detik): kedaluwarsakan transfer, tutup tiket `resolved` yang lewat 24 jam, lepas otomatis (bila diaktifkan), penugasan otomatis (bila mode `auto_assign`).
+- Penugasan otomatis berjalan **langsung** di akhir transaksi (constraint trigger deferred, migrasi `0040`) saat tiket masuk antrean, CS menjadi Online atau punya slot kosong, dan saat mode diubah ke `auto_assign`. Penugasan tercatat sebagai aksi `system`. `cs-sweep` tetap menjadi jaring pengaman, misalnya untuk CS yang heartbeat-nya baru segar lagi. CS yang mendapat tiket diberi bunyi dan notifikasi "Tiket baru ditugaskan ke Anda" di web CS.
 
 **Prioritas awal:** prioritas default topik, dinaikkan oleh flag (`fraud` → P1, `complaint` → maks P2) dan kata kunci di pesan pertama (`priority.rules`, mis. "dibobol", "penipuan" → P1 + fraud; "tidak bisa order" di jam bursa → P1).
 

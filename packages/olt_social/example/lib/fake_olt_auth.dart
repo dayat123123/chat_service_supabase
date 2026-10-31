@@ -5,11 +5,38 @@ import 'home_page.dart';
 import 'main.dart' show autoLoginUser, dummyOltWsUrl;
 
 class FakeOltAuth {
-  FakeOltAuth(this.currentToken);
+  FakeOltAuth.fixed(String token) : _current = token, _renew = null;
 
-  String? currentToken;
+  FakeOltAuth.dummy(DummyOltClient client, String session, DummySocialToken first)
+    : _current = first.token,
+      _expiresAt = first.expiresAt,
+      _renew = (() => client.socialToken(session));
 
-  void logout() => currentToken = null;
+  final Future<DummySocialToken> Function()? _renew;
+  String? _current;
+  DateTime? _expiresAt;
+  bool _signedOut = false;
+
+  Future<String?> token() async {
+    if (_signedOut) return null;
+    final renew = _renew;
+    final expiresAt = _expiresAt;
+    if (renew != null && (expiresAt == null || expiresAt.difference(DateTime.now()) < const Duration(minutes: 1))) {
+      try {
+        final fresh = await renew();
+        _current = fresh.token;
+        _expiresAt = fresh.expiresAt;
+      } on DummyOltException {
+        _current = null;
+      }
+    }
+    return _current;
+  }
+
+  void logout() {
+    _signedOut = true;
+    _current = null;
+  }
 }
 
 const demoUsers = [
@@ -51,11 +78,20 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _login(String id, String username) => _proceed(() async => FakeOltAuth('mock:$id:$username'));
+  Future<void> _login(String id, String username) => _proceed(() async {
+    final mock = 'mock:$id:$username';
+    final client = DummyOltClient(dummyOltWsUrl, timeout: const Duration(seconds: 3));
+    try {
+      return FakeOltAuth.dummy(client, mock, await client.socialToken(mock));
+    } on DummyOltException {
+      return FakeOltAuth.fixed(mock);
+    }
+  });
 
   Future<void> _loginDummyOlt() => _proceed(() async {
-    final session = await DummyOltClient(dummyOltWsUrl).loginWithPassword(_identifier.text, _password.text);
-    return FakeOltAuth(session.token);
+    final client = DummyOltClient(dummyOltWsUrl);
+    final session = await client.loginWithPassword(_identifier.text, _password.text);
+    return FakeOltAuth.dummy(client, session.token, session.socialToken);
   });
 
   Future<void> _proceed(Future<FakeOltAuth> Function() oltLogin) async {
@@ -93,7 +129,8 @@ class _LoginPageState extends State<LoginPage> {
               Text('Rendezvous OLT (demo)', textAlign: TextAlign.center, style: theme.textTheme.headlineSmall),
               const SizedBox(height: 4),
               Text(
-                'Pilih akun untuk login (token mock). Di OLT asli, login tetap lewat WebSocket OLT.',
+                'Pilih akun untuk login cepat. Bila OLT dummy berjalan, akun ditukar menjadi token sosial '
+                'bertanda tangan; bila tidak, dipakai token mock.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodySmall,
               ),
@@ -109,7 +146,11 @@ class _LoginPageState extends State<LoginPage> {
                     onTap: () => _login(id, username),
                   ),
                 ),
-              if (_busy) const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
+              if (_busy)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               const SizedBox(height: 24),
               Card.outlined(
                 child: Padding(
@@ -117,11 +158,11 @@ class _LoginPageState extends State<LoginPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text('Login OLT dummy (WebSocket)', style: theme.textTheme.titleMedium),
+                      Text('Login OLT dummy', style: theme.textTheme.titleMedium),
                       const SizedBox(height: 4),
                       Text(
-                        'Token asli dari OLT dummy, diverifikasi auth-bridge mode websocket. '
-                        'Butuh stack: make up DUMMY_OLT=1. Semua akun dummy: password olt12345.',
+                        'Login ke OLT dummy, lalu token sosial bertanda tangan diverifikasi auth-bridge secara '
+                        'lokal (mode jwt). Butuh stack: make up DUMMY_OLT=1. Semua akun dummy: password olt12345.',
                         style: theme.textTheme.bodySmall,
                       ),
                       const SizedBox(height: 12),

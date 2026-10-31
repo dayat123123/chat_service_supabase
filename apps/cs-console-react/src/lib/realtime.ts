@@ -19,6 +19,7 @@ export type TicketEvent = {
   topic?: string
   ownerId?: string | null
   ownerName?: string | null
+  version?: number
 }
 
 export type QueueEvent =
@@ -95,6 +96,7 @@ export function parseQueueEvent(kind: string, payload: Payload): QueueEvent | nu
       topic: text(payload.topic),
       ownerId: text(payload.owner_id) ?? null,
       ownerName: text(payload.owner_name) ?? null,
+      ...(typeof payload.version === 'number' ? { version: payload.version } : {}),
     }
   }
   if (kind === 'transfer') {

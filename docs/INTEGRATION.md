@@ -2,7 +2,7 @@
 
 Langkah memasang fitur sosial ke proyek Flutter OLT yang sudah ada (Windows + Android). Package memakai **flutter_bloc 9**, `supabase_flutter` 2.x, dan Material 3, serta mengikuti `ThemeData` aplikasi.
 
-**Batas integrasi:** server sosial hanya memvalidasi token login OLT. Order, daftar dan nama saham, harga, portofolio, dan data nasabah tetap di app OLT; package hanya menerima perintah dan kode saham sebagai label. Rinciannya di [olt-integration.md](olt-integration.md).
+**Batas integrasi:** server sosial hanya memverifikasi *token sosial* yang ditandatangani OLT, secara lokal tanpa memanggil OLT. Order, daftar dan nama saham, harga, portofolio, dan data nasabah tetap di app OLT; package hanya menerima perintah dan kode saham sebagai label. Rinciannya di [olt-integration.md](olt-integration.md).
 
 ## 1. Tambahkan dependency
 
@@ -43,7 +43,9 @@ Kompatibilitas:
 
 ## 3. Inisialisasi setelah login OLT
 
-Panggil `OltSocial.initialize` **setelah** user berhasil login ke WebSocket OLT, dengan cara apa pun: username/email + password atau token. Package tidak pernah melihat password; ia hanya meminta token sesi lewat `oltTokenProvider`.
+Panggil `OltSocial.initialize` **setelah** user berhasil login ke OLT, dengan cara apa pun: username/email + password atau token. Package tidak pernah melihat password; ia hanya meminta **token sosial** lewat `oltTokenProvider`.
+
+Token sosial adalah JWT berumur pendek (≤ 15 menit) yang diterbitkan backend OLT saat login dan saat app memintanya lagi. Formatnya ada di [olt-integration.md](olt-integration.md#3-format-token-sosial). `oltTokenProvider` harus mengembalikan token sosial yang **masih berlaku**: bila hampir kedaluwarsa, minta yang baru ke OLT dulu. Jangan mengembalikan token sesi OLT, karena token itu ditolak.
 
 ```dart
 import 'package:olt_social/olt_social.dart';
@@ -53,7 +55,7 @@ Future<void> onOltLoggedIn() async {
     supabaseUrl: Env.socialApiUrl,          // https://social-api.domain.com
     anonKey: Env.socialAnonKey,             // ANON_KEY (aman di aplikasi)
     // authBridgeUrl default: '<supabaseUrl>/bridge/v1'
-    oltTokenProvider: () async => oltSession.token,   // null bila belum/tidak login
+    oltTokenProvider: () => oltSession.freshSocialToken(),   // token sosial yang masih berlaku; null bila sudah logout
     onStockTap: (context, code) => OltRouter.openStock(context, code),  // halaman saham OLT
     stockSearch: (query) => OltStockDirectory.search(query),             // saran $KODE dari daftar saham OLT
     onUserTap: null,      // null = pakai halaman profil bawaan olt_social
@@ -68,9 +70,9 @@ Future<void> onOltLoggedOut() async {
 ```
 
 Yang terjadi di belakang layar:
-- **Penerbitan JWT:** auth-bridge menukar token OLT menjadi JWT Supabase berumur 15 menit.
+- **Penerbitan JWT:** auth-bridge memeriksa tanda tangan token sosial dengan kunci publik OLT, lalu menukarnya menjadi JWT Supabase berumur 15 menit. Server sosial tidak menghubungi OLT.
 - **Refresh otomatis:** JWT diperbarui sebelum kedaluwarsa, termasuk untuk koneksi realtime yang sedang berjalan. Saat refresh, `oltTokenProvider` dipanggil lagi.
-- **Token OLT ditolak:** semua API melempar `OltSocialException(kind: unauthenticated)`, dan UI menampilkan *"Sesi berakhir. Silakan login ulang di OLT."*. OLT sebaiknya mengarahkan user ke login ulang.
+- **Token sosial ditolak** (kedaluwarsa, salah tanda tangan, atau OLT berhenti menerbitkannya karena akun disuspend/logout): semua API melempar `OltSocialException(kind: unauthenticated)`, dan UI menampilkan *"Sesi berakhir. Silakan login ulang di OLT."*. OLT sebaiknya mengarahkan user ke login ulang.
 - **Memastikan sesi sejak awal:** `await OltSocial.instance.ensureSignedIn()` melempar error lebih awal, misalnya bila backend tidak terjangkau.
 
 **Data saham dari OLT.** Server tidak menyimpan daftar saham:
@@ -194,7 +196,9 @@ Bungkus widget sosial dengan `OltSocialScope` dan berikan implementasi palsu `Ol
 |---|---|
 | Emulator Android tidak bisa terhubung | Gunakan `http://10.0.2.2:8000`, bukan `localhost`. Untuk HP fisik: `EDGE_HTTP_BIND=0.0.0.0` + IP PC |
 | `Cleartext HTTP traffic not permitted` | Build debug: tambahkan `usesCleartextTraffic` di manifest debug. Produksi: gunakan HTTPS |
-| Selalu "Sesi berakhir" | `oltTokenProvider` mengembalikan null/token kedaluwarsa, atau auth-bridge masih mode `mock` sementara app mengirim token asli (cek `docker compose logs auth-bridge`) |
-| "Server OLT sedang tidak dapat dihubungi" | auth-bridge gagal menghubungi `OLT_WS_URL` dalam `OLT_WS_TIMEOUT` |
+| Selalu "Sesi berakhir" | `oltTokenProvider` mengembalikan null, token sesi OLT (bukan token sosial), atau token sosial kedaluwarsa. Alasan pastinya ada di `docker compose logs auth-bridge` (`exchange ditolak`, field `reason`) |
+| Log auth-bridge: `kid tidak dikenal` / `tanda tangan tidak valid` | `docker/secrets/olt_jwks` belum berisi kunci publik OLT yang dipakai menandatangani. Tambahkan JWKS dari OLT, lalu restart auth-bridge |
+| Log auth-bridge: `masa berlaku token melebihi batas` / `token kedaluwarsa` | OLT menerbitkan token lebih dari `OLT_JWT_MAX_TTL` (15 menit), atau jam server OLT/sosial selisih lebih dari 30 detik (cek NTP) |
+| Log auth-bridge: `audience` / `issuer` | Klaim `aud` harus memuat `olt-social` dan `iss` harus `olt` (atau sesuai `OLT_JWT_AUDIENCE` / `OLT_JWT_ISSUER`) |
 | Realtime tidak masuk | Pastikan port 443/8000 meneruskan WebSocket (Traefik sudah). Cek `docker compose logs realtime` |
 | "Terlalu cepat" | Rate limit server (post 5/menit, komentar 20/menit, pesan 30/menit). Ubah lewat `private.rate_limits` |

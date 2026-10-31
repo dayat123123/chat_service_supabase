@@ -212,10 +212,20 @@ func throttled(every time.Duration) func(fn func()) {
 }
 
 func newVerifier(cfg config.Config) (olt.Verifier, error) {
-	if cfg.OLT.Mode == config.OLTModeWebSocket {
+	switch cfg.OLT.Mode {
+	case config.OLTModeJWT:
+		return olt.NewJWTVerifier(cfg.OLT.JWKS, olt.JWTOptions{
+			Issuer:        cfg.OLT.JWTIssuer,
+			Audience:      cfg.OLT.JWTAudience,
+			MaxTTL:        cfg.OLT.JWTMaxTTL,
+			Leeway:        cfg.OLT.JWTLeeway,
+			RejectDevKeys: cfg.IsProduction(),
+		})
+	case config.OLTModeWebSocket:
 		return olt.NewWebSocketVerifier(cfg.OLT)
+	default:
+		return olt.MockVerifier{}, nil
 	}
-	return olt.MockVerifier{}, nil
 }
 
 func healthcheck() int {

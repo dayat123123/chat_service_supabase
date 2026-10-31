@@ -51,9 +51,7 @@ class _ExampleAppState extends State<ExampleApp> {
       locale: _locale,
       localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
       supportedLocales: OltSocialLocalizations.supportedLocales,
-      home: _anonKey.isEmpty
-          ? const _MissingConfigPage()
-          : const LoginPage(onSignedIn: _startSocial),
+      home: _anonKey.isEmpty ? const _MissingConfigPage() : const LoginPage(onSignedIn: _startSocial),
       builder: (context, child) => _SettingsScope(
         toggleTheme: () => setState(() {
           _themeMode = Theme.of(context).brightness == Brightness.dark ? ThemeMode.light : ThemeMode.dark;
@@ -69,14 +67,13 @@ class _ExampleAppState extends State<ExampleApp> {
       ),
     );
   }
-
 }
 
 Future<void> _startSocial(FakeOltAuth auth) async {
   final social = await OltSocial.initialize(
     supabaseUrl: socialUrl,
     anonKey: _anonKey,
-    oltTokenProvider: () async => auth.currentToken,
+    oltTokenProvider: auth.token,
     onStockTap: openOltStockPage,
     stockSearch: searchOltStocks,
   );
@@ -99,11 +96,9 @@ class _SettingsScope extends InheritedWidget {
   bool updateShouldNotify(_SettingsScope oldWidget) => false;
 }
 
-void toggleTheme(BuildContext context) =>
-    context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleTheme();
+void toggleTheme(BuildContext context) => context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleTheme();
 
-void toggleLocale(BuildContext context) =>
-    context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleLocale();
+void toggleLocale(BuildContext context) => context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleLocale();
 
 void toggleChatStyle(BuildContext context) =>
     context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleChatStyle();

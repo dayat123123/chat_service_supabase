@@ -6,7 +6,7 @@
 #   single  produksi 1 server: Traefik HTTPS, Studio mati (make admin-up)
 #   cluster Docker Swarm (kerangka; dilengkapi Tahap 7)
 # PROD=1 adalah alias lama untuk PROFILE=single.
-# DUMMY_OLT=1 menambahkan OLT dummy + auth-bridge mode websocket (hanya profil dev).
+# DUMMY_OLT=1 menambahkan OLT dummy (penerbit token sosial) + auth-bridge mode jwt (hanya profil dev).
 # CS=1 menyalakan customer service lewat chat (web CS React) di profil single.
 
 PROFILE ?= dev
@@ -46,6 +46,7 @@ ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
                  s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri \
+                 olt_jwks \
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
@@ -158,10 +159,10 @@ license-audit: ## Audit lisensi dependensi runtime Flutter olt_social (tolak GPL
 
 # --- OLT dummy (development/testing) -------------------------------------------------
 
-dummy-token: check-config ## Token sesi OLT dummy: make dummy-token U=budi_santoso [TTL=1h]
-	@$(DUMMY_COMPOSE) run --rm --no-deps -T dummy-olt token $(or $(U),budi_santoso) $(if $(TTL),-ttl $(TTL))
+dummy-token: check-config ## Token sosial (JWT) OLT dummy untuk exchange: make dummy-token U=budi_santoso [TTL=5m]
+	@$(DUMMY_COMPOSE) run --rm --no-deps -T dummy-olt token $(or $(U),budi_santoso) -social $(if $(TTL),-ttl $(TTL))
 
-smoke-dummy: check-config ## Smoke test auth-bridge mode websocket vs OLT dummy (butuh up DUMMY_OLT=1)
+smoke-dummy: check-config ## Smoke test auth-bridge mode jwt vs token sosial OLT dummy (butuh up DUMMY_OLT=1)
 	$(DUMMY_COMPOSE) run --rm tools smoke-dummy
 
 smoke-cs: check-config ## Smoke test CS chat end-to-end lewat API asli (butuh up DUMMY_OLT=1)

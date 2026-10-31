@@ -52,7 +52,7 @@ export function Shell() {
   useStatusOnClose(worker)
   useResumeStatus(worker)
   useGlobalHotkeys(tickets)
-  useConsoleAlerts({ superAdmin, onOpenTicket: openTicket })
+  useConsoleAlerts({ meId: agent.id, superAdmin, onOpenTicket: openTicket })
 
   const lists = useTicketLists(tickets)
   const overview = useSupervisorOverview(superAdmin)

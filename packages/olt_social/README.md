@@ -4,7 +4,7 @@ Package Flutter berisi fitur sosial & chat untuk Rendezvous OLT (Windows desktop
 Isinya feed saham, komentar berantai, reaksi, mention, follow, watch saham, chat realtime, notifikasi, dan moderasi.
 
 Backend yang dipakai adalah Supabase self-hosted dan auth-bridge. Keduanya ada di repo ini, lihat [README root](../../README.md).
-Satu-satunya panggilan server ke sistem OLT adalah validasi token login. Data bisnis seperti order, daftar dan nama saham, harga, dan data nasabah tetap milik app OLT; package hanya menerima kode saham sebagai label.
+Server sosial tidak memanggil sistem OLT: OLT menerbitkan token sosial bertanda tangan saat login, dan server memverifikasinya secara lokal. Data bisnis seperti order, daftar dan nama saham, harga, dan data nasabah tetap milik app OLT; package hanya menerima kode saham sebagai label.
 Langkah memasang package ke app OLT ada di [docs/INTEGRATION.md](../../docs/INTEGRATION.md).
 
 ## Pemakaian singkat
@@ -13,7 +13,7 @@ Langkah memasang package ke app OLT ada di [docs/INTEGRATION.md](../../docs/INTE
 await OltSocial.initialize(
   supabaseUrl: 'https://social-api.domain.com',
   anonKey: '<ANON_KEY>',
-  oltTokenProvider: () async => oltAuth.currentToken, // token login OLT
+  oltTokenProvider: () => oltAuth.freshSocialToken(), // token sosial (JWT) dari OLT yang masih berlaku
   onStockTap: (context, code) => openOltStockPage(context, code),
   stockSearch: (query) => oltStocks.search(query),   // saran $KODE dari daftar saham milik app
 );

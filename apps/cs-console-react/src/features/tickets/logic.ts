@@ -70,6 +70,17 @@ export function claimedByOther(event: QueueEvent, meId: string): { ticketId: str
   return { ticketId: event.ticketId, name: event.ownerName ?? '' }
 }
 
+export function assignmentAlerts(meId: string) {
+  const seen = new Set<string>()
+  return (event: QueueEvent): { ticketId: string; ticketNumber: string } | null => {
+    if (event.type !== 'ticket' || event.event !== 'ticket_assigned' || event.ownerId !== meId) return null
+    const key = `${event.ticketId}:${event.version ?? ''}`
+    if (seen.has(key)) return null
+    seen.add(key)
+    return { ticketId: event.ticketId, ticketNumber: event.ticketNumber ?? '' }
+  }
+}
+
 export function unreadMine(lists: TicketLists) {
   return lists.mine.reduce((total, ticket) => total + ticket.unread_count, 0)
 }

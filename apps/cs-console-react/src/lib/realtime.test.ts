@@ -131,6 +131,7 @@ describe('parseQueueEvent', () => {
         topic: 'order',
         owner_id: 'a1',
         owner_name: 'Rina',
+        version: 4,
       }),
     ).toEqual({
       type: 'ticket',
@@ -144,6 +145,7 @@ describe('parseQueueEvent', () => {
       topic: 'order',
       ownerId: 'a1',
       ownerName: 'Rina',
+      version: 4,
     })
   })
 

@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"crypto/ed25519"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -13,9 +14,12 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"olt-social/dummy-olt/internal/social"
 	"olt-social/dummy-olt/internal/tokens"
 	"olt-social/dummy-olt/internal/users"
 )
+
+var testSigningKey = ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))
 
 func newTestServer(t *testing.T, cfg Config) (*httptest.Server, *tokens.Issuer) {
 	t.Helper()
@@ -26,7 +30,14 @@ func newTestServer(t *testing.T, cfg Config) (*httptest.Server, *tokens.Issuer) 
 		cfg.HeartbeatInterval = time.Hour
 	}
 	issuer := tokens.NewIssuer("rahasia-test")
-	srv := httptest.NewServer(New(users.Default(), issuer, cfg, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
+	if cfg.SocialTTL == 0 {
+		cfg.SocialTTL = 10 * time.Minute
+	}
+	if cfg.SocialAudience == "" {
+		cfg.SocialAudience = "olt-social"
+	}
+	signer := social.NewSigner(testSigningKey, "dev-olt-1", "olt", cfg.SocialAudience)
+	srv := httptest.NewServer(New(users.Default(), issuer, signer, cfg, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler())
 	t.Cleanup(srv.Close)
 	return srv, issuer
 }

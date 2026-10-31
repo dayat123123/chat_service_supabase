@@ -568,6 +568,8 @@ export const id = {
     transferRejected: 'Transfer tiket {{ticket}} ditolak {{name}}',
     transferExpired: 'Transfer tiket {{ticket}} kedaluwarsa',
     transferCancelled: 'Transfer tiket {{ticket}} dibatalkan: {{reason}}',
+    assignedToYou: 'Tiket baru ditugaskan ke Anda',
+    openAssigned: 'Buka',
   },
   preferences: {
     title: 'Tampilan',

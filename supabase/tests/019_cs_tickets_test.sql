@@ -6,6 +6,7 @@ update cs.agent_status set status = 'offline';
 select cs.set_setting('service.hours',
   '{"1": ["00:00", "24:00"], "2": ["00:00", "24:00"], "3": ["00:00", "24:00"], "4": ["00:00", "24:00"], "5": ["00:00", "24:00"], "6": ["00:00", "24:00"], "7": ["00:00", "24:00"]}',
   null) as v \gset
+select cs.set_setting('assignment.mode', '"claim"', null) as claim_mode \gset
 delete from cs.holidays;
 
 select tests.create_user('tk_budi') as budi \gset

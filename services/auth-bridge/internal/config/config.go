@@ -18,6 +18,7 @@ type OLTMode string
 const (
 	OLTModeMock      OLTMode = "mock"
 	OLTModeWebSocket OLTMode = "websocket"
+	OLTModeJWT       OLTMode = "jwt"
 )
 
 const (
@@ -61,6 +62,11 @@ type OLTConfig struct {
 	UsernamePath       string
 	EmailPath          string
 	DisplayNamePath    string
+	JWKS               []byte
+	JWTIssuer          string
+	JWTAudience        string
+	JWTMaxTTL          time.Duration
+	JWTLeeway          time.Duration
 }
 
 func (c Config) IsProduction() bool {
@@ -102,6 +108,10 @@ func Load() (Config, error) {
 			UsernamePath:       envOr("OLT_WS_USERNAME_PATH", "data.user.username"),
 			EmailPath:          envOr("OLT_WS_EMAIL_PATH", "data.user.email"),
 			DisplayNamePath:    envOr("OLT_WS_DISPLAY_NAME_PATH", "data.user.full_name"),
+			JWTIssuer:          envOr("OLT_JWT_ISSUER", "olt"),
+			JWTAudience:        envOr("OLT_JWT_AUDIENCE", "olt-social"),
+			JWTMaxTTL:          secondsEnv("OLT_JWT_MAX_TTL", 900, &errs),
+			JWTLeeway:          time.Duration(intEnvMin("OLT_JWT_LEEWAY", 30, 0, &errs)) * time.Second,
 		},
 	}
 
@@ -134,8 +144,13 @@ func Load() (Config, error) {
 		}
 	case OLTModeWebSocket:
 		errs = append(errs, validateWebSocket(cfg.OLT)...)
+	case OLTModeJWT:
+		cfg.OLT.JWKS, err = readJWKS()
+		if err != nil {
+			errs = append(errs, err)
+		}
 	default:
-		errs = append(errs, fmt.Errorf("OLT_MODE tidak dikenal: %q (mock|websocket)", cfg.OLT.Mode))
+		errs = append(errs, fmt.Errorf("OLT_MODE tidak dikenal: %q (jwt|mock|websocket)", cfg.OLT.Mode))
 	}
 
 	return cfg, errors.Join(errs...)
@@ -157,6 +172,18 @@ func validateWebSocket(o OLTConfig) []error {
 		errs = append(errs, errors.New("OLT_WS_USER_ID_PATH wajib diisi"))
 	}
 	return errs
+}
+
+func readJWKS() ([]byte, error) {
+	path := os.Getenv("OLT_JWT_JWKS_FILE")
+	if path == "" {
+		return nil, errors.New("OLT_JWT_JWKS_FILE wajib diisi saat OLT_MODE=jwt (kunci publik OLT dalam format JWKS)")
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("OLT_JWT_JWKS_FILE: %w", err)
+	}
+	return b, nil
 }
 
 func parsePrefixes(s string) ([]netip.Prefix, error) {

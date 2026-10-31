@@ -569,6 +569,8 @@ export const en: Translation = {
     transferRejected: 'Transfer of {{ticket}} rejected by {{name}}',
     transferExpired: 'Transfer of {{ticket}} expired',
     transferCancelled: 'Transfer of {{ticket}} cancelled: {{reason}}',
+    assignedToYou: 'New ticket assigned to you',
+    openAssigned: 'Open',
   },
   preferences: {
     title: 'Appearance',

@@ -31,6 +31,15 @@ class DummyOltClient {
     return DummyOltSession._fromResult(res);
   }
 
+  Future<DummySocialToken> socialToken(String sessionToken) async {
+    final res = await _request({
+      'type': 'social_token',
+      'payload': {'token': sessionToken},
+    }, 'social_token_result');
+    final data = res['data'] as Map<String, dynamic>;
+    return DummySocialToken(data['token'] as String, DateTime.parse(data['expires_at'] as String));
+  }
+
   Future<void> logout(String token) => _request({
     'type': 'logout',
     'payload': {'token': token},
@@ -70,13 +79,23 @@ class DummyOltClient {
 }
 
 class DummyOltSession {
-  const DummyOltSession({required this.token, required this.userId, required this.username, required this.fullName});
+  const DummyOltSession({
+    required this.token,
+    required this.socialToken,
+    required this.userId,
+    required this.username,
+    required this.fullName,
+  });
 
   factory DummyOltSession._fromResult(Map<String, dynamic> res) {
     final data = res['data'] as Map<String, dynamic>;
     final user = data['user'] as Map<String, dynamic>;
     return DummyOltSession(
       token: data['token'] as String,
+      socialToken: DummySocialToken(
+        data['social_token'] as String,
+        DateTime.parse(data['social_token_expires_at'] as String),
+      ),
       userId: '${user['id']}',
       username: user['username'] as String,
       fullName: user['full_name'] as String? ?? '',
@@ -84,9 +103,17 @@ class DummyOltSession {
   }
 
   final String token;
+  final DummySocialToken socialToken;
   final String userId;
   final String username;
   final String fullName;
+}
+
+class DummySocialToken {
+  const DummySocialToken(this.token, this.expiresAt);
+
+  final String token;
+  final DateTime expiresAt;
 }
 
 class DummyOltException implements Exception {

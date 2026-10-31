@@ -40,10 +40,16 @@ Future<Map<String, dynamic>> oltRequest(String wsUrl, Map<String, Object?> messa
   }
 }
 
-Future<String> oltPasswordLogin(String wsUrl, Map<String, String> credentials) async {
+Future<({String session, String social})> oltPasswordLogin(String wsUrl, Map<String, String> credentials) async {
   final res = await oltRequest(wsUrl, {'type': 'login', 'method': 'password', 'payload': credentials}, 'login_result');
   expect(res['status'], 'OK', reason: 'login password: $res');
-  return (res['data'] as Map<String, dynamic>)['token'] as String;
+  final data = res['data'] as Map<String, dynamic>;
+  return (session: data['token'] as String, social: data['social_token'] as String);
+}
+
+Future<String?> renewSocialToken(String wsUrl, String session) async {
+  final res = await oltRequest(wsUrl, {'type': 'social_token', 'payload': {'token': session}}, 'social_token_result');
+  return res['status'] == 'OK' ? (res['data'] as Map<String, dynamic>)['token'] as String : null;
 }
 
 void main() {
@@ -74,14 +80,15 @@ void main() {
 
   final skip = _enabled ? null : 'Set OLT_SOCIAL_IT_DUMMY=1 (stack: make up DUMMY_OLT=1)';
 
-  test('login password OLT dummy -> token -> sesi sosial dengan identitas seed', () async {
-    final token = await oltPasswordLogin(wsUrl, {'username': 'budi_santoso', 'password': 'olt12345'});
-    expect(token, startsWith('olt_'));
+  test('login password OLT dummy -> token sosial -> sesi sosial dengan identitas seed', () async {
+    final login = await oltPasswordLogin(wsUrl, {'username': 'budi_santoso', 'password': 'olt12345'});
+    expect(login.session, startsWith('olt_'));
+    expect(login.social.split('.'), hasLength(3), reason: 'token sosial berupa JWT');
 
-    final relogin = await oltRequest(wsUrl, {'type': 'login', 'method': 'token', 'payload': {'token': token}}, 'login_result');
+    final relogin = await oltRequest(wsUrl, {'type': 'login', 'method': 'token', 'payload': {'token': login.session}}, 'login_result');
     expect(relogin['status'], 'OK');
 
-    final social = socialWith(() async => token);
+    final social = socialWith(() async => login.social);
     final me = await social.ensureSignedIn();
     expect(me.id, '72689cd3-ea55-584f-9e84-c257af0564e0', reason: 'UUID v5 olt_user_id 1001 = user seed Budi');
     expect(me.username, 'budi_santoso');
@@ -91,10 +98,10 @@ void main() {
   }, skip: skip);
 
   test('login email + password lalu kirim pesan DM', () async {
-    final sariToken = await oltPasswordLogin(wsUrl, {'email': 'sari@olt.test', 'password': 'olt12345'});
-    final budiToken = await oltPasswordLogin(wsUrl, {'email': 'budi@olt.test', 'password': 'olt12345'});
-    final sari = socialWith(() async => sariToken);
-    final budi = socialWith(() async => budiToken);
+    final sariLogin = await oltPasswordLogin(wsUrl, {'email': 'sari@olt.test', 'password': 'olt12345'});
+    final budiLogin = await oltPasswordLogin(wsUrl, {'email': 'budi@olt.test', 'password': 'olt12345'});
+    final sari = socialWith(() => renewSocialToken(wsUrl, sariLogin.session));
+    final budi = socialWith(() async => budiLogin.social);
     final budiUser = await budi.ensureSignedIn();
     await sari.ensureSignedIn();
 
@@ -106,12 +113,22 @@ void main() {
     expect(inbox.items.map((m) => m.id), contains(sent.id));
   }, skip: skip);
 
-  test('token yang sudah logout ditolak -> unauthenticated', () async {
-    final token = await oltPasswordLogin(wsUrl, {'username': 'andi_trader', 'password': 'olt12345'});
-    final logout = await oltRequest(wsUrl, {'type': 'logout', 'payload': {'token': token}}, 'logout_result');
+  test('sesi OLT yang sudah logout tidak mendapat token sosial baru -> unauthenticated', () async {
+    final login = await oltPasswordLogin(wsUrl, {'username': 'andi_trader', 'password': 'olt12345'});
+    final logout = await oltRequest(wsUrl, {'type': 'logout', 'payload': {'token': login.session}}, 'logout_result');
     expect(logout['status'], 'OK');
+    expect(await renewSocialToken(wsUrl, login.session), isNull);
 
-    final social = socialWith(() async => token);
+    final social = socialWith(() => renewSocialToken(wsUrl, login.session));
+    await expectLater(
+      social.ensureSignedIn(),
+      throwsA(isA<OltSocialException>().having((e) => e.kind, 'kind', OltSocialErrorKind.unauthenticated)),
+    );
+  }, skip: skip);
+
+  test('token sesi OLT (bukan token sosial) ditolak -> unauthenticated', () async {
+    final login = await oltPasswordLogin(wsUrl, {'username': 'rina_saham', 'password': 'olt12345'});
+    final social = socialWith(() async => login.session);
     await expectLater(
       social.ensureSignedIn(),
       throwsA(isA<OltSocialException>().having((e) => e.kind, 'kind', OltSocialErrorKind.unauthenticated)),

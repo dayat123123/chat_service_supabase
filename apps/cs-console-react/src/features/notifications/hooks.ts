@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { useTicketUi } from '@/features/tickets/hooks'
+import { assignmentAlerts } from '@/features/tickets/logic'
 import type { Ticket } from '@/features/tickets/types'
 import { browserNotify, pageInBackground, playSound, type AlertSound } from '@/lib/alerts'
 import { usePreferences } from '@/lib/preferences'
@@ -11,9 +12,13 @@ import { minutesSince } from '@/lib/time'
 
 type Alert = { sound: AlertSound; title: string; body: string; ticketId: string; always?: boolean }
 
-export function useConsoleAlerts(options: { superAdmin: boolean; onOpenTicket: (ticketId: string) => void }) {
+export function useConsoleAlerts(options: {
+  meId: string
+  superAdmin: boolean
+  onOpenTicket: (ticketId: string) => void
+}) {
   const { t } = useTranslation()
-  const { superAdmin, onOpenTicket } = options
+  const { meId, superAdmin, onOpenTicket } = options
   const openRef = useRef(onOpenTicket)
   useEffect(() => {
     openRef.current = onOpenTicket
@@ -31,8 +36,26 @@ export function useConsoleAlerts(options: { superAdmin: boolean; onOpenTicket: (
         })
       }
     }
+    const assignedToMe = assignmentAlerts(meId)
     return realtime.subscribe((event) => {
-      if (event.type === 'ticket' && event.event === 'ticket_opened') {
+      const assigned = assignedToMe(event)
+      if (assigned) {
+        raise({
+          sound: 'ticket',
+          title: t('notifications.assignedToYou'),
+          body: assigned.ticketNumber,
+          ticketId: assigned.ticketId,
+        })
+        if (!pageInBackground()) {
+          toast.info(t('notifications.assignedToYou'), {
+            description: assigned.ticketNumber,
+            action: {
+              label: t('notifications.openAssigned'),
+              onClick: () => openRef.current(assigned.ticketId),
+            },
+          })
+        }
+      } else if (event.type === 'ticket' && event.event === 'ticket_opened') {
         const mode = usePreferences.getState().ticketAlerts
         const urgent = event.priority === 'P1' || event.priority === 'P2'
         if (mode === 'off' || (mode === 'high' && !urgent)) return
@@ -87,7 +110,7 @@ export function useConsoleAlerts(options: { superAdmin: boolean; onOpenTicket: (
         })
       }
     })
-  }, [superAdmin, t])
+  }, [meId, superAdmin, t])
 }
 
 export function useOverdueAlerts(overdue: Ticket[] | undefined, onOpenTicket: (ticketId: string) => void) {

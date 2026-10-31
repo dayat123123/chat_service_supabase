@@ -2,8 +2,8 @@
 
 App contoh yang meniru cara OLT memasang `olt_social`:
 1. Login "OLT" tiruan, dengan dua cara:
-   - pilih user seed, lalu token mock dipakai (stack default), atau
-   - form **"Login OLT dummy (WebSocket)"**: username/email + password ke server OLT dummy, lalu tokennya dipakai. Cara ini butuh stack `make up DUMMY_OLT=1`, lihat [bagian di bawah](#login-olt-dummy-websocket).
+   - pilih user seed (login cepat): bila OLT dummy berjalan, akun ditukar menjadi token sosial bertanda tangan; bila tidak, token mock dipakai (stack default), atau
+   - form **"Login OLT dummy"**: username/email + password ke server OLT dummy, lalu token sosial dari OLT dipakai. Cara ini butuh stack `make up DUMMY_OLT=1`, lihat [bagian di bawah](#login-olt-dummy).
 2. `OltSocial.initialize` dijalankan.
 3. Halaman utama menyesuaikan lebar layar:
    - **Windows** dan **web** (layar lebar): NavigationRail, dengan stream dan detail post berdampingan.
@@ -57,7 +57,7 @@ Perintah ini mem-build app ke `build/web`, lalu menyajikannya lewat container Ca
 - Form "Login OLT dummy" juga berfungsi di web (stack `make up DUMMY_OLT=1`).
 - Untuk development dengan hot reload: `flutter run -d chrome --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY>`.
 
-## Login OLT dummy (WebSocket)
+## Login OLT dummy
 
 1. Nyalakan stack dengan OLT dummy:
 
@@ -65,13 +65,14 @@ Perintah ini mem-build app ke `build/web`, lalu menyajikannya lewat container Ca
    make up DUMMY_OLT=1 && make seed     # Windows: .\make.ps1 up -DummyOlt; .\make.ps1 seed
    ```
 
-   Dengan ini auth-bridge berjalan dalam mode `websocket`, dan dummy-olt mendengarkan di `ws://localhost:8090/ws`.
+   Dengan ini auth-bridge berjalan dalam mode `jwt` (seperti produksi), dan dummy-olt mendengarkan di `ws://localhost:8090/ws`.
 2. Di layar login, isi form "Login OLT dummy". Contoh: `budi_santoso` atau `sari@olt.test`, dengan password `olt12345`.
-3. App membuka WebSocket ke OLT dummy, mendapat token `olt_...`, lalu memberikannya ke `OltSocial.initialize(oltTokenProvider: ...)`. Ini sama persis dengan cara app OLT memberikan token aslinya.
+3. App membuka WebSocket ke OLT dummy dan menerima token sesi `olt_...` beserta **token sosial** (JWT, 10 menit).
+4. `oltTokenProvider` mengembalikan token sosial. Bila sisa umurnya kurang dari 1 menit, app meminta yang baru lewat pesan `social_token` dengan token sesi ([`lib/fake_olt_auth.dart`](lib/fake_olt_auth.dart)). Pola inilah yang perlu ditiru app OLT asli.
 
 **Alamat OLT dummy** diturunkan dari URL sosial dengan port 8090. Misalnya emulator Android memakai `ws://10.0.2.2:8090/ws`. Untuk mengganti alamatnya: `--dart-define=OLT_DUMMY_WS_URL=ws://<host>:8090/ws`.
 
-Tombol user seed (token mock) tetap berfungsi dalam mode ini.
+Tombol user seed tetap berfungsi dalam mode ini: token mock ditukar dulu menjadi token sosial lewat OLT dummy.
 
 ## E2E test (Windows)
 

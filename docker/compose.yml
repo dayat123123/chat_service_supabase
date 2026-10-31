@@ -713,9 +713,10 @@ services:
     <<: *base
     build:
       context: ../services/auth-bridge
-    image: olt-social/auth-bridge:0.3.1
-    # egress: koneksi WebSocket ke server OLT. data: Valkey.
-    networks: [app, data, egress]
+    image: olt-social/auth-bridge:0.4.0
+    # Tanpa egress: token OLT diverifikasi lokal dengan kunci publik OLT (mode jwt),
+    # jadi auth-bridge tidak memanggil sistem OLT. data: Valkey.
+    networks: [app, data]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -724,7 +725,7 @@ services:
       valkey:
         condition: service_healthy
     stop_grace_period: 20s
-    secrets: [jwt_secret, valkey_password]
+    secrets: [jwt_secret, valkey_password, olt_jwks]
     environment:
       PORT: 8080
       # Port internal /metrics, /livez, /readyz (tidak dipublikasikan, tidak lewat Kong).
@@ -745,21 +746,12 @@ services:
       RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-10}
       BREAKER_FAILURE_THRESHOLD: ${AUTH_BRIDGE_BREAKER_FAILURE_THRESHOLD:-5}
       BREAKER_COOLDOWN: ${AUTH_BRIDGE_BREAKER_COOLDOWN:-30}
-      OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-websocket}
-      # Kosong = default Protokol v1 (docs/olt-integration.md).
-      OLT_WS_URL: ${OLT_WS_URL:-}
-      OLT_WS_TIMEOUT: ${OLT_WS_TIMEOUT:-5}
-      OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}
-      OLT_WS_LOGIN_TEMPLATE: ${OLT_WS_LOGIN_TEMPLATE:-}
-      OLT_WS_RESPONSE_MATCH_PATH: ${OLT_WS_RESPONSE_MATCH_PATH:-}
-      OLT_WS_RESPONSE_MATCH_VALUE: ${OLT_WS_RESPONSE_MATCH_VALUE:-}
-      OLT_WS_SUCCESS_PATH: ${OLT_WS_SUCCESS_PATH:-}
-      OLT_WS_SUCCESS_VALUE: ${OLT_WS_SUCCESS_VALUE:-}
-      OLT_WS_ERROR_MESSAGE_PATH: ${OLT_WS_ERROR_MESSAGE_PATH:-}
-      OLT_WS_USER_ID_PATH: ${OLT_WS_USER_ID_PATH:-}
-      OLT_WS_USERNAME_PATH: ${OLT_WS_USERNAME_PATH:-}
-      OLT_WS_EMAIL_PATH: ${OLT_WS_EMAIL_PATH:-}
-      OLT_WS_DISPLAY_NAME_PATH: ${OLT_WS_DISPLAY_NAME_PATH:-}
+      # Token sosial bertanda tangan OLT, diverifikasi dengan kunci publik OLT (docs/olt-integration.md).
+      OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-jwt}
+      OLT_JWT_JWKS_FILE: /run/secrets/olt_jwks
+      OLT_JWT_ISSUER: ${OLT_JWT_ISSUER:-olt}
+      OLT_JWT_AUDIENCE: ${OLT_JWT_AUDIENCE:-olt-social}
+      OLT_JWT_MAX_TTL: ${OLT_JWT_MAX_TTL:-900}
     healthcheck:
       # Image distroless tidak punya shell/curl; binary menyediakan subcommand healthcheck.
       test: ["CMD", "/auth-bridge", "healthcheck"]
@@ -902,3 +894,5 @@ secrets:
     file: ./secrets/valkey_password
   postgrest_db_uri:
     file: ./secrets/postgrest_db_uri
+  olt_jwks:
+    file: ./secrets/olt_jwks

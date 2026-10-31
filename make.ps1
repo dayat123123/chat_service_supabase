@@ -8,8 +8,8 @@
   .\make.ps1 up -Profile single            (produksi 1 server; butuh PROXY_DOMAIN & ACME_EMAIL)
   .\make.ps1 logs -Service auth-bridge
   .\make.ps1 restore -File olt-20261029-020000.dump -Yes
-  .\make.ps1 up -DummyOlt                  (OLT dummy + auth-bridge mode websocket)
-  .\make.ps1 dummy-token -User sari_invest -Ttl 1h
+  .\make.ps1 up -DummyOlt                  (OLT dummy penerbit token sosial + auth-bridge mode jwt)
+  .\make.ps1 dummy-token -User sari_invest -Ttl 5m
   .\make.ps1 up -Profile single -Cs        (produksi dengan customer service lewat chat)
 #>
 [CmdletBinding()]
@@ -31,7 +31,7 @@ param(
     [string]$File = '',
     [switch]$Force,
     [switch]$Yes,
-    # OLT dummy + auth-bridge mode websocket (hanya profil dev).
+    # OLT dummy penerbit token sosial + auth-bridge mode jwt (hanya profil dev).
     [switch]$DummyOlt,
     # Customer service lewat chat di profil single (di profil dev selalu aktif).
     [switch]$Cs,
@@ -48,7 +48,8 @@ $EnvFile = 'docker/.env'
 $SecretsDir = 'docker/secrets'
 $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
                  'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
-                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri')
+                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri',
+                 'olt_jwks')
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
 $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
 $ToolsImage = 'olt-social/tools:0.1.0'
@@ -171,8 +172,8 @@ switch ($Target) {
   psql          Buka psql ke DB sebagai postgres
 
   OLT dummy (development/testing), jalankan stack dengan: .\make.ps1 up -DummyOlt
-  dummy-token   Token sesi OLT dummy: -User budi_santoso [-Ttl 1h]
-  smoke-dummy   Smoke test auth-bridge mode websocket vs OLT dummy
+  dummy-token   Token sosial (JWT) OLT dummy untuk exchange: -User budi_santoso [-Ttl 5m]
+  smoke-dummy   Smoke test auth-bridge mode jwt vs token sosial OLT dummy
   test-dummy-olt  Unit test OLT dummy (Go, di container)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
@@ -295,7 +296,7 @@ switch ($Target) {
     # --- OLT dummy -----------------------------------------------------------------
     'dummy-token' {
         Assert-Config
-        $tokenArgs = @('run', '--rm', '--no-deps', '-T', 'dummy-olt', 'token', $User)
+        $tokenArgs = @('run', '--rm', '--no-deps', '-T', 'dummy-olt', 'token', $User, '-social')
         if ($Ttl) { $tokenArgs += @('-ttl', $Ttl) }
         Invoke-Docker ($DummyCompose + $tokenArgs)
     }

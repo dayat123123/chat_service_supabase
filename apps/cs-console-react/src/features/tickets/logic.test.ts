@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { ticketFixture } from '@/test/fixtures'
 
 import {
+  assignmentAlerts,
   claimedByOther,
   currentTab,
   findTicket,
@@ -100,6 +101,23 @@ describe('ticket list updates from realtime', () => {
     expect(claimedByOther(event, 'me')).toEqual({ ticketId: 'p1', name: 'Sari' })
     expect(claimedByOther({ ...event, ownerId: 'me' }, 'me')).toBeNull()
     expect(claimedByOther({ ...event, event: 'ticket_released' }, 'me')).toBeNull()
+  })
+
+  it('alerts once per automatic assignment to me, even when it arrives on two channels', () => {
+    const assigned = assignmentAlerts('me')
+    const event = {
+      type: 'ticket' as const,
+      event: 'ticket_assigned',
+      ticketId: 'p1',
+      ticketNumber: 'CS-20261031-0042',
+      ownerId: 'me',
+      version: 3,
+    }
+    expect(assigned(event)).toEqual({ ticketId: 'p1', ticketNumber: 'CS-20261031-0042' })
+    expect(assigned(event)).toBeNull()
+    expect(assigned({ ...event, version: 7 })).toEqual({ ticketId: 'p1', ticketNumber: 'CS-20261031-0042' })
+    expect(assigned({ ...event, ticketId: 'p2', ownerId: 'other' })).toBeNull()
+    expect(assigned({ ...event, ticketId: 'p3', event: 'ticket_claimed' })).toBeNull()
   })
 
   it('removes a claimed ticket from the open list only', () => {

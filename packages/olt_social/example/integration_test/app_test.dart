@@ -5,7 +5,11 @@ import 'package:integration_test/integration_test.dart';
 import 'package:olt_social/olt_social.dart';
 import 'package:olt_social_example/main.dart';
 
-Future<void> pumpUntilFound(WidgetTester tester, Finder finder, {Duration timeout = const Duration(seconds: 20)}) async {
+Future<void> pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 20),
+}) async {
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 200));
@@ -21,6 +25,21 @@ Future<void> pumpUntilGone(WidgetTester tester, Finder finder, {Duration timeout
     if (finder.evaluate().isEmpty) return;
   }
   throw TestFailure('$finder masih ada setelah $timeout');
+}
+
+Future<void> pumpUntilFoundWhileScrolling(
+  WidgetTester tester,
+  Finder finder,
+  Finder scrollable, {
+  Duration timeout = const Duration(seconds: 20),
+}) async {
+  final end = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(end)) {
+    await tester.pump(const Duration(milliseconds: 200));
+    if (finder.evaluate().isNotEmpty) return;
+    await tester.drag(scrollable, const Offset(0, -300));
+  }
+  throw TestFailure('Tidak menemukan $finder dalam $timeout');
 }
 
 Future<void> typeAndPressEnter(WidgetTester tester, Finder field, String text) async {
@@ -58,15 +77,12 @@ void main() {
     await tester.tap(seedPost.first);
     await pumpUntilFound(tester, find.textContaining('Divergence itu maksudnya'));
     expect(find.text('Konten ini opini pengguna, bukan rekomendasi investasi.'), findsWidgets);
-    await tester.scrollUntilVisible(
-      find.text('Lanjutkan thread →'),
-      200,
-      scrollable: find.descendant(of: find.byType(OltPostDetail), matching: find.byType(Scrollable)).first,
-    );
+    final thread = find.descendant(of: find.byType(OltPostDetail), matching: find.byType(Scrollable)).first;
+    await tester.scrollUntilVisible(find.text('Lanjutkan thread →'), 200, scrollable: thread);
 
     final commentText = 'Komentar e2e $stamp';
     await typeAndPressEnter(tester, find.widgetWithText(TextField, 'Tulis komentar…'), commentText);
-    await pumpUntilFound(tester, find.text(commentText));
+    await pumpUntilFoundWhileScrolling(tester, find.text(commentText), thread);
 
     await tester.tap(find.text('Chat').first);
     await pumpUntilFound(tester, find.text('Sari Wulandari'));
