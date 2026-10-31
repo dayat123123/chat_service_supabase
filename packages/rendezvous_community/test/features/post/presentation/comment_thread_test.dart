@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
-import 'package:olt_social/src/features/post/presentation/cubit/comment_thread_cubit.dart';
-import 'package:olt_social/src/features/post/presentation/widgets/comment_tree.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:rendezvous_community/src/features/post/presentation/cubit/comment_thread_cubit.dart';
+import 'package:rendezvous_community/src/features/post/presentation/widgets/comment_tree.dart';
 
 import '../../../support/fakes.dart';
 
@@ -15,11 +15,11 @@ Future<FakeDependencies> pumpDetail(WidgetTester tester) async {
   await tester.pumpWidget(
     MaterialApp(
       locale: const Locale('id'),
-      localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
-      supportedLocales: OltSocialLocalizations.supportedLocales,
-      home: OltSocialScope(
+      localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+      supportedLocales: CommunityLocalizations.supportedLocales,
+      home: CommunityScope(
         dependencies: deps,
-        child: const Scaffold(body: OltPostDetail(postId: 'p-1')),
+        child: const Scaffold(body: CommunityPostDetail(postId: 'p-1')),
       ),
     ),
   );
@@ -29,13 +29,18 @@ Future<FakeDependencies> pumpDetail(WidgetTester tester) async {
 
 int threadLevelOf(WidgetTester tester, String text) {
   final paint = tester.widget<CustomPaint>(
-    find.ancestor(of: find.text(text), matching: find.byWidgetPredicate((w) => w is CustomPaint && w.painter is ThreadLinesPainter)).first,
+    find
+        .ancestor(
+          of: find.text(text),
+          matching: find.byWidgetPredicate((w) => w is CustomPaint && w.painter is ThreadLinesPainter),
+        )
+        .first,
   );
   return (paint.painter! as ThreadLinesPainter).level;
 }
 
 void main() {
-  testWidgets('menampilkan thread bertingkat dengan garis indentasi', (tester) async {
+  testWidgets('renders nested threads with indentation lines', (tester) async {
     await pumpDetail(tester);
 
     expect(find.textContaining('Analisis'), findsOneWidget);
@@ -47,17 +52,17 @@ void main() {
     expect(threadLevelOf(tester, 'Top kedua'), 0);
   });
 
-  testWidgets('indentasi berhenti di level 4 dan muncul "Lanjutkan thread"', (tester) async {
+  testWidgets('stops indenting at level 4 and shows "Lanjutkan thread"', (tester) async {
     await pumpDetail(tester);
     expect(find.text('Lanjutkan thread →'), findsOneWidget);
   });
 
-  testWidgets('komentar terhapus tampil sebagai [komentar dihapus]', (tester) async {
+  testWidgets('shows deleted comments as [komentar dihapus]', (tester) async {
     await pumpDetail(tester);
     expect(find.text('[komentar dihapus]'), findsOneWidget);
   });
 
-  testWidgets('"Lihat N balasan lainnya" memuat balasan berikutnya dari cursor terakhir', (tester) async {
+  testWidgets('"Lihat N balasan lainnya" loads the next replies from the last cursor', (tester) async {
     final deps = await pumpDetail(tester);
 
     expect(find.text('Lihat 1 balasan lainnya'), findsOneWidget);
@@ -70,7 +75,7 @@ void main() {
     expect(deps.comments.requests.last, {'root': 'c1', 'cursor': '000000000006', 'maxDepth': 2});
   });
 
-  testWidgets('collapse menyembunyikan cabang, expand menampilkannya lagi', (tester) async {
+  testWidgets('collapse hides a branch and expand shows it again', (tester) async {
     await pumpDetail(tester);
 
     await tester.tap(find.byTooltip('Ciutkan').first);
@@ -84,7 +89,7 @@ void main() {
     expect(find.text('Level 2'), findsOneWidget);
   });
 
-  testWidgets('like komentar langsung terlihat (optimistic)', (tester) async {
+  testWidgets('comment likes appear immediately (optimistic)', (tester) async {
     final deps = await pumpDetail(tester);
 
     final topKedua = find.ancestor(of: find.text('Top kedua'), matching: find.byType(CommentTile));
@@ -95,7 +100,7 @@ void main() {
     expect(deps.comments.likedComments, ['t2']);
   });
 
-  testWidgets('tombol Balas menampilkan target balasan di composer', (tester) async {
+  testWidgets('the Balas button shows the reply target in the composer', (tester) async {
     await pumpDetail(tester);
 
     final level2 = find.ancestor(of: find.text('Level 2'), matching: find.byType(CommentTile));
@@ -105,7 +110,7 @@ void main() {
     expect(find.text('Membalas Bob'), findsOneWidget);
   });
 
-  test('buildThreadRows: batas level, sisa balasan, dan komentar teratas berikutnya', () {
+  test('buildThreadRows: level limit, remaining replies, and the next top-level comments', () {
     final comments = {
       for (final c in [
         comment('a', depth: 0, path: '1', replyCount: 2),
@@ -125,7 +130,13 @@ void main() {
     );
 
     final rows = buildThreadRows(state, maxLevels: 2);
-    expect(rows.map((r) => r.runtimeType), [CommentRow, CommentRow, ContinueThreadRow, MoreRepliesRow, MoreTopLevelRow]);
+    expect(rows.map((r) => r.runtimeType), [
+      CommentRow,
+      CommentRow,
+      ContinueThreadRow,
+      MoreRepliesRow,
+      MoreTopLevelRow,
+    ]);
     expect((rows[3] as MoreRepliesRow).remaining, 1);
     expect(rows.map((r) => r.level).toList(), [0, 1, 2, 1, 0]);
   });

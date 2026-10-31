@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
-import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/olt_support_tickets.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/support_dialogs.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/support_message_parts.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
+import 'package:rendezvous_community/src/features/support/presentation/cubit/support_cubit.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/community_support_tickets.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/support_dialogs.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/support_message_parts.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
-String supportStatusText(OltSocialLocalizations l10n, SupportTicket ticket) => switch (ticket.status) {
+String supportStatusText(CommunityLocalizations l10n, SupportTicket ticket) => switch (ticket.status) {
   SupportStatus.open => [
     l10n.supportStatusWaiting,
     if ((ticket.queueAhead ?? 0) > 0) l10n.supportQueueAhead(ticket.queueAhead!),
@@ -36,7 +36,7 @@ class SupportHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final state = context.watch<SupportCubit>().state;
     final home = state.home;
@@ -75,7 +75,9 @@ class SupportHeader extends StatelessWidget {
                         supportStatusText(l10n, ticket),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelLarge?.copyWith(color: _statusColor(theme.colorScheme, ticket.status)),
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: _statusColor(theme.colorScheme, ticket.status),
+                        ),
                       ),
                     ],
                   ),
@@ -95,21 +97,22 @@ class SupportHeader extends StatelessWidget {
                     if (active) PopupMenuItem(value: _MenuAction.endChat, child: Text(l10n.supportEndChat)),
                   ],
                 ),
-                if (onClose != null)
-                  IconButton(tooltip: l10n.close, onPressed: onClose, icon: const Icon(Icons.close)),
+                if (onClose != null) IconButton(tooltip: l10n.close, onPressed: onClose, icon: const Icon(Icons.close)),
               ],
             ),
           ),
           if (state.busy) const LinearProgressIndicator(minHeight: 2),
           if (home != null && !home.serviceOpen && home.nextOpenAt != null)
-            _Banner(text: l10n.supportOutOfHours('${l10n.dayLabel(home.nextOpenAt!)} ${l10n.clockTime(home.nextOpenAt!)}')),
+            _Banner(
+              text: l10n.supportOutOfHours('${l10n.dayLabel(home.nextOpenAt!)} ${l10n.clockTime(home.nextOpenAt!)}'),
+            ),
         ],
       ),
     );
   }
 
   Future<void> _onAction(BuildContext context, _MenuAction action) async {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final cubit = context.read<SupportCubit>();
     switch (action) {
       case _MenuAction.complaint:
@@ -127,16 +130,21 @@ class SupportHeader extends StatelessWidget {
         cubit.pickTopic();
       case _MenuAction.myTickets:
         if (!context.mounted) return;
-        final deps = OltSocialScope.of(context);
+        final deps = CommunityScope.of(context);
         final carry = carryChatBuilders(context);
-        await Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => carry(
-            OltSocialScope(
-              dependencies: deps,
-              child: Scaffold(appBar: AppBar(title: Text(l10n.supportMyTickets)), body: const OltSupportTickets()),
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => carry(
+              CommunityScope(
+                dependencies: deps,
+                child: Scaffold(
+                  appBar: AppBar(title: Text(l10n.supportMyTickets)),
+                  body: const CommunitySupportTickets(),
+                ),
+              ),
             ),
           ),
-        ));
+        );
     }
   }
 }
@@ -157,7 +165,9 @@ class _Banner extends StatelessWidget {
         children: [
           Icon(Icons.schedule, size: 16, color: scheme.onTertiaryContainer),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: TextStyle(color: scheme.onTertiaryContainer))),
+          Expanded(
+            child: Text(text, style: TextStyle(color: scheme.onTertiaryContainer)),
+          ),
         ],
       ),
     );

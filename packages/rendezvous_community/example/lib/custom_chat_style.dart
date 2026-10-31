@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
-const customChatBuilders = OltChatBuilders(
+const customChatBuilders = CommunityChatBuilders(
   message: _message,
   composer: _composer,
   roomTile: _roomTile,
   dayDivider: _dayDivider,
 );
 
-Widget _message(BuildContext context, OltMessageDetails d, Widget fallback) {
+Widget _message(BuildContext context, CommunityMessageDetails d, Widget fallback) {
   final m = d.message;
   if (m.kind != MessageKind.text || m.isDeleted || m.senderRole != null) return fallback;
   final scheme = Theme.of(context).colorScheme;
@@ -33,7 +33,10 @@ Widget _message(BuildContext context, OltMessageDetails d, Widget fallback) {
           if (d.showSender && sender != null)
             GestureDetector(
               onTap: d.onSenderTap,
-              child: Text(sender.name, style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700)),
+              child: Text(
+                sender.name,
+                style: TextStyle(color: scheme.primary, fontWeight: FontWeight.w700),
+              ),
             ),
           if (m.replyToBody != null)
             Text(
@@ -66,7 +69,7 @@ Widget _message(BuildContext context, OltMessageDetails d, Widget fallback) {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         if (!d.isMine) ...[
-          SizedBox(width: 32, child: d.startsGroup ? OltAvatar(user: sender, radius: 14) : null),
+          SizedBox(width: 32, child: d.startsGroup ? CommunityAvatar(user: sender, radius: 14) : null),
           const SizedBox(width: 6),
         ],
         Flexible(child: bubble),
@@ -75,7 +78,7 @@ Widget _message(BuildContext context, OltMessageDetails d, Widget fallback) {
   );
 }
 
-Widget _composer(BuildContext context, OltComposerDetails d, Widget fallback) {
+Widget _composer(BuildContext context, CommunityComposerDetails d, Widget fallback) {
   final scheme = Theme.of(context).colorScheme;
   final replyPreview = d.replyPreview;
   return SafeArea(
@@ -105,7 +108,7 @@ Widget _composer(BuildContext context, OltComposerDetails d, Widget fallback) {
                       : const Icon(Icons.add_circle_outline),
                 ),
                 Expanded(
-                  child: OltComposerField(
+                  child: CommunityComposerField(
                     controller: d.controller,
                     focusNode: d.focusNode,
                     hintText: d.hintText,
@@ -125,7 +128,7 @@ Widget _composer(BuildContext context, OltComposerDetails d, Widget fallback) {
   );
 }
 
-Widget _roomTile(BuildContext context, OltRoomTileDetails d, Widget fallback) {
+Widget _roomTile(BuildContext context, CommunityRoomTileDetails d, Widget fallback) {
   final scheme = Theme.of(context).colorScheme;
   final typing = d.typingText;
   final unread = d.room.unreadCount > 0 && !d.room.muted;
@@ -137,7 +140,7 @@ Widget _roomTile(BuildContext context, OltRoomTileDetails d, Widget fallback) {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            OltRoomAvatar(room: d.room, online: d.online, radius: 22),
+            CommunityRoomAvatar(room: d.room, online: d.online, radius: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -176,7 +179,11 @@ Widget _roomTile(BuildContext context, OltRoomTileDetails d, Widget fallback) {
                 Text(d.timeLabel, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
                 const SizedBox(height: 4),
                 if (unread)
-                  Container(width: 10, height: 10, decoration: BoxDecoration(color: scheme.primary, shape: BoxShape.circle)),
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(color: scheme.primary, shape: BoxShape.circle),
+                  ),
               ],
             ),
           ],
@@ -186,7 +193,7 @@ Widget _roomTile(BuildContext context, OltRoomTileDetails d, Widget fallback) {
   );
 }
 
-Widget _dayDivider(BuildContext context, OltDayDetails d, Widget fallback) => Padding(
+Widget _dayDivider(BuildContext context, CommunityDayDetails d, Widget fallback) => Padding(
   padding: const EdgeInsets.symmetric(vertical: 12),
   child: Row(
     children: [

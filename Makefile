@@ -41,7 +41,7 @@ GO_IMG        := golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff
 TOOLS_IMG     := olt-social/tools:0.1.0
 ALPINE_IMG    := alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
 WEB_IMG       := caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
-PKG           := packages/olt_social
+PKG           := packages/rendezvous_community
 ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
@@ -154,7 +154,7 @@ web-example: check-config ## App example versi web di http://localhost:8081 (?us
 	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8081
 	@echo "App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)"
 
-license-audit: ## Audit lisensi dependensi runtime Flutter olt_social (tolak GPL/AGPL)
+license-audit: ## Audit lisensi dependensi runtime Flutter rendezvous_community (tolak GPL/AGPL)
 	cd $(PKG) && dart run tool/license_audit.dart
 
 # --- OLT dummy (development/testing) -------------------------------------------------

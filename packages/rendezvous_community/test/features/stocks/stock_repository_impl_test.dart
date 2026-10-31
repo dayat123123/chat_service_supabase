@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:olt_social/olt_social.dart';
-import 'package:olt_social/src/features/stocks/data/repositories/stock_repository_impl.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:rendezvous_community/src/features/stocks/data/repositories/stock_repository_impl.dart';
 
 import '../../support/mock_api.dart';
 
@@ -14,7 +14,7 @@ void main() {
     repo = StockRepositoryImpl(api);
   });
 
-  test('ringkasan saham diambil dari RPC get_stock tanpa daftar saham di server', () async {
+  test('the stock summary comes from the get_stock RPC without a server-side stock list', () async {
     when(() => api.rpcRows('get_stock', any())).thenAnswer(
       (_) async => [
         {'code': 'NEWCO', 'watcher_count': 3, 'watching': true},
@@ -28,7 +28,7 @@ void main() {
     expect(params, {'p_code': 'newco'});
   });
 
-  test('kode berformat salah tidak menghasilkan saham', () async {
+  test('malformed codes yield no stock', () async {
     when(() => api.rpcRows('get_stock', any())).thenAnswer((_) async => const []);
 
     expect(await repo.getStock('1X'), isNull);

@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/features/chat/data/models/chat_models.dart';
-import 'package:olt_social/src/features/chat/data/realtime/room_channel_hub.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/features/chat/data/models/chat_models.dart';
+import 'package:rendezvous_community/src/features/chat/data/realtime/room_channel_hub.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseRoomConnection implements ChatRoomConnection {

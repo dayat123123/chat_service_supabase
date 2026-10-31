@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
 
 class ChatUnreadCubit extends Cubit<int> {
   ChatUnreadCubit({

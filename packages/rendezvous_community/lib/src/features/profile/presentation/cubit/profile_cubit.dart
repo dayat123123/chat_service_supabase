@@ -2,10 +2,10 @@ import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/profile/domain/entities/user_profile.dart';
-import 'package:olt_social/src/features/profile/domain/repositories/profile_repository.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/profile/domain/entities/user_profile.dart';
+import 'package:rendezvous_community/src/features/profile/domain/repositories/profile_repository.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
 part 'profile_cubit.freezed.dart';
 
@@ -44,9 +44,11 @@ class ProfileCubit extends Cubit<ProfileState> {
     final before = state.profile;
     if (before == null) return;
     final follow = !before.isFollowing;
-    emit(state.copyWith(
-      profile: before.copyWith(isFollowing: follow, followerCount: before.followerCount + (follow ? 1 : -1)),
-    ));
+    emit(
+      state.copyWith(
+        profile: before.copyWith(isFollowing: follow, followerCount: before.followerCount + (follow ? 1 : -1)),
+      ),
+    );
     try {
       follow ? await _profiles.follow(before.user.id) : await _profiles.unfollow(before.user.id);
     } catch (e) {

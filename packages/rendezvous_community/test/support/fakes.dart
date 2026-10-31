@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:mocktail/mocktail.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 const me = UserSummary(id: 'u-me', username: 'budi_santoso', displayName: 'Budi Santoso');
 const alice = UserSummary(id: 'u-a', username: 'alice', displayName: 'Alice');
@@ -77,8 +77,22 @@ class FakeCommentRepository extends Fake implements CommentRepository {
     return [
       comment('c1', depth: 0, path: '000000000001', body: 'Level 1', replyCount: 3),
       comment('c2', parentId: 'c1', depth: 1, path: '000000000001.000000000002', body: 'Level 2', replyCount: 1),
-      comment('c3', parentId: 'c2', depth: 2, path: '000000000001.000000000002.000000000003', body: 'Level 3', replyCount: 1),
-      comment('c4', parentId: 'c3', depth: 3, path: '000000000001.000000000002.000000000003.000000000004', body: 'Level 4', replyCount: 2),
+      comment(
+        'c3',
+        parentId: 'c2',
+        depth: 2,
+        path: '000000000001.000000000002.000000000003',
+        body: 'Level 3',
+        replyCount: 1,
+      ),
+      comment(
+        'c4',
+        parentId: 'c3',
+        depth: 3,
+        path: '000000000001.000000000002.000000000003.000000000004',
+        body: 'Level 4',
+        replyCount: 2,
+      ),
       comment('c2b', parentId: 'c1', depth: 1, path: '000000000001.000000000006', deleted: true),
       comment('t2', depth: 0, path: '000000000007', body: 'Top kedua', author: alice),
     ];
@@ -134,7 +148,7 @@ class FakeChatRepository extends Fake implements ChatRepository {
     roomCursors.add(cursor);
     final ordered = [...rooms]..sort(_listOrder);
     final start = cursor == null ? 0 : ordered.indexWhere((r) => r.id == cursor) + 1;
-    if (start == 0 && cursor != null) throw StateError('cursor room tidak dikenal: $cursor');
+    if (start == 0 && cursor != null) throw StateError('unknown room cursor: $cursor');
     final items = ordered.skip(start).take(limit).toList();
     return Paged(items, nextCursor: items.length < limit ? null : items.last.id);
   }
@@ -189,7 +203,7 @@ class FakeChatRepository extends Fake implements ChatRepository {
 
   static int _indexOf(List<ChatMessage> list, String cursor) {
     final index = list.indexWhere((m) => messageCursor(m) == cursor);
-    if (index < 0) throw StateError('cursor tidak dikenal: $cursor');
+    if (index < 0) throw StateError('unknown cursor: $cursor');
     return index;
   }
 
@@ -274,7 +288,7 @@ class FakeRoomConnection implements ChatRoomConnection {
 class _Unused extends Fake
     implements ProfileRepository, StockRepository, NotificationRepository, ModerationRepository, MediaRepository {}
 
-class FakeDependencies implements OltSocialDependencies {
+class FakeDependencies implements CommunityDependencies {
   FakeDependencies({
     FakeFeedRepository? feed,
     FakeCommentRepository? comments,
@@ -282,7 +296,7 @@ class FakeDependencies implements OltSocialDependencies {
     ChatRepository? chat,
     NotificationRepository? notifications,
     StockRepository? stocks,
-    this.callbacks = const OltSocialCallbacks(),
+    this.callbacks = const CommunityCallbacks(),
   }) : feed = feed ?? FakeFeedRepository(),
        comments = comments ?? FakeCommentRepository(),
        polls = polls ?? FakePollRepository(),
@@ -311,7 +325,7 @@ class FakeDependencies implements OltSocialDependencies {
   @override
   MediaRepository get media => _unused;
   @override
-  final OltSocialCallbacks callbacks;
+  final CommunityCallbacks callbacks;
   @override
   UserSummary? get currentUser => me;
   @override

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:olt_social/olt_social.dart';
-import 'package:olt_social_example/main.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:rendezvous_community_example/main.dart';
 
 Future<void> pumpUntilFound(
   WidgetTester tester,
@@ -53,7 +53,7 @@ Future<void> typeAndPressEnter(WidgetTester tester, Finder field, String text) a
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('login, feed, thread komentar, komentar & chat dengan Enter', (tester) async {
+  testWidgets('login, feed, comment thread, commenting, and chat with Enter', (tester) async {
     final stamp = DateTime.now().millisecondsSinceEpoch;
     await tester.pumpWidget(const ExampleApp());
     await pumpUntilFound(tester, find.text('Budi Santoso'));
@@ -61,14 +61,14 @@ void main() {
     await tester.tap(find.text('Budi Santoso'));
     await pumpUntilFound(
       tester,
-      find.descendant(of: find.byType(OltStreamFeed), matching: find.byIcon(Icons.mode_comment_outlined)),
+      find.descendant(of: find.byType(CommunityStreamFeed), matching: find.byIcon(Icons.mode_comment_outlined)),
     );
 
     final seedPost = find.textContaining('tembus resistance');
     await tester.scrollUntilVisible(
       seedPost,
       300,
-      scrollable: find.descendant(of: find.byType(OltStreamFeed), matching: find.byType(Scrollable)).first,
+      scrollable: find.descendant(of: find.byType(CommunityStreamFeed), matching: find.byType(Scrollable)).first,
     );
 
     await tester.ensureVisible(seedPost.first);
@@ -77,7 +77,7 @@ void main() {
     await tester.tap(seedPost.first);
     await pumpUntilFound(tester, find.textContaining('Divergence itu maksudnya'));
     expect(find.text('Konten ini opini pengguna, bukan rekomendasi investasi.'), findsWidgets);
-    final thread = find.descendant(of: find.byType(OltPostDetail), matching: find.byType(Scrollable)).first;
+    final thread = find.descendant(of: find.byType(CommunityPostDetail), matching: find.byType(Scrollable)).first;
     await tester.scrollUntilVisible(find.text('Lanjutkan thread →'), 200, scrollable: thread);
 
     final commentText = 'Komentar e2e $stamp';
@@ -121,7 +121,7 @@ void main() {
     await pumpUntilGone(tester, find.byType(Dialog));
     await pumpUntilFound(
       tester,
-      find.descendant(of: find.byType(OltStreamFeed), matching: find.textContaining('Post e2e $stamp')),
+      find.descendant(of: find.byType(CommunityStreamFeed), matching: find.textContaining('Post e2e $stamp')),
     );
   });
 }

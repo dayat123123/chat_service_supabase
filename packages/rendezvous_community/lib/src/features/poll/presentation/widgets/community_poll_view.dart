@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/poll/domain/entities/poll.dart';
-import 'package:olt_social/src/features/poll/presentation/cubit/poll_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
+import 'package:rendezvous_community/src/features/poll/presentation/cubit/poll_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 
-class OltPollView extends StatefulWidget {
-  const OltPollView({super.key, required this.postId, required this.poll, this.canVote = true});
+class CommunityPollView extends StatefulWidget {
+  const CommunityPollView({super.key, required this.postId, required this.poll, this.canVote = true});
 
   final String postId;
   final Poll poll;
   final bool canVote;
 
   @override
-  State<OltPollView> createState() => _OltPollViewState();
+  State<CommunityPollView> createState() => _CommunityPollViewState();
 }
 
-class _OltPollViewState extends State<OltPollView> {
+class _CommunityPollViewState extends State<CommunityPollView> {
   late final PollCubit _cubit = PollCubit(
-    polls: OltSocialScope.of(context).polls,
+    polls: CommunityScope.of(context).polls,
     postId: widget.postId,
     poll: widget.poll,
   );
 
   @override
-  void didUpdateWidget(OltPollView oldWidget) {
+  void didUpdateWidget(CommunityPollView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.poll != oldWidget.poll) _cubit.sync(widget.poll);
   }
@@ -42,7 +42,7 @@ class _OltPollViewState extends State<OltPollView> {
       value: _cubit,
       child: BlocConsumer<PollCubit, PollState>(
         listenWhen: (a, b) => a.errorId != b.errorId,
-        listener: (context, state) => showOltError(context, state.error!),
+        listener: (context, state) => showCommunityError(context, state.error!),
         builder: (context, state) => _PollBody(state: state, interactive: widget.canVote),
       ),
     );
@@ -57,7 +57,7 @@ class _PollBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final poll = state.poll;
     final now = DateTime.now();
@@ -142,7 +142,7 @@ class _ResultBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final weight = leading ? FontWeight.w700 : FontWeight.w500;
@@ -173,11 +173,9 @@ class _ResultBar extends StatelessWidget {
                       style: theme.textTheme.bodyMedium?.copyWith(fontWeight: weight),
                     ),
                   ),
-                  if (mine) ...[
-                    Icon(Icons.check_circle, size: 16, color: scheme.primary),
-                    const SizedBox(width: 6),
-                  ],
-                  if (visible) Text('${(share * 100).round()}%', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: weight)),
+                  if (mine) ...[Icon(Icons.check_circle, size: 16, color: scheme.primary), const SizedBox(width: 6)],
+                  if (visible)
+                    Text('${(share * 100).round()}%', style: theme.textTheme.bodyMedium?.copyWith(fontWeight: weight)),
                 ],
               ),
             ),

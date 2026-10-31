@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_list_cubit.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/new_group_dialog.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/olt_chat_room.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/room_tile.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/olt_support_chat.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_list_cubit.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/community_chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/new_group_dialog.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_tile.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/community_support_chat.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
-class OltChatList extends StatelessWidget {
-  const OltChatList({super.key, this.initialRoomId, this.builders});
+class CommunityChatList extends StatelessWidget {
+  const CommunityChatList({super.key, this.initialRoomId, this.builders});
 
   final String? initialRoomId;
-  final OltChatBuilders? builders;
+  final CommunityChatBuilders? builders;
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     return withChatBuilders(
       context,
       builders,
@@ -59,22 +59,27 @@ class _ChatListLayoutState extends State<_ChatListLayout> {
       return;
     }
     if (support) {
-      await openOltSupport(context);
+      await openCommunitySupport(context);
       await cubit.refresh();
       return;
     }
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     final callback = deps.callbacks.onRoomTap;
     if (callback != null) return callback(context, roomId);
     final carry = carryChatBuilders(context);
-    await Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => carry(
-        OltSocialScope(
-          dependencies: deps,
-          child: Scaffold(appBar: AppBar(), body: SafeArea(top: false, child: OltChatRoom(roomId: roomId))),
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => carry(
+          CommunityScope(
+            dependencies: deps,
+            child: Scaffold(
+              appBar: AppBar(),
+              body: SafeArea(top: false, child: CommunityChatRoom(roomId: roomId)),
+            ),
+          ),
         ),
       ),
-    ));
+    );
     await cubit.refresh();
   }
 
@@ -82,8 +87,11 @@ class _ChatListLayoutState extends State<_ChatListLayout> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= OltBreakpoints.wide;
-        final list = _RoomList(selectedRoomId: wide ? _selected : null, onOpen: (room) => _open(context, room, wide: wide));
+        final wide = constraints.maxWidth >= CommunityBreakpoints.wide;
+        final list = _RoomList(
+          selectedRoomId: wide ? _selected : null,
+          onOpen: (room) => _open(context, room, wide: wide),
+        );
         if (!wide) return list;
         return Row(
           children: [
@@ -92,14 +100,17 @@ class _ChatListLayoutState extends State<_ChatListLayout> {
             Expanded(
               child: _selected == null
                   ? buildChatPart(
-                      OltChatBuilders.of(context).empty,
+                      CommunityChatBuilders.of(context).empty,
                       context,
-                      OltEmptyDetails(kind: OltChatEmpty.noRoomSelected, message: context.oltL10n.selectChat),
-                      OltEmptyView(message: context.oltL10n.selectChat, icon: Icons.chat_outlined),
+                      CommunityEmptyDetails(
+                        kind: CommunityChatEmpty.noRoomSelected,
+                        message: context.communityL10n.selectChat,
+                      ),
+                      CommunityEmptyView(message: context.communityL10n.selectChat, icon: Icons.chat_outlined),
                     )
                   : _selectedSupport
-                      ? const OltSupportChat()
-                      : OltChatRoom(key: ValueKey(_selected), roomId: _selected!),
+                  ? const CommunitySupportChat()
+                  : CommunityChatRoom(key: ValueKey(_selected), roomId: _selected!),
             ),
           ],
         );
@@ -147,8 +158,8 @@ class _RoomListState extends State<_RoomList> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
-    final builders = OltChatBuilders.of(context);
+    final l10n = context.communityL10n;
+    final builders = CommunityChatBuilders.of(context);
     return BlocBuilder<ChatListCubit, ChatListState>(
       builder: (context, state) {
         final cubit = context.read<ChatListCubit>();
@@ -156,20 +167,20 @@ class _RoomListState extends State<_RoomList> {
           LoadStatus.initial || LoadStatus.loading => buildChatPart(
             builders.loading,
             context,
-            const OltLoadingDetails(OltChatLoad.rooms),
-            const OltSkeleton(itemCount: 6),
+            const CommunityLoadingDetails(CommunityChatLoad.rooms),
+            const CommunitySkeleton(itemCount: 6),
           ),
           LoadStatus.failure => buildChatPart(
             builders.error,
             context,
-            OltErrorDetails(error: state.error!, message: l10n.errorMessage(state.error!), onRetry: cubit.load),
-            OltErrorView(error: state.error!, onRetry: cubit.load),
+            CommunityErrorDetails(error: state.error!, message: l10n.errorMessage(state.error!), onRetry: cubit.load),
+            CommunityErrorView(error: state.error!, onRetry: cubit.load),
           ),
           LoadStatus.ready when state.rooms.isEmpty => buildChatPart(
             builders.empty,
             context,
-            OltEmptyDetails(kind: OltChatEmpty.rooms, message: l10n.noChats),
-            OltEmptyView(message: l10n.noChats, icon: Icons.chat_bubble_outline),
+            CommunityEmptyDetails(kind: CommunityChatEmpty.rooms, message: l10n.noChats),
+            CommunityEmptyView(message: l10n.noChats, icon: Icons.chat_bubble_outline),
           ),
           LoadStatus.ready => RefreshIndicator(
             onRefresh: cubit.refresh,
@@ -182,8 +193,11 @@ class _RoomListState extends State<_RoomList> {
                   return buildChatPart(
                     builders.loading,
                     context,
-                    const OltLoadingDetails(OltChatLoad.moreRooms),
-                    const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator())),
+                    const CommunityLoadingDetails(CommunityChatLoad.moreRooms),
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
                   );
                 }
                 final room = state.rooms[i];
@@ -204,7 +218,7 @@ class _RoomListState extends State<_RoomList> {
             if (mounted) _loadMoreNearEnd();
           });
         }
-        final header = OltChatListHeaderDetails(
+        final header = CommunityChatListHeaderDetails(
           title: l10n.chats,
           onNewGroup: () => _newGroup(context, cubit),
           onRefresh: cubit.refresh,
@@ -223,7 +237,7 @@ class _RoomListState extends State<_RoomList> {
 class _DefaultListHeader extends StatelessWidget {
   const _DefaultListHeader({required this.details});
 
-  final OltChatListHeaderDetails details;
+  final CommunityChatListHeaderDetails details;
 
   @override
   Widget build(BuildContext context) {
@@ -233,7 +247,7 @@ class _DefaultListHeader extends StatelessWidget {
         children: [
           Expanded(child: Text(details.title, style: Theme.of(context).textTheme.titleLarge)),
           IconButton(
-            tooltip: context.oltL10n.newGroup,
+            tooltip: context.communityL10n.newGroup,
             onPressed: details.onNewGroup,
             icon: const Icon(Icons.group_add_outlined),
           ),

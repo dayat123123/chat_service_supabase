@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
-class OltEmptyView extends StatelessWidget {
-  const OltEmptyView({super.key, required this.message, this.icon = Icons.forum_outlined, this.action});
+class CommunityEmptyView extends StatelessWidget {
+  const CommunityEmptyView({super.key, required this.message, this.icon = Icons.forum_outlined, this.action});
 
   final String message;
   final IconData icon;
@@ -28,15 +28,15 @@ class OltEmptyView extends StatelessWidget {
   }
 }
 
-class OltErrorView extends StatelessWidget {
-  const OltErrorView({super.key, required this.error, this.onRetry});
+class CommunityErrorView extends StatelessWidget {
+  const CommunityErrorView({super.key, required this.error, this.onRetry});
 
   final Object error;
   final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     return Center(
       child: Padding(
@@ -58,17 +58,17 @@ class OltErrorView extends StatelessWidget {
   }
 }
 
-class OltSkeleton extends StatefulWidget {
-  const OltSkeleton({super.key, this.itemCount = 5, this.itemBuilder});
+class CommunitySkeleton extends StatefulWidget {
+  const CommunitySkeleton({super.key, this.itemCount = 5, this.itemBuilder});
 
   final int itemCount;
   final WidgetBuilder? itemBuilder;
 
   @override
-  State<OltSkeleton> createState() => _OltSkeletonState();
+  State<CommunitySkeleton> createState() => _CommunitySkeletonState();
 }
 
-class _OltSkeletonState extends State<OltSkeleton> with SingleTickerProviderStateMixin {
+class _CommunitySkeletonState extends State<CommunitySkeleton> with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 900),

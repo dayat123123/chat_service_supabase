@@ -1,0 +1,48 @@
+name: rendezvous-community
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/rendezvous_community/**
+      - .github/workflows/rendezvous-community.yml
+  pull_request:
+    paths:
+      - packages/rendezvous_community/**
+      - .github/workflows/rendezvous-community.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rendezvous-community-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: packages/rendezvous_community
+
+env:
+  FLUTTER_VERSION: 3.44.1
+
+jobs:
+  verify:
+    name: Comments, logging, format, analyze, tests, licenses
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Flutter ${{ env.FLUTTER_VERSION }}
+        working-directory: .
+        run: |
+          git clone --depth 1 --branch "$FLUTTER_VERSION" https://github.com/flutter/flutter.git "$RUNNER_TEMP/flutter"
+          echo "$RUNNER_TEMP/flutter/bin" >> "$GITHUB_PATH"
+      - run: flutter pub get
+      - run: dart run tool/check_comments.dart
+      - run: dart run tool/check_logging.dart
+      - run: dart format --line-length 120 --output=none --set-exit-if-changed lib test tool example/lib example/test example/integration_test
+      - run: flutter analyze
+      - run: flutter analyze
+        working-directory: packages/rendezvous_community/example
+      - run: flutter test
+      - run: dart run tool/license_audit.dart

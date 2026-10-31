@@ -1,13 +1,13 @@
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/feed/data/models/feed_post_model.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/domain/repositories/feed_repository.dart';
-import 'package:olt_social/src/features/poll/domain/entities/poll.dart';
-import 'package:olt_social/src/shared/data/models/attachment_model.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/feed/data/models/feed_post_model.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
+import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -58,7 +58,7 @@ class FeedRepositoryImpl implements FeedRepository {
       'p_client_id': clientId ?? _uuid.v4(),
       'p_poll': poll == null ? null : {'options': poll.cleanOptions, 'duration_minutes': poll.duration.minutes},
     });
-    if (rows.isEmpty) throw const OltSocialException(OltSocialErrorKind.notFound);
+    if (rows.isEmpty) throw const CommunityException(CommunityErrorKind.notFound);
     return FeedPostModel.fromJson(rows.first).toEntity();
   }
 

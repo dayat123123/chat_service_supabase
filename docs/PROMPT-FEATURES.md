@@ -8,7 +8,7 @@
 
 ## 0. Prinsip
 
-- Package `olt_social` tetap **terpisah dari kode trading**. Data pasar dan portofolio masuk lewat **interface / adapter**, bukan dengan memanggil kode OLT langsung.
+- Package `rendezvous_community` tetap **terpisah dari kode trading**. Data pasar dan portofolio masuk lewat **interface / adapter**, bukan dengan memanggil kode OLT langsung.
 - **Data yang memengaruhi kredibilitas tidak boleh berasal dari client**, karena client bisa dimanipulasi. Contohnya harga saat posting, badge holder, dan badge verifikasi. Data tersebut diambil atau diverifikasi **di sisi server**.
 - Setiap fitur baru berada di balik **feature flag** (bagian 6), supaya bisa dirilis bertahap dan dimatikan seketika.
 - Setiap fitur baru wajib punya RLS, rate limit, tes, dan dokumentasi.
@@ -283,7 +283,7 @@ Akun bot resmi untuk aksi korporasi, berita, dan pengumuman:
 - Sumber data: `[jelaskan sumber berita/aksi korporasi]`.
 
 ### 3.6 Share Chart dari OLT
-OLT bisa membuka composer dengan gambar chart yang sudah dirender, misalnya `OltComposePost(initialStock: 'BBCA', initialImage: bytes)`.
+OLT bisa membuka composer dengan gambar chart yang sudah dirender, misalnya `CommunityComposePost(initialStock: 'BBCA', initialImage: bytes)`.
 
 Gambar diunggah lewat jalur upload yang sama: validasi, penghapusan metadata, dan imgproxy.
 

@@ -1,49 +1,49 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/app/olt_support_scope.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/chat/data/realtime/room_connection.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/olt_chat_room.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
-import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/support_header.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/support_topic_picker.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/app/community_support_scope.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/chat/data/realtime/room_connection.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/community_chat_room.dart';
+import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
+import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/support_header.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/support_topic_picker.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
-class OltSupportTickets extends StatefulWidget {
-  const OltSupportTickets({super.key});
+class CommunitySupportTickets extends StatefulWidget {
+  const CommunitySupportTickets({super.key});
 
   @override
-  State<OltSupportTickets> createState() => _OltSupportTicketsState();
+  State<CommunitySupportTickets> createState() => _CommunitySupportTicketsState();
 }
 
-class _OltSupportTicketsState extends State<OltSupportTickets> {
-  late Future<List<SupportTicket>> _tickets = OltSupportScope.of(context).support.myTickets();
+class _CommunitySupportTicketsState extends State<CommunitySupportTickets> {
+  late Future<List<SupportTicket>> _tickets = CommunitySupportScope.of(context).support.myTickets();
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return FutureBuilder<List<SupportTicket>>(
       future: _tickets,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return OltErrorView(
+          return CommunityErrorView(
             error: snapshot.error!,
-            onRetry: () => setState(() => _tickets = OltSupportScope.of(context).support.myTickets()),
+            onRetry: () => setState(() => _tickets = CommunitySupportScope.of(context).support.myTickets()),
           );
         }
-        if (!snapshot.hasData) return const OltSkeleton(itemCount: 4);
+        if (!snapshot.hasData) return const CommunitySkeleton(itemCount: 4);
         final tickets = snapshot.data!;
-        if (tickets.isEmpty) return OltEmptyView(message: l10n.supportNoTickets, icon: Icons.inbox_outlined);
+        if (tickets.isEmpty) return CommunityEmptyView(message: l10n.supportNoTickets, icon: Icons.inbox_outlined);
         return ListView.separated(
           itemCount: tickets.length,
           separatorBuilder: (_, _) => const Divider(height: 1),
@@ -52,10 +52,12 @@ class _OltSupportTicketsState extends State<OltSupportTickets> {
             return ListTile(
               leading: Icon(supportTopicIcon(ticket.topic)),
               title: Text('${ticket.ticketNumber} · ${ticket.topicName ?? ticket.topic}'),
-              subtitle: Text([
-                l10n.supportTicketMeta(l10n.dayLabel(ticket.createdAt), supportStatusText(l10n, ticket)),
-                if (ticket.rating != null) l10n.supportRating(ticket.rating!),
-              ].join(' · ')),
+              subtitle: Text(
+                [
+                  l10n.supportTicketMeta(l10n.dayLabel(ticket.createdAt), supportStatusText(l10n, ticket)),
+                  if (ticket.rating != null) l10n.supportRating(ticket.rating!),
+                ].join(' · '),
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _openTranscript(context, ticket),
             );
@@ -66,25 +68,27 @@ class _OltSupportTicketsState extends State<OltSupportTickets> {
   }
 
   Future<void> _openTranscript(BuildContext context, SupportTicket ticket) {
-    final deps = OltSocialScope.of(context);
-    final support = OltSupportScope.of(context).support;
+    final deps = CommunityScope.of(context);
+    final support = CommunitySupportScope.of(context).support;
     final carry = carryChatBuilders(context);
-    return Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => carry(
-        OltSocialScope(
-          dependencies: deps,
-          child: Scaffold(
-            appBar: AppBar(title: Text('${ticket.ticketNumber} · ${ticket.topicName ?? ticket.topic}')),
-            body: OltChatRoom(
-              roomId: ticket.roomId,
-              repository: _TranscriptRepository(support, ticket),
-              showHeader: false,
-              composer: const SizedBox.shrink(),
+    return Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => carry(
+          CommunityScope(
+            dependencies: deps,
+            child: Scaffold(
+              appBar: AppBar(title: Text('${ticket.ticketNumber} · ${ticket.topicName ?? ticket.topic}')),
+              body: CommunityChatRoom(
+                roomId: ticket.roomId,
+                repository: _TranscriptRepository(support, ticket),
+                showHeader: false,
+                composer: const SizedBox.shrink(),
+              ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 }
 
@@ -94,7 +98,7 @@ class _TranscriptRepository implements ChatRepository {
   final SupportRepository _support;
   final SupportTicket _ticket;
 
-  static const _readOnly = OltSocialException(OltSocialErrorKind.forbidden, code: 'transcript_read_only');
+  static const _readOnly = CommunityException(CommunityErrorKind.forbidden, code: 'transcript_read_only');
 
   ChatRoom get _room =>
       ChatRoom(id: _ticket.roomId, type: RoomType.support, createdAt: _ticket.createdAt, lastReadAt: _ticket.createdAt);

@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/notifications/domain/entities/app_notification.dart';
-import 'package:olt_social/src/features/notifications/domain/repositories/notification_repository.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
 part 'notifications_cubit.freezed.dart';
 
@@ -72,10 +72,12 @@ class NotificationsCubit extends Cubit<NotificationsState> {
   Future<void> markRead(AppNotification n) async {
     if (n.isRead) return;
     final now = DateTime.now();
-    emit(state.copyWith(
-      items: [for (final i in state.items) i.id == n.id ? i.copyWith(readAt: now) : i],
-      unread: state.unread > 0 ? state.unread - 1 : 0,
-    ));
+    emit(
+      state.copyWith(
+        items: [for (final i in state.items) i.id == n.id ? i.copyWith(readAt: now) : i],
+        unread: state.unread > 0 ? state.unread - 1 : 0,
+      ),
+    );
     try {
       await _repo.markRead(ids: [n.id]);
     } catch (_) {}

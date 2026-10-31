@@ -14,7 +14,7 @@ Bagian baru yang dibangun:
 1. **Room bertipe `support`**: setiap nasabah punya **satu room CS permanen** (seperti chat WhatsApp dengan akun resmi), sehingga riwayat percakapan selalu menyambung.
 2. **Sesi CS (`support_sessions`)**: setiap kali nasabah butuh bantuan, dibuat satu sesi di dalam room tersebut. Sesi berstatus: antre → ditawarkan ke agen → aktif → selesai.
 3. **Matching engine**: menentukan **agen CS mana** yang menangani sesi berdasarkan topik, keahlian, ketersediaan, beban, bahasa, prioritas, dan riwayat.
-4. **Panel CS**: aplikasi chat untuk agen dan supervisor, memakai **widget chat yang sama** dari `olt_social`.
+4. **Panel CS**: aplikasi chat untuk agen dan supervisor, memakai **widget chat yang sama** dari `rendezvous_community`.
 
 **Prinsip:**
 - Maksimalkan pemakaian ulang kode chat yang ada. Jangan membuat sistem pesan kedua.
@@ -189,7 +189,7 @@ Pilih skor tertinggi. Kalau skornya sama, pilih yang paling lama tidak ditugaska
 
 ## 4. Panel CS (Agent Console)
 
-Dibangun sebagai **Flutter web** (`apps/cs-console`), memakai widget chat dari `olt_social`, dan hanya bisa diakses lewat **VPN + akun staf dengan 2FA**. Bisa digabung dengan panel admin/moderasi (`apps/admin`) sebagai menu terpisah sesuai role. Pilih yang paling rapi dan jelaskan alasannya.
+Dibangun sebagai **Flutter web** (`apps/cs-console`), memakai widget chat dari `rendezvous_community`, dan hanya bisa diakses lewat **VPN + akun staf dengan 2FA**. Bisa digabung dengan panel admin/moderasi (`apps/admin`) sebagai menu terpisah sesuai role. Pilih yang paling rapi dan jelaskan alasannya.
 
 ### 4.1 Tampilan agen
 - **Bar atas**:

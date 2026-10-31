@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import 'fake_olt_auth.dart';
 import 'main.dart';
@@ -36,7 +36,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    unawaited(_notifications.start(OltSocial.instance.support.notices()));
+    unawaited(_notifications.start(RendezvousCommunity.instance.support.notices()));
   }
 
   @override
@@ -46,7 +46,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openSupport({String? topic, String? screen}) async {
-    if (OltBreakpoints.isWide(context)) {
+    if (CommunityBreakpoints.isWide(context)) {
       setState(() {
         _supportOpen = topic != null || !_supportOpen;
         _supportTopic = topic;
@@ -56,20 +56,20 @@ class _HomePageState extends State<HomePage> {
       return;
     }
     _supportRoute = true;
-    await openOltSupport(context, topic: topic, screen: screen);
+    await openCommunitySupport(context, topic: topic, screen: screen);
     _supportRoute = false;
   }
 
   Future<void> _logout() async {
     widget.auth.logout();
-    await OltSocial.instance.signOut();
+    await RendezvousCommunity.instance.signOut();
     if (mounted) Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final wide = OltBreakpoints.isWide(context);
-    final l10n = context.oltL10n;
+    final wide = CommunityBreakpoints.isWide(context);
+    final l10n = context.communityL10n;
     final destinations = [
       (Icons.dynamic_feed_outlined, 'Stream'),
       (Icons.show_chart, 'Saham'),
@@ -82,9 +82,9 @@ class _HomePageState extends State<HomePage> {
     Widget icon(int i) {
       final widget = Icon(destinations[i].$1);
       return switch (i) {
-        2 => OltChatBadge(child: widget),
-        3 => OltNotificationBadge(child: widget),
-        _supportIndex => OltSupportBadge(child: widget),
+        2 => CommunityChatBadge(child: widget),
+        3 => CommunityNotificationBadge(child: widget),
+        _supportIndex => CommunitySupportBadge(child: widget),
         _ => widget,
       };
     }
@@ -98,7 +98,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     final body = switch (_index) {
-      0 => wide ? const _TwoPaneStream() : const OltStreamFeed(),
+      0 => wide ? const _TwoPaneStream() : const CommunityStreamFeed(),
       1 => Column(
         children: [
           Padding(
@@ -124,23 +124,32 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          Expanded(child: OltStockFeed(key: ValueKey(_stock), stockCode: _stock, stockName: oltStocks[_stock])),
+          Expanded(
+            child: CommunityStockFeed(key: ValueKey(_stock), stockCode: _stock, stockName: oltStocks[_stock]),
+          ),
         ],
       ),
-      2 => const OltChatList(),
-      3 => const OltNotificationList(),
-      _ => OltUserProfile(userId: OltSocial.instance.currentUser?.id, username: OltSocial.instance.currentUser?.username),
+      2 => const CommunityChatList(),
+      3 => const CommunityNotificationList(),
+      _ => CommunityUserProfile(
+        userId: RendezvousCommunity.instance.currentUser?.id,
+        username: RendezvousCommunity.instance.currentUser?.username,
+      ),
     };
     final mobileActions = [
       IconButton(
-        tooltip: context.oltL10n.supportTitle,
+        tooltip: context.communityL10n.supportTitle,
         onPressed: _openSupport,
-        icon: const OltSupportBadge(child: Icon(Icons.support_agent_outlined)),
+        icon: const CommunitySupportBadge(child: Icon(Icons.support_agent_outlined)),
       ),
     ];
 
     final actions = [
-      IconButton(tooltip: 'Tema terang/gelap', onPressed: () => toggleTheme(context), icon: const Icon(Icons.brightness_6)),
+      IconButton(
+        tooltip: 'Tema terang/gelap',
+        onPressed: () => toggleTheme(context),
+        icon: const Icon(Icons.brightness_6),
+      ),
       IconButton(tooltip: 'Bahasa ID/EN', onPressed: () => toggleLocale(context), icon: const Icon(Icons.translate)),
       IconButton(
         tooltip: 'Gaya chat bawaan/kustom',
@@ -161,12 +170,15 @@ class _HomePageState extends State<HomePage> {
                 labelType: NavigationRailLabelType.all,
                 leading: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: OltAvatar(user: OltSocial.instance.currentUser),
+                  child: CommunityAvatar(user: RendezvousCommunity.instance.currentUser),
                 ),
                 trailing: Expanded(
                   child: Align(
                     alignment: Alignment.bottomCenter,
-                    child: Padding(padding: const EdgeInsets.only(bottom: 8), child: Column(mainAxisSize: MainAxisSize.min, children: actions)),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: actions),
+                    ),
                   ),
                 ),
                 destinations: [
@@ -180,7 +192,7 @@ class _HomePageState extends State<HomePage> {
                 const VerticalDivider(width: 1),
                 SizedBox(
                   width: 420,
-                  child: OltSupportChat(
+                  child: CommunitySupportChat(
                     key: ValueKey(_supportPanel),
                     topic: _supportTopic,
                     screen: _supportScreen,
@@ -220,14 +232,14 @@ class _TwoPaneStreamState extends State<_TwoPaneStream> {
 
   @override
   Widget build(BuildContext context) {
-    final base = OltSocial.instance;
+    final base = RendezvousCommunity.instance;
     return Row(
       children: [
         Expanded(
           flex: 5,
-          child: OltSocialScope(
+          child: CommunityScope(
             dependencies: _PostTapOverride(base, (postId) => setState(() => _selectedPost = postId)),
-            child: const OltStreamFeed(),
+            child: const CommunityStreamFeed(),
           ),
         ),
         const VerticalDivider(width: 1),
@@ -235,21 +247,21 @@ class _TwoPaneStreamState extends State<_TwoPaneStream> {
           flex: 6,
           child: _selectedPost == null
               ? const OltEmptyHint()
-              : OltPostDetail(key: ValueKey(_selectedPost), postId: _selectedPost!),
+              : CommunityPostDetail(key: ValueKey(_selectedPost), postId: _selectedPost!),
         ),
       ],
     );
   }
 }
 
-class _PostTapOverride implements OltSocialDependencies {
+class _PostTapOverride implements CommunityDependencies {
   _PostTapOverride(this._base, this._onPost);
 
-  final OltSocialDependencies _base;
+  final CommunityDependencies _base;
   final ValueChanged<String> _onPost;
 
   @override
-  OltSocialCallbacks get callbacks => OltSocialCallbacks(
+  CommunityCallbacks get callbacks => CommunityCallbacks(
     onStockTap: _base.callbacks.onStockTap,
     onUserTap: _base.callbacks.onUserTap,
     onRoomTap: _base.callbacks.onRoomTap,

@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/moderation/domain/entities/report.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 
 Future<bool> showReportDialog(BuildContext context, {required ReportTarget target, required String targetId}) async {
-  final deps = OltSocialScope.of(context);
+  final deps = CommunityScope.of(context);
   final sent = await showDialog<bool>(
     context: context,
-    builder: (context) => OltSocialScope(
+    builder: (context) => CommunityScope(
       dependencies: deps,
       child: _ReportDialog(target: target, targetId: targetId),
     ),
   );
-  if ((sent ?? false) && context.mounted) showOltMessage(context, context.oltL10n.reportSent);
+  if ((sent ?? false) && context.mounted) showCommunityMessage(context, context.communityL10n.reportSent);
   return sent ?? false;
 }
 
@@ -46,7 +46,7 @@ class _ReportDialogState extends State<_ReportDialog> {
       _error = null;
     });
     try {
-      await OltSocialScope.of(context).moderation.report(
+      await CommunityScope.of(context).moderation.report(
         target: widget.target,
         targetId: widget.targetId,
         reason: _reason,
@@ -65,7 +65,7 @@ class _ReportDialogState extends State<_ReportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     String label(ReportReason r) => switch (r) {
       ReportReason.spam => l10n.reasonSpam,
       ReportReason.abuse => l10n.reasonAbuse,
@@ -113,15 +113,15 @@ class _ReportDialogState extends State<_ReportDialog> {
 }
 
 Future<bool> blockUserWithConfirm(BuildContext context, UserSummary user) async {
-  final l10n = context.oltL10n;
-  if (!await confirmOlt(context, l10n.blockConfirm(user.name), confirmLabel: l10n.block)) return false;
+  final l10n = context.communityL10n;
+  if (!await confirmCommunityAction(context, l10n.blockConfirm(user.name), confirmLabel: l10n.block)) return false;
   if (!context.mounted) return false;
   try {
-    await OltSocialScope.of(context).profiles.block(user.id);
-    if (context.mounted) showOltMessage(context, l10n.blocked(user.name));
+    await CommunityScope.of(context).profiles.block(user.id);
+    if (context.mounted) showCommunityMessage(context, l10n.blocked(user.name));
     return true;
   } catch (e) {
-    if (context.mounted) showOltError(context, e);
+    if (context.mounted) showCommunityError(context, e);
     return false;
   }
 }

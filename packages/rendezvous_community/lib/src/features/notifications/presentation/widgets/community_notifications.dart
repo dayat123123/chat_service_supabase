@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/notifications/domain/entities/app_notification.dart';
-import 'package:olt_social/src/features/notifications/presentation/cubit/notifications_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
+import 'package:rendezvous_community/src/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
-class OltNotificationList extends StatelessWidget {
-  const OltNotificationList({super.key, this.onNotificationTap});
+class CommunityNotificationList extends StatelessWidget {
+  const CommunityNotificationList({super.key, this.onNotificationTap});
 
   final void Function(BuildContext context, AppNotification notification)? onNotificationTap;
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     return BlocProvider(
       create: (_) => NotificationsCubit(notifications: deps.notifications)..load(),
       child: BlocBuilder<NotificationsCubit, NotificationsState>(
         builder: (context, state) {
-          final l10n = context.oltL10n;
+          final l10n = context.communityL10n;
           final cubit = context.read<NotificationsCubit>();
           return switch (state.status) {
-            LoadStatus.initial || LoadStatus.loading => const OltSkeleton(),
-            LoadStatus.failure => OltErrorView(error: state.error!, onRetry: cubit.load),
+            LoadStatus.initial || LoadStatus.loading => const CommunitySkeleton(),
+            LoadStatus.failure => CommunityErrorView(error: state.error!, onRetry: cubit.load),
             LoadStatus.ready => Column(
               children: [
                 Padding(
@@ -43,7 +43,7 @@ class OltNotificationList extends StatelessWidget {
                 ),
                 Expanded(
                   child: state.items.isEmpty
-                      ? OltEmptyView(message: l10n.noNotifications, icon: Icons.notifications_none)
+                      ? CommunityEmptyView(message: l10n.noNotifications, icon: Icons.notifications_none)
                       : NotificationListener<ScrollEndNotification>(
                           onNotification: (n) {
                             if (n.metrics.extentAfter < 300) cubit.loadMore();
@@ -78,11 +78,11 @@ class OltNotificationList extends StatelessWidget {
     final postId = n.postId;
     final roomId = n.roomId;
     if (n.type == NotificationType.message && roomId != null) {
-      OltNavigator.openRoom(context, roomId);
+      CommunityNavigator.openRoom(context, roomId);
     } else if (postId != null) {
-      OltNavigator.openPost(context, postId);
+      CommunityNavigator.openPost(context, postId);
     } else if (n.actor != null) {
-      OltNavigator.openUser(context, n.actor!);
+      CommunityNavigator.openUser(context, n.actor!);
     }
   }
 }
@@ -96,7 +96,7 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = notification;
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final name = n.actor?.name ?? l10n.someone;
     final title = switch (n.type) {
@@ -119,14 +119,14 @@ class _NotificationTile extends StatelessWidget {
       leading: Stack(
         clipBehavior: Clip.none,
         children: [
-          OltAvatar(user: n.actor),
+          CommunityAvatar(user: n.actor),
           Positioned(
             right: -4,
             bottom: -4,
             child: CircleAvatar(
               radius: 10,
               backgroundColor: theme.colorScheme.surface,
-              child: Icon(icon, size: 13, color: OltSocialTheme.of(context).link),
+              child: Icon(icon, size: 13, color: CommunityTheme.of(context).link),
             ),
           ),
         ],
@@ -140,14 +140,14 @@ class _NotificationTile extends StatelessWidget {
   }
 }
 
-class OltNotificationBadge extends StatelessWidget {
-  const OltNotificationBadge({super.key, required this.child});
+class CommunityNotificationBadge extends StatelessWidget {
+  const CommunityNotificationBadge({super.key, required this.child});
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     return BlocProvider(
       create: (_) => NotificationsCubit(notifications: deps.notifications, countOnly: true)..load(),
       child: BlocBuilder<NotificationsCubit, NotificationsState>(

@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/features/chat/data/models/chat_models.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/features/chat/data/models/chat_models.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RoomChannelHub {
@@ -17,9 +17,7 @@ class RoomChannelHub {
   Stream<RoomSignal> watchAll(Iterable<String> roomIds, UserSummary me) {
     final ids = roomIds.toSet();
     return Stream.multi((multi) {
-      final subscriptions = [
-        for (final id in ids) watch(id, me).listen(multi.add, onError: multi.addError),
-      ];
+      final subscriptions = [for (final id in ids) watch(id, me).listen(multi.add, onError: multi.addError)];
       multi.onCancel = () => Future.wait([for (final s in subscriptions) s.cancel()]);
     });
   }
@@ -86,11 +84,17 @@ class _RoomChannel {
     final data = _unwrap(payload);
     final userId = data['user_id'] as String?;
     if (userId == null || userId == me.id) return;
-    _emit(RoomTyping(
-      roomId,
-      UserSummary(id: userId, username: data['username'] as String? ?? '', displayName: data['display_name'] as String?),
-      isTyping: data['typing'] == true,
-    ));
+    _emit(
+      RoomTyping(
+        roomId,
+        UserSummary(
+          id: userId,
+          username: data['username'] as String? ?? '',
+          displayName: data['display_name'] as String?,
+        ),
+        isTyping: data['typing'] == true,
+      ),
+    );
   }
 
   void _onReceipt(Map<String, dynamic> payload) {
@@ -100,12 +104,10 @@ class _RoomChannel {
   }
 
   Future<void> sendTyping(UserSummary me, {required bool isTyping}) async {
-    await _channel?.sendBroadcastMessage(event: 'typing', payload: {
-      'user_id': me.id,
-      'username': me.username,
-      'display_name': me.displayName,
-      'typing': isTyping,
-    });
+    await _channel?.sendBroadcastMessage(
+      event: 'typing',
+      payload: {'user_id': me.id, 'username': me.username, 'display_name': me.displayName, 'typing': isTyping},
+    );
   }
 
   static Map<String, dynamic> _unwrap(Map<String, dynamic> payload) {

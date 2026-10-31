@@ -1,18 +1,18 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/src/features/poll/domain/entities/poll.dart';
+import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
 
 void main() {
   group('PollDraft', () {
-    test('draf baru belum valid karena pilihan masih kosong', () {
+    test('a new draft is invalid because the options are still empty', () {
       expect(const PollDraft().isValid, isFalse);
     });
 
-    test('2 sampai 4 pilihan berbeda valid', () {
+    test('2 to 4 distinct options are valid', () {
       expect(const PollDraft(options: ['Naik', 'Turun']).isValid, isTrue);
       expect(const PollDraft(options: ['A', 'B', 'C', 'D']).isValid, isTrue);
     });
 
-    test('pilihan kembar, kosong, terlalu panjang, atau terlalu banyak ditolak', () {
+    test('rejects duplicate, empty, too long, or too many options', () {
       expect(const PollDraft(options: ['Naik', ' naik ']).isValid, isFalse);
       expect(const PollDraft(options: ['Naik', '  ']).isValid, isFalse);
       expect(PollDraft(options: ['Naik', 'x' * 41]).isValid, isFalse);
@@ -20,7 +20,7 @@ void main() {
       expect(const PollDraft(options: ['A']).isValid, isFalse);
     });
 
-    test('cleanOptions memangkas spasi', () {
+    test('cleanOptions trims whitespace', () {
       expect(const PollDraft(options: [' Naik ', 'Turun']).cleanOptions, ['Naik', 'Turun']);
     });
   });
@@ -38,16 +38,16 @@ void main() {
       ],
     );
 
-    test('share dan pilihan teratas', () {
+    test('share and top option', () {
       expect(poll.share(poll.options.first), 0.75);
       expect(poll.leadingOptionId, 'a');
     });
 
-    test('tanpa hasil terlihat tidak ada pilihan teratas', () {
+    test('has no top option when results are hidden', () {
       expect(poll.copyWith(resultsVisible: false).leadingOptionId, isNull);
     });
 
-    test('polling dianggap selesai setelah ends_at walau flag closed belum diperbarui', () {
+    test('treats the poll as finished after ends_at even before the closed flag is updated', () {
       expect(poll.isClosedAt(endsAt.subtract(const Duration(minutes: 1))), isFalse);
       expect(poll.isClosedAt(endsAt), isTrue);
     });

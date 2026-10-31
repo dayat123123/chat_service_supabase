@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 
 class ReceiptIcon extends StatelessWidget {
   const ReceiptIcon({
@@ -20,7 +20,7 @@ class ReceiptIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return switch (sendStatus) {
       MessageStatus.sending => Icon(Icons.schedule, size: size - 2, color: color, semanticLabel: l10n.messageSending),
       MessageStatus.failed => Icon(
@@ -36,7 +36,7 @@ class ReceiptIcon extends StatelessWidget {
         ReceiptStatus.read => Icon(
           Icons.done_all,
           size: size,
-          color: OltSocialTheme.of(context).readReceipt,
+          color: CommunityTheme.of(context).readReceipt,
           semanticLabel: l10n.messageRead,
         ),
       },

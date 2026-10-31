@@ -1,18 +1,14 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/poll/domain/entities/poll.dart';
-import 'package:olt_social/src/features/poll/domain/repositories/poll_repository.dart';
+import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
+import 'package:rendezvous_community/src/features/poll/domain/repositories/poll_repository.dart';
 
 part 'poll_cubit.freezed.dart';
 
 @freezed
 abstract class PollState with _$PollState {
-  const factory PollState({
-    required Poll poll,
-    String? pendingOptionId,
-    Object? error,
-    @Default(0) int errorId,
-  }) = _PollState;
+  const factory PollState({required Poll poll, String? pendingOptionId, Object? error, @Default(0) int errorId}) =
+      _PollState;
 }
 
 class PollCubit extends Cubit<PollState> {
@@ -24,8 +20,7 @@ class PollCubit extends Cubit<PollState> {
   final String postId;
   final DateTime Function() _clock;
 
-  bool get canVote =>
-      !state.poll.hasVoted && !state.poll.isClosedAt(_clock()) && state.pendingOptionId == null;
+  bool get canVote => !state.poll.hasVoted && !state.poll.isClosedAt(_clock()) && state.pendingOptionId == null;
 
   void sync(Poll poll) {
     if (state.pendingOptionId == null && poll != state.poll) emit(state.copyWith(poll: poll));

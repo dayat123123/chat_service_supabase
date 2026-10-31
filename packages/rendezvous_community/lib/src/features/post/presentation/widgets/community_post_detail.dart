@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/feed/presentation/widgets/post_card.dart';
-import 'package:olt_social/src/features/post/presentation/cubit/comment_thread_cubit.dart';
-import 'package:olt_social/src/features/post/presentation/widgets/comment_tree.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_composer_field.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_disclaimer.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
+import 'package:rendezvous_community/src/features/post/presentation/cubit/comment_thread_cubit.dart';
+import 'package:rendezvous_community/src/features/post/presentation/widgets/comment_tree.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_composer_field.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_disclaimer.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
-class OltPostDetail extends StatelessWidget {
-  const OltPostDetail({super.key, required this.postId, this.rootCommentId});
+class CommunityPostDetail extends StatelessWidget {
+  const CommunityPostDetail({super.key, required this.postId, this.rootCommentId});
 
   final String postId;
   final String? rootCommentId;
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
-    final maxLevels = OltSocialTheme.of(context).maxThreadIndentLevels;
+    final deps = CommunityScope.of(context);
+    final maxLevels = CommunityTheme.of(context).maxThreadIndentLevels;
     return BlocProvider(
       create: (_) => CommentThreadCubit(
         feed: deps.feed,
@@ -43,20 +43,20 @@ class _PostDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return BlocConsumer<CommentThreadCubit, ThreadState>(
       listenWhen: (a, b) => a.actionErrorId != b.actionErrorId,
-      listener: (context, state) => showOltError(context, state.actionError!),
+      listener: (context, state) => showCommunityError(context, state.actionError!),
       builder: (context, state) {
         final cubit = context.read<CommentThreadCubit>();
         switch (state.status) {
           case LoadStatus.initial || LoadStatus.loading:
-            return const OltSkeleton(itemCount: 4);
+            return const CommunitySkeleton(itemCount: 4);
           case LoadStatus.failure:
-            return OltErrorView(error: state.error!, onRetry: cubit.load);
+            return CommunityErrorView(error: state.error!, onRetry: cubit.load);
           case LoadStatus.ready:
             final post = state.post;
-            if (post == null) return OltEmptyView(message: l10n.postNotFound, icon: Icons.search_off);
+            if (post == null) return CommunityEmptyView(message: l10n.postNotFound, icon: Icons.search_off);
         }
         final post = state.post!;
         final rows = buildThreadRows(state, maxLevels: maxLevels);
@@ -67,27 +67,24 @@ class _PostDetailView extends StatelessWidget {
             onLike: cubit.togglePostLike,
             onDelete: () async {
               if (await cubit.deletePost() && context.mounted) {
-                showOltMessage(context, l10n.postDeleted);
+                showCommunityMessage(context, l10n.postDeleted);
                 await Navigator.of(context).maybePop();
               }
             },
           ),
-          const OltDisclaimer(),
+          const CommunityDisclaimer(),
           const Divider(height: 1),
           if (state.root != null) _ThreadContext(postId: postId),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Text(
-              '${l10n.comments} (${post.commentCount})',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
+            child: Text('${l10n.comments} (${post.commentCount})', style: Theme.of(context).textTheme.titleSmall),
           ),
-          if (rows.isEmpty) OltEmptyView(message: l10n.noComments, icon: Icons.chat_bubble_outline),
+          if (rows.isEmpty) CommunityEmptyView(message: l10n.noComments, icon: Icons.chat_bubble_outline),
         ];
 
         return Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: OltBreakpoints.contentMaxWidth + 40),
+            constraints: const BoxConstraints(maxWidth: CommunityBreakpoints.contentMaxWidth + 40),
             child: Column(
               children: [
                 Expanded(
@@ -120,7 +117,7 @@ class _ThreadContext extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final root = context.select((CommentThreadCubit c) => c.state.root)!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
@@ -137,7 +134,7 @@ class _ThreadContext extends StatelessWidget {
                   Text(l10n.threadContext, style: Theme.of(context).textTheme.labelLarge),
                   const Spacer(),
                   TextButton(
-                    onPressed: () => OltNavigator.openPost(context, postId),
+                    onPressed: () => CommunityNavigator.openPost(context, postId),
                     child: Text(l10n.postDetail),
                   ),
                 ],
@@ -175,7 +172,7 @@ class _ReplyComposerState extends State<_ReplyComposer> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return BlocConsumer<CommentThreadCubit, ThreadState>(
       listenWhen: (a, b) => a.replyTo?.id != b.replyTo?.id && b.replyTo != null,
       listener: (_, _) => _focus.requestFocus(),
@@ -210,7 +207,7 @@ class _ReplyComposerState extends State<_ReplyComposer> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
-                    child: OltComposerField(
+                    child: CommunityComposerField(
                       controller: _controller,
                       focusNode: _focus,
                       hintText: l10n.writeComment,

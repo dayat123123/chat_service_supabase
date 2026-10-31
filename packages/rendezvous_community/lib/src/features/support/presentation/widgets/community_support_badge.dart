@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/app/olt_support_scope.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/app/community_support_scope.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
 
 class SupportUnreadCubit extends Cubit<int> {
   SupportUnreadCubit({required this._support, required this._chat, required this._supportChat}) : super(0);
@@ -45,26 +45,23 @@ class SupportUnreadCubit extends Cubit<int> {
   }
 }
 
-class OltSupportBadge extends StatelessWidget {
-  const OltSupportBadge({super.key, required this.child});
+class CommunitySupportBadge extends StatelessWidget {
+  const CommunitySupportBadge({super.key, required this.child});
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    final support = OltSupportScope.of(context);
+    final support = CommunitySupportScope.of(context);
     return BlocProvider(
       create: (_) => SupportUnreadCubit(
         support: support.support,
-        chat: OltSocialScope.of(context).chat,
+        chat: CommunityScope.of(context).chat,
         supportChat: support.supportChat,
       )..start(),
       child: BlocBuilder<SupportUnreadCubit, int>(
-        builder: (context, count) => Badge(
-          isLabelVisible: count > 0,
-          label: Text(count > 99 ? '99+' : '$count'),
-          child: child,
-        ),
+        builder: (context, count) =>
+            Badge(isLabelVisible: count > 0, label: Text(count > 99 ? '99+' : '$count'), child: child),
       ),
     );
   }

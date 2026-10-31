@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
-class OltUserName extends StatelessWidget {
-  const OltUserName({super.key, required this.user, this.showUsername = true, this.style});
+class CommunityUserName extends StatelessWidget {
+  const CommunityUserName({super.key, required this.user, this.showUsername = true, this.style});
 
   final UserSummary user;
   final bool showUsername;

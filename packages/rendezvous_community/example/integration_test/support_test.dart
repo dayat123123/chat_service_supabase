@@ -6,11 +6,15 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:olt_social_example/main.dart';
+import 'package:rendezvous_community_example/main.dart';
 
 const _shots = String.fromEnvironment('SUPPORT_SHOTS');
 
-Future<void> pumpUntilFound(WidgetTester tester, Finder finder, {Duration timeout = const Duration(seconds: 30)}) async {
+Future<void> pumpUntilFound(
+  WidgetTester tester,
+  Finder finder, {
+  Duration timeout = const Duration(seconds: 30),
+}) async {
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 200));
@@ -19,7 +23,11 @@ Future<void> pumpUntilFound(WidgetTester tester, Finder finder, {Duration timeou
   throw TestFailure('Tidak menemukan $finder dalam $timeout');
 }
 
-Future<void> pumpUntilAny(WidgetTester tester, List<Finder> finders, {Duration timeout = const Duration(seconds: 30)}) async {
+Future<void> pumpUntilAny(
+  WidgetTester tester,
+  List<Finder> finders, {
+  Duration timeout = const Duration(seconds: 30),
+}) async {
   final end = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(end)) {
     await tester.pump(const Duration(milliseconds: 200));
@@ -43,7 +51,7 @@ Future<void> capture(WidgetTester tester, String name) async {
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Windows: chat CS di panel samping, layar utama tetap terlihat', (tester) async {
+  testWidgets('Windows: support chat in a side panel while the main screen stays visible', (tester) async {
     await tester.pumpWidget(const ExampleApp());
     await pumpUntilFound(tester, find.text('Rina Kartika'));
     await tester.tap(find.text('Rina Kartika'));

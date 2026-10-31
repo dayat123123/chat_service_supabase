@@ -1,5 +1,5 @@
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 
 Paged<ChatMessage> newerPage(List<ChatMessage> items, int limit) {
   if (items.isEmpty || items.length < limit) return Paged(items);

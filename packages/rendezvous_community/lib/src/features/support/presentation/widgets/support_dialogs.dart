@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
 class SupportRating {
   const SupportRating(this.rating, this.comment);
@@ -30,7 +30,7 @@ class _RatingDialogState extends State<_RatingDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final color = Theme.of(context).colorScheme.primary;
     return AlertDialog(
       title: Text(l10n.supportRateTitle),
@@ -98,7 +98,7 @@ class _FakeCsDialogState extends State<_FakeCsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final valid = _text.text.trim().length >= 5;
     return AlertDialog(
       title: Text(l10n.supportReportFake),
@@ -126,7 +126,7 @@ class _FakeCsDialogState extends State<_FakeCsDialog> {
 }
 
 Future<bool> confirmSupport(BuildContext context, {required String message, required String confirm}) async {
-  final l10n = context.oltL10n;
+  final l10n = context.communityL10n;
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(

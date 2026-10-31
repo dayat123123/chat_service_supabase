@@ -1,5 +1,5 @@
-name: olt_social_example
-description: Contoh integrasi olt_social (Windows + Android) ke stack Docker lokal.
+name: rendezvous_community_example
+description: Example host app that integrates rendezvous_community (Windows, Android, web) with the local Docker stack.
 publish_to: none
 version: 1.0.0+1
 
@@ -12,7 +12,7 @@ dependencies:
   flutter_local_notifications: ^22.3.3
   flutter_localizations:
     sdk: flutter
-  olt_social:
+  rendezvous_community:
     path: ../
   # Klien WebSocket OLT dummy yang jalan di Windows, Android, dan web.
   web_socket_channel: ^3.0.3

@@ -1,15 +1,15 @@
-# olt_social_example
+# rendezvous_community_example
 
-App contoh yang meniru cara OLT memasang `olt_social`:
+App contoh yang meniru cara OLT memasang `rendezvous_community`:
 1. Login "OLT" tiruan, dengan dua cara:
    - pilih user seed (login cepat): bila OLT dummy berjalan, akun ditukar menjadi token sosial bertanda tangan; bila tidak, token mock dipakai (stack default), atau
    - form **"Login OLT dummy"**: username/email + password ke server OLT dummy, lalu token sosial dari OLT dipakai. Cara ini butuh stack `make up DUMMY_OLT=1`, lihat [bagian di bawah](#login-olt-dummy).
-2. `OltSocial.initialize` dijalankan.
+2. `RendezvousCommunity.initialize` dijalankan.
 3. Halaman utama menyesuaikan lebar layar:
    - **Windows** dan **web** (layar lebar): NavigationRail, dengan stream dan detail post berdampingan.
    - **Android**: NavigationBar di bawah.
 
-Menu yang tersedia: Stream, Saham, Chat, Notifikasi, dan Profil. Ada juga tombol untuk mengganti tema terang/gelap, bahasa ID/EN, dan gaya chat bawaan/kustom. Tombol gaya chat (ikon palet) memasang contoh builder dari `lib/custom_chat_style.dart` lewat `OltChatBuildersScope`: gelembung pesan, composer, tile daftar chat, dan pemisah hari versi host, dengan logika tetap dari package.
+Menu yang tersedia: Stream, Saham, Chat, Notifikasi, dan Profil. Ada juga tombol untuk mengganti tema terang/gelap, bahasa ID/EN, dan gaya chat bawaan/kustom. Tombol gaya chat (ikon palet) memasang contoh builder dari `lib/custom_chat_style.dart` lewat `CommunityChatBuildersScope`: gelembung pesan, composer, tile daftar chat, dan pemisah hari versi host, dengan logika tetap dari package.
 
 ## Menjalankan
 
@@ -24,7 +24,7 @@ Ambil `ANON_KEY` dengan `make anon-key` (Windows: `.\make.ps1 anon-key`; tersimp
 **Windows:**
 
 ```bash
-cd packages/olt_social/example
+cd packages/rendezvous_community/example
 flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY>
 ```
 

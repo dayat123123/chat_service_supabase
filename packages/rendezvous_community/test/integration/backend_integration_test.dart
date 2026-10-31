@@ -5,7 +5,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 import 'package:uuid/uuid.dart';
 
 final _enabled = Platform.environment['OLT_SOCIAL_IT'] == '1';
@@ -29,10 +29,10 @@ Future<T> _waitFor<T>(Stream<T> stream, bool Function(T) test, {Duration timeout
     stream.firstWhere(test).timeout(timeout);
 
 void main() {
-  late OltSocial budi;
-  late OltSocial sari;
-  late OltSocial Function(String token) user;
-  final created = <OltSocial>[];
+  late RendezvousCommunity budi;
+  late RendezvousCommunity sari;
+  late RendezvousCommunity Function(String token) user;
+  final created = <RendezvousCommunity>[];
 
   setUpAll(() async {
     if (!_enabled) return;
@@ -40,7 +40,11 @@ void main() {
     final url = Platform.environment['OLT_SOCIAL_URL'] ?? env['SUPABASE_PUBLIC_URL'] ?? 'http://localhost:8000';
     final anonKey = Platform.environment['OLT_SOCIAL_ANON_KEY'] ?? _dockerSecret('anon_key') ?? env['ANON_KEY']!;
     user = (token) {
-      final social = OltSocial.create(supabaseUrl: url, anonKey: anonKey, oltTokenProvider: () async => token);
+      final social = RendezvousCommunity.create(
+        supabaseUrl: url,
+        anonKey: anonKey,
+        oltTokenProvider: () async => token,
+      );
       created.add(social);
       return social;
     };
@@ -56,14 +60,14 @@ void main() {
     }
   });
 
-  final skip = _enabled ? null : 'Set OLT_SOCIAL_IT=1 untuk menjalankan integration test';
+  final skip = _enabled ? null : 'Set OLT_SOCIAL_IT=1 to run the integration tests';
 
-  test('login via auth-bridge memberi id UUID v5 yang sama dengan seed', () {
+  test('signing in through auth-bridge yields the same UUID v5 id as the seed', () {
     expect(budi.currentUser!.id, '72689cd3-ea55-584f-9e84-c257af0564e0');
     expect(budi.currentUser!.username, 'budi_santoso');
   }, skip: skip);
 
-  test('feed global dengan pagination keyset', () async {
+  test('global feed with keyset pagination', () async {
     final first = await budi.feed.getFeed(const FeedScope.global(), limit: 3);
     expect(first.items, hasLength(3));
     final second = await budi.feed.getFeed(const FeedScope.global(), cursor: first.nextCursor, limit: 3);
@@ -72,8 +76,12 @@ void main() {
     expect(stock.items.every((p) => p.stockCodes.contains('BBCA')), isTrue);
   }, skip: skip);
 
-  test('thread seed 5 level & pemantau saham tanpa daftar saham di server', () async {
-    final thread = await budi.comments.getThread('a0000000-0000-4000-8000-000000000001', maxDepth: 10, repliesLimit: 10);
+  test('five-level seed thread and stock watchers without a server-side stock list', () async {
+    final thread = await budi.comments.getThread(
+      'a0000000-0000-4000-8000-000000000001',
+      maxDepth: 10,
+      repliesLimit: 10,
+    );
     expect(thread.map((c) => c.depth).reduce((a, b) => a > b ? a : b), 4);
     final stock = await budi.stocks.getStock('bbca');
     expect(stock?.code, 'BBCA');
@@ -82,7 +90,7 @@ void main() {
     expect(await budi.stocks.getStock('1X'), isNull);
   }, skip: skip);
 
-  test('komentar baru diterima realtime oleh pemilik post', () async {
+  test('the post owner receives new comments in realtime', () async {
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final post = await budi.feed.createPost(body: 'Integration test \$BBCA $stamp');
     final seen = <String>{};
@@ -97,14 +105,14 @@ void main() {
         }
         if (seen.contains(comment.id)) received = comment.id;
       }
-      expect(received, isNotNull, reason: 'event komentar realtime tidak pernah diterima');
+      expect(received, isNotNull, reason: 'the realtime comment event was never received');
     } finally {
       await sub.cancel();
       await budi.feed.deletePost(post.id);
     }
   }, skip: skip);
 
-  test('chat realtime: pesan, mengetik (channel private), notifikasi', () async {
+  test('realtime chat: messages, typing (private channel), notifications', () async {
     final roomId = await budi.chat.getOrCreateDirectRoom(sari.currentUser!.id);
     final sariRoom = sari.chat.connectRoom(roomId, me: sari.currentUser!);
     final budiRoom = budi.chat.connectRoom(roomId, me: budi.currentUser!);
@@ -117,7 +125,11 @@ void main() {
       final clientId = const Uuid().v4();
       final received = _waitFor(sariEvents, (e) => e is MessageUpserted && e.message.clientId == clientId);
       await Future<void>.delayed(const Duration(seconds: 1));
-      final sent = await budi.chat.sendMessage(roomId, body: 'Halo dari integration test $clientId', clientId: clientId);
+      final sent = await budi.chat.sendMessage(
+        roomId,
+        body: 'Halo dari integration test $clientId',
+        clientId: clientId,
+      );
       final event = await received as MessageUpserted;
       expect(event.message.id, sent.id);
       await notified;
@@ -137,7 +149,7 @@ void main() {
     }
   }, skip: skip);
 
-  test('presence per room dan centang ala WhatsApp: terkirim lalu dibaca', () async {
+  test('per-room presence and WhatsApp-style ticks: delivered then read', () async {
     final roomId = await budi.chat.getOrCreateDirectRoom(sari.currentUser!.id);
     final budiSignals = budi.chat.watchRoomSignals({roomId}, me: budi.currentUser!).asBroadcastStream();
     final budiSub = budiSignals.listen((_) {});
@@ -172,7 +184,7 @@ void main() {
     }
   }, skip: skip);
 
-  test('badge chat: jumlah chat belum dibaca naik saat pesan masuk dan turun setelah dibuka', () async {
+  test('chat badge: the unread count rises on new messages and drops after opening', () async {
     final roomId = await sari.chat.getOrCreateDirectRoom(budi.currentUser!.id);
     await budi.chat.markRoomRead(roomId);
     final before = await budi.chat.unreadChatCount();
@@ -185,7 +197,7 @@ void main() {
     expect(await budi.chat.unreadChatCount(), before);
   }, skip: skip);
 
-  test('polling: buat, pilih, hasil terlihat setelah memilih', () async {
+  test('polls: create, vote, and see results after voting', () async {
     final stamp = DateTime.now().microsecondsSinceEpoch;
     final post = await budi.feed.createPost(
       body: 'Polling integration $stamp: IHSG minggu depan?',
@@ -207,18 +219,18 @@ void main() {
 
       await expectLater(
         sari.polls.vote(post.id, beforeVote.options.first.id),
-        throwsA(isA<OltSocialException>().having((e) => e.code, 'code', 'already_voted')),
+        throwsA(isA<CommunityException>().having((e) => e.code, 'code', 'already_voted')),
       );
       await expectLater(
         budi.polls.vote(post.id, beforeVote.options.first.id),
-        throwsA(isA<OltSocialException>().having((e) => e.code, 'code', 'own_poll')),
+        throwsA(isA<CommunityException>().having((e) => e.code, 'code', 'own_poll')),
       );
     } finally {
       await budi.feed.deletePost(post.id);
     }
   }, skip: skip);
 
-  test('rate limit server dipetakan ke OltSocialErrorKind.rateLimited', () async {
+  test('maps the server rate limit to CommunityErrorKind.rateLimited', () async {
     final rina = user('mock:1004:rina_saham');
     final dewi = user('mock:1005:dewi_cuan');
     final dewiUser = await dewi.ensureSignedIn();
@@ -229,9 +241,9 @@ void main() {
       for (var i = 0; i < 40; i++) {
         ids.add((await rina.chat.sendMessage(roomId, body: 'spam $i', clientId: const Uuid().v4())).id);
       }
-      fail('rate limit tidak terpicu');
-    } on OltSocialException catch (e) {
-      expect(e.kind, OltSocialErrorKind.rateLimited);
+      fail('rate limit was not triggered');
+    } on CommunityException catch (e) {
+      expect(e.kind, CommunityErrorKind.rateLimited);
     } finally {
       for (final id in ids) {
         await rina.chat.deleteMessage(id);

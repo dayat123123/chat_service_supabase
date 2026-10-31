@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:olt_social/olt_social.dart';
-import 'package:olt_social/src/features/support/data/repositories/support_repository_impl.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:rendezvous_community/src/features/support/data/repositories/support_repository_impl.dart';
 
 import '../../support/mock_api.dart';
 
@@ -53,16 +53,18 @@ void main() {
     repo = SupportRepositoryImpl(cs: cs, notifications: notifications);
   });
 
-  test('beranda support memetakan tiket aktif, status, dan CS yang menangani', () async {
-    when(() => cs.rpcValue('support_home', any())).thenAnswer((_) async => {
-      'room_id': 'r-cs',
-      'support_name': 'CS OLT',
-      'ticket': ticketView(),
-      'active': true,
-      'unread_count': 2,
-      'service_open': false,
-      'next_open_at': '2026-10-31T02:00:00+00:00',
-    });
+  test('support home maps the active ticket, its status, and the assigned agent', () async {
+    when(() => cs.rpcValue('support_home', any())).thenAnswer(
+      (_) async => {
+        'room_id': 'r-cs',
+        'support_name': 'CS OLT',
+        'ticket': ticketView(),
+        'active': true,
+        'unread_count': 2,
+        'service_open': false,
+        'next_open_at': '2026-10-31T02:00:00+00:00',
+      },
+    );
 
     final home = await repo.home();
 
@@ -74,7 +76,7 @@ void main() {
     expect(home.showsConversation(DateTime.utc(2026, 10, 30)), isTrue);
   });
 
-  test('membuka tiket hanya mengirim topik dan asal layar, tanpa data bisnis klien', () async {
+  test('opening a ticket sends only the topic and source screen, without client business data', () async {
     when(() => cs.rpcValue('open_ticket', any())).thenAnswer((_) async => ticketView(status: 'open'));
 
     final ticket = await repo.openTicket(topic: 'orders', screen: 'order_detail');
@@ -86,14 +88,14 @@ void main() {
     expect(ticket.queueAhead, 2);
   });
 
-  test('cek data sensitif dan permintaan rahasia dianggap perlu peringatan', () async {
-    when(() => cs.rpcValue('check_sensitive', any())).thenAnswer(
-      (_) async => {'masked': false, 'kinds': <Object?>[], 'preview': 'x', 'requests_secret': true},
-    );
+  test('sensitive data and secret requests require a warning', () async {
+    when(
+      () => cs.rpcValue('check_sensitive', any()),
+    ).thenAnswer((_) async => {'masked': false, 'kinds': <Object?>[], 'preview': 'x', 'requests_secret': true});
     expect((await repo.checkSensitive('kode OTP')).masked, isTrue);
   });
 
-  test('notifikasi lokal hanya untuk pesan support baru yang belum dibaca', () async {
+  test('local notifications only cover new unread support messages', () async {
     final changes = StreamController<void>.broadcast();
     var page = [notification('n-1')];
     when(() => notifications.watchNotifications()).thenAnswer((_) => changes.stream);

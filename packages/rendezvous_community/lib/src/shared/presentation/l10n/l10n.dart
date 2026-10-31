@@ -1,17 +1,17 @@
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
-import 'package:olt_social/src/core/error/error_mapper.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/shared/presentation/l10n/gen/olt_social_localizations.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/error/error_mapper.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/gen/community_localizations.dart';
 
-export 'gen/olt_social_localizations.dart';
+export 'gen/community_localizations.dart';
 
-extension OltL10nContext on BuildContext {
-  OltSocialLocalizations get oltL10n =>
-      OltSocialLocalizations.of(this) ?? lookupOltSocialLocalizations(const Locale('id'));
+extension CommunityL10nContext on BuildContext {
+  CommunityLocalizations get communityL10n =>
+      CommunityLocalizations.of(this) ?? lookupCommunityLocalizations(const Locale('id'));
 }
 
-extension OltErrorText on OltSocialLocalizations {
+extension CommunityErrorText on CommunityLocalizations {
   String errorMessage(Object error) {
     final mapped = mapError(error);
     return switch (mapped.code) {
@@ -28,15 +28,15 @@ extension OltErrorText on OltSocialLocalizations {
       'user_muted' => errorUserMuted,
       'secret_request_blocked' => errorSecretRequestBlocked,
       _ => switch (mapped.kind) {
-        OltSocialErrorKind.network => errorNetwork,
-        OltSocialErrorKind.unauthenticated => errorUnauthenticated,
-        OltSocialErrorKind.rateLimited => errorRateLimited,
-        OltSocialErrorKind.contentBlocked => errorContentBlocked,
-        OltSocialErrorKind.invalidInput => errorInvalidInput,
-        OltSocialErrorKind.forbidden => errorForbidden,
-        OltSocialErrorKind.notFound => errorNotFound,
-        OltSocialErrorKind.unavailable => errorUnavailable,
-        OltSocialErrorKind.unknown => errorUnknown,
+        CommunityErrorKind.network => errorNetwork,
+        CommunityErrorKind.unauthenticated => errorUnauthenticated,
+        CommunityErrorKind.rateLimited => errorRateLimited,
+        CommunityErrorKind.contentBlocked => errorContentBlocked,
+        CommunityErrorKind.invalidInput => errorInvalidInput,
+        CommunityErrorKind.forbidden => errorForbidden,
+        CommunityErrorKind.notFound => errorNotFound,
+        CommunityErrorKind.unavailable => errorUnavailable,
+        CommunityErrorKind.unknown => errorUnknown,
       },
     };
   }

@@ -1,4 +1,4 @@
-import 'package:olt_social/src/features/post/domain/entities/thread_comment.dart';
+import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
 
 abstract interface class CommentRepository {
   Future<List<ThreadComment>> getThread(

@@ -1,10 +1,9 @@
 import 'dart:typed_data';
 
-
-import 'package:olt_social/src/core/auth/session_tokens.dart';
-import 'package:olt_social/src/core/error/error_mapper.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/core/network/authorized_image.dart';
+import 'package:rendezvous_community/src/core/auth/session_tokens.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/error/error_mapper.dart';
+import 'package:rendezvous_community/src/core/network/authorized_image.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract interface class SocialRemoteDataSource {
@@ -24,24 +23,24 @@ abstract interface class SocialRemoteDataSource {
 
   Future<void> delete(String table, Map<String, Object> match);
 
-  Future<List<Map<String, dynamic>>> select(String table, {required String columns, Map<String, Object>? match, int? limit});
+  Future<List<Map<String, dynamic>>> select(
+    String table, {
+    required String columns,
+    Map<String, Object>? match,
+    int? limit,
+  });
 
   Future<void> upload(String bucket, String path, Uint8List bytes, {required String contentType, bool upsert = false});
 
   String publicUrl(String bucket, String path);
 
   Future<AuthorizedImage> authorizedObject(String bucket, String path);
-
 }
 
 class SupabaseSocialDataSource implements SocialRemoteDataSource {
-  SupabaseSocialDataSource(
-    this._client,
-    this._tokens, {
-    required String supabaseUrl,
-    required this._anonKey,
-  }) : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), ''),
-       _schema = null;
+  SupabaseSocialDataSource(this._client, this._tokens, {required String supabaseUrl, required this._anonKey})
+    : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), ''),
+      _schema = null;
 
   SupabaseSocialDataSource._forSchema(SupabaseSocialDataSource base, String this._schema)
     : _client = base._client,
@@ -128,12 +127,21 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
   });
 
   @override
-  Future<void> upload(String bucket, String path, Uint8List bytes, {required String contentType, bool upsert = false}) =>
-      _run(() async {
-        await _client.storage
-            .from(bucket)
-            .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: contentType, upsert: upsert));
-      });
+  Future<void> upload(
+    String bucket,
+    String path,
+    Uint8List bytes, {
+    required String contentType,
+    bool upsert = false,
+  }) => _run(() async {
+    await _client.storage
+        .from(bucket)
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType, upsert: upsert),
+        );
+  });
 
   @override
   String publicUrl(String bucket, String path) => _client.storage.from(bucket).getPublicUrl(path);
@@ -141,10 +149,10 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
   @override
   Future<AuthorizedImage> authorizedObject(String bucket, String path) async {
     final token = await _tokens.accessToken();
-    return AuthorizedImage(
-      '$_supabaseUrl/storage/v1/object/authenticated/$bucket/$path',
-      {'apikey': _anonKey, 'Authorization': 'Bearer $token'},
-    );
+    return AuthorizedImage('$_supabaseUrl/storage/v1/object/authenticated/$bucket/$path', {
+      'apikey': _anonKey,
+      'Authorization': 'Bearer $token',
+    });
   }
 }
 
@@ -152,7 +160,7 @@ extension SocialRemoteDataSourceInsert on SocialRemoteDataSource {
   Future<void> insertIgnoringDuplicate(String table, Map<String, Object?> values) async {
     try {
       await insert(table, values);
-    } on OltSocialException catch (e) {
+    } on CommunityException catch (e) {
       if (e.code != '23505') rethrow;
     }
   }

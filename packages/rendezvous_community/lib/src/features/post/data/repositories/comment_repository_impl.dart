@@ -1,9 +1,9 @@
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/features/post/data/models/thread_comment_model.dart';
-import 'package:olt_social/src/features/post/domain/entities/thread_comment.dart';
-import 'package:olt_social/src/features/post/domain/repositories/comment_repository.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/features/post/data/models/thread_comment_model.dart';
+import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
+import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CommentRepositoryImpl implements CommentRepository {
@@ -36,12 +36,10 @@ class CommentRepositoryImpl implements CommentRepository {
 
   @override
   Future<ThreadComment> createComment({required String postId, String? parentId, required String body}) async {
-    final rows = await _api.rpcRows('create_comment', {
-      'p_post_id': postId,
-      'p_parent_id': parentId,
-      'p_body': body,
-    });
-    if (rows.isEmpty) throw const OltSocialException(OltSocialErrorKind.unknown, message: 'create_comment kosong');
+    final rows = await _api.rpcRows('create_comment', {'p_post_id': postId, 'p_parent_id': parentId, 'p_body': body});
+    if (rows.isEmpty) {
+      throw const CommunityException(CommunityErrorKind.unknown, message: 'create_comment returned no rows');
+    }
     return ThreadCommentModel.fromJson(rows.first).toEntity();
   }
 

@@ -1,14 +1,14 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social_example/dummy_olt_client.dart';
+import 'package:rendezvous_community_example/dummy_olt_client.dart';
 
 void main() {
   final enabled = Platform.environment['OLT_DUMMY_IT'] == '1';
   final skip = enabled ? null : 'Set OLT_DUMMY_IT=1 (stack: make up DUMMY_OLT=1)';
   final client = DummyOltClient(Platform.environment['OLT_DUMMY_WS_URL'] ?? 'ws://localhost:8090/ws');
 
-  test('login password -> token -> login ulang dengan token', () async {
+  test('password login -> token -> sign in again with the token', () async {
     final session = await client.loginWithPassword('sari@olt.test', 'olt12345');
     expect(session.token, startsWith('olt_'));
     expect(session.username, 'sari_invest');
@@ -16,14 +16,14 @@ void main() {
     expect(again.userId, '1002');
   }, skip: skip);
 
-  test('password salah -> DummyOltException INVALID_CREDENTIALS', () async {
+  test('wrong password -> DummyOltException INVALID_CREDENTIALS', () async {
     await expectLater(
       client.loginWithPassword('budi_santoso', 'salah'),
       throwsA(isA<DummyOltException>().having((e) => e.code, 'code', 'INVALID_CREDENTIALS')),
     );
   }, skip: skip);
 
-  test('server tidak terjangkau -> UNREACHABLE', () async {
+  test('unreachable server -> UNREACHABLE', () async {
     final offline = DummyOltClient('ws://127.0.0.1:1/ws', timeout: const Duration(seconds: 3));
     await expectLater(
       offline.loginWithPassword('budi_santoso', 'olt12345'),

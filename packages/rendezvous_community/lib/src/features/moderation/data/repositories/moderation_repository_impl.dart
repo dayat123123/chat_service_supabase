@@ -1,6 +1,6 @@
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/features/moderation/domain/entities/report.dart';
-import 'package:olt_social/src/features/moderation/domain/repositories/moderation_repository.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/repositories/moderation_repository.dart';
 
 class ModerationRepositoryImpl implements ModerationRepository {
   ModerationRepositoryImpl(this._api);

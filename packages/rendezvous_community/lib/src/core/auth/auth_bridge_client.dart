@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:olt_social/src/core/auth/social_session.dart';
-import 'package:olt_social/src/core/error/error_mapper.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/auth/social_session.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/error/error_mapper.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 class AuthBridgeClient {
   AuthBridgeClient({
@@ -41,20 +41,23 @@ class AuthBridgeClient {
     try {
       body = jsonDecode(res.body) as Map<String, dynamic>;
     } catch (_) {
-      throw OltSocialException(OltSocialErrorKind.unavailable, message: 'Respons auth-bridge tidak valid (${res.statusCode})');
+      throw CommunityException(
+        CommunityErrorKind.unavailable,
+        message: 'Auth-bridge returned an invalid response (status ${res.statusCode})',
+      );
     }
 
     if (res.statusCode != 200) {
       final code = body['error'] as String?;
       final message = body['message'] as String?;
       final kind = switch (res.statusCode) {
-        401 => OltSocialErrorKind.unauthenticated,
-        429 => OltSocialErrorKind.rateLimited,
-        400 => OltSocialErrorKind.invalidInput,
-        503 || 502 => OltSocialErrorKind.unavailable,
-        _ => OltSocialErrorKind.unknown,
+        401 => CommunityErrorKind.unauthenticated,
+        429 => CommunityErrorKind.rateLimited,
+        400 => CommunityErrorKind.invalidInput,
+        503 || 502 => CommunityErrorKind.unavailable,
+        _ => CommunityErrorKind.unknown,
       };
-      throw OltSocialException(kind, code: code, message: message);
+      throw CommunityException(kind, code: code, message: message);
     }
 
     final user = body['user'] as Map<String, dynamic>;

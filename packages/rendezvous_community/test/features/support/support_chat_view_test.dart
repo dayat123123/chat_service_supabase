@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import '../../support/fakes.dart';
 
@@ -47,23 +47,25 @@ void main() {
     ],
   );
 
-  testWidgets('room CS: pesan sistem ringkas, badge CS Resmi, pilihan cepat, dan rating di chat', (tester) async {
+  testWidgets('support room: compact system messages, official support badge, quick replies, and in-chat rating', (
+    tester,
+  ) async {
     final chat = repository();
     final picked = <String>[];
     final rated = <String>[];
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('id'),
-        localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
-        supportedLocales: OltSocialLocalizations.supportedLocales,
+        localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+        supportedLocales: CommunityLocalizations.supportedLocales,
         home: Scaffold(
-          body: OltSocialScope(
+          body: CommunityScope(
             dependencies: FakeDependencies(chat: chat),
-            child: OltSupportMessageActions(
+            child: CommunitySupportMessageActions(
               onQuickReply: picked.add,
               canRate: (ticketId) => ticketId == 't-1',
               onRate: rated.add,
-              child: OltChatRoom(roomId: 'r-cs', repository: chat),
+              child: CommunityChatRoom(roomId: 'r-cs', repository: chat),
             ),
           ),
         ),
@@ -83,16 +85,16 @@ void main() {
     await chat.dispose();
   });
 
-  test('pesan yang ditahan server dihapus dari daftar, bukan ditandai gagal', () async {
+  test('messages held by the server are removed from the list instead of marked failed', () async {
     final chat = repository()
-      ..sendError = const OltSocialException(OltSocialErrorKind.contentBlocked, code: 'secret_request_blocked');
+      ..sendError = const CommunityException(CommunityErrorKind.contentBlocked, code: 'secret_request_blocked');
     final cubit = ChatRoomCubit(chat: chat, media: _NoMedia(), me: () async => me, roomId: 'r-cs');
     await cubit.load();
 
     await cubit.send('Mohon kirim kode OTP Anda');
 
     expect(cubit.state.messages.where((m) => m.isLocal), isEmpty);
-    expect(cubit.state.actionError, isA<OltSocialException>());
+    expect(cubit.state.actionError, isA<CommunityException>());
     await cubit.close();
     await chat.dispose();
   });

@@ -1,12 +1,12 @@
 import 'dart:typed_data';
 
-import 'package:olt_social/src/core/media/image_mime.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/features/profile/data/models/profile_model.dart';
-import 'package:olt_social/src/features/profile/domain/entities/user_profile.dart';
-import 'package:olt_social/src/features/profile/domain/repositories/profile_repository.dart';
-import 'package:olt_social/src/shared/data/models/user_summary_model.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/media/image_mime.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/features/profile/data/models/profile_model.dart';
+import 'package:rendezvous_community/src/features/profile/domain/entities/user_profile.dart';
+import 'package:rendezvous_community/src/features/profile/domain/repositories/profile_repository.dart';
+import 'package:rendezvous_community/src/shared/data/models/user_summary_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   ProfileRepositoryImpl(this._api);
@@ -22,11 +22,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<void> updateMyProfile({String? displayName, String? bio, String? avatarUrl}) async {
     final me = await _api.requireUserId();
-    final values = <String, Object?>{
-      'display_name': ?displayName,
-      'bio': ?bio,
-      'avatar_url': ?avatarUrl,
-    };
+    final values = <String, Object?>{'display_name': ?displayName, 'bio': ?bio, 'avatar_url': ?avatarUrl};
     if (values.isEmpty) return;
     await _api.update('profiles', values, {'id': me});
   }

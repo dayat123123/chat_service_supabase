@@ -2,12 +2,12 @@ import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/domain/repositories/feed_repository.dart';
-import 'package:olt_social/src/features/media/domain/repositories/media_repository.dart';
-import 'package:olt_social/src/features/poll/domain/entities/poll.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 import 'package:uuid/uuid.dart';
 
 part 'compose_cubit.freezed.dart';
@@ -50,10 +50,10 @@ class ComposeCubit extends Cubit<ComposeState> {
 
   Future<void> addImage(Uint8List bytes, String mimeType) async {
     if (!state.canAddImage) {
-      return _fail(const OltSocialException(OltSocialErrorKind.invalidInput, code: 'too_many_images'));
+      return _fail(const CommunityException(CommunityErrorKind.invalidInput, code: 'too_many_images'));
     }
     if (bytes.length > maxImageBytes) {
-      return _fail(const OltSocialException(OltSocialErrorKind.invalidInput, code: 'image_too_large'));
+      return _fail(const CommunityException(CommunityErrorKind.invalidInput, code: 'image_too_large'));
     }
     emit(state.copyWith(uploading: true));
     try {
@@ -65,8 +65,14 @@ class ComposeCubit extends Cubit<ComposeState> {
     }
   }
 
-  void removeImage(Attachment attachment) =>
-      emit(state.copyWith(attachments: [for (final a in state.attachments) if (a != attachment) a]));
+  void removeImage(Attachment attachment) => emit(
+    state.copyWith(
+      attachments: [
+        for (final a in state.attachments)
+          if (a != attachment) a,
+      ],
+    ),
+  );
 
   void addPoll() {
     if (state.canAddPoll) emit(state.copyWith(poll: const PollDraft()));
@@ -102,7 +108,7 @@ class ComposeCubit extends Cubit<ComposeState> {
     if (text.isEmpty || state.busy) return null;
     final poll = state.poll;
     if (poll != null && !poll.isValid) {
-      _fail(const OltSocialException(OltSocialErrorKind.invalidInput, code: 'invalid_poll_draft'));
+      _fail(const CommunityException(CommunityErrorKind.invalidInput, code: 'invalid_poll_draft'));
       return null;
     }
     emit(state.copyWith(submitting: true));

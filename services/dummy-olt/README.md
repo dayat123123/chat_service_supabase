@@ -113,5 +113,5 @@ Kode error yang mungkin muncul: `BAD_REQUEST`, `INVALID_CREDENTIALS`, `ACCOUNT_S
 | `make test-dummy-olt` | Unit test Go: token sesi, token sosial, login password/email/token, perpanjangan, logout, akun ditangguhkan, mock, lambat, dan heartbeat |
 | `make smoke-dummy` | 22 skenario end-to-end lewat Kong + auth-bridge mode jwt |
 | `make smoke-cs` | 30 pemeriksaan CS chat end-to-end (nasabah, agen, supervisor, transfer, rating) |
-| `make test-flutter-it-dummy` | Package Flutter dengan token sosial hasil login WebSocket (password → token sosial → `OltSocial`) |
+| `make test-flutter-it-dummy` | Package Flutter dengan token sosial hasil login WebSocket (password → token sosial → `RendezvousCommunity`) |
 | `make e2e-windows-dummy` | App contoh: form login OLT dummy (password salah ditolak, login email masuk) |

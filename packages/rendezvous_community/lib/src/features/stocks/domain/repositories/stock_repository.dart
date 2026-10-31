@@ -1,4 +1,4 @@
-import 'package:olt_social/src/features/stocks/domain/entities/stock.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/entities/stock.dart';
 
 abstract interface class StockRepository {
   Future<Stock?> getStock(String code);

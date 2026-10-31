@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import 'fakes.dart';
 
@@ -36,10 +36,13 @@ Future<void> pumpChat(WidgetTester tester, ChatRepository chat, Widget child) as
   await tester.pumpWidget(
     MaterialApp(
       locale: const Locale('id'),
-      localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
-      supportedLocales: OltSocialLocalizations.supportedLocales,
+      localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+      supportedLocales: CommunityLocalizations.supportedLocales,
       home: Scaffold(
-        body: OltSocialScope(dependencies: FakeDependencies(chat: chat), child: child),
+        body: CommunityScope(
+          dependencies: FakeDependencies(chat: chat),
+          child: child,
+        ),
       ),
     ),
   );

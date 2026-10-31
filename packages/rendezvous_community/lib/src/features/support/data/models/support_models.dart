@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
+import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
 
 part 'support_models.freezed.dart';
 part 'support_models.g.dart';
@@ -46,7 +46,10 @@ abstract class SupportTicketModel with _$SupportTicketModel {
     queueAhead: queueAhead,
     agent: agent == null
         ? null
-        : SupportAgent(displayName: agent!['display_name'] as String? ?? '', agentCode: agent!['agent_code'] as String?),
+        : SupportAgent(
+            displayName: agent!['display_name'] as String? ?? '',
+            agentCode: agent!['agent_code'] as String?,
+          ),
     complaintReceivedAt: DateTime.tryParse(complaint?['received_at'] as String? ?? ''),
     complaintDueAt: DateTime.tryParse(complaint?['due_at'] as String? ?? ''),
     createdAt: createdAt,

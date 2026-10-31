@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import 'custom_chat_style.dart';
 import 'fake_olt_auth.dart';
@@ -49,8 +49,8 @@ class _ExampleAppState extends State<ExampleApp> {
       darkTheme: theme(Brightness.dark),
       themeMode: _themeMode,
       locale: _locale,
-      localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
-      supportedLocales: OltSocialLocalizations.supportedLocales,
+      localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+      supportedLocales: CommunityLocalizations.supportedLocales,
       home: _anonKey.isEmpty ? const _MissingConfigPage() : const LoginPage(onSignedIn: _startSocial),
       builder: (context, child) => _SettingsScope(
         toggleTheme: () => setState(() {
@@ -60,8 +60,8 @@ class _ExampleAppState extends State<ExampleApp> {
           _locale = _locale.languageCode == 'id' ? const Locale('en') : const Locale('id');
         }),
         toggleChatStyle: () => setState(() => _customChat = !_customChat),
-        child: OltChatBuildersScope(
-          builders: _customChat ? customChatBuilders : const OltChatBuilders(),
+        child: CommunityChatBuildersScope(
+          builders: _customChat ? customChatBuilders : const CommunityChatBuilders(),
           child: child!,
         ),
       ),
@@ -70,7 +70,7 @@ class _ExampleAppState extends State<ExampleApp> {
 }
 
 Future<void> _startSocial(FakeOltAuth auth) async {
-  final social = await OltSocial.initialize(
+  final social = await RendezvousCommunity.initialize(
     supabaseUrl: socialUrl,
     anonKey: _anonKey,
     oltTokenProvider: auth.token,
@@ -108,7 +108,7 @@ void openOltStockPage(BuildContext context, String code) {
     MaterialPageRoute<void>(
       builder: (_) => Scaffold(
         appBar: AppBar(title: Text('Halaman saham OLT · $code')),
-        body: OltStockFeed(stockCode: code, stockName: oltStocks[code]),
+        body: CommunityStockFeed(stockCode: code, stockName: oltStocks[code]),
       ),
     ),
   );

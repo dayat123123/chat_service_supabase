@@ -1,30 +1,30 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/core/media/image_mime.dart';
-import 'package:olt_social/src/features/compose/presentation/cubit/compose_cubit.dart';
-import 'package:olt_social/src/features/compose/presentation/widgets/poll_editor.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_composer_field.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_disclaimer.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/media/image_mime.dart';
+import 'package:rendezvous_community/src/features/compose/presentation/cubit/compose_cubit.dart';
+import 'package:rendezvous_community/src/features/compose/presentation/widgets/poll_editor.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_composer_field.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_disclaimer.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 
-Future<Post?> showOltComposer(BuildContext context, {String? initialStock}) {
-  final deps = OltSocialScope.of(context);
-  final l10n = context.oltL10n;
-  if (OltBreakpoints.isWide(context)) {
+Future<Post?> showCommunityComposer(BuildContext context, {String? initialStock}) {
+  final deps = CommunityScope.of(context);
+  final l10n = context.communityL10n;
+  if (CommunityBreakpoints.isWide(context)) {
     return showDialog<Post>(
       context: context,
-      builder: (dialogContext) => OltSocialScope(
+      builder: (dialogContext) => CommunityScope(
         dependencies: deps,
         child: Dialog(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
-            child: OltComposePost(
+            child: CommunityComposePost(
               initialStock: initialStock,
               autofocus: true,
               onPosted: (post) => Navigator.pop(dialogContext, post),
@@ -37,12 +37,12 @@ Future<Post?> showOltComposer(BuildContext context, {String? initialStock}) {
   return Navigator.of(context).push<Post>(
     MaterialPageRoute(
       fullscreenDialog: true,
-      builder: (pageContext) => OltSocialScope(
+      builder: (pageContext) => CommunityScope(
         dependencies: deps,
         child: Scaffold(
           appBar: AppBar(title: Text(l10n.composeTitle)),
           body: SafeArea(
-            child: OltComposePost(
+            child: CommunityComposePost(
               initialStock: initialStock,
               autofocus: true,
               onPosted: (post) => Navigator.pop(pageContext, post),
@@ -54,8 +54,8 @@ Future<Post?> showOltComposer(BuildContext context, {String? initialStock}) {
   );
 }
 
-class OltComposePost extends StatelessWidget {
-  const OltComposePost({super.key, this.initialStock, this.onPosted, this.autofocus = false});
+class CommunityComposePost extends StatelessWidget {
+  const CommunityComposePost({super.key, this.initialStock, this.onPosted, this.autofocus = false});
 
   final String? initialStock;
   final ValueChanged<Post>? onPosted;
@@ -63,7 +63,7 @@ class OltComposePost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     return BlocProvider(
       create: (_) => ComposeCubit(feed: deps.feed, media: deps.media),
       child: _ComposeView(initialStock: initialStock, onPosted: onPosted, autofocus: autofocus),
@@ -97,7 +97,7 @@ class _ComposeViewState extends State<_ComposeView> {
     final post = await context.read<ComposeCubit>().submit(_controller.text);
     if (post == null || !mounted) return;
     _controller.clear();
-    showOltMessage(context, context.oltL10n.composePosted);
+    showCommunityMessage(context, context.communityL10n.composePosted);
     widget.onPosted?.call(post);
   }
 
@@ -117,14 +117,14 @@ class _ComposeViewState extends State<_ComposeView> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     return BlocConsumer<ComposeCubit, ComposeState>(
       listenWhen: (a, b) => a.errorId != b.errorId,
       listener: (context, state) {
         final error = state.error;
-        final code = error is OltSocialException ? error.code : null;
-        showOltMessage(context, switch (code) {
+        final code = error is CommunityException ? error.code : null;
+        showCommunityMessage(context, switch (code) {
           'too_many_images' => l10n.composeTooManyImages,
           'image_too_large' => l10n.composeImageTooLarge,
           'invalid_poll_draft' => l10n.pollInvalidDraft,
@@ -140,7 +140,7 @@ class _ComposeViewState extends State<_ComposeView> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              OltComposerField(
+              CommunityComposerField(
                 controller: _controller,
                 hintText: l10n.composeHint,
                 maxLength: maxPostLength,
@@ -151,19 +151,28 @@ class _ComposeViewState extends State<_ComposeView> {
                 onSubmit: _submit,
                 decoration: const InputDecoration(border: OutlineInputBorder()),
               ),
-              if (poll != null) ...[
-                const SizedBox(height: 12),
-                PollEditor(poll: poll, enabled: !state.submitting),
-              ],
+              if (poll != null) ...[const SizedBox(height: 12), PollEditor(poll: poll, enabled: !state.submitting)],
               const SizedBox(height: 12),
               Text(l10n.sentimentLabel, style: theme.textTheme.labelLarge),
               const SizedBox(height: 6),
               SegmentedButton<Sentiment?>(
                 showSelectedIcon: false,
                 segments: [
-                  ButtonSegment(value: Sentiment.bullish, label: Text(l10n.sentimentBullish), icon: const Icon(Icons.trending_up)),
-                  ButtonSegment(value: Sentiment.bearish, label: Text(l10n.sentimentBearish), icon: const Icon(Icons.trending_down)),
-                  ButtonSegment(value: Sentiment.neutral, label: Text(l10n.sentimentNeutral), icon: const Icon(Icons.trending_flat)),
+                  ButtonSegment(
+                    value: Sentiment.bullish,
+                    label: Text(l10n.sentimentBullish),
+                    icon: const Icon(Icons.trending_up),
+                  ),
+                  ButtonSegment(
+                    value: Sentiment.bearish,
+                    label: Text(l10n.sentimentBearish),
+                    icon: const Icon(Icons.trending_down),
+                  ),
+                  ButtonSegment(
+                    value: Sentiment.neutral,
+                    label: Text(l10n.sentimentNeutral),
+                    icon: const Icon(Icons.trending_flat),
+                  ),
                   ButtonSegment(value: null, label: Text(l10n.sentimentNone)),
                 ],
                 selected: {state.sentiment},
@@ -198,7 +207,8 @@ class _ComposeViewState extends State<_ComposeView> {
                     onPressed: state.busy || !state.canAddPoll ? null : cubit.addPoll,
                     icon: const Icon(Icons.poll_outlined),
                   ),
-                  if (state.uploading) const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
+                  if (state.uploading)
+                    const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2)),
                   const Spacer(),
                   FilledButton.icon(
                     onPressed: state.busy ? null : _submit,
@@ -215,7 +225,7 @@ class _ComposeViewState extends State<_ComposeView> {
                   textAlign: TextAlign.end,
                   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
                 ),
-              const OltDisclaimer(padding: EdgeInsets.only(top: 12)),
+              const CommunityDisclaimer(padding: EdgeInsets.only(top: 12)),
             ],
           ),
         );

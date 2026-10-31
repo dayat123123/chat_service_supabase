@@ -1,16 +1,15 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-import 'olt_social_localizations.dart';
+import 'community_localizations.dart';
 
 // ignore_for_file: type=lint
 
 /// The translations for English (`en`).
-class OltSocialLocalizationsEn extends OltSocialLocalizations {
-  OltSocialLocalizationsEn([String locale = 'en']) : super(locale);
+class CommunityLocalizationsEn extends CommunityLocalizations {
+  CommunityLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get disclaimer =>
-      'This content is a user opinion, not an investment recommendation.';
+  String get disclaimer => 'This content is a user opinion, not an investment recommendation.';
 
   @override
   String get retry => 'Retry';
@@ -55,16 +54,13 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get errorNetwork => 'No connection. Check your network.';
 
   @override
-  String get errorUnauthenticated =>
-      'Your session has ended. Please sign in to OLT again.';
+  String get errorUnauthenticated => 'Your session has ended. Please sign in to OLT again.';
 
   @override
-  String get errorRateLimited =>
-      'You\'re going too fast. Try again in a moment.';
+  String get errorRateLimited => 'You\'re going too fast. Try again in a moment.';
 
   @override
-  String get errorContentBlocked =>
-      'Your content contains words or phrases that aren\'t allowed.';
+  String get errorContentBlocked => 'Your content contains words or phrases that aren\'t allowed.';
 
   @override
   String get errorInvalidInput => 'Invalid data.';
@@ -103,12 +99,7 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
 
   @override
   String newPosts(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count new posts',
-      one: '1 new post',
-    );
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count new posts', one: '1 new post');
     return '$_temp0';
   }
 
@@ -119,8 +110,7 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get composeTitle => 'New post';
 
   @override
-  String get composeHint =>
-      'Share your analysis. Use \$CODE to tag stocks and @username to mention people.';
+  String get composeHint => 'Share your analysis. Use \$CODE to tag stocks and @username to mention people.';
 
   @override
   String get composeSubmit => 'Post';
@@ -542,39 +532,23 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get pollYourVote => 'Your vote';
 
   @override
-  String get pollInvalidDraft =>
-      'Fill in 2–4 distinct choices, up to 40 characters each.';
+  String get pollInvalidDraft => 'Fill in 2–4 distinct choices, up to 40 characters each.';
 
   @override
   String pollTimeMinutes(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count minutes',
-      one: '1 minute',
-    );
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count minutes', one: '1 minute');
     return '$_temp0';
   }
 
   @override
   String pollTimeHours(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count hours',
-      one: '1 hour',
-    );
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count hours', one: '1 hour');
     return '$_temp0';
   }
 
   @override
   String pollTimeDays(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count days',
-      one: '1 day',
-    );
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count days', one: '1 day');
     return '$_temp0';
   }
 
@@ -588,16 +562,13 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get errorOwnPoll => 'You can\'t vote in your own poll.';
 
   @override
-  String get errorInvalidPoll =>
-      'Invalid poll. Check the choices and duration.';
+  String get errorInvalidPoll => 'Invalid poll. Check the choices and duration.';
 
   @override
-  String get errorDuplicateContent =>
-      'You\'ve sent the same content several times. Try again in a few minutes.';
+  String get errorDuplicateContent => 'You\'ve sent the same content several times. Try again in a few minutes.';
 
   @override
-  String get errorUserMuted =>
-      'Your account is temporarily restricted from posting.';
+  String get errorUserMuted => 'Your account is temporarily restricted from posting.';
 
   @override
   String get today => 'Today';
@@ -631,8 +602,7 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get supportPickTopic => 'How can we help?';
 
   @override
-  String get supportPickTopicHint =>
-      'Pick a topic so the right agent can help you right away.';
+  String get supportPickTopicHint => 'Pick a topic so the right agent can help you right away.';
 
   @override
   String get supportHistory => 'View chat history';
@@ -684,8 +654,7 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get supportReportFake => 'Report a fake agent';
 
   @override
-  String get supportReportFakeHint =>
-      'Tell us what happened: who contacted you, how, and what they asked for.';
+  String get supportReportFakeHint => 'Tell us what happened: who contacted you, how, and what they asked for.';
 
   @override
   String get supportSend => 'Send';
@@ -729,12 +698,10 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   String get supportKindAccount => 'an account number';
 
   @override
-  String get supportComplaintFiled =>
-      'Complaint recorded. The resolution deadline is shown in the chat.';
+  String get supportComplaintFiled => 'Complaint recorded. The resolution deadline is shown in the chat.';
 
   @override
-  String get supportFakeReported =>
-      'Report sent. Our team will follow up shortly.';
+  String get supportFakeReported => 'Report sent. Our team will follow up shortly.';
 
   @override
   String get supportClosed => 'Chat ended.';
@@ -750,6 +717,5 @@ class OltSocialLocalizationsEn extends OltSocialLocalizations {
   }
 
   @override
-  String get supportUnavailable =>
-      'Support chat is unavailable. Please try again shortly.';
+  String get supportUnavailable => 'Support chat is unavailable. Please try again shortly.';
 }

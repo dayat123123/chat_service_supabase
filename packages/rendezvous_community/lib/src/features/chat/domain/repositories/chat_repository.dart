@@ -1,9 +1,9 @@
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 abstract interface class ChatRepository {
   Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30});

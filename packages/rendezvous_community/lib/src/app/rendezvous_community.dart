@@ -1,42 +1,44 @@
 import 'dart:async';
 
 import 'package:http/http.dart' as http;
-import 'package:olt_social/src/app/olt_social_dependencies.dart';
-import 'package:olt_social/src/app/olt_support_scope.dart';
-import 'package:olt_social/src/core/auth/auth_bridge_client.dart';
-import 'package:olt_social/src/core/auth/social_session.dart';
-import 'package:olt_social/src/core/auth/token_manager.dart';
-import 'package:olt_social/src/core/error/error_mapper.dart';
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/features/chat/data/repositories/chat_repository_impl.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/chat/domain/services/delivery_tracker.dart';
-import 'package:olt_social/src/features/feed/data/repositories/feed_repository_impl.dart';
-import 'package:olt_social/src/features/feed/domain/repositories/feed_repository.dart';
-import 'package:olt_social/src/features/media/data/repositories/media_repository_impl.dart';
-import 'package:olt_social/src/features/media/domain/repositories/media_repository.dart';
-import 'package:olt_social/src/features/moderation/data/repositories/moderation_repository_impl.dart';
-import 'package:olt_social/src/features/moderation/domain/repositories/moderation_repository.dart';
-import 'package:olt_social/src/features/notifications/data/repositories/notification_repository_impl.dart';
-import 'package:olt_social/src/features/notifications/domain/repositories/notification_repository.dart';
-import 'package:olt_social/src/features/poll/data/repositories/poll_repository_impl.dart';
-import 'package:olt_social/src/features/poll/domain/repositories/poll_repository.dart';
-import 'package:olt_social/src/features/post/data/repositories/comment_repository_impl.dart';
-import 'package:olt_social/src/features/post/domain/repositories/comment_repository.dart';
-import 'package:olt_social/src/features/profile/data/repositories/profile_repository_impl.dart';
-import 'package:olt_social/src/features/profile/domain/repositories/profile_repository.dart';
-import 'package:olt_social/src/features/stocks/data/repositories/stock_repository_impl.dart';
-import 'package:olt_social/src/features/stocks/domain/repositories/stock_repository.dart';
-import 'package:olt_social/src/features/support/data/repositories/support_chat_repository.dart';
-import 'package:olt_social/src/features/support/data/repositories/support_repository_impl.dart';
-import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:logging/logging.dart';
+import 'package:rendezvous_community/src/app/community_dependencies.dart';
+import 'package:rendezvous_community/src/app/community_support_scope.dart';
+import 'package:rendezvous_community/src/core/auth/auth_bridge_client.dart';
+import 'package:rendezvous_community/src/core/auth/social_session.dart';
+import 'package:rendezvous_community/src/core/auth/token_manager.dart';
+import 'package:rendezvous_community/src/core/error/error_mapper.dart';
+import 'package:rendezvous_community/src/core/logging/community_logger.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/features/chat/data/repositories/chat_repository_impl.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/chat/domain/services/delivery_tracker.dart';
+import 'package:rendezvous_community/src/features/feed/data/repositories/feed_repository_impl.dart';
+import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/media/data/repositories/media_repository_impl.dart';
+import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/features/moderation/data/repositories/moderation_repository_impl.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/repositories/moderation_repository.dart';
+import 'package:rendezvous_community/src/features/notifications/data/repositories/notification_repository_impl.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:rendezvous_community/src/features/poll/data/repositories/poll_repository_impl.dart';
+import 'package:rendezvous_community/src/features/poll/domain/repositories/poll_repository.dart';
+import 'package:rendezvous_community/src/features/post/data/repositories/comment_repository_impl.dart';
+import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
+import 'package:rendezvous_community/src/features/profile/data/repositories/profile_repository_impl.dart';
+import 'package:rendezvous_community/src/features/profile/domain/repositories/profile_repository.dart';
+import 'package:rendezvous_community/src/features/stocks/data/repositories/stock_repository_impl.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/repositories/stock_repository.dart';
+import 'package:rendezvous_community/src/features/support/data/repositories/support_chat_repository.dart';
+import 'package:rendezvous_community/src/features/support/data/repositories/support_repository_impl.dart';
+import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class OltSocial implements OltSocialDependencies, OltSupportDependencies {
-  OltSocial._({
+class RendezvousCommunity implements CommunityDependencies, CommunitySupportDependencies {
+  RendezvousCommunity._({
     required this.client,
     required this._tokens,
     required this._chatImpl,
@@ -59,33 +61,36 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
     }
   }
 
-  static OltSocial? _instance;
+  static RendezvousCommunity? _instance;
 
-  static OltSocial get instance {
+  static RendezvousCommunity get instance {
     final instance = _instance;
     if (instance == null) {
-      throw StateError('OltSocial belum diinisialisasi. Panggil OltSocial.initialize() saat startup.');
+      throw StateError('RendezvousCommunity is not initialized; call RendezvousCommunity.initialize() at startup');
     }
     return instance;
   }
 
   static bool get isInitialized => _instance != null;
 
-  static Future<OltSocial> initialize({
+  static Future<RendezvousCommunity> initialize({
     required String supabaseUrl,
     required String anonKey,
     String? authBridgeUrl,
     required Future<String?> Function() oltTokenProvider,
-    OltStockTapCallback? onStockTap,
-    OltUserTapCallback? onUserTap,
-    OltPostTapCallback? onPostTap,
-    OltRoomTapCallback? onRoomTap,
-    OltStockSearch? stockSearch,
+    CommunityStockTapCallback? onStockTap,
+    CommunityUserTapCallback? onUserTap,
+    CommunityPostTapCallback? onPostTap,
+    CommunityRoomTapCallback? onRoomTap,
+    CommunityStockSearch? stockSearch,
     bool signInEagerly = true,
     bool trackDelivery = true,
     http.Client? httpClient,
+    CommunityLogHandler? logHandler,
+    Level? logLevel,
   }) async {
     await _instance?.dispose();
+    CommunityLoggers.configure(handler: logHandler, level: logLevel);
     final social = create(
       supabaseUrl: supabaseUrl,
       anonKey: anonKey,
@@ -106,16 +111,16 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
     return social;
   }
 
-  static OltSocial create({
+  static RendezvousCommunity create({
     required String supabaseUrl,
     required String anonKey,
     String? authBridgeUrl,
     required Future<String?> Function() oltTokenProvider,
-    OltStockTapCallback? onStockTap,
-    OltUserTapCallback? onUserTap,
-    OltPostTapCallback? onPostTap,
-    OltRoomTapCallback? onRoomTap,
-    OltStockSearch? stockSearch,
+    CommunityStockTapCallback? onStockTap,
+    CommunityUserTapCallback? onUserTap,
+    CommunityPostTapCallback? onPostTap,
+    CommunityRoomTapCallback? onRoomTap,
+    CommunityStockSearch? stockSearch,
     bool trackDelivery = true,
     http.Client? httpClient,
   }) {
@@ -129,22 +134,17 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
       oltTokenProvider: oltTokenProvider,
     );
     final client = SupabaseClient(baseUrl, anonKey, accessToken: tokens.accessToken, httpClient: httpClient);
-    final api = SupabaseSocialDataSource(
-      client,
-      tokens,
-      supabaseUrl: baseUrl,
-      anonKey: anonKey,
-    );
+    final api = SupabaseSocialDataSource(client, tokens, supabaseUrl: baseUrl, anonKey: anonKey);
     final realtime = RealtimeGateway(client);
     final notifications = NotificationRepositoryImpl(api, realtime);
     final cs = api.inSchema('cs_api');
     final support = SupportRepositoryImpl(cs: cs, realtime: realtime, notifications: notifications);
 
-    final social = OltSocial._(
+    final social = RendezvousCommunity._(
       client: client,
       tokens: tokens,
       chatImpl: ChatRepositoryImpl(api, realtime),
-      callbacks: OltSocialCallbacks(
+      callbacks: CommunityCallbacks(
         onStockTap: onStockTap,
         onUserTap: onUserTap,
         onPostTap: onPostTap,
@@ -168,7 +168,9 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
           final roomId = home.roomId;
           if (roomId == null) return const <ChatRoom>[];
           final now = DateTime.now().toUtc();
-          return [ChatRoom(id: roomId, type: RoomType.support, name: home.supportName, createdAt: now, lastReadAt: now)];
+          return [
+            ChatRoom(id: roomId, type: RoomType.support, name: home.supportName, createdAt: now, lastReadAt: now),
+          ];
         },
       ),
       trackDelivery: trackDelivery,
@@ -192,7 +194,7 @@ class OltSocial implements OltSocialDependencies, OltSupportDependencies {
   StreamSubscription<SocialSession?>? _sessionSub;
 
   @override
-  final OltSocialCallbacks callbacks;
+  final CommunityCallbacks callbacks;
   @override
   final FeedRepository feed;
   @override

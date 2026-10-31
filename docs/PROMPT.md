@@ -59,9 +59,9 @@ olt-social/
 ├── services/
 │   └── auth-bridge/                # tukar token OLT -> JWT Supabase (Dockerized)
 ├── packages/
-│   └── olt_social/                 # Flutter package, dipakai app OLT
+│   └── rendezvous_community/                 # Flutter package, dipakai app OLT
 │       ├── lib/
-│       │   ├── olt_social.dart     # public API
+│       │   ├── rendezvous_community.dart     # public API
 │       │   └── src/
 │       │       ├── core/           # config, client, errors, utils
 │       │       ├── data/           # models, datasources, repositories impl
@@ -73,7 +73,7 @@ olt-social/
 └── README.md
 ```
 
-Fitur sosial dibuat sebagai **package Flutter terpisah** (`olt_social`) agar mudah diintegrasikan ke OLT hanya lewat `pubspec.yaml` dan beberapa baris inisialisasi.
+Fitur sosial dibuat sebagai **package Flutter terpisah** (`rendezvous_community`) agar mudah diintegrasikan ke OLT hanya lewat `pubspec.yaml` dan beberapa baris inisialisasi.
 
 ---
 
@@ -179,12 +179,12 @@ Buat tabel berikut, lengkap dengan constraint, index, timestamp (`created_at`, `
 
 ---
 
-## 7. Flutter Package `olt_social`
+## 7. Flutter Package `rendezvous_community`
 
 **API publik yang sederhana**, contohnya:
 
 ```dart
-await OltSocial.initialize(
+await RendezvousCommunity.initialize(
   supabaseUrl: '...',
   anonKey: '...',
   authBridgeUrl: '...',
@@ -192,12 +192,12 @@ await OltSocial.initialize(
 );
 
 // Widget siap pakai:
-OltStreamFeed();                       // stream umum
-OltStockFeed(stockCode: 'BBCA');       // feed di halaman saham
-OltPostDetail(postId: '...');          // post + thread komentar
-OltChatList();
-OltChatRoom(roomId: '...');
-OltComposePost(initialStock: 'BBCA');
+CommunityStreamFeed();                       // stream umum
+CommunityStockFeed(stockCode: 'BBCA');       // feed di halaman saham
+CommunityPostDetail(postId: '...');          // post + thread komentar
+CommunityChatList();
+CommunityChatRoom(roomId: '...');
+CommunityComposePost(initialStock: 'BBCA');
 ```
 
 **Ketentuan UI/UX**
@@ -242,6 +242,6 @@ Kerjakan **bertahap**. Setelah setiap tahap selesai, berhenti, ringkas hasilnya,
 6. **Hardening**:
    - Rate limit, filter kata, report/block, logging, panduan deploy VPS, backup, dan checklist produksi.
 7. **Panduan integrasi**:
-   - Dokumen langkah memasang `olt_social` ke proyek OLT yang sudah ada.
+   - Dokumen langkah memasang `rendezvous_community` ke proyek OLT yang sudah ada.
 
 Sebelum mulai, **periksa dulu struktur proyek OLT** (state management, routing, tema, dan versi Flutter/Dart) supaya package mengikuti konvensi yang ada. Kalau ada keputusan yang ambigu, tanyakan dulu, jangan menebak.

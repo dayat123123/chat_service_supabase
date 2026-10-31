@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
-class OltDisclaimer extends StatelessWidget {
-  const OltDisclaimer({super.key, this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8)});
+class CommunityDisclaimer extends StatelessWidget {
+  const CommunityDisclaimer({super.key, this.padding = const EdgeInsets.symmetric(horizontal: 16, vertical: 8)});
 
   final EdgeInsetsGeometry padding;
 
@@ -18,7 +18,7 @@ class OltDisclaimer extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              context.oltL10n.disclaimer,
+              context.communityL10n.disclaimer,
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),

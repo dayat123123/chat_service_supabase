@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/moderation/domain/entities/report.dart';
-import 'package:olt_social/src/features/moderation/presentation/widgets/moderation_actions.dart';
-import 'package:olt_social/src/features/post/domain/entities/thread_comment.dart';
-import 'package:olt_social/src/features/post/presentation/cubit/comment_thread_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_user_name.dart';
-import 'package:olt_social/src/shared/presentation/widgets/social_text.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
+import 'package:rendezvous_community/src/features/moderation/presentation/widgets/moderation_actions.dart';
+import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
+import 'package:rendezvous_community/src/features/post/presentation/cubit/comment_thread_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_user_name.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/social_text.dart';
 
 class ThreadLinesPainter extends CustomPainter {
   const ThreadLinesPainter({required this.level, required this.indent, required this.color, this.inset = 8});
@@ -44,10 +44,13 @@ class _Indented extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = OltSocialTheme.of(context);
+    final t = CommunityTheme.of(context);
     return CustomPaint(
       painter: ThreadLinesPainter(level: level, indent: t.threadIndent, color: t.threadLine),
-      child: Padding(padding: EdgeInsets.only(left: 8 + level * t.threadIndent), child: child),
+      child: Padding(
+        padding: EdgeInsets.only(left: 8 + level * t.threadIndent),
+        child: child,
+      ),
     );
   }
 }
@@ -60,7 +63,7 @@ class ThreadRowView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final cubit = context.read<CommentThreadCubit>();
     return switch (row) {
       CommentRow(:final comment, :final collapsed) => _Indented(
@@ -85,7 +88,7 @@ class ThreadRowView extends StatelessWidget {
         child: Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed: () => OltNavigator.openPost(context, postId, rootCommentId: comment.id),
+            onPressed: () => CommunityNavigator.openPost(context, postId, rootCommentId: comment.id),
             icon: const Icon(Icons.forum_outlined, size: 18),
             label: Text('${l10n.continueThread} →'),
           ),
@@ -121,10 +124,10 @@ class _CommentTileState extends State<CommentTile> {
   @override
   Widget build(BuildContext context) {
     final c = widget.comment;
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final cubit = context.read<CommentThreadCubit>();
-    final isMine = c.author != null && c.author!.id == OltSocialScope.of(context).currentUser?.id;
+    final isMine = c.author != null && c.author!.id == CommunityScope.of(context).currentUser?.id;
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
 
     return MouseRegion(
@@ -143,9 +146,13 @@ class _CommentTileState extends State<CommentTile> {
             Row(
               children: [
                 if (c.author != null) ...[
-                  OltAvatar(user: c.author, radius: 12, onTap: () => OltNavigator.openUser(context, c.author!)),
+                  CommunityAvatar(
+                    user: c.author,
+                    radius: 12,
+                    onTap: () => CommunityNavigator.openUser(context, c.author!),
+                  ),
                   const SizedBox(width: 8),
-                  Flexible(child: OltUserName(user: c.author!, showUsername: false)),
+                  Flexible(child: CommunityUserName(user: c.author!, showUsername: false)),
                 ],
                 Text(' · ${l10n.relativeTime(c.createdAt)}', style: muted),
                 if (c.editedAt != null && !c.isDeleted) Text(' ${l10n.edited}', style: muted),
@@ -198,7 +205,9 @@ class _CommentTileState extends State<CommentTile> {
                     onSelected: (action) async {
                       switch (action) {
                         case 'delete':
-                          if (await confirmOlt(context, l10n.deleteCommentConfirm)) await cubit.deleteComment(c);
+                          if (await confirmCommunityAction(context, l10n.deleteCommentConfirm)) {
+                            await cubit.deleteComment(c);
+                          }
                         case 'report':
                           await showReportDialog(context, target: ReportTarget.comment, targetId: c.id);
                         case 'block':

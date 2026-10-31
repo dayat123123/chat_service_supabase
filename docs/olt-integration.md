@@ -7,7 +7,7 @@
 | Kebutuhan | Server sosial | App / backend OLT |
 |---|---|---|
 | Login | auth-bridge memverifikasi tanda tangan token sosial, lalu menerbitkan JWT sosial 15 menit | Menerbitkan token sosial saat login dan saat app meminta token baru. App memberikannya lewat `oltTokenProvider` |
-| Daftar dan nama saham | Tidak disimpan. Kode `$KODE` hanya label untuk feed, pantau, dan room saham | Saran `$KODE` lewat `stockSearch`, nama saham lewat `OltStockFeed(stockName:)` |
+| Daftar dan nama saham | Tidak disimpan. Kode `$KODE` hanya label untuk feed, pantau, dan room saham | Saran `$KODE` lewat `stockSearch`, nama saham lewat `CommunityStockFeed(stockName:)` |
 | Harga, grafik, order book | Tidak ada | Halaman saham OLT, dibuka lewat `onStockTap` |
 | Order, mutasi dana, portofolio | Tidak ada. Chat CS tidak melampirkan order | Ditampilkan app OLT. Nasabah menjelaskan ke CS lewat teks atau gambar |
 | Data nasabah untuk CS | Web CS hanya menampilkan identitas dari token login, riwayat tiket, dan catatan internal | Agen membuka back-office OLT bila butuh data akun |

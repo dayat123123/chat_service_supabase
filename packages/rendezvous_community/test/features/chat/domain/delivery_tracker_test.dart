@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/services/delivery_tracker.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/services/delivery_tracker.dart';
 
 import '../../../support/fakes.dart';
 
@@ -21,13 +21,13 @@ void main() {
     await chat.dispose();
   });
 
-  test('saat mulai menandai semua room yang punya pesan baru', () async {
+  test('marks every room with new messages on start', () async {
     tracker.start();
     await pumpEventQueue();
     expect(chat.delivered, [null]);
   });
 
-  test('pesan dari orang lain ditandai terkirim per room setelah debounce', () async {
+  test('marks messages from others as delivered per room after a debounce', () async {
     tracker.start();
     await pumpEventQueue();
     chat.activity
@@ -38,7 +38,7 @@ void main() {
     expect(chat.delivered.last, unorderedEquals(['r-1', 'r-2']));
   });
 
-  test('pesan sendiri tidak ditandai', () async {
+  test('does not mark own messages', () async {
     tracker.start();
     await pumpEventQueue();
     chat.activity.add(activity('r-1', me.id));
@@ -46,7 +46,7 @@ void main() {
     expect(chat.delivered, [null]);
   });
 
-  test('stop menghentikan pemantauan', () async {
+  test('stop ends monitoring', () async {
     tracker.start();
     await pumpEventQueue();
     await tracker.stop();

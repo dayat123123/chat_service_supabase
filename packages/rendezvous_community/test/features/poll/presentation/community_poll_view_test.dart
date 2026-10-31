@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import '../../../support/fakes.dart';
 
@@ -21,11 +21,13 @@ Future<FakeDependencies> pumpPoll(WidgetTester tester, Poll value, {bool canVote
   await tester.pumpWidget(
     MaterialApp(
       locale: const Locale('id'),
-      localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
-      supportedLocales: OltSocialLocalizations.supportedLocales,
-      home: OltSocialScope(
+      localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+      supportedLocales: CommunityLocalizations.supportedLocales,
+      home: CommunityScope(
         dependencies: deps,
-        child: Scaffold(body: OltPollView(postId: 'p-1', poll: value, canVote: canVote)),
+        child: Scaffold(
+          body: CommunityPollView(postId: 'p-1', poll: value, canVote: canVote),
+        ),
       ),
     ),
   );
@@ -33,14 +35,14 @@ Future<FakeDependencies> pumpPoll(WidgetTester tester, Poll value, {bool canVote
 }
 
 void main() {
-  testWidgets('sebelum memilih tampil tombol pilihan tanpa persentase', (tester) async {
+  testWidgets('shows option buttons without percentages before voting', (tester) async {
     await pumpPoll(tester, poll());
     expect(find.widgetWithText(OutlinedButton, 'Naik'), findsOneWidget);
     expect(find.textContaining('%'), findsNothing);
     expect(find.textContaining('Belum ada suara'), findsOneWidget);
   });
 
-  testWidgets('memilih mengirim suara lalu menampilkan hasil dan pilihan saya', (tester) async {
+  testWidgets('voting submits the vote and then shows results and my choice', (tester) async {
     final deps = await pumpPoll(tester, poll());
     deps.polls.onVote = (_, optionId) => poll(mine: optionId, visible: true, total: 4);
 
@@ -55,9 +57,9 @@ void main() {
     expect(find.textContaining('4 suara'), findsOneWidget);
   });
 
-  testWidgets('gagal memilih menampilkan pesan error dan tombol tetap ada', (tester) async {
+  testWidgets('a failed vote shows an error message and keeps the buttons', (tester) async {
     final deps = await pumpPoll(tester, poll());
-    deps.polls.error = const OltSocialException(OltSocialErrorKind.invalidInput, code: 'poll_closed');
+    deps.polls.error = const CommunityException(CommunityErrorKind.invalidInput, code: 'poll_closed');
 
     await tester.tap(find.widgetWithText(OutlinedButton, 'Naik'));
     await tester.pump();
@@ -67,7 +69,7 @@ void main() {
     expect(find.widgetWithText(OutlinedButton, 'Naik'), findsOneWidget);
   });
 
-  testWidgets('pembuat polling langsung melihat hasil tanpa tombol', (tester) async {
+  testWidgets('the poll author sees results immediately without buttons', (tester) async {
     await pumpPoll(tester, poll(visible: true, total: 4), canVote: false);
     expect(find.byType(OutlinedButton), findsNothing);
     expect(find.text('75%'), findsOneWidget);

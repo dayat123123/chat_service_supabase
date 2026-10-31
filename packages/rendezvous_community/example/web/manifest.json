@@ -1,6 +1,6 @@
 {
-    "name": "olt_social_example",
-    "short_name": "olt_social_example",
+    "name": "rendezvous_community_example",
+    "short_name": "rendezvous_community_example",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

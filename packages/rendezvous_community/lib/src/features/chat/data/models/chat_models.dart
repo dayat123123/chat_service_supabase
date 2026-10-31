@@ -1,9 +1,9 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
-import 'package:olt_social/src/shared/data/models/attachment_model.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'chat_models.freezed.dart';
 part 'chat_models.g.dart';

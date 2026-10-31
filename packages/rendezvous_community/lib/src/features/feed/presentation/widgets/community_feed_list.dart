@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/presentation/cubit/feed_cubit.dart';
-import 'package:olt_social/src/features/feed/presentation/widgets/post_card.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/cubit/feed_cubit.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
-class OltFeedList extends StatelessWidget {
-  const OltFeedList({super.key, required this.scope, required this.emptyMessage, this.header});
+class CommunityFeedList extends StatelessWidget {
+  const CommunityFeedList({super.key, required this.scope, required this.emptyMessage, this.header});
 
   final FeedScope scope;
   final String emptyMessage;
@@ -20,7 +20,7 @@ class OltFeedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     return BlocProvider(
       create: (_) => FeedCubit(feed: deps.feed, scope: scope, currentUserId: () => deps.currentUser?.id)..load(),
       child: _FeedListView(emptyMessage: emptyMessage, header: header),
@@ -64,15 +64,15 @@ class _FeedListViewState extends State<_FeedListView> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return BlocConsumer<FeedCubit, FeedState>(
       listenWhen: (a, b) => a.actionErrorId != b.actionErrorId,
-      listener: (context, state) => showOltError(context, state.actionError!),
+      listener: (context, state) => showCommunityError(context, state.actionError!),
       builder: (context, state) {
         final cubit = context.read<FeedCubit>();
         final Widget body = switch (state.status) {
-          LoadStatus.initial || LoadStatus.loading => const OltSkeleton(),
-          LoadStatus.failure => OltErrorView(error: state.error!, onRetry: cubit.load),
+          LoadStatus.initial || LoadStatus.loading => const CommunitySkeleton(),
+          LoadStatus.failure => CommunityErrorView(error: state.error!, onRetry: cubit.load),
           LoadStatus.ready => RefreshIndicator(
             onRefresh: cubit.refresh,
             child: ListView.builder(
@@ -84,13 +84,16 @@ class _FeedListViewState extends State<_FeedListView> {
                   return Column(
                     children: [
                       ?widget.header,
-                      if (state.posts.isEmpty) OltEmptyView(message: widget.emptyMessage),
+                      if (state.posts.isEmpty) CommunityEmptyView(message: widget.emptyMessage),
                     ],
                   );
                 }
                 if (index == state.posts.length + 1) {
                   return state.loadingMore
-                      ? const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()))
+                      ? const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
                       : const SizedBox(height: 32);
                 }
                 final post = state.posts[index - 1];
@@ -99,7 +102,7 @@ class _FeedListViewState extends State<_FeedListView> {
                     PostCard(
                       post: post,
                       onLike: () => cubit.toggleLike(post),
-                      onOpen: () => OltNavigator.openPost(context, post.id),
+                      onOpen: () => CommunityNavigator.openPost(context, post.id),
                       onDelete: () => cubit.delete(post),
                       onAuthorBlocked: () => cubit.hideAuthor(post.author.id),
                     ),
@@ -115,7 +118,7 @@ class _FeedListViewState extends State<_FeedListView> {
           children: [
             Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: OltBreakpoints.contentMaxWidth),
+                constraints: const BoxConstraints(maxWidth: CommunityBreakpoints.contentMaxWidth),
                 child: body,
               ),
             ),
@@ -138,4 +141,3 @@ class _FeedListViewState extends State<_FeedListView> {
     );
   }
 }
-

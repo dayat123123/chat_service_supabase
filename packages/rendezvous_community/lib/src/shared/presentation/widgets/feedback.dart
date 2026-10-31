@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
-void showOltError(BuildContext context, Object error) {
+void showCommunityError(BuildContext context, Object error) {
   ScaffoldMessenger.maybeOf(context)
     ?..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(context.oltL10n.errorMessage(error))));
+    ..showSnackBar(SnackBar(content: Text(context.communityL10n.errorMessage(error))));
 }
 
-void showOltMessage(BuildContext context, String message) {
+void showCommunityMessage(BuildContext context, String message) {
   ScaffoldMessenger.maybeOf(context)
     ?..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));
 }
 
-Future<bool> confirmOlt(BuildContext context, String message, {String? confirmLabel}) async {
-  final l10n = context.oltL10n;
+Future<bool> confirmCommunityAction(BuildContext context, String message, {String? confirmLabel}) async {
+  final l10n = context.communityL10n;
   final ok = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(

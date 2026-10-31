@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/support_message_actions.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/support_message_actions.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SupportSystemNotice extends StatelessWidget {
@@ -24,12 +24,13 @@ class SupportSystemNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final actions = OltSupportMessageActions.maybeOf(context);
+    final actions = CommunitySupportMessageActions.maybeOf(context);
     final ticketId = message.ticketId;
-    final rateable = message.kind == MessageKind.csat &&
+    final rateable =
+        message.kind == MessageKind.csat &&
         ticketId != null &&
         actions?.onRate != null &&
         (actions?.canRate?.call(ticketId) ?? false);
@@ -39,10 +40,7 @@ class SupportSystemNotice extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(maxWidth: 560),
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          decoration: BoxDecoration(color: scheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -129,7 +127,7 @@ class OfficialBadge extends StatelessWidget {
           Icon(Icons.verified, size: 12, color: color),
           const SizedBox(width: 3),
           Text(
-            context.oltL10n.supportOfficialBadge,
+            context.communityL10n.supportOfficialBadge,
             style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
           ),
         ],
@@ -147,7 +145,7 @@ class SupportMessageExtras extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actions = OltSupportMessageActions.maybeOf(context);
+    final actions = CommunitySupportMessageActions.maybeOf(context);
     return switch (message.kind) {
       MessageKind.quickReply => _QuickReplies(
         options: [for (final o in (message.payload['options'] as List<Object?>? ?? const [])) '$o'],
@@ -202,7 +200,7 @@ class _HelpLink extends StatelessWidget {
         style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: EdgeInsets.zero),
         onPressed: () => onOpen == null ? launchUrl(uri, mode: LaunchMode.externalApplication) : onOpen!(uri),
         icon: const Icon(Icons.open_in_new, size: 16),
-        label: Text(context.oltL10n.supportOpenLink),
+        label: Text(context.communityL10n.supportOpenLink),
       ),
     );
   }

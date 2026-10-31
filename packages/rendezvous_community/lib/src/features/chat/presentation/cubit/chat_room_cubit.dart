@@ -3,19 +3,21 @@ import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/core/error/error_mapper.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/core/network/realtime_status.dart';
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/media/domain/repositories/media_repository.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
+import 'package:logging/logging.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/error/error_mapper.dart';
+import 'package:rendezvous_community/src/core/logging/community_logger.dart';
+import 'package:rendezvous_community/src/core/network/realtime_status.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:uuid/uuid.dart';
 
 part 'chat_room_cubit.freezed.dart';
@@ -102,14 +104,16 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       final room = results[0] as ChatRoom?;
       final members = results[1] as List<RoomMember>;
       final page = results[2] as Paged<ChatMessage>;
-      emit(state.copyWith(
-        status: LoadStatus.ready,
-        me: me,
-        room: room,
-        members: {for (final m in members) m.user.id: m},
-        messages: List<ChatMessage>.of(page.items),
-        nextCursor: page.nextCursor,
-      ));
+      emit(
+        state.copyWith(
+          status: LoadStatus.ready,
+          me: me,
+          room: room,
+          members: {for (final m in members) m.user.id: m},
+          messages: List<ChatMessage>.of(page.items),
+          nextCursor: page.nextCursor,
+        ),
+      );
       _connect(me);
       _scheduleMarkRead();
     } catch (e) {
@@ -161,10 +165,14 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     if (member == null) return;
     final merged = member.receipt.merge(receipt);
     if (merged == member.receipt) return;
-    emit(state.copyWith(members: {
-      ...state.members,
-      receipt.userId: member.copyWith(lastDeliveredAt: merged.lastDeliveredAt, lastReadAt: merged.lastReadAt),
-    }));
+    emit(
+      state.copyWith(
+        members: {
+          ...state.members,
+          receipt.userId: member.copyWith(lastDeliveredAt: merged.lastDeliveredAt, lastReadAt: merged.lastReadAt),
+        },
+      ),
+    );
   }
 
   RoomMember _keepLatestReceipt(RoomMember fresh) {
@@ -225,13 +233,15 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       final members = await _chat.getMembers(roomId);
       if (isClosed) return;
       final map = {for (final m in members) m.user.id: _keepLatestReceipt(m)};
-      emit(state.copyWith(
-        members: map,
-        messages: [
-          for (final m in state.messages)
-            m.sender == null && map[m.senderId] != null ? m.copyWith(sender: map[m.senderId]!.user) : m,
-        ],
-      ));
+      emit(
+        state.copyWith(
+          members: map,
+          messages: [
+            for (final m in state.messages)
+              m.sender == null && map[m.senderId] != null ? m.copyWith(sender: map[m.senderId]!.user) : m,
+          ],
+        ),
+      );
     } catch (_) {}
   }
 
@@ -253,10 +263,12 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   Future<void> _reloadLatest() async {
     final page = await _chat.getMessages(roomId, limit: pageSize);
     if (isClosed) return;
-    emit(state.copyWith(
-      messages: [...state.messages.where((m) => m.isLocal), ...page.items]..sort(_newestFirst),
-      nextCursor: page.nextCursor,
-    ));
+    emit(
+      state.copyWith(
+        messages: [...state.messages.where((m) => m.isLocal), ...page.items]..sort(_newestFirst),
+        nextCursor: page.nextCursor,
+      ),
+    );
   }
 
   Future<void> loadOlder() async {
@@ -267,11 +279,13 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       final page = await _chat.getMessages(roomId, cursor: cursor, limit: pageSize);
       if (isClosed) return;
       final known = {for (final m in state.messages) m.id};
-      emit(state.copyWith(
-        messages: [...state.messages, ...page.items.where((m) => !known.contains(m.id))],
-        nextCursor: page.nextCursor,
-        loadingOlder: false,
-      ));
+      emit(
+        state.copyWith(
+          messages: [...state.messages, ...page.items.where((m) => !known.contains(m.id))],
+          nextCursor: page.nextCursor,
+          loadingOlder: false,
+        ),
+      );
     } catch (e) {
       if (!isClosed) emit(state.copyWith(loadingOlder: false));
       _fail(e);
@@ -328,7 +342,13 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       );
       _upsert(sent);
     } catch (e) {
-      if (mapError(e).kind == OltSocialErrorKind.contentBlocked) {
+      final mapped = mapError(e);
+      CommunityLoggers.chat.event(
+        Level.SEVERE,
+        'Failed to send message',
+        fields: {'roomId': roomId, 'clientId': local.clientId, 'kind': mapped.kind, 'code': mapped.code},
+      );
+      if (mapped.kind == CommunityErrorKind.contentBlocked) {
         _removeLocal(local.clientId);
       } else {
         _setStatus(local.clientId, MessageStatus.failed);
@@ -339,17 +359,25 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
 
   void _removeLocal(String? clientId) {
     if (isClosed || clientId == null) return;
-    emit(state.copyWith(messages: [
-      for (final m in state.messages)
-        if (!(m.isLocal && m.clientId == clientId)) m,
-    ]));
+    emit(
+      state.copyWith(
+        messages: [
+          for (final m in state.messages)
+            if (!(m.isLocal && m.clientId == clientId)) m,
+        ],
+      ),
+    );
   }
 
   void _setStatus(String? clientId, MessageStatus status) {
     if (isClosed || clientId == null) return;
-    emit(state.copyWith(messages: [
-      for (final m in state.messages) m.clientId == clientId && m.isLocal ? m.copyWith(status: status) : m,
-    ]));
+    emit(
+      state.copyWith(
+        messages: [
+          for (final m in state.messages) m.clientId == clientId && m.isLocal ? m.copyWith(status: status) : m,
+        ],
+      ),
+    );
   }
 
   Future<void> sendImage(Uint8List bytes, String mimeType) async {
@@ -366,9 +394,14 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
 
   Future<void> deleteMessage(ChatMessage message) async {
     final before = state.messages;
-    emit(state.copyWith(messages: [
-      for (final m in before) m.id == message.id ? m.copyWith(isDeleted: true, body: null, attachments: const []) : m,
-    ]));
+    emit(
+      state.copyWith(
+        messages: [
+          for (final m in before)
+            m.id == message.id ? m.copyWith(isDeleted: true, body: null, attachments: const []) : m,
+        ],
+      ),
+    );
     try {
       await _chat.deleteMessage(message.id);
     } catch (e) {

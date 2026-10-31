@@ -5,24 +5,24 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
-import 'olt_social_localizations_en.dart';
-import 'olt_social_localizations_id.dart';
+import 'community_localizations_en.dart';
+import 'community_localizations_id.dart';
 
 // ignore_for_file: type=lint
 
-/// Callers can lookup localized strings with an instance of OltSocialLocalizations
-/// returned by `OltSocialLocalizations.of(context)`.
+/// Callers can lookup localized strings with an instance of CommunityLocalizations
+/// returned by `CommunityLocalizations.of(context)`.
 ///
-/// Applications need to include `OltSocialLocalizations.delegate()` in their app's
+/// Applications need to include `CommunityLocalizations.delegate()` in their app's
 /// `localizationDelegates` list, and the locales they support in the app's
 /// `supportedLocales` list. For example:
 ///
 /// ```dart
-/// import 'gen/olt_social_localizations.dart';
+/// import 'gen/community_localizations.dart';
 ///
 /// return MaterialApp(
-///   localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
-///   supportedLocales: OltSocialLocalizations.supportedLocales,
+///   localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+///   supportedLocales: CommunityLocalizations.supportedLocales,
 ///   home: MyApplicationHome(),
 /// );
 /// ```
@@ -59,23 +59,18 @@ import 'olt_social_localizations_id.dart';
 /// Select and expand the newly-created Localizations item then, for each
 /// locale your application supports, add a new item and select the locale
 /// you wish to add from the pop-up menu in the Value field. This list should
-/// be consistent with the languages listed in the OltSocialLocalizations.supportedLocales
+/// be consistent with the languages listed in the CommunityLocalizations.supportedLocales
 /// property.
-abstract class OltSocialLocalizations {
-  OltSocialLocalizations(String locale)
-    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+abstract class CommunityLocalizations {
+  CommunityLocalizations(String locale) : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
-  static OltSocialLocalizations? of(BuildContext context) {
-    return Localizations.of<OltSocialLocalizations>(
-      context,
-      OltSocialLocalizations,
-    );
+  static CommunityLocalizations? of(BuildContext context) {
+    return Localizations.of<CommunityLocalizations>(context, CommunityLocalizations);
   }
 
-  static const LocalizationsDelegate<OltSocialLocalizations> delegate =
-      _OltSocialLocalizationsDelegate();
+  static const LocalizationsDelegate<CommunityLocalizations> delegate = _CommunityLocalizationsDelegate();
 
   /// A list of this localizations delegate along with the default localizations
   /// delegates.
@@ -87,19 +82,15 @@ abstract class OltSocialLocalizations {
   /// Additional delegates can be added by appending to this list in
   /// MaterialApp. This list does not have to be used at all if a custom list
   /// of delegates is preferred or required.
-  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
-      <LocalizationsDelegate<dynamic>>[
-        delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ];
+  static const List<LocalizationsDelegate<dynamic>> localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+  ];
 
   /// A list of this localizations delegate's supported locales.
-  static const List<Locale> supportedLocales = <Locale>[
-    Locale('id'),
-    Locale('en'),
-  ];
+  static const List<Locale> supportedLocales = <Locale>[Locale('id'), Locale('en')];
 
   /// No description provided for @disclaimer.
   ///
@@ -1314,36 +1305,32 @@ abstract class OltSocialLocalizations {
   String get supportUnavailable;
 }
 
-class _OltSocialLocalizationsDelegate
-    extends LocalizationsDelegate<OltSocialLocalizations> {
-  const _OltSocialLocalizationsDelegate();
+class _CommunityLocalizationsDelegate extends LocalizationsDelegate<CommunityLocalizations> {
+  const _CommunityLocalizationsDelegate();
 
   @override
-  Future<OltSocialLocalizations> load(Locale locale) {
-    return SynchronousFuture<OltSocialLocalizations>(
-      lookupOltSocialLocalizations(locale),
-    );
+  Future<CommunityLocalizations> load(Locale locale) {
+    return SynchronousFuture<CommunityLocalizations>(lookupCommunityLocalizations(locale));
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'id'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>['en', 'id'].contains(locale.languageCode);
 
   @override
-  bool shouldReload(_OltSocialLocalizationsDelegate old) => false;
+  bool shouldReload(_CommunityLocalizationsDelegate old) => false;
 }
 
-OltSocialLocalizations lookupOltSocialLocalizations(Locale locale) {
+CommunityLocalizations lookupCommunityLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
     case 'en':
-      return OltSocialLocalizationsEn();
+      return CommunityLocalizationsEn();
     case 'id':
-      return OltSocialLocalizationsId();
+      return CommunityLocalizationsId();
   }
 
   throw FlutterError(
-    'OltSocialLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'CommunityLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
     'an issue with the localizations generation tool. Please file an issue '
     'on GitHub with a reproducible sample app and the gen-l10n configuration '
     'that was used.',

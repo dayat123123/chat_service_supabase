@@ -3,8 +3,8 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 
 @immutable
-class OltSocialTheme extends ThemeExtension<OltSocialTheme> {
-  const OltSocialTheme({
+class CommunityTheme extends ThemeExtension<CommunityTheme> {
+  const CommunityTheme({
     required this.bullish,
     required this.onBullish,
     required this.bearish,
@@ -25,13 +25,13 @@ class OltSocialTheme extends ThemeExtension<OltSocialTheme> {
     this.maxThreadIndentLevels = 4,
   });
 
-  factory OltSocialTheme.fallback(ThemeData theme) {
+  factory CommunityTheme.fallback(ThemeData theme) {
     final scheme = theme.colorScheme;
     final positive = ColorScheme.fromSeed(
       seedColor: Color.lerp(Colors.green, scheme.primary, 0.15)!,
       brightness: theme.brightness,
     );
-    return OltSocialTheme(
+    return CommunityTheme(
       bullish: positive.primaryContainer,
       onBullish: positive.onPrimaryContainer,
       bearish: scheme.errorContainer,
@@ -51,9 +51,9 @@ class OltSocialTheme extends ThemeExtension<OltSocialTheme> {
     );
   }
 
-  static OltSocialTheme of(BuildContext context) {
+  static CommunityTheme of(BuildContext context) {
     final theme = Theme.of(context);
-    return theme.extension<OltSocialTheme>() ?? OltSocialTheme.fallback(theme);
+    return theme.extension<CommunityTheme>() ?? CommunityTheme.fallback(theme);
   }
 
   final Color bullish;
@@ -80,7 +80,7 @@ class OltSocialTheme extends ThemeExtension<OltSocialTheme> {
   final int maxThreadIndentLevels;
 
   @override
-  OltSocialTheme copyWith({
+  CommunityTheme copyWith({
     Color? bullish,
     Color? onBullish,
     Color? bearish,
@@ -99,7 +99,7 @@ class OltSocialTheme extends ThemeExtension<OltSocialTheme> {
     Color? readReceipt,
     double? threadIndent,
     int? maxThreadIndentLevels,
-  }) => OltSocialTheme(
+  }) => CommunityTheme(
     bullish: bullish ?? this.bullish,
     onBullish: onBullish ?? this.onBullish,
     bearish: bearish ?? this.bearish,
@@ -121,10 +121,10 @@ class OltSocialTheme extends ThemeExtension<OltSocialTheme> {
   );
 
   @override
-  OltSocialTheme lerp(covariant OltSocialTheme? other, double t) {
+  CommunityTheme lerp(covariant CommunityTheme? other, double t) {
     if (other == null) return this;
     Color c(Color a, Color b) => Color.lerp(a, b, t)!;
-    return OltSocialTheme(
+    return CommunityTheme(
       bullish: c(bullish, other.bullish),
       onBullish: c(onBullish, other.onBullish),
       bearish: c(bearish, other.bearish),
@@ -147,7 +147,7 @@ class OltSocialTheme extends ThemeExtension<OltSocialTheme> {
   }
 }
 
-abstract final class OltBreakpoints {
+abstract final class CommunityBreakpoints {
   static const double wide = 840;
 
   static const double contentMaxWidth = 720;

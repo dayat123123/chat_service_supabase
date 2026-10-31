@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/message_bubble.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_bubble.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
 class MessageList extends StatefulWidget {
   const MessageList({super.key});
@@ -36,8 +36,8 @@ class _MessageListState extends State<MessageList> {
 
   @override
   Widget build(BuildContext context) {
-    final builders = OltChatBuilders.of(context);
-    final l10n = context.oltL10n;
+    final builders = CommunityChatBuilders.of(context);
+    final l10n = context.communityL10n;
     return BlocBuilder<ChatRoomCubit, ChatRoomState>(
       buildWhen: (a, b) =>
           a.messages != b.messages || a.members != b.members || a.loadingOlder != b.loadingOlder || a.room != b.room,
@@ -46,8 +46,8 @@ class _MessageListState extends State<MessageList> {
           return buildChatPart(
             builders.empty,
             context,
-            OltEmptyDetails(kind: OltChatEmpty.messages, message: l10n.messageHint),
-            OltEmptyView(message: l10n.messageHint, icon: Icons.waving_hand_outlined),
+            CommunityEmptyDetails(kind: CommunityChatEmpty.messages, message: l10n.messageHint),
+            CommunityEmptyView(message: l10n.messageHint, icon: Icons.waving_hand_outlined),
           );
         }
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -63,14 +63,18 @@ class _MessageListState extends State<MessageList> {
               return buildChatPart(
                 builders.loading,
                 context,
-                const OltLoadingDetails(OltChatLoad.olderMessages),
-                const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator())),
+                const CommunityLoadingDetails(CommunityChatLoad.olderMessages),
+                const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
               );
             }
             final message = state.messages[i];
             final older = i + 1 < state.messages.length ? state.messages[i + 1] : null;
             final newDay = older == null || !_sameDay(older.createdAt, message.createdAt);
-            final grouped = older != null &&
+            final grouped =
+                older != null &&
                 !newDay &&
                 !older.isSystem &&
                 older.senderId == message.senderId &&
@@ -88,7 +92,7 @@ class _MessageListState extends State<MessageList> {
             final divider = buildChatPart(
               builders.dayDivider,
               context,
-              OltDayDetails(day: message.createdAt, label: l10n.dayLabel(message.createdAt)),
+              CommunityDayDetails(day: message.createdAt, label: l10n.dayLabel(message.createdAt)),
               _DayDivider(time: message.createdAt),
             );
             return Column(
@@ -127,7 +131,7 @@ class _DayDivider extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: Text(
-            context.oltL10n.dayLabel(time),
+            context.communityL10n.dayLabel(time),
             style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ),

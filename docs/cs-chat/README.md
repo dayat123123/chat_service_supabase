@@ -16,7 +16,7 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 | CS1 | Fondasi: perluasan chat, schema `cs`, RLS, catatan internal, audit log (`customer-adapter` dihapus 31 Okt 2026) | Selesai |
 | **R1** | Backend model ambil tiket: `cs.tickets`, klaim atomik, transfer dengan persetujuan, `cs-sweep`, API tiket, tes rebutan | **Selesai** |
 | **R2** | Web CS khusus (versi Flutter, dihapus 31 Okt 2026 setelah cutover ke React): login + TOTP, 3 kolom, ambil tiket, chat, catatan internal, balasan cepat, notifikasi | **Selesai** |
-| **R3** | Integrasi aplikasi nasabah: modul `support` di `olt_social` (room CS disematkan, pilih topik, header status, aksi, rating di chat, tiket saya, notifikasi lokal, antrean offline, peringatan data sensitif). Windows: panel samping. Android: layar penuh | **Selesai** |
+| **R3** | Integrasi aplikasi nasabah: modul `support` di `rendezvous_community` (room CS disematkan, pilih topik, header status, aksi, rating di chat, tiket saya, notifikasi lokal, antrean offline, peringatan data sensitif). Windows: panel samping. Android: layar penuh | **Selesai** |
 | **R4** | Dashboard supervisor realtime + alert tiket terlambat, laporan + ekspor CSV, pengaturan admin (akun CS, topik, quick reply global, jam layanan & libur, pesan otomatis, lepas otomatis, mode penugasan), halaman demo dev dipindah ke model tiket (bagian 5) | **Selesai** |
 | React | Web CS ditulis ulang dengan React + TypeScript ([`apps/cs-console-react`](../../apps/cs-console-react/README.md), [prompt](../PROMPT-CS-CONSOLE-REACT.md), [paritas](../cs-console-parity.md)). M1–M5 selesai; console Flutter dihapus 31 Okt 2026 | **Selesai** |
 

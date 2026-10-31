@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- olt_social: akses API sosial & realtime -->
+    <!-- rendezvous_community: akses API sosial & realtime -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Notifikasi lokal balasan CS (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

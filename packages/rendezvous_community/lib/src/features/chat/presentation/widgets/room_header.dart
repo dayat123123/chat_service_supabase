@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/room_visuals.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/typing_text.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_visuals.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/typing_text.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 
 class RoomHeader extends StatelessWidget {
   const RoomHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
-    final builder = OltChatBuilders.of(context).roomHeader;
+    final l10n = context.communityL10n;
+    final builder = CommunityChatBuilders.of(context).roomHeader;
     return BlocBuilder<ChatRoomCubit, ChatRoomState>(
       buildWhen: (a, b) =>
           a.room != b.room || a.typing != b.typing || a.members.length != b.members.length || a.online != b.online,
@@ -27,7 +27,7 @@ class RoomHeader extends StatelessWidget {
         final typing = state.typing.isNotEmpty;
         final otherUser = room.otherUser;
         final stockCode = room.stockCode;
-        final details = OltRoomHeaderDetails(
+        final details = CommunityRoomHeaderDetails(
           room: room,
           title: roomTitle(room),
           subtitle: typing
@@ -44,10 +44,10 @@ class RoomHeader extends StatelessWidget {
           typing: state.typing.values.toList(),
           memberCount: state.members.length,
           onTap: room.type == RoomType.direct && otherUser != null
-              ? () => OltNavigator.openUser(context, otherUser)
+              ? () => CommunityNavigator.openUser(context, otherUser)
               : room.type == RoomType.stock && stockCode != null
-                  ? () => OltNavigator.openStock(context, stockCode)
-                  : null,
+              ? () => CommunityNavigator.openStock(context, stockCode)
+              : null,
           onToggleMute: room.type == RoomType.support ? null : () => cubit.setMuted(!room.muted),
           onLeave: room.type == RoomType.direct || room.type == RoomType.support
               ? null
@@ -64,12 +64,12 @@ class RoomHeader extends StatelessWidget {
 class _DefaultRoomHeader extends StatelessWidget {
   const _DefaultRoomHeader({required this.details});
 
-  final OltRoomHeaderDetails details;
+  final CommunityRoomHeaderDetails details;
 
   @override
   Widget build(BuildContext context) {
     final d = details;
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final onToggleMute = d.onToggleMute;
     final onLeave = d.onLeave;
     return Material(
@@ -81,7 +81,7 @@ class _DefaultRoomHeader extends StatelessWidget {
           d.subtitle,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: d.highlightSubtitle ? TextStyle(color: OltSocialTheme.of(context).onlineIndicator) : null,
+          style: d.highlightSubtitle ? TextStyle(color: CommunityTheme.of(context).onlineIndicator) : null,
         ),
         onTap: d.onTap,
         trailing: onToggleMute == null

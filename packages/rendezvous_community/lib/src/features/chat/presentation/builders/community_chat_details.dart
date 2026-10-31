@@ -1,12 +1,12 @@
 import 'package:flutter/widgets.dart';
-import 'package:olt_social/src/core/network/realtime_status.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/network/realtime_status.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
-class OltMessageDetails {
-  const OltMessageDetails({
+class CommunityMessageDetails {
+  const CommunityMessageDetails({
     required this.message,
     required this.isMine,
     required this.receipt,
@@ -35,8 +35,8 @@ class OltMessageDetails {
   final VoidCallback? onShowActions;
 }
 
-class OltComposerDetails {
-  const OltComposerDetails({
+class CommunityComposerDetails {
+  const CommunityComposerDetails({
     required this.controller,
     required this.focusNode,
     required this.hintText,
@@ -63,8 +63,8 @@ class OltComposerDetails {
   final List<Widget> extraActions;
 }
 
-class OltRoomHeaderDetails {
-  const OltRoomHeaderDetails({
+class CommunityRoomHeaderDetails {
+  const CommunityRoomHeaderDetails({
     required this.room,
     required this.title,
     required this.subtitle,
@@ -89,29 +89,29 @@ class OltRoomHeaderDetails {
   final VoidCallback? onLeave;
 }
 
-class OltTypingDetails {
-  const OltTypingDetails({required this.users, required this.text});
+class CommunityTypingDetails {
+  const CommunityTypingDetails({required this.users, required this.text});
 
   final List<UserSummary> users;
   final String text;
 }
 
-class OltConnectionDetails {
-  const OltConnectionDetails({required this.status, required this.label});
+class CommunityConnectionDetails {
+  const CommunityConnectionDetails({required this.status, required this.label});
 
   final RealtimeStatus status;
   final String label;
 }
 
-class OltDayDetails {
-  const OltDayDetails({required this.day, required this.label});
+class CommunityDayDetails {
+  const CommunityDayDetails({required this.day, required this.label});
 
   final DateTime day;
   final String label;
 }
 
-class OltRoomTileDetails {
-  const OltRoomTileDetails({
+class CommunityRoomTileDetails {
+  const CommunityRoomTileDetails({
     required this.room,
     required this.title,
     required this.timeLabel,
@@ -136,33 +136,33 @@ class OltRoomTileDetails {
   final ReceiptStatus? lastMessageReceipt;
 }
 
-class OltChatListHeaderDetails {
-  const OltChatListHeaderDetails({required this.title, required this.onNewGroup, required this.onRefresh});
+class CommunityChatListHeaderDetails {
+  const CommunityChatListHeaderDetails({required this.title, required this.onNewGroup, required this.onRefresh});
 
   final String title;
   final VoidCallback onNewGroup;
   final Future<void> Function() onRefresh;
 }
 
-enum OltChatLoad { rooms, moreRooms, messages, olderMessages }
+enum CommunityChatLoad { rooms, moreRooms, messages, olderMessages }
 
-class OltLoadingDetails {
-  const OltLoadingDetails(this.kind);
+class CommunityLoadingDetails {
+  const CommunityLoadingDetails(this.kind);
 
-  final OltChatLoad kind;
+  final CommunityChatLoad kind;
 }
 
-enum OltChatEmpty { rooms, messages, noRoomSelected }
+enum CommunityChatEmpty { rooms, messages, noRoomSelected }
 
-class OltEmptyDetails {
-  const OltEmptyDetails({required this.kind, required this.message});
+class CommunityEmptyDetails {
+  const CommunityEmptyDetails({required this.kind, required this.message});
 
-  final OltChatEmpty kind;
+  final CommunityChatEmpty kind;
   final String message;
 }
 
-class OltErrorDetails {
-  const OltErrorDetails({required this.error, required this.message, required this.onRetry});
+class CommunityErrorDetails {
+  const CommunityErrorDetails({required this.error, required this.message, required this.onRetry});
 
   final Object error;
   final String message;

@@ -29,9 +29,7 @@ Future<void> main() async {
   };
 
   final root = packages.values.firstWhere((p) => p['kind'] == 'root');
-  final queue = [
-    for (final name in (root['directDependencies'] as List<dynamic>).cast<String>()) name,
-  ];
+  final queue = [for (final name in (root['directDependencies'] as List<dynamic>).cast<String>()) name];
   final runtime = <String>{};
   while (queue.isNotEmpty) {
     final name = queue.removeLast();
@@ -42,7 +40,9 @@ Future<void> main() async {
   final config = jsonDecode(File('.dart_tool/package_config.json').readAsStringSync()) as Map<String, dynamic>;
   final roots = {
     for (final p in (config['packages'] as List<dynamic>).cast<Map<String, dynamic>>())
-      p['name'] as String: Uri.parse('${File('.dart_tool/package_config.json').absolute.uri}').resolve(p['rootUri'] as String),
+      p['name'] as String: Uri.parse(
+        '${File('.dart_tool/package_config.json').absolute.uri}',
+      ).resolve(p['rootUri'] as String),
   };
 
   var failed = false;

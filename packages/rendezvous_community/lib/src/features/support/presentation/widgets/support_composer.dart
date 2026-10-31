@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/message_composer.dart';
-import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_composer.dart';
+import 'package:rendezvous_community/src/features/support/presentation/cubit/support_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
 class SupportComposer extends StatelessWidget {
   const SupportComposer({super.key});
 
-  String _kinds(OltSocialLocalizations l10n, List<String> kinds) => <String>{
+  String _kinds(CommunityLocalizations l10n, List<String> kinds) => <String>{
     for (final kind in kinds)
       switch (kind) {
         'otp' => l10n.supportKindOtp,
@@ -21,7 +21,7 @@ class SupportComposer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final cubit = context.read<SupportCubit>();
     final sensitive = context.select((SupportCubit c) => c.state.sensitive);
     final scheme = Theme.of(context).colorScheme;
@@ -41,7 +41,9 @@ class SupportComposer extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    l10n.supportSensitiveWarning(_kinds(l10n, sensitive.kinds.isEmpty ? const ['otp'] : sensitive.kinds)),
+                    l10n.supportSensitiveWarning(
+                      _kinds(l10n, sensitive.kinds.isEmpty ? const ['otp'] : sensitive.kinds),
+                    ),
                     style: TextStyle(color: scheme.onErrorContainer),
                   ),
                 ),

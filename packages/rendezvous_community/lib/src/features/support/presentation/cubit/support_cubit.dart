@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
-import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
+import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
 part 'support_cubit.freezed.dart';
 
@@ -38,8 +38,7 @@ abstract class SupportState with _$SupportState {
 }
 
 class SupportCubit extends Cubit<SupportState> {
-  SupportCubit({required this._support, this.topic, this.screen, this.language = 'id'})
-    : super(const SupportState());
+  SupportCubit({required this._support, this.topic, this.screen, this.language = 'id'}) : super(const SupportState());
 
   final SupportRepository _support;
   final String? topic;
@@ -136,11 +135,13 @@ class SupportCubit extends Cubit<SupportState> {
     try {
       await action();
       if (!isClosed) {
-        emit(state.copyWith(
-          busy: false,
-          notice: notice ?? state.notice,
-          noticeId: notice == null ? state.noticeId : state.noticeId + 1,
-        ));
+        emit(
+          state.copyWith(
+            busy: false,
+            notice: notice ?? state.notice,
+            noticeId: notice == null ? state.noticeId : state.noticeId + 1,
+          ),
+        );
       }
     } catch (e) {
       if (!isClosed) emit(state.copyWith(busy: false, actionError: e, actionErrorId: state.actionErrorId + 1));

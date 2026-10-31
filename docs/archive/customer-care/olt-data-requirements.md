@@ -111,7 +111,7 @@ Mohon juga informasi masa berlaku permintaan dan batas percobaan.
 
 ## 6. Integrasi di aplikasi OLT (Flutter)
 
-Package `olt_care` dipasang di aplikasi OLT dengan pola yang sama seperti `olt_social`: aplikasi host menyuplai kemampuan lewat interface.
+Package `olt_care` dipasang di aplikasi OLT dengan pola yang sama seperti `rendezvous_community`: aplikasi host menyuplai kemampuan lewat interface.
 
 1. **Deep link.** Mohon skema/rute layar OLT di Windows dan Android untuk:
    - detail order;

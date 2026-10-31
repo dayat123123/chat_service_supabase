@@ -1,4 +1,4 @@
-enum OltSocialErrorKind {
+enum CommunityErrorKind {
   network,
   unauthenticated,
   rateLimited,
@@ -10,13 +10,13 @@ enum OltSocialErrorKind {
   unknown,
 }
 
-class OltSocialException implements Exception {
-  const OltSocialException(this.kind, {this.code, this.message, this.cause});
+class CommunityException implements Exception {
+  const CommunityException(this.kind, {this.code, this.message, this.cause});
 
-  const OltSocialException.unauthenticated([String? message])
-    : this(OltSocialErrorKind.unauthenticated, message: message);
+  const CommunityException.unauthenticated([String? message])
+    : this(CommunityErrorKind.unauthenticated, message: message);
 
-  final OltSocialErrorKind kind;
+  final CommunityErrorKind kind;
 
   final String? code;
 
@@ -26,6 +26,6 @@ class OltSocialException implements Exception {
 
   @override
   String toString() =>
-      'OltSocialException(${kind.name}${code == null ? '' : ', $code'}'
+      'CommunityException(${kind.name}${code == null ? '' : ', $code'}'
       '${message == null ? '' : ', $message'})';
 }

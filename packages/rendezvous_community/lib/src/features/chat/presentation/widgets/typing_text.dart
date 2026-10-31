@@ -1,7 +1,7 @@
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
-String typingText(OltSocialLocalizations l10n, Iterable<UserSummary> users, {bool direct = false}) {
+String typingText(CommunityLocalizations l10n, Iterable<UserSummary> users, {bool direct = false}) {
   final list = users.toList();
   if (list.isEmpty) return '';
   if (direct) return l10n.typingShort;

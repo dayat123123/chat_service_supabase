@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'chat_room.freezed.dart';
 
@@ -55,6 +55,5 @@ abstract class RoomMember with _$RoomMember {
 
   const RoomMember._();
 
-  MemberReceipt get receipt =>
-      MemberReceipt(userId: user.id, lastDeliveredAt: lastDeliveredAt, lastReadAt: lastReadAt);
+  MemberReceipt get receipt => MemberReceipt(userId: user.id, lastDeliveredAt: lastDeliveredAt, lastReadAt: lastReadAt);
 }

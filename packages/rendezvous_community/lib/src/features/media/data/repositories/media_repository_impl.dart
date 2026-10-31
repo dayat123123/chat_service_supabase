@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 
-import 'package:olt_social/src/core/media/image_mime.dart';
-import 'package:olt_social/src/core/network/authorized_image.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/features/media/domain/repositories/media_repository.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/core/media/image_mime.dart';
+import 'package:rendezvous_community/src/core/network/authorized_image.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 import 'package:uuid/uuid.dart';
 
 const _uuid = Uuid();

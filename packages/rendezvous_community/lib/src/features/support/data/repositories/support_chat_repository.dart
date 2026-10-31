@@ -1,20 +1,20 @@
 import 'dart:async';
 
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/chat/data/models/chat_models.dart';
-import 'package:olt_social/src/features/chat/data/realtime/room_channel_hub.dart';
-import 'package:olt_social/src/features/chat/data/realtime/room_connection.dart';
-import 'package:olt_social/src/features/chat/data/repositories/message_pages.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/shared/data/models/attachment_model.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/chat/data/models/chat_models.dart';
+import 'package:rendezvous_community/src/features/chat/data/realtime/room_channel_hub.dart';
+import 'package:rendezvous_community/src/features/chat/data/realtime/room_connection.dart';
+import 'package:rendezvous_community/src/features/chat/data/repositories/message_pages.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 class SupportChatRepository implements ChatRepository {
   SupportChatRepository(this._cs, {RealtimeGateway? realtime, required this._rooms})
@@ -27,7 +27,7 @@ class SupportChatRepository implements ChatRepository {
   final Future<List<ChatRoom>> Function() _rooms;
   final _unreadChanges = StreamController<void>.broadcast();
 
-  static const _locked = OltSocialException(OltSocialErrorKind.forbidden, code: 'support_message_locked');
+  static const _locked = CommunityException(CommunityErrorKind.forbidden, code: 'support_message_locked');
 
   @override
   Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30}) async =>

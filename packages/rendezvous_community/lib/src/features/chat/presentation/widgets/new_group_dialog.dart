@@ -1,17 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 
 Future<String?> showNewGroupDialog(BuildContext context) {
-  final deps = OltSocialScope.of(context);
+  final deps = CommunityScope.of(context);
   return showDialog<String>(
     context: context,
-    builder: (_) => OltSocialScope(dependencies: deps, child: const _NewGroupDialog()),
+    builder: (_) => CommunityScope(dependencies: deps, child: const _NewGroupDialog()),
   );
 }
 
@@ -40,12 +40,19 @@ class _NewGroupDialogState extends State<_NewGroupDialog> {
 
   void _search(String q) {
     _debounce?.cancel();
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     _debounce = Timer(const Duration(milliseconds: 250), () async {
       try {
         final users = await deps.profiles.searchUsers(q);
         final me = deps.currentUser?.id;
-        if (mounted) setState(() => _results = [for (final u in users) if (u.id != me) u]);
+        if (mounted) {
+          setState(
+            () => _results = [
+              for (final u in users)
+                if (u.id != me) u,
+            ],
+          );
+        }
       } catch (_) {}
     });
   }
@@ -53,19 +60,19 @@ class _NewGroupDialogState extends State<_NewGroupDialog> {
   Future<void> _create() async {
     setState(() => _creating = true);
     try {
-      final id = await OltSocialScope.of(context).chat.createGroupRoom(_name.text.trim(), _selected.keys.toList());
+      final id = await CommunityScope.of(context).chat.createGroupRoom(_name.text.trim(), _selected.keys.toList());
       if (mounted) Navigator.pop(context, id);
     } catch (e) {
       if (mounted) {
         setState(() => _creating = false);
-        showOltError(context, e);
+        showCommunityError(context, e);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return AlertDialog(
       title: Text(l10n.newGroup),
       content: SizedBox(
@@ -98,7 +105,7 @@ class _NewGroupDialogState extends State<_NewGroupDialog> {
                   for (final u in _results)
                     CheckboxListTile(
                       value: _selected.containsKey(u.id),
-                      secondary: OltAvatar(user: u, radius: 16),
+                      secondary: CommunityAvatar(user: u, radius: 16),
                       title: Text(u.name),
                       subtitle: Text('@${u.username}'),
                       onChanged: (v) => setState(() => v! ? _selected[u.id] = u : _selected.remove(u.id)),
@@ -111,10 +118,7 @@ class _NewGroupDialogState extends State<_NewGroupDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
-        FilledButton(
-          onPressed: _creating || _name.text.trim().isEmpty ? null : _create,
-          child: Text(l10n.create),
-        ),
+        FilledButton(onPressed: _creating || _name.text.trim().isEmpty ? null : _create, child: Text(l10n.create)),
       ],
     );
   }

@@ -1,5 +1,5 @@
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
 
 abstract interface class SupportRepository {
   Future<SupportHome> home();

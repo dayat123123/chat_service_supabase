@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/notifications/domain/entities/app_notification.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'notification_model.freezed.dart';
 part 'notification_model.g.dart';

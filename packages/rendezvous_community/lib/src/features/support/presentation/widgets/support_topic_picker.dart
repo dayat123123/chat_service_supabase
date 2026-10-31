@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/features/support/presentation/cubit/support_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
 IconData supportTopicIcon(String code) => switch (code) {
   'account' => Icons.person_outline,
@@ -18,7 +18,7 @@ class SupportTopicPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final cubit = context.read<SupportCubit>();
     final state = context.watch<SupportCubit>().state;
@@ -27,7 +27,10 @@ class SupportTopicPicker extends StatelessWidget {
       children: [
         Text(l10n.supportPickTopic, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        Text(l10n.supportPickTopicHint, style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+        Text(
+          l10n.supportPickTopicHint,
+          style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
         const SizedBox(height: 12),
         if (state.home?.roomId != null)
           Align(
@@ -49,7 +52,10 @@ class SupportTopicPicker extends StatelessWidget {
             ),
             child: ListTile(
               enabled: !state.busy,
-              leading: Icon(supportTopicIcon(topic.code), color: topic.urgent ? theme.colorScheme.error : theme.colorScheme.primary),
+              leading: Icon(
+                supportTopicIcon(topic.code),
+                color: topic.urgent ? theme.colorScheme.error : theme.colorScheme.primary,
+              ),
               title: Text(topic.name),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => cubit.start(topic.code),

@@ -1,16 +1,15 @@
 // ignore: unused_import
 import 'package:intl/intl.dart' as intl;
-import 'olt_social_localizations.dart';
+import 'community_localizations.dart';
 
 // ignore_for_file: type=lint
 
 /// The translations for Indonesian (`id`).
-class OltSocialLocalizationsId extends OltSocialLocalizations {
-  OltSocialLocalizationsId([String locale = 'id']) : super(locale);
+class CommunityLocalizationsId extends CommunityLocalizations {
+  CommunityLocalizationsId([String locale = 'id']) : super(locale);
 
   @override
-  String get disclaimer =>
-      'Konten ini opini pengguna, bukan rekomendasi investasi.';
+  String get disclaimer => 'Konten ini opini pengguna, bukan rekomendasi investasi.';
 
   @override
   String get retry => 'Coba lagi';
@@ -55,15 +54,13 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get errorNetwork => 'Tidak ada koneksi. Periksa jaringan Anda.';
 
   @override
-  String get errorUnauthenticated =>
-      'Sesi berakhir. Silakan login ulang di OLT.';
+  String get errorUnauthenticated => 'Sesi berakhir. Silakan login ulang di OLT.';
 
   @override
   String get errorRateLimited => 'Terlalu cepat. Coba lagi sebentar lagi.';
 
   @override
-  String get errorContentBlocked =>
-      'Konten mengandung kata atau frasa yang tidak diizinkan.';
+  String get errorContentBlocked => 'Konten mengandung kata atau frasa yang tidak diizinkan.';
 
   @override
   String get errorInvalidInput => 'Data tidak valid.';
@@ -75,8 +72,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get errorNotFound => 'Konten tidak ditemukan atau sudah dihapus.';
 
   @override
-  String get errorUnavailable =>
-      'Layanan sedang tidak tersedia. Coba lagi nanti.';
+  String get errorUnavailable => 'Layanan sedang tidak tersedia. Coba lagi nanti.';
 
   @override
   String get errorUnknown => 'Terjadi kesalahan. Coba lagi.';
@@ -103,12 +99,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
 
   @override
   String newPosts(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count post baru',
-      one: '1 post baru',
-    );
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count post baru', one: '1 post baru');
     return '$_temp0';
   }
 
@@ -429,8 +420,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get unmute => 'Aktifkan suara';
 
   @override
-  String get sendShortcutHint =>
-      'Enter untuk kirim, Shift+Enter untuk baris baru';
+  String get sendShortcutHint => 'Enter untuk kirim, Shift+Enter untuk baris baru';
 
   @override
   String get notifications => 'Notifikasi';
@@ -521,12 +511,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
 
   @override
   String pollVotes(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count suara',
-      zero: 'Belum ada suara',
-    );
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count suara', zero: 'Belum ada suara');
     return '$_temp0';
   }
 
@@ -542,8 +527,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get pollYourVote => 'Pilihan Anda';
 
   @override
-  String get pollInvalidDraft =>
-      'Isi 2–4 pilihan berbeda, masing-masing maksimal 40 karakter.';
+  String get pollInvalidDraft => 'Isi 2–4 pilihan berbeda, masing-masing maksimal 40 karakter.';
 
   @override
   String pollTimeMinutes(int count) {
@@ -570,16 +554,13 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get errorOwnPoll => 'Anda tidak bisa memilih di polling sendiri.';
 
   @override
-  String get errorInvalidPoll =>
-      'Polling tidak valid. Periksa pilihan dan durasinya.';
+  String get errorInvalidPoll => 'Polling tidak valid. Periksa pilihan dan durasinya.';
 
   @override
-  String get errorDuplicateContent =>
-      'Konten yang sama sudah dikirim berulang kali. Coba lagi beberapa menit lagi.';
+  String get errorDuplicateContent => 'Konten yang sama sudah dikirim berulang kali. Coba lagi beberapa menit lagi.';
 
   @override
-  String get errorUserMuted =>
-      'Akun Anda sedang dibatasi dan belum bisa mengirim konten.';
+  String get errorUserMuted => 'Akun Anda sedang dibatasi dan belum bisa mengirim konten.';
 
   @override
   String get today => 'Hari ini';
@@ -613,8 +594,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get supportPickTopic => 'Apa yang bisa kami bantu?';
 
   @override
-  String get supportPickTopicHint =>
-      'Pilih topik agar CS yang tepat langsung membantu Anda.';
+  String get supportPickTopicHint => 'Pilih topik agar CS yang tepat langsung membantu Anda.';
 
   @override
   String get supportHistory => 'Lihat riwayat chat';
@@ -666,8 +646,7 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get supportReportFake => 'Laporkan CS palsu';
 
   @override
-  String get supportReportFakeHint =>
-      'Ceritakan kejadiannya: siapa yang menghubungi, lewat apa, dan apa yang diminta.';
+  String get supportReportFakeHint => 'Ceritakan kejadiannya: siapa yang menghubungi, lewat apa, dan apa yang diminta.';
 
   @override
   String get supportSend => 'Kirim';
@@ -711,12 +690,10 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   String get supportKindAccount => 'nomor rekening';
 
   @override
-  String get supportComplaintFiled =>
-      'Pengaduan dicatat. Tenggat penyelesaian tampil di chat.';
+  String get supportComplaintFiled => 'Pengaduan dicatat. Tenggat penyelesaian tampil di chat.';
 
   @override
-  String get supportFakeReported =>
-      'Laporan terkirim. Tim kami segera menindaklanjuti.';
+  String get supportFakeReported => 'Laporan terkirim. Tim kami segera menindaklanjuti.';
 
   @override
   String get supportClosed => 'Chat diakhiri.';
@@ -732,6 +709,5 @@ class OltSocialLocalizationsId extends OltSocialLocalizations {
   }
 
   @override
-  String get supportUnavailable =>
-      'Chat CS belum tersedia. Coba lagi sebentar lagi.';
+  String get supportUnavailable => 'Chat CS belum tersedia. Coba lagi sebentar lagi.';
 }

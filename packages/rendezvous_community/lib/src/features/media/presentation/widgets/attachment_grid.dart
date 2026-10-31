@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/core/network/authorized_image.dart';
-import 'package:olt_social/src/features/media/domain/repositories/media_repository.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/core/network/authorized_image.dart';
+import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 
 class AttachmentGrid extends StatelessWidget {
   const AttachmentGrid({super.key, required this.attachments, this.maxHeight = 280});
@@ -13,7 +13,7 @@ class AttachmentGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (attachments.isEmpty) return const SizedBox.shrink();
-    final media = OltSocialScope.of(context).media;
+    final media = CommunityScope.of(context).media;
     final columns = attachments.length == 1 ? 1 : 2;
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight),
@@ -58,7 +58,8 @@ class _AttachmentImageState extends State<_AttachmentImage> {
           image.url,
           headers: image.headers,
           fit: BoxFit.cover,
-          errorBuilder: (_, _, _) => Center(child: Icon(Icons.broken_image_outlined, color: Theme.of(context).colorScheme.outline)),
+          errorBuilder: (_, _, _) =>
+              Center(child: Icon(Icons.broken_image_outlined, color: Theme.of(context).colorScheme.outline)),
           loadingBuilder: (context, child, progress) => progress == null ? child : placeholder,
         );
       },

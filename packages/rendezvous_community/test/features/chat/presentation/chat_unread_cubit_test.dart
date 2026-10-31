@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_unread_cubit.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_unread_cubit.dart';
 
 import '../../../support/fakes.dart';
 
@@ -23,25 +23,25 @@ void main() {
     await notifications.dispose();
   });
 
-  test('memuat jumlah chat belum dibaca', () {
+  test('loads the unread chat count', () {
     expect(cubit.state, 2);
   });
 
-  test('pesan masuk (notifikasi baru) memuat ulang jumlah', () async {
+  test('an incoming message (new notification) reloads the count', () async {
     chat.unreadChats = 3;
     notifications.changes.add(null);
     await Future<void>.delayed(settle);
     expect(cubit.state, 3);
   });
 
-  test('room dibaca di perangkat ini memuat ulang jumlah', () async {
+  test('reading a room on this device reloads the count', () async {
     chat.unreadChats = 1;
     chat.unreadChanges.add(null);
     await Future<void>.delayed(settle);
     expect(cubit.state, 1);
   });
 
-  test('perubahan beruntun digabung menjadi satu permintaan', () async {
+  test('merges consecutive changes into one request', () async {
     final before = chat.unreadChatCalls;
     for (var i = 0; i < 5; i++) {
       notifications.changes.add(null);
@@ -51,7 +51,7 @@ void main() {
     expect(chat.unreadChatCalls - before, 1);
   });
 
-  test('gagal memuat ulang mempertahankan jumlah terakhir', () async {
+  test('keeps the last count when reloading fails', () async {
     chat.unreadChatError = Exception('offline');
     notifications.changes.add(null);
     await Future<void>.delayed(settle);

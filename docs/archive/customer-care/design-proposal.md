@@ -10,12 +10,12 @@ Dokumen ini berisi:
 - alur status tiket, tenggat pengaduan, dan live chat;
 - keputusan yang perlu Anda konfirmasi sebelum C1 dimulai.
 
-Wireframe hanya menunjukkan susunan dan isi layar. Warna dan gaya akhir mengikuti tema aplikasi OLT, sama seperti `olt_social`.
+Wireframe hanya menunjukkan susunan dan isi layar. Warna dan gaya akhir mengikuti tema aplikasi OLT, sama seperti `rendezvous_community`.
 
 ## 1. Gambaran sistem
 
 ```text
- [Aplikasi OLT: olt_social + olt_care]        [CS Console: staf, VPN, TOTP]
+ [Aplikasi OLT: rendezvous_community + olt_care]        [CS Console: staf, VPN, TOTP]
                   │ internet                              │ jalur internal
                   └──────────────► Traefik ──► Kong ◄─────┘
                                                 │
@@ -37,7 +37,7 @@ Wireframe hanya menunjukkan susunan dan isi layar. Warna dan gaya akhir mengikut
 | `care-worker` (`services/care`) | Go, stateless, aman dijalankan banyak replika. Isinya: surat PDF dan email keluar (C1), penugasan chat dan pemeriksaan lampiran (C2–C3). Timer tenggat, peringatan, dan pengingat dijalankan pg_cron di database | C1 |
 | `customer-adapter` (`services/care`) | Go, stateless. Jembatan hanya-baca ke OLT lewat Protokol v1, ditambah dua aksi (amankan akun, verifikasi identitas). Mode mock memakai OLT dummy | C1 |
 | `packages/olt_staff_kit` | Login staf + 2FA, batas waktu sesi, dan komponen desain bersama. Dipakai CS Console sekarang dan panel admin F1 nanti | C1–C3 |
-| `packages/olt_care` | Package Flutter untuk aplikasi OLT (Windows & Android) dengan pola sama seperti `olt_social`: per fitur, cubit, dan freezed. Berbagi sesi login dengan `olt_social` | C2 |
+| `packages/olt_care` | Package Flutter untuk aplikasi OLT (Windows & Android) dengan pola sama seperti `rendezvous_community`: per fitur, cubit, dan freezed. Berbagi sesi login dengan `rendezvous_community` | C2 |
 | `apps/cs-console` | Flutter web untuk layar lebar, disajikan container statis, hanya bisa diakses lewat VPN | C3 |
 
 **Keputusan teknis yang diusulkan:**

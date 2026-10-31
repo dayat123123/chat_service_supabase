@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 
-class OltSupportMessageActions extends InheritedWidget {
-  const OltSupportMessageActions({
+class CommunitySupportMessageActions extends InheritedWidget {
+  const CommunitySupportMessageActions({
     super.key,
     this.onQuickReply,
     this.onOpenLink,
@@ -15,11 +15,11 @@ class OltSupportMessageActions extends InheritedWidget {
   final bool Function(String ticketId)? canRate;
   final void Function(String ticketId)? onRate;
 
-  static OltSupportMessageActions? maybeOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<OltSupportMessageActions>();
+  static CommunitySupportMessageActions? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<CommunitySupportMessageActions>();
 
   @override
-  bool updateShouldNotify(OltSupportMessageActions oldWidget) =>
+  bool updateShouldNotify(CommunitySupportMessageActions oldWidget) =>
       onQuickReply != oldWidget.onQuickReply ||
       onOpenLink != oldWidget.onOpenLink ||
       canRate != oldWidget.canRate ||

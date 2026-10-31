@@ -1,8 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/stocks/domain/entities/stock.dart';
-import 'package:olt_social/src/features/stocks/domain/repositories/stock_repository.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/entities/stock.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/repositories/stock_repository.dart';
 
 part 'stock_cubit.freezed.dart';
 
@@ -37,10 +37,12 @@ class StockCubit extends Cubit<StockState> {
   Future<void> toggleWatch() async {
     final watching = !state.watching;
     final stock = state.stock;
-    emit(state.copyWith(
-      watching: watching,
-      stock: stock?.copyWith(watcherCount: stock.watcherCount + (watching ? 1 : -1), watching: watching),
-    ));
+    emit(
+      state.copyWith(
+        watching: watching,
+        stock: stock?.copyWith(watcherCount: stock.watcherCount + (watching ? 1 : -1), watching: watching),
+      ),
+    );
     try {
       watching ? await _stocks.watch(code) : await _stocks.unwatch(code);
     } catch (e) {

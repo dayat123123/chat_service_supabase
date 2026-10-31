@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/profile/domain/entities/user_profile.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/profile/domain/entities/user_profile.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'profile_model.freezed.dart';
 part 'profile_model.g.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import '../../../support/fakes.dart';
 
@@ -13,9 +13,7 @@ void main() {
 
   setUp(() async {
     chat = FakeChatRepository(
-      rooms: [
-        ChatRoom(id: 'dm', type: RoomType.direct, createdAt: before, lastReadAt: before, otherUser: alice),
-      ],
+      rooms: [ChatRoom(id: 'dm', type: RoomType.direct, createdAt: before, lastReadAt: before, otherUser: alice)],
       members: [
         RoomMember(user: me, lastReadAt: sentAt, lastDeliveredAt: sentAt, joinedAt: before),
         RoomMember(user: alice, lastReadAt: before, lastDeliveredAt: before, joinedAt: before),
@@ -36,12 +34,12 @@ void main() {
 
   ReceiptStatus? receiptOfMine() => cubit.state.receiptOf(cubit.state.messages.first);
 
-  test('pesan sendiri belum diterima: centang satu; pesan orang lain tanpa centang', () {
+  test('own undelivered message: one tick; messages from others: no ticks', () {
     expect(receiptOfMine(), ReceiptStatus.sent);
     expect(cubit.state.receiptOf(cubit.state.messages.last), isNull);
   });
 
-  test('tanda terima dari server menaikkan centang sampai biru', () async {
+  test('server receipts raise ticks up to blue', () async {
     chat.roomEvents.add(ReceiptChanged(MemberReceipt(userId: alice.id, lastDeliveredAt: sentAt, lastReadAt: before)));
     await pumpEventQueue();
     expect(receiptOfMine(), ReceiptStatus.delivered);
@@ -51,7 +49,7 @@ void main() {
     expect(receiptOfMine(), ReceiptStatus.read);
   });
 
-  test('channel room tersambung ulang: tanda terima yang terlewat diambil ulang dari server', () async {
+  test('a room channel reconnect refetches missed receipts from the server', () async {
     chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.connected));
     await pumpEventQueue();
     chat.members = [
@@ -67,7 +65,7 @@ void main() {
     expect(receiptOfMine(), ReceiptStatus.read);
   });
 
-  test('data anggota dari server tidak menurunkan tanda terima yang lebih baru', () async {
+  test('member data from the server does not downgrade newer receipts', () async {
     chat.roomEvents.add(ReceiptChanged(MemberReceipt(userId: alice.id, lastDeliveredAt: sentAt, lastReadAt: sentAt)));
     await pumpEventQueue();
     chat.roomEvents.add(const SignalsConnectionChanged(RealtimeStatus.connected));
@@ -77,18 +75,18 @@ void main() {
     expect(receiptOfMine(), ReceiptStatus.read);
   });
 
-  test('presence menampilkan lawan bicara online', () async {
+  test('presence shows the peer as online', () async {
     chat.roomEvents.add(PresenceChanged({alice.id}));
     await pumpEventQueue();
     expect(cubit.state.otherOnline, isTrue);
   });
 
-  test('membuka room menandai dibaca lewat RPC', () async {
+  test('opening a room marks it read through the RPC', () async {
     await Future<void>.delayed(const Duration(milliseconds: 900));
     expect(chat.readRooms, ['dm']);
   });
 
-  group('tersambung ulang setelah putus', () {
+  group('reconnects after a disconnect', () {
     List<ChatMessage> missed(int count) => [
       for (var i = 1; i <= count; i++)
         ChatMessage(
@@ -109,7 +107,7 @@ void main() {
       await pumpEventQueue();
     }
 
-    test('lebih dari 100 pesan masuk selama putus: semuanya disusulkan', () async {
+    test('more than 100 messages received while disconnected are all caught up', () async {
       chat.messages = [...missed(150), ...chat.messages];
       await reconnect(chat);
 
@@ -118,7 +116,7 @@ void main() {
       expect(cubit.state.messages[50].id, 'n-100');
     });
 
-    test('susulan terlalu panjang: room dimuat ulang dari pesan terbaru', () async {
+    test('an overly long catch-up reloads the room from the newest message', () async {
       final far = ChatRoomCubit(chat: chat, media: _NoMedia(), me: () async => me, roomId: 'dm', maxGapPages: 2);
       addTearDown(far.close);
       await far.load();

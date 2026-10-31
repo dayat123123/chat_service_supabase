@@ -224,7 +224,7 @@ switch ($Target) {
         & $PSCommandPath test-dummy-olt
     }
     'test-flutter' {
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         try {
             Invoke-Native 'flutter' @('analyze')
             Invoke-Native 'flutter' @('test')
@@ -232,7 +232,7 @@ switch ($Target) {
     }
     'test-flutter-it' {
         Assert-Config
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         $env:OLT_SOCIAL_IT = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration') }
         finally { Remove-Item Env:OLT_SOCIAL_IT; Pop-Location }
@@ -240,14 +240,14 @@ switch ($Target) {
     'e2e-windows' {
         Assert-Config
         $anon = Get-AnonKey
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social/example')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
         try { Invoke-Native 'flutter' @('test', 'integration_test/app_test.dart', '-d', 'windows', "--dart-define=OLT_SOCIAL_ANON_KEY=$anon") }
         finally { Pop-Location }
     }
     'web-example' {
         Assert-Config
         $anon = Get-AnonKey
-        $example = Join-Path $PSScriptRoot 'packages/olt_social/example'
+        $example = Join-Path $PSScriptRoot 'packages/rendezvous_community/example'
         Push-Location $example
         try {
             Invoke-Native 'flutter' @('build', 'web', '--release', '--no-web-resources-cdn', '--pwa-strategy=none',
@@ -261,7 +261,7 @@ switch ($Target) {
         Write-Host 'App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)'
     }
     'license-audit' {
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         try { Invoke-Native 'dart' @('run', 'tool/license_audit.dart') } finally { Pop-Location }
     }
     'smoke' { Assert-Config; Invoke-Tools @('smoke') }
@@ -356,7 +356,7 @@ switch ($Target) {
     }
     'test-flutter-it-dummy' {
         Assert-Config
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         $env:OLT_SOCIAL_IT_DUMMY = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration/dummy_olt_integration_test.dart') }
         finally { Remove-Item Env:OLT_SOCIAL_IT_DUMMY; Pop-Location }
@@ -364,7 +364,7 @@ switch ($Target) {
     'e2e-windows-dummy' {
         Assert-Config
         $anon = Get-AnonKey
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social/example')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
         try {
             Invoke-Native 'flutter' @('test', 'integration_test/dummy_olt_login_test.dart', '-d', 'windows',
                                       '--dart-define=OLT_DUMMY_E2E=true', "--dart-define=OLT_SOCIAL_ANON_KEY=$anon")

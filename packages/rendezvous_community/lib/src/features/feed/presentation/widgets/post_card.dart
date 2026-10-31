@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/presentation/widgets/sentiment_badge.dart';
-import 'package:olt_social/src/features/media/presentation/widgets/attachment_grid.dart';
-import 'package:olt_social/src/features/moderation/domain/entities/report.dart';
-import 'package:olt_social/src/features/moderation/presentation/widgets/moderation_actions.dart';
-import 'package:olt_social/src/features/poll/presentation/widgets/olt_poll_view.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_user_name.dart';
-import 'package:olt_social/src/shared/presentation/widgets/social_text.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/sentiment_badge.dart';
+import 'package:rendezvous_community/src/features/media/presentation/widgets/attachment_grid.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
+import 'package:rendezvous_community/src/features/moderation/presentation/widgets/moderation_actions.dart';
+import 'package:rendezvous_community/src/features/poll/presentation/widgets/community_poll_view.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_user_name.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/social_text.dart';
 
 class PostCard extends StatelessWidget {
   const PostCard({
@@ -35,8 +35,8 @@ class PostCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final l10n = context.oltL10n;
-    final isMine = OltSocialScope.of(context).currentUser?.id == post.author.id;
+    final l10n = context.communityL10n;
+    final isMine = CommunityScope.of(context).currentUser?.id == post.author.id;
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
 
     return InkWell(
@@ -46,7 +46,7 @@ class PostCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            OltAvatar(user: post.author, onTap: () => OltNavigator.openUser(context, post.author)),
+            CommunityAvatar(user: post.author, onTap: () => CommunityNavigator.openUser(context, post.author)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -54,7 +54,7 @@ class PostCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Flexible(child: OltUserName(user: post.author)),
+                      Flexible(child: CommunityUserName(user: post.author)),
                       Text(' · ${l10n.relativeTime(post.createdAt)}', style: muted),
                       if (post.editedAt != null) Text(' ${l10n.edited}', style: muted),
                       const Spacer(),
@@ -75,7 +75,7 @@ class PostCard extends StatelessWidget {
                     maxLines: expanded ? null : 10,
                     style: expanded ? theme.textTheme.bodyLarge : null,
                   ),
-                  if (post.poll != null) OltPollView(postId: post.id, poll: post.poll!, canVote: !isMine),
+                  if (post.poll != null) CommunityPollView(postId: post.id, poll: post.poll!, canVote: !isMine),
                   if (post.attachments.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     AttachmentGrid(attachments: post.attachments),
@@ -146,14 +146,14 @@ class _PostMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return PopupMenuButton<_PostAction>(
       iconSize: 18,
       padding: EdgeInsets.zero,
       onSelected: (action) async {
         switch (action) {
           case _PostAction.delete:
-            if (await confirmOlt(context, l10n.deletePostConfirm)) onDelete?.call();
+            if (await confirmCommunityAction(context, l10n.deletePostConfirm)) onDelete?.call();
           case _PostAction.report:
             onReport();
           case _PostAction.block:
@@ -162,10 +162,19 @@ class _PostMenu extends StatelessWidget {
       },
       itemBuilder: (_) => [
         if (isMine && onDelete != null)
-          PopupMenuItem(value: _PostAction.delete, child: ListTile(leading: const Icon(Icons.delete_outline), title: Text(l10n.delete))),
+          PopupMenuItem(
+            value: _PostAction.delete,
+            child: ListTile(leading: const Icon(Icons.delete_outline), title: Text(l10n.delete)),
+          ),
         if (!isMine) ...[
-          PopupMenuItem(value: _PostAction.report, child: ListTile(leading: const Icon(Icons.flag_outlined), title: Text(l10n.report))),
-          PopupMenuItem(value: _PostAction.block, child: ListTile(leading: const Icon(Icons.block), title: Text(l10n.block))),
+          PopupMenuItem(
+            value: _PostAction.report,
+            child: ListTile(leading: const Icon(Icons.flag_outlined), title: Text(l10n.report)),
+          ),
+          PopupMenuItem(
+            value: _PostAction.block,
+            child: ListTile(leading: const Icon(Icons.block), title: Text(l10n.block)),
+          ),
         ],
       ],
     );

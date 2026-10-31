@@ -1,20 +1,20 @@
 import 'dart:async';
 
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/core/network/shared_stream.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/chat/data/models/chat_models.dart';
-import 'package:olt_social/src/features/chat/data/realtime/room_channel_hub.dart';
-import 'package:olt_social/src/features/chat/data/realtime/room_connection.dart';
-import 'package:olt_social/src/features/chat/data/repositories/message_pages.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/shared/data/models/attachment_model.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/core/network/shared_stream.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/chat/data/models/chat_models.dart';
+import 'package:rendezvous_community/src/features/chat/data/realtime/room_channel_hub.dart';
+import 'package:rendezvous_community/src/features/chat/data/realtime/room_connection.dart';
+import 'package:rendezvous_community/src/features/chat/data/repositories/message_pages.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
@@ -30,10 +30,9 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30}) async {
     final rows = await _api.rpcRows('get_my_rooms', {'p_cursor': cursor, 'p_limit': limit});
     final models = [for (final row in rows) RoomSummaryModel.fromJson(row)];
-    return Paged(
-      [for (final model in models) model.toEntity()],
-      nextCursor: models.length < limit ? null : models.last.cursor,
-    );
+    return Paged([
+      for (final model in models) model.toEntity(),
+    ], nextCursor: models.length < limit ? null : models.last.cursor);
   }
 
   @override
@@ -93,8 +92,7 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<int> unreadChatCount() async =>
-      ((await _api.rpcValue('get_unread_chat_count')) as num?)?.toInt() ?? 0;
+  Future<int> unreadChatCount() async => ((await _api.rpcValue('get_unread_chat_count')) as num?)?.toInt() ?? 0;
 
   @override
   Stream<void> watchUnreadChanges() => _unreadChanges.stream;

@@ -68,10 +68,8 @@ abstract class SupportTopic with _$SupportTopic {
 
 @freezed
 abstract class SensitiveCheck with _$SensitiveCheck {
-  const factory SensitiveCheck({
-    @Default(false) bool masked,
-    @Default(<String>[]) List<String> kinds,
-  }) = _SensitiveCheck;
+  const factory SensitiveCheck({@Default(false) bool masked, @Default(<String>[]) List<String> kinds}) =
+      _SensitiveCheck;
 }
 
 @freezed

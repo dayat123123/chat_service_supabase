@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/core/text/social_text_parser.dart';
-import 'package:olt_social/src/features/stocks/domain/entities/stock_suggestion.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/core/text/social_text_parser.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/entities/stock_suggestion.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
 
-class OltComposerField extends StatefulWidget {
-  const OltComposerField({
+class CommunityComposerField extends StatefulWidget {
+  const CommunityComposerField({
     super.key,
     required this.controller,
     required this.hintText,
@@ -38,7 +38,7 @@ class OltComposerField extends StatefulWidget {
   final InputDecoration? decoration;
 
   @override
-  State<OltComposerField> createState() => _OltComposerFieldState();
+  State<CommunityComposerField> createState() => _CommunityComposerFieldState();
 }
 
 sealed class _Suggestion {
@@ -55,7 +55,7 @@ class _UserSuggestion extends _Suggestion {
   final UserSummary user;
 }
 
-class _OltComposerFieldState extends State<OltComposerField> {
+class _CommunityComposerFieldState extends State<CommunityComposerField> {
   late final FocusNode _focusNode = widget.focusNode ?? FocusNode();
   Timer? _debounce;
   ActiveToken? _token;
@@ -125,12 +125,14 @@ class _OltComposerFieldState extends State<OltComposerField> {
   }
 
   Future<void> _search(ActiveToken token) async {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     final id = ++_requestId;
     try {
       final List<_Suggestion> results = token.trigger == r'$'
           ? [
-              for (final s in (await deps.callbacks.stockSearch?.call(token.query) ?? const <StockSuggestion>[]).take(6))
+              for (final s in (await deps.callbacks.stockSearch?.call(token.query) ?? const <StockSuggestion>[]).take(
+                6,
+              ))
                 _StockSuggestion(s),
             ]
           : [for (final u in await deps.profiles.searchUsers(token.query, limit: 6)) _UserSuggestion(u)];
@@ -139,8 +141,7 @@ class _OltComposerFieldState extends State<OltComposerField> {
         _suggestions = results;
         _highlight = 0;
       });
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   void _clearSuggestions() {
@@ -197,7 +198,7 @@ class _OltComposerFieldState extends State<OltComposerField> {
                     selected: i == _highlight,
                     leading: switch (s) {
                       _StockSuggestion() => const Icon(Icons.show_chart),
-                      _UserSuggestion(:final user) => OltAvatar(user: user, radius: 14),
+                      _UserSuggestion(:final user) => CommunityAvatar(user: user, radius: 14),
                     },
                     title: Text(switch (s) {
                       _StockSuggestion(:final stock) => '\$${stock.code}',

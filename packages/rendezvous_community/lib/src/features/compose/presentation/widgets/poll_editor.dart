@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/features/compose/presentation/cubit/compose_cubit.dart';
-import 'package:olt_social/src/features/poll/domain/entities/poll.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/features/compose/presentation/cubit/compose_cubit.dart';
+import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
 class PollEditor extends StatefulWidget {
   const PollEditor({super.key, required this.poll, required this.enabled});
@@ -52,7 +52,7 @@ class _PollEditorState extends State<PollEditor> {
   }
 
   String _durationLabel(BuildContext context, PollDuration duration) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     return switch (duration) {
       PollDuration.oneHour => l10n.pollDuration1h,
       PollDuration.sixHours => l10n.pollDuration6h,
@@ -64,7 +64,7 @@ class _PollEditorState extends State<PollEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final cubit = context.read<ComposeCubit>();
     final options = widget.poll.options;

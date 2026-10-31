@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import '../../support/fakes.dart';
 
@@ -25,9 +25,9 @@ class _EmptyFeed extends FakeFeedRepository {
 Future<void> _pump(WidgetTester tester, StockRepository stocks, Widget child) => tester.pumpWidget(
   MaterialApp(
     locale: const Locale('id'),
-    localizationsDelegates: OltSocialLocalizations.localizationsDelegates,
-    supportedLocales: OltSocialLocalizations.supportedLocales,
-    home: OltSocialScope(
+    localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+    supportedLocales: CommunityLocalizations.supportedLocales,
+    home: CommunityScope(
       dependencies: FakeDependencies(feed: _EmptyFeed(), stocks: stocks),
       child: Scaffold(body: child),
     ),
@@ -35,9 +35,9 @@ Future<void> _pump(WidgetTester tester, StockRepository stocks, Widget child) =>
 );
 
 void main() {
-  testWidgets('nama saham datang dari app klien, jumlah pemantau dari server', (tester) async {
+  testWidgets('the stock name comes from the client app and the watcher count from the server', (tester) async {
     final stocks = _FakeStocks();
-    await _pump(tester, stocks, const OltStockFeed(stockCode: 'bbca', stockName: 'Bank Central Asia Tbk'));
+    await _pump(tester, stocks, const CommunityStockFeed(stockCode: 'bbca', stockName: 'Bank Central Asia Tbk'));
     await tester.pumpAndSettle();
 
     expect(find.text(r'$BBCA'), findsOneWidget);
@@ -51,8 +51,8 @@ void main() {
     expect(find.text('Dipantau'), findsOneWidget);
   });
 
-  testWidgets('tanpa nama dari app, header hanya menampilkan kode dan pemantau', (tester) async {
-    await _pump(tester, _FakeStocks(), const OltStockFeed(stockCode: 'NEWCO'));
+  testWidgets('without an app-provided name, the header shows only the code and watchers', (tester) async {
+    await _pump(tester, _FakeStocks(), const CommunityStockFeed(stockCode: 'NEWCO'));
     await tester.pumpAndSettle();
 
     expect(find.text(r'$NEWCO'), findsOneWidget);

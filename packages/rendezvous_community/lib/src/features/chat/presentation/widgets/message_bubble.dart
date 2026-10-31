@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/receipt_icon.dart';
-import 'package:olt_social/src/features/media/presentation/widgets/attachment_grid.dart';
-import 'package:olt_social/src/features/moderation/domain/entities/report.dart';
-import 'package:olt_social/src/features/moderation/presentation/widgets/moderation_actions.dart';
-import 'package:olt_social/src/features/support/presentation/widgets/support_message_parts.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/social_text.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/receipt_icon.dart';
+import 'package:rendezvous_community/src/features/media/presentation/widgets/attachment_grid.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
+import 'package:rendezvous_community/src/features/moderation/presentation/widgets/moderation_actions.dart';
+import 'package:rendezvous_community/src/features/support/presentation/widgets/support_message_parts.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/social_text.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -36,41 +36,43 @@ class MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final details = _details(context);
     final fallback = message.isSystem ? SupportSystemNotice(message: message) : _DefaultBubble(details: details);
-    return buildChatPart(OltChatBuilders.of(context).message, context, details, fallback);
+    return buildChatPart(CommunityChatBuilders.of(context).message, context, details, fallback);
   }
 
-  OltMessageDetails _details(BuildContext context) {
+  CommunityMessageDetails _details(BuildContext context) {
     final cubit = context.read<ChatRoomCubit>();
     final m = message;
     final sender = m.sender;
     final support = m.senderRole != null;
     final sent = m.status == MessageStatus.sent && !m.isDeleted && !m.isSystem;
-    late final OltMessageDetails details;
-    details = OltMessageDetails(
+    late final CommunityMessageDetails details;
+    details = CommunityMessageDetails(
       message: m,
       isMine: mine,
       receipt: receipt,
       showSender: showSender,
       startsGroup: startsGroup,
-      timeLabel: context.oltL10n.clockTime(m.createdAt),
+      timeLabel: context.communityL10n.clockTime(m.createdAt),
       onReply: sent ? () => cubit.setReplyTo(m) : null,
       onDelete: sent && mine && !support ? () => _delete(context, cubit) : null,
       onReport: sent && !mine && !support
           ? () => showReportDialog(context, target: ReportTarget.message, targetId: m.id)
           : null,
       onRetry: m.status == MessageStatus.failed ? () => cubit.retry(m) : null,
-      onSenderTap: sender != null && !support && !mine ? () => OltNavigator.openUser(context, sender) : null,
+      onSenderTap: sender != null && !support && !mine ? () => CommunityNavigator.openUser(context, sender) : null,
       onShowActions: sent ? () => _showActions(context, details) : null,
     );
     return details;
   }
 
   Future<void> _delete(BuildContext context, ChatRoomCubit cubit) async {
-    if (await confirmOlt(context, context.oltL10n.deleteMessageConfirm)) await cubit.deleteMessage(message);
+    if (await confirmCommunityAction(context, context.communityL10n.deleteMessageConfirm)) {
+      await cubit.deleteMessage(message);
+    }
   }
 
-  Future<void> _showActions(BuildContext context, OltMessageDetails details) async {
-    final l10n = context.oltL10n;
+  Future<void> _showActions(BuildContext context, CommunityMessageDetails details) async {
+    final l10n = context.communityL10n;
     final action = await showModalBottomSheet<VoidCallback>(
       context: context,
       builder: (sheetContext) => SafeArea(
@@ -95,7 +97,7 @@ class MessageBubble extends StatelessWidget {
 class _DefaultBubble extends StatefulWidget {
   const _DefaultBubble({required this.details});
 
-  final OltMessageDetails details;
+  final CommunityMessageDetails details;
 
   @override
   State<_DefaultBubble> createState() => _DefaultBubbleState();
@@ -109,9 +111,9 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
     final d = widget.details;
     final m = d.message;
     final support = m.senderRole != null;
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
-    final t = OltSocialTheme.of(context);
+    final t = CommunityTheme.of(context);
     final bg = d.isMine ? t.myBubble : t.otherBubble;
     final fg = d.isMine ? t.onMyBubble : t.onOtherBubble;
     final meta = theme.textTheme.labelSmall?.copyWith(color: fg.withValues(alpha: 0.7));
@@ -138,7 +140,10 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
             if (m.isOfficial)
               OfficialSenderLabel(sender: m.sender!, color: t.link)
             else
-              GestureDetector(onTap: d.onSenderTap, child: Text(m.sender!.name, style: senderStyle)),
+              GestureDetector(
+                onTap: d.onSenderTap,
+                child: Text(m.sender!.name, style: senderStyle),
+              ),
           if (m.replyToId != null)
             Container(
               margin: const EdgeInsets.only(top: 4, bottom: 4),
@@ -149,14 +154,20 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                [if (m.replyToSenderUsername != null) '@${m.replyToSenderUsername}', m.replyToBody ?? l10n.messageDeleted].join(' · '),
+                [
+                  if (m.replyToSenderUsername != null) '@${m.replyToSenderUsername}',
+                  m.replyToBody ?? l10n.messageDeleted,
+                ].join(' · '),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall?.copyWith(color: fg),
               ),
             ),
           if (m.isDeleted)
-            Text(l10n.messageDeleted, style: theme.textTheme.bodyMedium?.copyWith(color: fg, fontStyle: FontStyle.italic))
+            Text(
+              l10n.messageDeleted,
+              style: theme.textTheme.bodyMedium?.copyWith(color: fg, fontStyle: FontStyle.italic),
+            )
           else ...[
             if (m.attachments.isNotEmpty) AttachmentGrid(attachments: m.attachments, maxHeight: 220),
             if ((m.body ?? '').isNotEmpty)
@@ -224,7 +235,10 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
                   children: [
                     bubble,
                     if (m.status == MessageStatus.failed)
-                      Text(l10n.messageFailed, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error)),
+                      Text(
+                        l10n.messageFailed,
+                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
+                      ),
                   ],
                 ),
               ),

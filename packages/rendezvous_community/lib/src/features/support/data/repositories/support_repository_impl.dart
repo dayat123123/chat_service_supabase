@@ -1,14 +1,16 @@
 import 'dart:async';
 
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/features/chat/data/models/chat_models.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
-import 'package:olt_social/src/features/notifications/domain/entities/app_notification.dart';
-import 'package:olt_social/src/features/notifications/domain/repositories/notification_repository.dart';
-import 'package:olt_social/src/features/support/data/models/support_models.dart';
-import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
-import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
+import 'package:logging/logging.dart';
+import 'package:rendezvous_community/src/core/logging/community_logger.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/features/chat/data/models/chat_models.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:rendezvous_community/src/features/support/data/models/support_models.dart';
+import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
+import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
 
 class SupportRepositoryImpl implements SupportRepository {
   SupportRepositoryImpl({required this._cs, this._realtime, required this._notifications});
@@ -43,12 +45,22 @@ class SupportRepositoryImpl implements SupportRepository {
     String language = 'id',
     String? screen,
     bool complaint = false,
-  }) async => _ticket(await _cs.rpcValue('open_ticket', {
-    'p_topic': topic,
-    'p_language': language,
-    'p_screen': screen,
-    'p_complaint': complaint,
-  }));
+  }) async {
+    final ticket = _ticket(
+      await _cs.rpcValue('open_ticket', {
+        'p_topic': topic,
+        'p_language': language,
+        'p_screen': screen,
+        'p_complaint': complaint,
+      }),
+    );
+    CommunityLoggers.support.event(
+      Level.INFO,
+      'Support ticket opened',
+      fields: {'ticketId': ticket.id, 'topic': topic, 'status': ticket.status},
+    );
+    return ticket;
+  }
 
   @override
   Future<List<SupportTicket>> myTickets() async {
@@ -67,9 +79,8 @@ class SupportRepositoryImpl implements SupportRepository {
       _ticket(await _cs.rpcValue('close_ticket', {'p_ticket_id': ticketId}));
 
   @override
-  Future<SupportTicket> rateTicket(String ticketId, int rating, {String? comment}) async => _ticket(
-    await _cs.rpcValue('rate_ticket', {'p_ticket_id': ticketId, 'p_rating': rating, 'p_comment': comment}),
-  );
+  Future<SupportTicket> rateTicket(String ticketId, int rating, {String? comment}) async =>
+      _ticket(await _cs.rpcValue('rate_ticket', {'p_ticket_id': ticketId, 'p_rating': rating, 'p_comment': comment}));
 
   @override
   Future<SupportTicket> requestComplaint() async => _ticket(await _cs.rpcValue('request_complaint'));

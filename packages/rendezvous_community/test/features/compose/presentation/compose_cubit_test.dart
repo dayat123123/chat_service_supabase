@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
-import 'package:olt_social/src/features/compose/presentation/cubit/compose_cubit.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:rendezvous_community/src/features/compose/presentation/cubit/compose_cubit.dart';
 
 import '../../../support/fakes.dart';
 
@@ -36,7 +36,7 @@ void main() {
 
   tearDown(() => cubit.close());
 
-  test('mengelola draf polling: tambah, ubah, batas 2–4 pilihan, durasi, hapus', () {
+  test('manages the poll draft: add, edit, 2–4 option limit, duration, remove', () {
     cubit
       ..addPoll()
       ..setPollOption(0, 'Naik')
@@ -60,14 +60,14 @@ void main() {
     expect(cubit.state.canAddImage, isTrue);
   });
 
-  test('draf polling tidak valid tidak dikirim', () async {
+  test('does not submit an invalid poll draft', () async {
     cubit.addPoll();
     expect(await cubit.submit('IHSG ke mana?'), isNull);
     expect(feed.calls, isEmpty);
-    expect((cubit.state.error! as OltSocialException).code, 'invalid_poll_draft');
+    expect((cubit.state.error! as CommunityException).code, 'invalid_poll_draft');
   });
 
-  test('polling valid dikirim bersama post', () async {
+  test('submits a valid poll with the post', () async {
     cubit
       ..addPoll()
       ..setPollOption(0, 'Naik')
@@ -78,8 +78,8 @@ void main() {
     expect(cubit.state.poll, isNull);
   });
 
-  test('kirim ulang setelah gagal memakai client_id yang sama (tanpa post ganda)', () async {
-    feed.error = const OltSocialException(OltSocialErrorKind.network);
+  test('resending after a failure reuses the same client_id (no duplicate post)', () async {
+    feed.error = const CommunityException(CommunityErrorKind.network);
     await cubit.submit('Halo');
     feed.error = null;
     await cubit.submit('Halo');

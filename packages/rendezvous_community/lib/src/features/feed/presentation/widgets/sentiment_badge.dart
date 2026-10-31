@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 
 class SentimentBadge extends StatelessWidget {
   const SentimentBadge({super.key, required this.sentiment});
@@ -10,8 +10,8 @@ class SentimentBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = OltSocialTheme.of(context);
-    final l10n = context.oltL10n;
+    final t = CommunityTheme.of(context);
+    final l10n = context.communityL10n;
     final (bg, fg, label, icon) = switch (sentiment) {
       Sentiment.bullish => (t.bullish, t.onBullish, l10n.sentimentBullish, Icons.trending_up),
       Sentiment.bearish => (t.bearish, t.onBearish, l10n.sentimentBearish, Icons.trending_down),
@@ -25,7 +25,10 @@ class SentimentBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: fg),
           const SizedBox(width: 4),
-          Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );

@@ -1,5 +1,5 @@
 import 'package:mocktail/mocktail.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
 
 class MockApi extends Mock implements SocialRemoteDataSource {}
 

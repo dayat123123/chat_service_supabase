@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/core/network/realtime_status.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/message_composer.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/message_list.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/room_header.dart';
-import 'package:olt_social/src/features/chat/presentation/widgets/typing_text.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/core/network/realtime_status.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_composer.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_list.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_header.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/typing_text.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
-class OltChatRoom extends StatelessWidget {
-  const OltChatRoom({
+class CommunityChatRoom extends StatelessWidget {
+  const CommunityChatRoom({
     super.key,
     required this.roomId,
     this.showHeader = true,
@@ -32,21 +32,18 @@ class OltChatRoom extends StatelessWidget {
   final ChatRepository? repository;
   final Widget? header;
   final Widget? composer;
-  final OltChatBuilders? builders;
+  final CommunityChatBuilders? builders;
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     return withChatBuilders(
       context,
       builders,
       BlocProvider(
-        create: (_) => ChatRoomCubit(
-          chat: repository ?? deps.chat,
-          media: deps.media,
-          me: deps.ensureSignedIn,
-          roomId: roomId,
-        )..load(),
+        create: (_) =>
+            ChatRoomCubit(chat: repository ?? deps.chat, media: deps.media, me: deps.ensureSignedIn, roomId: roomId)
+              ..load(),
         child: _ChatRoomView(showHeader: showHeader, header: header, composer: composer),
       ),
     );
@@ -62,10 +59,10 @@ class _ChatRoomView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final builders = OltChatBuilders.of(context);
+    final builders = CommunityChatBuilders.of(context);
     return BlocConsumer<ChatRoomCubit, ChatRoomState>(
       listenWhen: (a, b) => a.actionErrorId != b.actionErrorId,
-      listener: (context, state) => showOltError(context, state.actionError!),
+      listener: (context, state) => showCommunityError(context, state.actionError!),
       buildWhen: (a, b) => a.status != b.status,
       builder: (context, state) {
         final cubit = context.read<ChatRoomCubit>();
@@ -73,18 +70,18 @@ class _ChatRoomView extends StatelessWidget {
           LoadStatus.initial || LoadStatus.loading => buildChatPart(
             builders.loading,
             context,
-            const OltLoadingDetails(OltChatLoad.messages),
-            const OltSkeleton(itemCount: 6),
+            const CommunityLoadingDetails(CommunityChatLoad.messages),
+            const CommunitySkeleton(itemCount: 6),
           ),
           LoadStatus.failure => buildChatPart(
             builders.error,
             context,
-            OltErrorDetails(
+            CommunityErrorDetails(
               error: state.error!,
-              message: context.oltL10n.errorMessage(state.error!),
+              message: context.communityL10n.errorMessage(state.error!),
               onRetry: cubit.load,
             ),
-            OltErrorView(error: state.error!, onRetry: cubit.load),
+            CommunityErrorView(error: state.error!, onRetry: cubit.load),
           ),
           LoadStatus.ready => Column(
             children: [
@@ -109,12 +106,12 @@ class _ReconnectBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = context.select((ChatRoomCubit c) => c.state.connection);
     if (status != RealtimeStatus.reconnecting) return const SizedBox.shrink();
-    final label = context.oltL10n.reconnecting;
+    final label = context.communityL10n.reconnecting;
     final theme = Theme.of(context);
     return buildChatPart(
-      OltChatBuilders.of(context).connectionBanner,
+      CommunityChatBuilders.of(context).connectionBanner,
       context,
-      OltConnectionDetails(status: status, label: label),
+      CommunityConnectionDetails(status: status, label: label),
       Container(
         width: double.infinity,
         color: theme.colorScheme.tertiaryContainer,
@@ -142,11 +139,11 @@ class _TypingIndicator extends StatelessWidget {
     final state = context.select((ChatRoomCubit c) => c.state);
     if (state.typing.isEmpty) return const SizedBox(height: 0);
     final theme = Theme.of(context);
-    final text = typingText(context.oltL10n, state.typing.values, direct: state.room?.type == RoomType.direct);
+    final text = typingText(context.communityL10n, state.typing.values, direct: state.room?.type == RoomType.direct);
     return buildChatPart(
-      OltChatBuilders.of(context).typingIndicator,
+      CommunityChatBuilders.of(context).typingIndicator,
       context,
-      OltTypingDetails(users: state.typing.values.toList(), text: text),
+      CommunityTypingDetails(users: state.typing.values.toList(), text: text),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
         child: Align(

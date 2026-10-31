@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/poll/domain/entities/poll.dart';
+import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
 
 part 'poll_model.freezed.dart';
 part 'poll_model.g.dart';

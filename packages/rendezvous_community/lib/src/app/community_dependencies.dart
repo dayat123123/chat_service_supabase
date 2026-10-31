@@ -1,37 +1,37 @@
 import 'package:flutter/widgets.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/features/feed/domain/repositories/feed_repository.dart';
-import 'package:olt_social/src/features/media/domain/repositories/media_repository.dart';
-import 'package:olt_social/src/features/moderation/domain/repositories/moderation_repository.dart';
-import 'package:olt_social/src/features/notifications/domain/repositories/notification_repository.dart';
-import 'package:olt_social/src/features/poll/domain/repositories/poll_repository.dart';
-import 'package:olt_social/src/features/post/domain/repositories/comment_repository.dart';
-import 'package:olt_social/src/features/profile/domain/repositories/profile_repository.dart';
-import 'package:olt_social/src/features/stocks/domain/entities/stock_suggestion.dart';
-import 'package:olt_social/src/features/stocks/domain/repositories/stock_repository.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/repositories/moderation_repository.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:rendezvous_community/src/features/poll/domain/repositories/poll_repository.dart';
+import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
+import 'package:rendezvous_community/src/features/profile/domain/repositories/profile_repository.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/entities/stock_suggestion.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/repositories/stock_repository.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
-typedef OltStockTapCallback = void Function(BuildContext context, String stockCode);
+typedef CommunityStockTapCallback = void Function(BuildContext context, String stockCode);
 
-typedef OltUserTapCallback = void Function(BuildContext context, UserSummary user);
+typedef CommunityUserTapCallback = void Function(BuildContext context, UserSummary user);
 
-typedef OltPostTapCallback = void Function(BuildContext context, String postId);
+typedef CommunityPostTapCallback = void Function(BuildContext context, String postId);
 
-typedef OltRoomTapCallback = void Function(BuildContext context, String roomId);
+typedef CommunityRoomTapCallback = void Function(BuildContext context, String roomId);
 
-typedef OltStockSearch = Future<List<StockSuggestion>> Function(String query);
+typedef CommunityStockSearch = Future<List<StockSuggestion>> Function(String query);
 
-class OltSocialCallbacks {
-  const OltSocialCallbacks({this.onStockTap, this.onUserTap, this.onPostTap, this.onRoomTap, this.stockSearch});
+class CommunityCallbacks {
+  const CommunityCallbacks({this.onStockTap, this.onUserTap, this.onPostTap, this.onRoomTap, this.stockSearch});
 
-  final OltStockTapCallback? onStockTap;
-  final OltUserTapCallback? onUserTap;
-  final OltPostTapCallback? onPostTap;
-  final OltRoomTapCallback? onRoomTap;
-  final OltStockSearch? stockSearch;
+  final CommunityStockTapCallback? onStockTap;
+  final CommunityUserTapCallback? onUserTap;
+  final CommunityPostTapCallback? onPostTap;
+  final CommunityRoomTapCallback? onRoomTap;
+  final CommunityStockSearch? stockSearch;
 }
 
-abstract interface class OltSocialDependencies {
+abstract interface class CommunityDependencies {
   FeedRepository get feed;
   CommentRepository get comments;
   PollRepository get polls;
@@ -41,7 +41,7 @@ abstract interface class OltSocialDependencies {
   NotificationRepository get notifications;
   ModerationRepository get moderation;
   MediaRepository get media;
-  OltSocialCallbacks get callbacks;
+  CommunityCallbacks get callbacks;
 
   UserSummary? get currentUser;
 

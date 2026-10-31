@@ -1,9 +1,9 @@
-import 'package:olt_social/src/core/network/realtime_gateway.dart';
-import 'package:olt_social/src/core/network/social_remote_data_source.dart';
-import 'package:olt_social/src/core/paging/paged.dart';
-import 'package:olt_social/src/features/notifications/data/models/notification_model.dart';
-import 'package:olt_social/src/features/notifications/domain/entities/app_notification.dart';
-import 'package:olt_social/src/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
+import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/notifications/data/models/notification_model.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationRepositoryImpl implements NotificationRepository {
@@ -15,9 +15,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Future<Paged<AppNotification>> getNotifications({String? cursor, int limit = 30}) async {
     final rows = await _api.rpcRows('get_notifications', {'p_cursor': cursor, 'p_limit': limit});
-    final items = [
-      for (final row in rows) ?NotificationModel.fromJson(row).toEntity(),
-    ];
+    final items = [for (final row in rows) ?NotificationModel.fromJson(row).toEntity()];
     final last = rows.isEmpty ? null : rows.last['cursor'] as String?;
     return Paged(items, nextCursor: rows.length < limit ? null : last);
   }

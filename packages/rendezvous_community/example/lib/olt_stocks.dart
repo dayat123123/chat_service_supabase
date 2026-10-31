@@ -1,4 +1,4 @@
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 const oltStocks = {
   'IHSG': 'Indeks Harga Saham Gabungan',

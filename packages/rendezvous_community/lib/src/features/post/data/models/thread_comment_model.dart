@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/post/domain/entities/thread_comment.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'thread_comment_model.freezed.dart';
 part 'thread_comment_model.g.dart';

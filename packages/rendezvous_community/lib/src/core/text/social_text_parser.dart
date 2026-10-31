@@ -85,10 +85,5 @@ ActiveToken? findActiveToken(String text, int cursor) {
   if (match == null) return null;
   final trigger = match.group(1)!;
   final query = match.group(2)!;
-  return ActiveToken(
-    trigger: trigger,
-    query: query,
-    start: cursor - query.length - 1,
-    end: cursor,
-  );
+  return ActiveToken(trigger: trigger, query: query, start: cursor - query.length - 1, end: cursor);
 }

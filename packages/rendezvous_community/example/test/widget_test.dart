@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social_example/main.dart';
+import 'package:rendezvous_community_example/main.dart';
 
 void main() {
-  testWidgets('tanpa anon key menampilkan petunjuk konfigurasi', (tester) async {
+  testWidgets('shows configuration hints without an anon key', (tester) async {
     await tester.pumpWidget(const ExampleApp());
     expect(find.textContaining('OLT_SOCIAL_ANON_KEY'), findsOneWidget);
   });

@@ -3,11 +3,11 @@ import 'dart:math' as math;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/domain/repositories/feed_repository.dart';
-import 'package:olt_social/src/features/post/domain/entities/thread_comment.dart';
-import 'package:olt_social/src/features/post/domain/repositories/comment_repository.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
+import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
 part 'comment_thread_cubit.freezed.dart';
 
@@ -159,12 +159,14 @@ class CommentThreadCubit extends Cubit<ThreadState> {
       next = _bumpReplyCount(next, parentId, 1);
       final post = next.post;
       final collapsed = {...next.collapsed}..remove(parentId);
-      emit(next.copyWith(
-        sending: false,
-        replyTo: null,
-        collapsed: collapsed,
-        post: post?.copyWith(commentCount: post.commentCount + 1),
-      ));
+      emit(
+        next.copyWith(
+          sending: false,
+          replyTo: null,
+          collapsed: collapsed,
+          post: post?.copyWith(commentCount: post.commentCount + 1),
+        ),
+      );
       return true;
     } catch (e) {
       if (!isClosed) emit(state.copyWith(sending: false));
@@ -203,7 +205,11 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     final post = state.post;
     if (post == null) return;
     final liked = !post.likedByMe;
-    emit(state.copyWith(post: post.copyWith(likedByMe: liked, likeCount: post.likeCount + (liked ? 1 : -1))));
+    emit(
+      state.copyWith(
+        post: post.copyWith(likedByMe: liked, likeCount: post.likeCount + (liked ? 1 : -1)),
+      ),
+    );
     try {
       liked ? await _feed.likePost(post.id) : await _feed.unlikePost(post.id);
     } catch (e) {
@@ -227,7 +233,11 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     _postEvents ??= _feed.watchPosts(postId: postId).listen((change) {
       final post = state.post;
       if (isClosed || post == null || change is! PostUpdated) return;
-      emit(state.copyWith(post: post.copyWith(likeCount: change.likeCount, commentCount: change.commentCount)));
+      emit(
+        state.copyWith(
+          post: post.copyWith(likeCount: change.likeCount, commentCount: change.commentCount),
+        ),
+      );
     }, onError: (Object _) {});
   }
 
@@ -261,13 +271,14 @@ class CommentThreadCubit extends Cubit<ThreadState> {
       final loadedAll = (state.children[parentKey]?.length ?? 0) >= parent.replyCount;
       final withCount = _bumpReplyCount(state, parentKey, 1);
       emit(loadedAll && state.levelOf(comment) < maxLevels ? _merge(withCount, [comment]) : withCount);
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   ThreadState _merge(ThreadState base, List<ThreadComment> list) {
     final comments = {...base.comments};
-    final children = {for (final e in base.children.entries) e.key: [...e.value]};
+    final children = {
+      for (final e in base.children.entries) e.key: [...e.value],
+    };
     final rootId = base.root?.id;
     for (final c in list) {
       comments[c.id] = c;
@@ -282,26 +293,22 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     return base.copyWith(comments: comments, children: children);
   }
 
-  List<ThreadComment> _topLevelOf(ThreadState s, List<ThreadComment> list) =>
-      [for (final c in list) if ((c.parentId ?? topLevelKey) == s.rootKey && c.id != s.root?.id) c];
+  List<ThreadComment> _topLevelOf(ThreadState s, List<ThreadComment> list) => [
+    for (final c in list)
+      if ((c.parentId ?? topLevelKey) == s.rootKey && c.id != s.root?.id) c,
+  ];
 
   ThreadState _bumpReplyCount(ThreadState s, String? parentId, int delta) {
     if (parentId == null) return s;
     final parent = s.comments[parentId];
     if (parent == null) return s;
     final updated = parent.copyWith(replyCount: math.max(0, parent.replyCount + delta));
-    return s.copyWith(
-      comments: {...s.comments, parentId: updated},
-      root: s.root?.id == parentId ? updated : s.root,
-    );
+    return s.copyWith(comments: {...s.comments, parentId: updated}, root: s.root?.id == parentId ? updated : s.root);
   }
 
   void _replace(ThreadComment c) {
     if (isClosed) return;
-    emit(state.copyWith(
-      comments: {...state.comments, c.id: c},
-      root: state.root?.id == c.id ? c : state.root,
-    ));
+    emit(state.copyWith(comments: {...state.comments, c.id: c}, root: state.root?.id == c.id ? c : state.root));
   }
 
   void _setLoading(String key, bool loading) {

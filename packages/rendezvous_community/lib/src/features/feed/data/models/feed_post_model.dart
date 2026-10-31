@@ -1,8 +1,8 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/poll/data/models/poll_model.dart';
-import 'package:olt_social/src/shared/data/models/attachment_model.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/poll/data/models/poll_model.dart';
+import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'feed_post_model.freezed.dart';
 part 'feed_post_model.g.dart';

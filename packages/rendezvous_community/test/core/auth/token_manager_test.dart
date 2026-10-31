@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:olt_social/src/core/auth/auth_bridge_client.dart';
-import 'package:olt_social/src/core/auth/token_manager.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
+import 'package:rendezvous_community/src/core/auth/auth_bridge_client.dart';
+import 'package:rendezvous_community/src/core/auth/token_manager.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
 
 void main() {
   late DateTime now;
@@ -51,7 +51,7 @@ void main() {
     sentTokens = [];
   });
 
-  test('menukar token OLT dan memakai ulang JWT yang masih berlaku', () async {
+  test('exchanges the OLT token and reuses a JWT that is still valid', () async {
     final tokens = build();
     expect(await tokens.accessToken(), 'jwt-1');
     expect(await tokens.accessToken(), 'jwt-1');
@@ -61,15 +61,19 @@ void main() {
     await tokens.dispose();
   });
 
-  test('refresh paralel digabung menjadi satu panggilan', () async {
+  test('merges parallel refreshes into a single call', () async {
     final tokens = build();
-    final results = await Future.wait([tokens.accessToken(), tokens.accessToken(), tokens.refresh().then((s) => s.accessToken)]);
+    final results = await Future.wait([
+      tokens.accessToken(),
+      tokens.accessToken(),
+      tokens.refresh().then((s) => s.accessToken),
+    ]);
     expect(results.toSet(), {'jwt-1'});
     expect(exchangeCalls, 1);
     await tokens.dispose();
   });
 
-  test('JWT yang hampir kedaluwarsa ditukar ulang', () async {
+  test('re-exchanges a JWT that is about to expire', () async {
     final tokens = build(ttl: 120);
     await tokens.accessToken();
     now = now.add(const Duration(seconds: 100));
@@ -78,7 +82,7 @@ void main() {
     await tokens.dispose();
   });
 
-  test('sesi baru diumumkan lewat sessionChanges', () async {
+  test('announces new sessions through sessionChanges', () async {
     final tokens = build();
     final next = tokens.sessionChanges.first;
     await tokens.refresh();
@@ -86,28 +90,30 @@ void main() {
     await tokens.dispose();
   });
 
-  test('tanpa token OLT -> unauthenticated tanpa memanggil auth-bridge', () async {
+  test('without an OLT token -> unauthenticated without calling auth-bridge', () async {
     final tokens = build(oltToken: null);
     await expectLater(
       tokens.accessToken(),
-      throwsA(isA<OltSocialException>().having((e) => e.kind, 'kind', OltSocialErrorKind.unauthenticated)),
+      throwsA(isA<CommunityException>().having((e) => e.kind, 'kind', CommunityErrorKind.unauthenticated)),
     );
     expect(exchangeCalls, 0);
     await tokens.dispose();
   });
 
-  test('token OLT ditolak auth-bridge -> unauthenticated', () async {
+  test('OLT token rejected by auth-bridge -> unauthenticated', () async {
     final tokens = build(status: 401);
     await expectLater(
       tokens.refresh(),
-      throwsA(isA<OltSocialException>()
-          .having((e) => e.kind, 'kind', OltSocialErrorKind.unauthenticated)
-          .having((e) => e.code, 'code', 'invalid_token')),
+      throwsA(
+        isA<CommunityException>()
+            .having((e) => e.kind, 'kind', CommunityErrorKind.unauthenticated)
+            .having((e) => e.code, 'code', 'invalid_token'),
+      ),
     );
     await tokens.dispose();
   });
 
-  test('clear menghapus sesi', () async {
+  test('clear removes the session', () async {
     final tokens = build();
     await tokens.refresh();
     tokens.clear();

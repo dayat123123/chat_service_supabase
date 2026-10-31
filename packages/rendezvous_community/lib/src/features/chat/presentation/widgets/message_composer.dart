@@ -1,12 +1,12 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/core/media/image_mime.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
-import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_composer_field.dart';
+import 'package:rendezvous_community/src/core/media/image_mime.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_composer_field.dart';
 
 class MessageComposer extends StatefulWidget {
   const MessageComposer({super.key, this.onChanged, this.leading = const []});
@@ -59,15 +59,15 @@ class _MessageComposerState extends State<MessageComposer> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
-    final builder = OltChatBuilders.of(context).composer;
+    final l10n = context.communityL10n;
+    final builder = CommunityChatBuilders.of(context).composer;
     return BlocConsumer<ChatRoomCubit, ChatRoomState>(
       listenWhen: (a, b) => a.replyTo?.id != b.replyTo?.id && b.replyTo != null,
       listener: (_, _) => _focus.requestFocus(),
       buildWhen: (a, b) => a.replyTo != b.replyTo || a.uploading != b.uploading,
       builder: (context, state) {
         final replyTo = state.replyTo;
-        final details = OltComposerDetails(
+        final details = CommunityComposerDetails(
           controller: _controller,
           focusNode: _focus,
           hintText: l10n.messageHint,
@@ -75,7 +75,9 @@ class _MessageComposerState extends State<MessageComposer> {
           uploading: state.uploading,
           onSend: _send,
           replyTo: replyTo,
-          replyPreview: replyTo == null ? null : '${replyTo.sender?.name ?? l10n.someone}: ${replyTo.body ?? l10n.attachment}',
+          replyPreview: replyTo == null
+              ? null
+              : '${replyTo.sender?.name ?? l10n.someone}: ${replyTo.body ?? l10n.attachment}',
           onCancelReply: replyTo == null ? null : () => context.read<ChatRoomCubit>().setReplyTo(null),
           onPickImage: state.uploading ? null : _pickImage,
           extraActions: widget.leading,
@@ -89,12 +91,12 @@ class _MessageComposerState extends State<MessageComposer> {
 class _DefaultComposer extends StatelessWidget {
   const _DefaultComposer({required this.details});
 
-  final OltComposerDetails details;
+  final CommunityComposerDetails details;
 
   @override
   Widget build(BuildContext context) {
     final d = details;
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final replyPreview = d.replyPreview;
     return SafeArea(
       top: false,
@@ -136,7 +138,7 @@ class _DefaultComposer extends StatelessWidget {
                       : const Icon(Icons.add_photo_alternate_outlined),
                 ),
                 Expanded(
-                  child: OltComposerField(
+                  child: CommunityComposerField(
                     controller: d.controller,
                     focusNode: d.focusNode,
                     hintText: d.hintText,

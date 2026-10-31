@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/presentation/widgets/compose_prompt_card.dart';
-import 'package:olt_social/src/features/feed/presentation/widgets/olt_feed_list.dart';
-import 'package:olt_social/src/features/stocks/presentation/cubit/stock_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/community_feed_list.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/compose_prompt_card.dart';
+import 'package:rendezvous_community/src/features/stocks/presentation/cubit/stock_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 
-class OltStockFeed extends StatelessWidget {
-  const OltStockFeed({super.key, required this.stockCode, this.stockName, this.showHeader = true});
+class CommunityStockFeed extends StatelessWidget {
+  const CommunityStockFeed({super.key, required this.stockCode, this.stockName, this.showHeader = true});
 
   final String stockCode;
 
@@ -19,16 +19,16 @@ class OltStockFeed extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     final code = stockCode.toUpperCase();
     return BlocProvider(
       create: (_) => StockCubit(stocks: deps.stocks, chat: deps.chat, code: code)..load(),
       child: BlocListener<StockCubit, StockState>(
         listenWhen: (a, b) => a.errorId != b.errorId,
-        listener: (context, state) => showOltError(context, state.error!),
-        child: OltFeedList(
+        listener: (context, state) => showCommunityError(context, state.error!),
+        child: CommunityFeedList(
           scope: FeedScope.stock(code),
-          emptyMessage: context.oltL10n.stockFeedEmpty(code),
+          emptyMessage: context.communityL10n.stockFeedEmpty(code),
           header: Column(
             children: [
               if (showHeader) _StockHeader(name: stockName),
@@ -48,7 +48,7 @@ class _StockHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     return BlocBuilder<StockCubit, StockState>(
       builder: (context, state) {
@@ -101,7 +101,7 @@ class _StockHeader extends StatelessWidget {
                       ? null
                       : () async {
                           final roomId = await cubit.joinDiscussion();
-                          if (roomId != null && context.mounted) OltNavigator.openRoom(context, roomId);
+                          if (roomId != null && context.mounted) CommunityNavigator.openRoom(context, roomId);
                         },
                   icon: const Icon(Icons.forum_outlined),
                 ),

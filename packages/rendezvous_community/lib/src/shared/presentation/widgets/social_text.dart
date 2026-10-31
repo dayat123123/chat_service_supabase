@@ -1,8 +1,8 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/core/text/social_text_parser.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/core/text/social_text_parser.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 
 class SocialText extends StatefulWidget {
   const SocialText(this.text, {super.key, this.validStockCodes, this.style, this.maxLines});
@@ -35,7 +35,7 @@ class _SocialTextState extends State<SocialText> {
   @override
   Widget build(BuildContext context) {
     _disposeRecognizers();
-    final link = TextStyle(color: OltSocialTheme.of(context).link, fontWeight: FontWeight.w600);
+    final link = TextStyle(color: CommunityTheme.of(context).link, fontWeight: FontWeight.w600);
     final spans = <InlineSpan>[
       for (final segment in parseSocialText(widget.text, validStockCodes: widget.validStockCodes))
         switch (segment) {
@@ -44,13 +44,13 @@ class _SocialTextState extends State<SocialText> {
             text: segment.text,
             style: link,
             mouseCursor: SystemMouseCursors.click,
-            recognizer: _recognizer(() => OltNavigator.openStock(context, code)),
+            recognizer: _recognizer(() => CommunityNavigator.openStock(context, code)),
           ),
           MentionSegment(:final username) => TextSpan(
             text: segment.text,
             style: link,
             mouseCursor: SystemMouseCursors.click,
-            recognizer: _recognizer(() => OltNavigator.openUsername(context, username)),
+            recognizer: _recognizer(() => CommunityNavigator.openUsername(context, username)),
           ),
         },
     ];

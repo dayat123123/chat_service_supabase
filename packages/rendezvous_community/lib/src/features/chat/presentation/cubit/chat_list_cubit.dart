@@ -3,13 +3,13 @@ import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/core/network/realtime_status.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
-import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/core/network/realtime_status.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
 part 'chat_list_cubit.freezed.dart';
 
@@ -79,11 +79,13 @@ class ChatListCubit extends Cubit<ChatListState> {
       final page = await _chat.getRooms(cursor: cursor, limit: pageSize);
       if (isClosed) return;
       final known = {for (final r in state.rooms) r.id};
-      emit(state.copyWith(
-        rooms: [...state.rooms, ...page.items.where((r) => !known.contains(r.id))],
-        nextCursor: page.nextCursor,
-        loadingMore: false,
-      ));
+      emit(
+        state.copyWith(
+          rooms: [...state.rooms, ...page.items.where((r) => !known.contains(r.id))],
+          nextCursor: page.nextCursor,
+          loadingMore: false,
+        ),
+      );
       _watchRooms();
     } catch (_) {
       if (!isClosed) emit(state.copyWith(loadingMore: false));
@@ -97,20 +99,24 @@ class ChatListCubit extends Cubit<ChatListState> {
       final ids = {for (final r in fresh.items) r.id};
       final boundary = fresh.items.lastOrNull;
       final beyond = fresh.hasMore && boundary != null
-          ? [for (final r in state.rooms) if (!ids.contains(r.id) && r.compareListOrder(boundary) > 0) r]
+          ? [
+              for (final r in state.rooms)
+                if (!ids.contains(r.id) && r.compareListOrder(boundary) > 0) r,
+            ]
           : const <ChatRoom>[];
-      emit(state.copyWith(
-        rooms: [...fresh.items, ...beyond],
-        nextCursor: beyond.isEmpty ? fresh.nextCursor : state.nextCursor,
-        status: LoadStatus.ready,
-      ));
+      emit(
+        state.copyWith(
+          rooms: [...fresh.items, ...beyond],
+          nextCursor: beyond.isEmpty ? fresh.nextCursor : state.nextCursor,
+          status: LoadStatus.ready,
+        ),
+      );
       _watchRooms();
     } catch (_) {}
   }
 
-  void markOpened(String roomId) => emit(state.copyWith(rooms: [
-    for (final r in state.rooms) r.id == roomId ? r.copyWith(unreadCount: 0) : r,
-  ]));
+  void markOpened(String roomId) =>
+      emit(state.copyWith(rooms: [for (final r in state.rooms) r.id == roomId ? r.copyWith(unreadCount: 0) : r]));
 
   void _onActivity(RoomActivity activity) {
     final sender = activity.senderId;
@@ -152,19 +158,23 @@ class ChatListCubit extends Cubit<ChatListState> {
     if (room.type != RoomType.direct) return _scheduleRefresh();
     final status = receiptStatus(sentAt, [receipt]);
     if (status.index <= (room.lastMessageStatus?.index ?? 0)) return;
-    emit(state.copyWith(rooms: [
-      for (final r in state.rooms) r.id == roomId ? r.copyWith(lastMessageStatus: status) : r,
-    ]));
+    emit(
+      state.copyWith(rooms: [for (final r in state.rooms) r.id == roomId ? r.copyWith(lastMessageStatus: status) : r]),
+    );
   }
 
   void _addTyping(String roomId, UserSummary user) {
     final key = '$roomId/${user.id}';
     _typingTimers[key]?.cancel();
     _typingTimers[key] = Timer(typingTimeout, () => _removeTyping(roomId, user.id));
-    emit(state.copyWith(typing: {
-      ...state.typing,
-      roomId: {...?state.typing[roomId], user.id: user},
-    }));
+    emit(
+      state.copyWith(
+        typing: {
+          ...state.typing,
+          roomId: {...?state.typing[roomId], user.id: user},
+        },
+      ),
+    );
   }
 
   void _removeTyping(String roomId, String userId) {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
-import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 
-class OltAvatar extends StatelessWidget {
-  const OltAvatar({super.key, required this.user, this.radius = 20, this.online = false, this.onTap});
+class CommunityAvatar extends StatelessWidget {
+  const CommunityAvatar({super.key, required this.user, this.radius = 20, this.online = false, this.onTap});
 
   final UserSummary? user;
   final double radius;
@@ -22,7 +22,10 @@ class OltAvatar extends StatelessWidget {
       backgroundColor: scheme.secondaryContainer,
       foregroundColor: scheme.onSecondaryContainer,
       foregroundImage: url == null ? null : NetworkImage(url),
-      child: Text(initials, style: TextStyle(fontSize: radius * 0.8, fontWeight: FontWeight.w600)),
+      child: Text(
+        initials,
+        style: TextStyle(fontSize: radius * 0.8, fontWeight: FontWeight.w600),
+      ),
     );
 
     if (online) {
@@ -38,7 +41,7 @@ class OltAvatar extends StatelessWidget {
               width: dot,
               height: dot,
               decoration: BoxDecoration(
-                color: OltSocialTheme.of(context).onlineIndicator,
+                color: CommunityTheme.of(context).onlineIndicator,
                 shape: BoxShape.circle,
                 border: Border.all(color: scheme.surface, width: 2),
               ),

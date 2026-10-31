@@ -1,9 +1,12 @@
 import 'dart:async';
 
-import 'package:olt_social/src/core/auth/auth_bridge_client.dart';
-import 'package:olt_social/src/core/auth/session_tokens.dart';
-import 'package:olt_social/src/core/auth/social_session.dart';
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
+import 'package:logging/logging.dart';
+import 'package:rendezvous_community/src/core/auth/auth_bridge_client.dart';
+import 'package:rendezvous_community/src/core/auth/session_tokens.dart';
+import 'package:rendezvous_community/src/core/auth/social_session.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/error/error_mapper.dart';
+import 'package:rendezvous_community/src/core/logging/community_logger.dart';
 
 class TokenManager implements SessionTokens {
   TokenManager({
@@ -45,21 +48,42 @@ class TokenManager implements SessionTokens {
 
   Future<SocialSession> refresh() {
     if (_disposed) {
-      return Future.error(const OltSocialException(OltSocialErrorKind.unknown, message: 'TokenManager sudah ditutup'));
+      return Future.error(const CommunityException(CommunityErrorKind.unknown, message: 'Token manager is closed'));
     }
     return _inflight ??= _exchange().whenComplete(() => _inflight = null);
   }
 
   Future<SocialSession> _exchange() async {
+    try {
+      return await _issueSession();
+    } catch (error) {
+      final mapped = mapError(error);
+      CommunityLoggers.auth.event(
+        Level.WARNING,
+        'Social session exchange failed',
+        fields: {'kind': mapped.kind, 'code': mapped.code},
+      );
+      rethrow;
+    }
+  }
+
+  Future<SocialSession> _issueSession() async {
     final oltToken = await _oltTokenProvider();
     if (oltToken == null || oltToken.isEmpty) {
-      throw const OltSocialException.unauthenticated('Token OLT tidak tersedia (user belum login OLT)');
+      throw const CommunityException.unauthenticated(
+        'OLT token is unavailable because the user is not signed in to OLT',
+      );
     }
     final session = await _bridge.exchange(oltToken);
     if (_disposed) return session;
     _session = session;
     _schedule(session.expiresAt.difference(_clock()) - refreshMargin);
     _changes.add(session);
+    CommunityLoggers.auth.event(
+      Level.INFO,
+      'Social session issued',
+      fields: {'userId': session.user.id, 'expiresAt': session.expiresAt},
+    );
     return session;
   }
 
@@ -69,7 +93,13 @@ class TokenManager implements SessionTokens {
       try {
         await refresh();
       } catch (_) {
-        if (!_disposed) _schedule(retryDelay);
+        if (_disposed) return;
+        CommunityLoggers.auth.event(
+          Level.FINE,
+          'Scheduled session refresh failed, retrying',
+          fields: {'delayMs': retryDelay.inMilliseconds},
+        );
+        _schedule(retryDelay);
       }
     });
   }

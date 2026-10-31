@@ -1,17 +1,12 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:olt_social/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 
 part 'attachment_model.freezed.dart';
 part 'attachment_model.g.dart';
 
 @freezed
 abstract class AttachmentModel with _$AttachmentModel {
-  const factory AttachmentModel({
-    required String path,
-    String? mime,
-    int? width,
-    int? height,
-  }) = _AttachmentModel;
+  const factory AttachmentModel({required String path, String? mime, int? width, int? height}) = _AttachmentModel;
 
   const AttachmentModel._();
 

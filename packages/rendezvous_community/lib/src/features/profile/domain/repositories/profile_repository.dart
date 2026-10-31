@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:olt_social/src/features/profile/domain/entities/user_profile.dart';
-import 'package:olt_social/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/features/profile/domain/entities/user_profile.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 abstract interface class ProfileRepository {
   Future<UserProfile?> getProfile({String? userId, String? username});

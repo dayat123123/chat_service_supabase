@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-
-import 'package:olt_social/src/core/text/social_text_parser.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/domain/repositories/feed_repository.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
+import 'package:logging/logging.dart';
+import 'package:rendezvous_community/src/core/error/error_mapper.dart';
+import 'package:rendezvous_community/src/core/logging/community_logger.dart';
+import 'package:rendezvous_community/src/core/text/social_text_parser.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
 part 'feed_cubit.freezed.dart';
 
@@ -42,6 +44,12 @@ class FeedCubit extends Cubit<FeedState> {
       emit(state.copyWith(status: LoadStatus.ready, posts: page.items, nextCursor: page.nextCursor, newPosts: 0));
       _listen();
     } catch (e) {
+      final mapped = mapError(e);
+      CommunityLoggers.feed.event(
+        Level.WARNING,
+        'Failed to load feed',
+        fields: {'scope': scope, 'kind': mapped.kind, 'code': mapped.code},
+      );
       if (!isClosed) emit(state.copyWith(status: LoadStatus.failure, error: e));
     }
   }
@@ -64,11 +72,13 @@ class FeedCubit extends Cubit<FeedState> {
       final page = await _feed.getFeed(scope, cursor: cursor, limit: pageSize);
       if (isClosed) return;
       final known = {for (final p in state.posts) p.id};
-      emit(state.copyWith(
-        posts: [...state.posts, ...page.items.where((p) => !known.contains(p.id))],
-        nextCursor: page.nextCursor,
-        loadingMore: false,
-      ));
+      emit(
+        state.copyWith(
+          posts: [...state.posts, ...page.items.where((p) => !known.contains(p.id))],
+          nextCursor: page.nextCursor,
+          loadingMore: false,
+        ),
+      );
     } catch (e) {
       if (isClosed) return;
       emit(state.copyWith(loadingMore: false));
@@ -90,7 +100,14 @@ class FeedCubit extends Cubit<FeedState> {
 
   Future<void> delete(Post post) async {
     final before = state.posts;
-    emit(state.copyWith(posts: [for (final p in before) if (p.id != post.id) p]));
+    emit(
+      state.copyWith(
+        posts: [
+          for (final p in before)
+            if (p.id != post.id) p,
+        ],
+      ),
+    );
     try {
       await _feed.deletePost(post.id);
     } catch (e) {
@@ -105,8 +122,14 @@ class FeedCubit extends Cubit<FeedState> {
     emit(state.copyWith(posts: [post, ...state.posts]));
   }
 
-  void hideAuthor(String userId) =>
-      emit(state.copyWith(posts: [for (final p in state.posts) if (p.author.id != userId) p]));
+  void hideAuthor(String userId) => emit(
+    state.copyWith(
+      posts: [
+        for (final p in state.posts)
+          if (p.author.id != userId) p,
+      ],
+    ),
+  );
 
   void _listen() {
     _changes ??= _feed.watchPosts().listen((change) {
@@ -121,7 +144,14 @@ class FeedCubit extends Cubit<FeedState> {
           }
         case PostUpdated():
           if (change.deleted) {
-            emit(state.copyWith(posts: [for (final p in state.posts) if (p.id != change.postId) p]));
+            emit(
+              state.copyWith(
+                posts: [
+                  for (final p in state.posts)
+                    if (p.id != change.postId) p,
+                ],
+              ),
+            );
           } else {
             final index = state.posts.indexWhere((p) => p.id == change.postId);
             if (index >= 0) {

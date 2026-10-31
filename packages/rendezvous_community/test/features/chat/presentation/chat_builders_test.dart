@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:olt_social/olt_social.dart';
+import 'package:rendezvous_community/rendezvous_community.dart';
 
 import '../../../support/chat_app.dart';
 import '../../../support/fakes.dart';
 
-Widget messageTile(BuildContext context, OltMessageDetails d, Widget fallback) => Wrap(
+Widget messageTile(BuildContext context, CommunityMessageDetails d, Widget fallback) => Wrap(
   children: [
     Text('${d.isMine ? 'saya' : 'lawan'}: ${d.message.isDeleted ? 'dihapus' : d.message.body}'),
     if (d.onReply != null) TextButton(onPressed: d.onReply, child: Text('balas ${d.message.id}')),
@@ -14,7 +14,7 @@ Widget messageTile(BuildContext context, OltMessageDetails d, Widget fallback) =
   ],
 );
 
-Widget composerBox(BuildContext context, OltComposerDetails d, Widget fallback) => Column(
+Widget composerBox(BuildContext context, CommunityComposerDetails d, Widget fallback) => Column(
   mainAxisSize: MainAxisSize.min,
   children: [
     if (d.replyPreview != null) Text('membalas ${d.replyPreview}'),
@@ -27,13 +27,18 @@ void main() {
   FakeChatRepository repository({int messages = 2}) =>
       FakeChatRepository(rooms: [directRoom()], members: directMembers(), messages: chatHistory(messages));
 
-  testWidgets('builder pesan dan composer: data siap tampil, balas, lalu kirim tanpa logika tambahan', (tester) async {
+  testWidgets('message and composer builders: display-ready data, reply, then send without extra logic', (
+    tester,
+  ) async {
     useScreen(tester, const Size(900, 1200));
     final chat = repository();
     await pumpChat(
       tester,
       chat,
-      const OltChatRoom(roomId: 'dm', builders: OltChatBuilders(message: messageTile, composer: composerBox)),
+      const CommunityChatRoom(
+        roomId: 'dm',
+        builders: CommunityChatBuilders(message: messageTile, composer: composerBox),
+      ),
     );
 
     expect(find.text('lawan: Pesan 1'), findsOneWidget);
@@ -54,10 +59,17 @@ void main() {
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, isEmpty);
   });
 
-  testWidgets('handler hapus memakai konfirmasi bawaan lalu menghapus pesan', (tester) async {
+  testWidgets('the delete handler uses the built-in confirmation and then deletes the message', (tester) async {
     useScreen(tester, const Size(900, 1200));
     final chat = repository();
-    await pumpChat(tester, chat, const OltChatRoom(roomId: 'dm', builders: OltChatBuilders(message: messageTile)));
+    await pumpChat(
+      tester,
+      chat,
+      const CommunityChatRoom(
+        roomId: 'dm',
+        builders: CommunityChatBuilders(message: messageTile),
+      ),
+    );
 
     await tester.tap(find.text('hapus h-002'));
     await tester.pumpAndSettle();
@@ -68,13 +80,16 @@ void main() {
     expect(find.text('saya: dihapus'), findsOneWidget);
   });
 
-  testWidgets('pesan gagal terkirim memberi handler kirim ulang', (tester) async {
+  testWidgets('failed messages provide a resend handler', (tester) async {
     useScreen(tester, const Size(900, 1200));
     final chat = repository()..sendError = Exception('offline');
     await pumpChat(
       tester,
       chat,
-      const OltChatRoom(roomId: 'dm', builders: OltChatBuilders(message: messageTile, composer: composerBox)),
+      const CommunityChatRoom(
+        roomId: 'dm',
+        builders: CommunityChatBuilders(message: messageTile, composer: composerBox),
+      ),
     );
     await tester.enterText(find.byType(TextField), 'Tertunda');
     await tester.tap(find.text('kirim'));
@@ -89,14 +104,16 @@ void main() {
     expect(find.text('saya: Tertunda'), findsOneWidget);
   });
 
-  testWidgets('fallback menampilkan tampilan bawaan untuk pesan yang tidak ditangani', (tester) async {
+  testWidgets('fallback renders the default view for unhandled messages', (tester) async {
     useScreen(tester, const Size(900, 1200));
     await pumpChat(
       tester,
       repository(),
-      OltChatRoom(
+      CommunityChatRoom(
         roomId: 'dm',
-        builders: OltChatBuilders(message: (context, d, fallback) => d.isMine ? Text('kustom ${d.message.body}') : fallback),
+        builders: CommunityChatBuilders(
+          message: (context, d, fallback) => d.isMine ? Text('kustom ${d.message.body}') : fallback,
+        ),
       ),
     );
 
@@ -104,15 +121,15 @@ void main() {
     expect(find.text('Pesan 1'), findsOneWidget);
   });
 
-  testWidgets('builder header room: judul, status, dan handler bisukan', (tester) async {
+  testWidgets('room header builder: title, status, and mute handler', (tester) async {
     useScreen(tester, const Size(900, 1200));
     final chat = repository();
     await pumpChat(
       tester,
       chat,
-      OltChatRoom(
+      CommunityChatRoom(
         roomId: 'dm',
-        builders: OltChatBuilders(
+        builders: CommunityChatBuilders(
           roomHeader: (context, d, fallback) => Row(
             children: [
               Text('judul ${d.title}'),
@@ -136,15 +153,15 @@ void main() {
     expect(find.text('nyalakan'), findsOneWidget);
   });
 
-  testWidgets('builder status: mengetik, sambungan ulang, dan pemisah hari', (tester) async {
+  testWidgets('status builders: typing, reconnecting, and day separator', (tester) async {
     useScreen(tester, const Size(900, 1200));
     final chat = repository();
     await pumpChat(
       tester,
       chat,
-      OltChatRoom(
+      CommunityChatRoom(
         roomId: 'dm',
-        builders: OltChatBuilders(
+        builders: CommunityChatBuilders(
           typingIndicator: (context, d, fallback) => Text('ketik ${d.users.single.name}: ${d.text}'),
           connectionBanner: (context, d, fallback) => Text('koneksi ${d.label}'),
           dayDivider: (context, d, fallback) => Text('hari ${d.day.toUtc().day}'),
@@ -164,15 +181,15 @@ void main() {
     await tester.pump(const Duration(seconds: 7));
   });
 
-  testWidgets('builder kosong dan error: handler coba lagi memuat ulang room', (tester) async {
+  testWidgets('empty and error builders: the retry handler reloads the room', (tester) async {
     useScreen(tester, const Size(900, 1200));
     final chat = FakeChatRepository(rooms: [directRoom()], members: directMembers())..messagesError = Exception('down');
     await pumpChat(
       tester,
       chat,
-      OltChatRoom(
+      CommunityChatRoom(
         roomId: 'dm',
-        builders: OltChatBuilders(
+        builders: CommunityChatBuilders(
           error: (context, d, fallback) => TextButton(onPressed: d.onRetry, child: const Text('ulangi')),
           empty: (context, d, fallback) => Text('kosong ${d.kind.name}: ${d.message}'),
         ),
@@ -187,13 +204,13 @@ void main() {
     expect(find.text('kosong messages: Tulis pesan…'), findsOneWidget);
   });
 
-  testWidgets('daftar chat lebar: builder tile & header dipakai, room yang dibuka ikut memakai builder', (tester) async {
+  testWidgets('wide chat list: tile and header builders are used, and the opened room uses them too', (tester) async {
     useScreen(tester, const Size(1200, 900));
     await pumpChat(
       tester,
       repository(),
-      OltChatList(
-        builders: OltChatBuilders(
+      CommunityChatList(
+        builders: CommunityChatBuilders(
           listHeader: (context, d, fallback) => TextButton(onPressed: d.onNewGroup, child: Text('header ${d.title}')),
           roomTile: (context, d, fallback) =>
               ListTile(title: Text('tile ${d.title}'), subtitle: Text('${d.timeLabel}|${d.selected}'), onTap: d.onTap),
@@ -213,17 +230,17 @@ void main() {
     expect(find.text('lawan: Pesan 1'), findsOneWidget);
   });
 
-  testWidgets('layar sempit: room yang dibuka di halaman baru tetap memakai builder dari scope', (tester) async {
+  testWidgets('narrow screen: a room opened on a new page still uses builders from the scope', (tester) async {
     useScreen(tester, const Size(500, 900));
     await pumpChat(
       tester,
       repository(),
-      OltChatBuildersScope(
-        builders: OltChatBuilders(
+      CommunityChatBuildersScope(
+        builders: CommunityChatBuilders(
           roomTile: (context, d, fallback) => ListTile(title: Text('tile ${d.title}'), onTap: d.onTap),
           message: messageTile,
         ),
-        child: const OltChatList(),
+        child: const CommunityChatList(),
       ),
     );
 

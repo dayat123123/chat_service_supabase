@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
-import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
 
-typedef OltPartBuilder<T> = Widget Function(BuildContext context, T details, Widget fallback);
+typedef CommunityPartBuilder<T> = Widget Function(BuildContext context, T details, Widget fallback);
 
-class OltChatBuilders {
-  const OltChatBuilders({
+class CommunityChatBuilders {
+  const CommunityChatBuilders({
     this.message,
     this.composer,
     this.roomHeader,
@@ -18,28 +18,28 @@ class OltChatBuilders {
     this.error,
   });
 
-  final OltPartBuilder<OltMessageDetails>? message;
-  final OltPartBuilder<OltComposerDetails>? composer;
-  final OltPartBuilder<OltRoomHeaderDetails>? roomHeader;
-  final OltPartBuilder<OltTypingDetails>? typingIndicator;
-  final OltPartBuilder<OltConnectionDetails>? connectionBanner;
-  final OltPartBuilder<OltDayDetails>? dayDivider;
-  final OltPartBuilder<OltRoomTileDetails>? roomTile;
-  final OltPartBuilder<OltChatListHeaderDetails>? listHeader;
-  final OltPartBuilder<OltLoadingDetails>? loading;
-  final OltPartBuilder<OltEmptyDetails>? empty;
-  final OltPartBuilder<OltErrorDetails>? error;
+  final CommunityPartBuilder<CommunityMessageDetails>? message;
+  final CommunityPartBuilder<CommunityComposerDetails>? composer;
+  final CommunityPartBuilder<CommunityRoomHeaderDetails>? roomHeader;
+  final CommunityPartBuilder<CommunityTypingDetails>? typingIndicator;
+  final CommunityPartBuilder<CommunityConnectionDetails>? connectionBanner;
+  final CommunityPartBuilder<CommunityDayDetails>? dayDivider;
+  final CommunityPartBuilder<CommunityRoomTileDetails>? roomTile;
+  final CommunityPartBuilder<CommunityChatListHeaderDetails>? listHeader;
+  final CommunityPartBuilder<CommunityLoadingDetails>? loading;
+  final CommunityPartBuilder<CommunityEmptyDetails>? empty;
+  final CommunityPartBuilder<CommunityErrorDetails>? error;
 
-  static OltChatBuilders of(BuildContext context, {bool listen = true}) {
+  static CommunityChatBuilders of(BuildContext context, {bool listen = true}) {
     final scope = listen
-        ? context.dependOnInheritedWidgetOfExactType<OltChatBuildersScope>()
-        : context.getInheritedWidgetOfExactType<OltChatBuildersScope>();
-    return scope?.builders ?? const OltChatBuilders();
+        ? context.dependOnInheritedWidgetOfExactType<CommunityChatBuildersScope>()
+        : context.getInheritedWidgetOfExactType<CommunityChatBuildersScope>();
+    return scope?.builders ?? const CommunityChatBuilders();
   }
 
-  OltChatBuilders merge(OltChatBuilders? other) {
+  CommunityChatBuilders merge(CommunityChatBuilders? other) {
     if (other == null) return this;
-    return OltChatBuilders(
+    return CommunityChatBuilders(
       message: other.message ?? message,
       composer: other.composer ?? composer,
       roomHeader: other.roomHeader ?? roomHeader,
@@ -55,23 +55,23 @@ class OltChatBuilders {
   }
 }
 
-class OltChatBuildersScope extends InheritedWidget {
-  const OltChatBuildersScope({super.key, required this.builders, required super.child});
+class CommunityChatBuildersScope extends InheritedWidget {
+  const CommunityChatBuildersScope({super.key, required this.builders, required super.child});
 
-  final OltChatBuilders builders;
+  final CommunityChatBuilders builders;
 
   @override
-  bool updateShouldNotify(OltChatBuildersScope oldWidget) => !identical(builders, oldWidget.builders);
+  bool updateShouldNotify(CommunityChatBuildersScope oldWidget) => !identical(builders, oldWidget.builders);
 }
 
-Widget buildChatPart<T>(OltPartBuilder<T>? builder, BuildContext context, T details, Widget fallback) =>
+Widget buildChatPart<T>(CommunityPartBuilder<T>? builder, BuildContext context, T details, Widget fallback) =>
     builder == null ? fallback : builder(context, details, fallback);
 
 Widget Function(Widget child) carryChatBuilders(BuildContext context) {
-  final builders = OltChatBuilders.of(context, listen: false);
-  return (child) => OltChatBuildersScope(builders: builders, child: child);
+  final builders = CommunityChatBuilders.of(context, listen: false);
+  return (child) => CommunityChatBuildersScope(builders: builders, child: child);
 }
 
-Widget withChatBuilders(BuildContext context, OltChatBuilders? builders, Widget child) => builders == null
+Widget withChatBuilders(BuildContext context, CommunityChatBuilders? builders, Widget child) => builders == null
     ? child
-    : OltChatBuildersScope(builders: OltChatBuilders.of(context).merge(builders), child: child);
+    : CommunityChatBuildersScope(builders: CommunityChatBuilders.of(context).merge(builders), child: child);

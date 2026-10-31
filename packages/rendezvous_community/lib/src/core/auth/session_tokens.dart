@@ -1,4 +1,4 @@
-import 'package:olt_social/src/core/error/olt_social_exception.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract interface class SessionTokens {
@@ -20,7 +20,7 @@ class SupabaseAuthTokens implements SessionTokens {
   @override
   Future<String> accessToken() async {
     final session = _auth.currentSession;
-    if (session == null) throw const OltSocialException.unauthenticated();
+    if (session == null) throw const CommunityException.unauthenticated();
     if (!session.isExpired) return session.accessToken;
     return (await _refresh()).accessToken;
   }
@@ -30,7 +30,7 @@ class SupabaseAuthTokens implements SessionTokens {
 
   Future<Session> _refresh() async {
     final session = (await _auth.refreshSession()).session;
-    if (session == null) throw const OltSocialException.unauthenticated();
+    if (session == null) throw const CommunityException.unauthenticated();
     return session;
   }
 }

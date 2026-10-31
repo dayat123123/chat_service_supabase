@@ -1,14 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:olt_social/src/features/poll/data/repositories/poll_repository_impl.dart';
+import 'package:rendezvous_community/src/features/poll/data/repositories/poll_repository_impl.dart';
 
 import '../../../support/mock_api.dart';
 
 void main() {
-  test('vote memanggil vote_poll dan memetakan hasil terbaru', () async {
+  test('vote calls vote_poll and maps the latest results', () async {
     final api = mockApi();
-    when(() => api.rpcValue('vote_poll', any()))
-        .thenAnswer((_) async => pollJson(myOptionId: 'o-2', visible: true, total: 4));
+    when(
+      () => api.rpcValue('vote_poll', any()),
+    ).thenAnswer((_) async => pollJson(myOptionId: 'o-2', visible: true, total: 4));
 
     final poll = await PollRepositoryImpl(api).vote('p-1', 'o-2');
 

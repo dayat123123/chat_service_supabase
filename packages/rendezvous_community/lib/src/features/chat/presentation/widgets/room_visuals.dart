@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
 
 String roomTitle(ChatRoom room) => switch (room.type) {
   RoomType.direct => room.otherUser?.name ?? '',
@@ -8,8 +8,8 @@ String roomTitle(ChatRoom room) => switch (room.type) {
   RoomType.stock => '\$${room.stockCode}',
 };
 
-class OltRoomAvatar extends StatelessWidget {
-  const OltRoomAvatar({super.key, required this.room, this.online = false, this.radius = 20});
+class CommunityRoomAvatar extends StatelessWidget {
+  const CommunityRoomAvatar({super.key, required this.room, this.online = false, this.radius = 20});
 
   final ChatRoom room;
   final bool online;
@@ -22,7 +22,7 @@ class OltRoomAvatar extends StatelessWidget {
 Widget roomAvatar(BuildContext context, ChatRoom room, {bool online = false, double radius = 20}) {
   final scheme = Theme.of(context).colorScheme;
   return switch (room.type) {
-    RoomType.direct => OltAvatar(user: room.otherUser, online: online, radius: radius),
+    RoomType.direct => CommunityAvatar(user: room.otherUser, online: online, radius: radius),
     RoomType.group => CircleAvatar(
       radius: radius,
       backgroundColor: scheme.tertiaryContainer,

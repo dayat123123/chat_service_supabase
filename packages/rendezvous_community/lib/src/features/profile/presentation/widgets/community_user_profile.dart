@@ -1,50 +1,55 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:olt_social/src/app/olt_social_scope.dart';
-import 'package:olt_social/src/core/media/image_mime.dart';
-import 'package:olt_social/src/features/feed/domain/entities/post.dart';
-import 'package:olt_social/src/features/feed/presentation/widgets/olt_feed_list.dart';
-import 'package:olt_social/src/features/moderation/domain/entities/report.dart';
-import 'package:olt_social/src/features/moderation/presentation/widgets/moderation_actions.dart';
-import 'package:olt_social/src/features/profile/domain/entities/user_profile.dart';
-import 'package:olt_social/src/features/profile/presentation/cubit/profile_cubit.dart';
-import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
-import 'package:olt_social/src/shared/presentation/load_status.dart';
-import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_avatar.dart';
-import 'package:olt_social/src/shared/presentation/widgets/olt_user_name.dart';
-import 'package:olt_social/src/shared/presentation/widgets/social_text.dart';
-import 'package:olt_social/src/shared/presentation/widgets/state_views.dart';
+import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/core/media/image_mime.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/community_feed_list.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
+import 'package:rendezvous_community/src/features/moderation/presentation/widgets/moderation_actions.dart';
+import 'package:rendezvous_community/src/features/profile/domain/entities/user_profile.dart';
+import 'package:rendezvous_community/src/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
+import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_user_name.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/social_text.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 
-class OltUserProfile extends StatelessWidget {
-  const OltUserProfile({super.key, this.userId, this.username})
-    : assert(userId != null || username != null, 'userId atau username wajib diisi');
+class CommunityUserProfile extends StatelessWidget {
+  const CommunityUserProfile({super.key, this.userId, this.username})
+    : assert(userId != null || username != null, 'Either userId or username is required');
 
   final String? userId;
   final String? username;
 
   @override
   Widget build(BuildContext context) {
-    final deps = OltSocialScope.of(context);
+    final deps = CommunityScope.of(context);
     return BlocProvider(
       create: (_) => ProfileCubit(profiles: deps.profiles, chat: deps.chat, userId: userId, username: username)..load(),
       child: BlocConsumer<ProfileCubit, ProfileState>(
         listenWhen: (a, b) => a.actionErrorId != b.actionErrorId,
-        listener: (context, state) => showOltError(context, state.actionError!),
-        buildWhen: (a, b) => a.status != b.status || a.profile?.user.id != b.profile?.user.id || a.profile?.isBlocked != b.profile?.isBlocked,
+        listener: (context, state) => showCommunityError(context, state.actionError!),
+        buildWhen: (a, b) =>
+            a.status != b.status ||
+            a.profile?.user.id != b.profile?.user.id ||
+            a.profile?.isBlocked != b.profile?.isBlocked,
         builder: (context, state) {
-          final l10n = context.oltL10n;
+          final l10n = context.communityL10n;
           switch (state.status) {
             case LoadStatus.initial || LoadStatus.loading:
-              return const OltSkeleton(itemCount: 3);
+              return const CommunitySkeleton(itemCount: 3);
             case LoadStatus.failure:
-              return OltErrorView(error: state.error!, onRetry: context.read<ProfileCubit>().load);
+              return CommunityErrorView(error: state.error!, onRetry: context.read<ProfileCubit>().load);
             case LoadStatus.ready:
               final profile = state.profile;
-              if (profile == null) return OltEmptyView(message: l10n.profileNotFound, icon: Icons.person_off_outlined);
+              if (profile == null) {
+                return CommunityEmptyView(message: l10n.profileNotFound, icon: Icons.person_off_outlined);
+              }
               if (profile.isBlocked) return const _ProfileHeader();
-              return OltFeedList(
+              return CommunityFeedList(
                 scope: FeedScope.user(profile.user.id),
                 emptyMessage: l10n.userFeedEmpty,
                 header: const _ProfileHeader(),
@@ -61,7 +66,7 @@ class _ProfileHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final theme = Theme.of(context);
     return BlocBuilder<ProfileCubit, ProfileState>(
       builder: (context, state) {
@@ -76,13 +81,13 @@ class _ProfileHeader extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  OltAvatar(user: user, radius: 32),
+                  CommunityAvatar(user: user, radius: 32),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        OltUserName(user: user, showUsername: false, style: theme.textTheme.titleLarge),
+                        CommunityUserName(user: user, showUsername: false, style: theme.textTheme.titleLarge),
                         Text('@${user.username}', style: muted),
                         if (profile.followsMe) Text(l10n.followsYou, style: muted),
                       ],
@@ -139,7 +144,7 @@ class _ProfileHeader extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: () async {
                         final roomId = await cubit.openDirectRoom();
-                        if (roomId != null && context.mounted) OltNavigator.openRoom(context, roomId);
+                        if (roomId != null && context.mounted) CommunityNavigator.openRoom(context, roomId);
                       },
                       icon: const Icon(Icons.chat_bubble_outline),
                       label: Text(l10n.sendMessage),
@@ -155,7 +160,7 @@ class _ProfileHeader extends StatelessWidget {
 
   Future<void> _editProfile(BuildContext context, UserProfile profile) async {
     final cubit = context.read<ProfileCubit>();
-    final l10n = context.oltL10n;
+    final l10n = context.communityL10n;
     final name = TextEditingController(text: profile.user.displayName ?? '');
     final bio = TextEditingController(text: profile.bio ?? '');
     await showDialog<void>(
@@ -177,8 +182,17 @@ class _ProfileHeader extends StatelessWidget {
                 icon: const Icon(Icons.photo_camera_outlined),
                 label: Text(l10n.changeAvatar),
               ),
-              TextField(controller: name, maxLength: 60, decoration: InputDecoration(labelText: l10n.displayName)),
-              TextField(controller: bio, maxLength: 300, maxLines: 3, decoration: InputDecoration(labelText: l10n.bio)),
+              TextField(
+                controller: name,
+                maxLength: 60,
+                decoration: InputDecoration(labelText: l10n.displayName),
+              ),
+              TextField(
+                controller: bio,
+                maxLength: 300,
+                maxLines: 3,
+                decoration: InputDecoration(labelText: l10n.bio),
+              ),
             ],
           ),
         ),

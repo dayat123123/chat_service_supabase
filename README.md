@@ -14,9 +14,9 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 | [`supabase/`](supabase/) | Migrasi SQL bernomor, seed development, tes pgTAP |
 | [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token sosial OLT (JWT bertanda tangan) menjadi JWT Supabase; verifikasi lokal, tanpa memanggil OLT |
 | [`services/dummy-olt/`](services/dummy-olt/) | Go: OLT **tiruan** (login + penerbit token sosial dengan kunci dev) untuk menguji auth-bridge mode jwt. Hanya development/testing |
-| [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
+| [`packages/rendezvous_community/`](packages/rendezvous_community/) | Package Flutter (Bloc, freezed), sebelumnya bernama `olt_social`, + app [`example/`](packages/rendezvous_community/example/) Windows, Android & web. Dokumentasi: [`docs/rendezvous-community/`](docs/rendezvous-community/README.md) |
 | [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS untuk CS dan super admin (login email + password, ambil tiket, chat, catatan internal, riwayat tiket nasabah; super admin memantau dashboard, laporan + CSV, mengelola akun CS dan pengaturan, palet Ctrl+K, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
-| [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
+| [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `rendezvous_community` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
 | [`docs/production-audit.md`](docs/production-audit.md) | Audit terhadap addendum produksi + status per tahap |
@@ -31,7 +31,7 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
  App OLT (Flutter, Windows/Android)                 Backend OLT
   ├─ login OLT (username/email+password / token) ──▶ menerbitkan token sosial
   │                                                  (JWT EdDSA/ES256, ≤ 15 mnt,
-  └─ olt_social ── token sosial ──┐                  ditandatangani kunci privat OLT)
+  └─ rendezvous_community ── token sosial ──┐                  ditandatangani kunci privat OLT)
                                   ▼                  Server sosial TIDAK memanggil OLT.
  ┌──────────────── docker compose (profil dev / single) ────────────────────────────────┐
  │ Traefik ─▶ Kong ─┬─ /bridge/v1    ─▶ auth-bridge (Go)    (Valkey: rate limit/cache)  │
@@ -142,10 +142,10 @@ make anon-key        # ANON_KEY untuk app Flutter
 | HP fisik di LAN | Set `EDGE_HTTP_BIND=0.0.0.0`, lalu pakai `http://<IP-PC>:8000` |
 | App contoh versi web (`make web-example`) | `http://localhost:8081` |
 
-Jalankan app contoh: lihat [packages/olt_social/example/README.md](packages/olt_social/example/README.md).
+Jalankan app contoh: lihat [packages/rendezvous_community/example/README.md](packages/rendezvous_community/example/README.md).
 
 ```bash
-cd packages/olt_social/example
+cd packages/rendezvous_community/example
 flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>
 ```
 
