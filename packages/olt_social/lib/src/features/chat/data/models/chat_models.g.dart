@@ -129,6 +129,7 @@ _RoomSummaryModel _$RoomSummaryModelFromJson(Map<String, dynamic> json) =>
       otherDisplayName: json['other_display_name'] as String?,
       otherAvatarUrl: json['other_avatar_url'] as String?,
       otherIsVerified: json['other_is_verified'] as bool? ?? false,
+      cursor: json['cursor'] as String?,
     );
 
 Map<String, dynamic> _$RoomSummaryModelToJson(_RoomSummaryModel instance) =>
@@ -152,6 +153,7 @@ Map<String, dynamic> _$RoomSummaryModelToJson(_RoomSummaryModel instance) =>
       'other_display_name': instance.otherDisplayName,
       'other_avatar_url': instance.otherAvatarUrl,
       'other_is_verified': instance.otherIsVerified,
+      'cursor': instance.cursor,
     };
 
 _RoomMemberModel _$RoomMemberModelFromJson(Map<String, dynamic> json) =>

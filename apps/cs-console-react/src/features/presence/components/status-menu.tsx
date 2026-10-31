@@ -1,8 +1,8 @@
-import { ChevronDownIcon, WifiIcon, WifiOffIcon, LoaderCircleIcon } from 'lucide-react'
+import { ChevronDownIcon, LoaderCircleIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { StatusDot } from '@/components/badges'
+import { Dot, StatusDot } from '@/components/badges'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -40,21 +40,23 @@ export function StatusMenu() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="rounded-full"
-            aria-label={t('presence.changeStatus')}
+            className="gap-2 text-foreground"
+            aria-label={`${t('presence.changeStatus')}: ${t(`presence.${agent.status}`)}`}
           >
             {setStatus.isPending ? (
-              <LoaderCircleIcon className="animate-spin" />
+              <LoaderCircleIcon className="size-3 animate-spin" />
             ) : (
               <StatusDot status={agent.status} />
             )}
-            <span className="font-semibold">{t(`presence.${agent.status}`)}</span>
+            <span>{t(`presence.${agent.status}`)}</span>
             {agent.reason ? (
-              <span className="hidden text-muted-foreground xl:inline">· {agent.reason}</span>
+              <span className="hidden max-w-40 truncate text-muted-foreground xl:inline">
+                · {agent.reason}
+              </span>
             ) : null}
-            <ChevronDownIcon className="opacity-60" />
+            <ChevronDownIcon className="size-3.5 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-52">
@@ -95,7 +97,7 @@ export function StatusMenu() {
         </DropdownMenuContent>
       </DropdownMenu>
       <Dialog open={custom !== null} onOpenChange={(open) => !open && setCustom(null)}>
-        <DialogContent className="sm:max-w-sm" closeLabel={t('app.close')}>
+        <DialogContent closeLabel={t('app.close')}>
           <DialogHeader>
             <DialogTitle>
               {t('presence.reasonTitle', { status: custom ? t(`presence.${custom}`) : '' })}
@@ -118,7 +120,7 @@ export function StatusMenu() {
               onChange={(event) => setReason(event.target.value)}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setCustom(null)}>
+              <Button type="button" variant="ghost" onClick={() => setCustom(null)}>
                 {t('app.cancel')}
               </Button>
               <Button type="submit">{t('presence.apply')}</Button>
@@ -137,8 +139,8 @@ export function ActiveCount() {
     <Tooltip content={t('presence.activeHint')}>
       <span
         className={cn(
-          'tabular hidden text-sm font-medium lg:inline',
-          atCapacity(agent) ? 'text-destructive' : 'text-muted-foreground',
+          'tabular hidden px-1 text-row lg:inline',
+          atCapacity(agent) ? 'text-danger' : 'text-muted-foreground',
         )}
       >
         {t('presence.activeTickets', { count: agent.active_tickets, max: agent.max_active_tickets })}
@@ -156,22 +158,22 @@ export function ConnectionIndicator() {
       : state === 'offline'
         ? t('presence.offlineNetwork')
         : t('presence.reconnecting')
-  const Icon = state === 'offline' ? WifiOffIcon : state === 'connected' ? WifiIcon : LoaderCircleIcon
+  if (state === 'connected') {
+    return (
+      <span role="status" aria-live="polite" className="sr-only">
+        {label}
+      </span>
+    )
+  }
   return (
     <Tooltip content={t('presence.connectionHint')}>
       <span
         role="status"
         aria-live="polite"
-        className={cn(
-          'inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium',
-          state === 'connected' && 'text-sla-ok',
-          state === 'offline' && 'bg-destructive/10 text-destructive',
-          (state === 'reconnecting' || state === 'connecting') && 'bg-sla-warn/12 text-sla-warn',
-        )}
+        className="inline-flex h-8 items-center gap-1.5 px-2 text-xs text-muted-foreground"
       >
-        <Icon className={cn('size-3.5', state !== 'connected' && state !== 'offline' && 'animate-spin')} />
-        <span className="hidden 2xl:inline">{label}</span>
-        <span className="sr-only 2xl:hidden">{label}</span>
+        <Dot tone={state === 'offline' ? 'late' : 'warn'} />
+        {label}
       </span>
     </Tooltip>
   )

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -17,6 +18,8 @@ abstract class ChatListState with _$ChatListState {
   const factory ChatListState({
     @Default(LoadStatus.initial) LoadStatus status,
     @Default(<ChatRoom>[]) List<ChatRoom> rooms,
+    String? nextCursor,
+    @Default(false) bool loadingMore,
     @Default(<String, Set<String>>{}) Map<String, Set<String>> presence,
     @Default(<String, Map<String, UserSummary>>{}) Map<String, Map<String, UserSummary>> typing,
     UserSummary? me,
@@ -37,12 +40,14 @@ class ChatListCubit extends Cubit<ChatListState> {
   ChatListCubit({
     required this._chat,
     required this._me,
+    this.pageSize = 30,
     this.maxWatchedRooms = 30,
     this.typingTimeout = const Duration(seconds: 6),
   }) : super(const ChatListState());
 
   final ChatRepository _chat;
   final Future<UserSummary> Function() _me;
+  final int pageSize;
   final int maxWatchedRooms;
   final Duration typingTimeout;
   StreamSubscription<RoomActivity>? _activity;
@@ -56,9 +61,9 @@ class ChatListCubit extends Cubit<ChatListState> {
     emit(state.copyWith(status: LoadStatus.loading, error: null));
     try {
       final me = await _me();
-      final rooms = await _chat.getRooms();
+      final page = await _chat.getRooms(limit: pageSize);
       if (isClosed) return;
-      emit(state.copyWith(status: LoadStatus.ready, rooms: rooms, me: me));
+      emit(state.copyWith(status: LoadStatus.ready, rooms: page.items, nextCursor: page.nextCursor, me: me));
       _activity ??= _chat.watchRoomActivity().listen(_onActivity, onError: (Object _) {});
       _watchRooms();
     } catch (e) {
@@ -66,11 +71,39 @@ class ChatListCubit extends Cubit<ChatListState> {
     }
   }
 
+  Future<void> loadMore() async {
+    final cursor = state.nextCursor;
+    if (cursor == null || state.loadingMore || state.status != LoadStatus.ready) return;
+    emit(state.copyWith(loadingMore: true));
+    try {
+      final page = await _chat.getRooms(cursor: cursor, limit: pageSize);
+      if (isClosed) return;
+      final known = {for (final r in state.rooms) r.id};
+      emit(state.copyWith(
+        rooms: [...state.rooms, ...page.items.where((r) => !known.contains(r.id))],
+        nextCursor: page.nextCursor,
+        loadingMore: false,
+      ));
+      _watchRooms();
+    } catch (_) {
+      if (!isClosed) emit(state.copyWith(loadingMore: false));
+    }
+  }
+
   Future<void> refresh() async {
     try {
-      final rooms = await _chat.getRooms();
+      final fresh = await _chat.getRooms(limit: max(pageSize, state.rooms.length));
       if (isClosed) return;
-      emit(state.copyWith(rooms: rooms, status: LoadStatus.ready));
+      final ids = {for (final r in fresh.items) r.id};
+      final boundary = fresh.items.lastOrNull;
+      final beyond = fresh.hasMore && boundary != null
+          ? [for (final r in state.rooms) if (!ids.contains(r.id) && r.compareListOrder(boundary) > 0) r]
+          : const <ChatRoom>[];
+      emit(state.copyWith(
+        rooms: [...fresh.items, ...beyond],
+        nextCursor: beyond.isEmpty ? fresh.nextCursor : state.nextCursor,
+        status: LoadStatus.ready,
+      ));
       _watchRooms();
     } catch (_) {}
   }

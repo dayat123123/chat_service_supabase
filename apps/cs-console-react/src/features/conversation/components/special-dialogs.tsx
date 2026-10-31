@@ -93,7 +93,7 @@ function CardForm({ ticketId, onSend }: { ticketId: string; onSend: (message: Sp
             <button
               key={pick.ref}
               type="button"
-              className="truncate rounded-md border px-2 py-1.5 text-left text-xs hover:bg-accent"
+              className="truncate rounded-md border px-2 py-1.5 text-left text-xs hover:bg-muted"
               onClick={() => form.setValue('ref', pick.ref, { shouldValidate: true })}
             >
               {pick.label}

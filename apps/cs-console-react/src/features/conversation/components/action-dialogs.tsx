@@ -85,7 +85,7 @@ function ReasonForm({
         ) : null}
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           {t('app.cancel')}
         </Button>
         <Button type="submit" disabled={form.formState.isSubmitting}>
@@ -170,7 +170,7 @@ function AgentForm({
         ) : null}
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           {t('app.cancel')}
         </Button>
         <Button type="submit" disabled={form.formState.isSubmitting}>
@@ -235,7 +235,7 @@ function ResolveForm({ onSubmit, onCancel }: { onSubmit: Submit['resolve']; onCa
         ) : null}
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           {t('app.cancel')}
         </Button>
         <Button type="submit" disabled={form.formState.isSubmitting}>

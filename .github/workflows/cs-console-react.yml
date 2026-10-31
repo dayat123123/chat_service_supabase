@@ -26,7 +26,7 @@ defaults:
 
 jobs:
   verify:
-    name: Lint, typecheck, unit, build, ukuran, lisensi
+    name: Lint, token, typecheck, unit, build, ukuran, lisensi
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -38,6 +38,7 @@ jobs:
           cache-dependency-path: apps/cs-console-react/package-lock.json
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
+      - run: npm run lint:tokens
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test

@@ -3,7 +3,7 @@ description: >-
   Fitur sosial & chat Rendezvous OLT: feed saham, komentar berantai, reaksi,
   mention, follow, watch saham, chat realtime, dan moderasi. Backend Supabase
   self-hosted + auth-bridge.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:

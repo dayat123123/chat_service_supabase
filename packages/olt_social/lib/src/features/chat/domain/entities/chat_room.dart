@@ -33,6 +33,14 @@ abstract class ChatRoom with _$ChatRoom {
   DateTime get sortTime => lastMessageAt ?? createdAt;
 
   bool get tracksReceipts => type != RoomType.stock;
+
+  bool get pinned => type == RoomType.support;
+
+  int compareListOrder(ChatRoom other) {
+    if (pinned != other.pinned) return pinned ? -1 : 1;
+    final time = other.sortTime.compareTo(sortTime);
+    return time != 0 ? time : other.id.compareTo(id);
+  }
 }
 
 @freezed

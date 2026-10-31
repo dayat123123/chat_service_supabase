@@ -152,14 +152,17 @@ void main() {
           s is RoomReceipt && s.receipt.userId == sari.currentUser!.id && !pick(s.receipt).isBefore(sent.createdAt);
 
       await _waitFor(budiSignals, (s) => reached(s, (r) => r.lastDeliveredAt), timeout: const Duration(seconds: 20));
-      final delivered = (await budi.chat.getRooms()).firstWhere((r) => r.id == roomId);
+      final delivered = (await budi.chat.getRooms()).items.firstWhere((r) => r.id == roomId);
       expect(delivered.lastMessageStatus, ReceiptStatus.delivered);
 
       final read = _waitFor(budiSignals, (s) => reached(s, (r) => r.lastReadAt), timeout: const Duration(seconds: 20));
       await sari.chat.markRoomRead(roomId);
       await read;
-      final seen = (await budi.chat.getRooms()).firstWhere((r) => r.id == roomId);
+      final seen = (await budi.chat.getRooms()).items.firstWhere((r) => r.id == roomId);
       expect(seen.lastMessageStatus, ReceiptStatus.read);
+      final single = await budi.chat.getRoom(roomId);
+      expect(single!.otherUser!.username, 'sari_invest');
+      expect(single.lastMessageStatus, ReceiptStatus.read);
     } finally {
       await budiSub.cancel();
       await sariSub.cancel();

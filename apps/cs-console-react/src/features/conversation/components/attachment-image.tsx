@@ -15,7 +15,10 @@ function Watermark({ label }: { label: string }) {
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden select-none">
       <div className="absolute -inset-1/2 flex rotate-[-24deg] flex-wrap content-center gap-x-16 gap-y-14 opacity-25">
         {Array.from({ length: 36 }, (_, i) => (
-          <span key={i} className="text-sm font-semibold whitespace-nowrap text-white mix-blend-difference">
+          <span
+            key={i}
+            className="text-sm font-medium whitespace-nowrap text-media-foreground mix-blend-difference"
+          >
             {label}
           </span>
         ))}
@@ -53,7 +56,7 @@ export function AttachmentImage({ attachment, compact }: { attachment: Attachmen
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative block overflow-hidden rounded-lg border bg-muted outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="relative block overflow-hidden rounded-lg border bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         aria-label={t('conversation.openImage')}
       >
         <img
@@ -67,7 +70,7 @@ export function AttachmentImage({ attachment, compact }: { attachment: Attachmen
       </button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
-          className="max-w-[min(92vw,1100px)] border-0 bg-black p-2 sm:max-w-[min(92vw,1100px)]"
+          className="max-w-[min(92vw,1100px)] border-0 bg-media p-2 sm:max-w-[min(92vw,1100px)]"
           closeLabel={t('app.close')}
         >
           <DialogTitle className="sr-only">{t('conversation.attachment')}</DialogTitle>

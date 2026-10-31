@@ -6,10 +6,10 @@ import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 const overlayClass =
-  'fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0'
+  'fixed inset-0 z-50 bg-scrim duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0'
 
 const contentClass =
-  'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100vh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-xl border bg-popover p-6 text-popover-foreground shadow-lg duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg'
+  'fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100vh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-popover p-5 text-popover-foreground shadow-float duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 sm:max-w-[480px]'
 
 function Dialog(props: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -27,15 +27,19 @@ function DialogContent({
   className,
   children,
   closeLabel,
+  container,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { closeLabel?: string }) {
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  closeLabel?: string
+  container?: HTMLElement | null
+}) {
   return (
-    <DialogPrimitive.Portal>
+    <DialogPrimitive.Portal container={container}>
       <DialogPrimitive.Overlay className={overlayClass} />
       <DialogPrimitive.Content data-slot="dialog-content" className={cn(contentClass, className)} {...props}>
         {children}
         {closeLabel ? (
-          <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:ring-[3px] focus-visible:ring-ring/50">
+          <DialogPrimitive.Close className="absolute top-3.5 right-3.5 inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50">
             <XIcon className="size-4" />
             <span className="sr-only">{closeLabel}</span>
           </DialogPrimitive.Close>
@@ -47,7 +51,11 @@ function DialogContent({
 
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div data-slot="dialog-header" className={cn('flex flex-col gap-1.5 text-left', className)} {...props} />
+    <div
+      data-slot="dialog-header"
+      className={cn('flex flex-col gap-1 pr-8 text-left', className)}
+      {...props}
+    />
   )
 }
 
@@ -55,7 +63,7 @@ function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot="dialog-footer"
-      className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+      className={cn('flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end', className)}
       {...props}
     />
   )
@@ -65,7 +73,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn('text-lg leading-none font-semibold', className)}
+      className={cn('text-panel font-semibold', className)}
       {...props}
     />
   )
@@ -105,7 +113,7 @@ function AlertDialogContent({
 }
 
 function AlertDialogTitle({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
-  return <AlertDialogPrimitive.Title className={cn('text-lg font-semibold', className)} {...props} />
+  return <AlertDialogPrimitive.Title className={cn('text-panel font-semibold', className)} {...props} />
 }
 
 function AlertDialogDescription({
@@ -135,10 +143,7 @@ function AlertDialogCancel({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   return (
-    <AlertDialogPrimitive.Cancel
-      className={cn(buttonVariants({ variant: 'outline' }), className)}
-      {...props}
-    />
+    <AlertDialogPrimitive.Cancel className={cn(buttonVariants({ variant: 'ghost' }), className)} {...props} />
   )
 }
 

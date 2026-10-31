@@ -2,28 +2,49 @@ import type { InfiniteData } from '@tanstack/react-query'
 
 import type { ChatMessage } from './types'
 
-export type MessagePages = InfiniteData<ChatMessage[], unknown>
+export type CachedMessage = ChatMessage & { local?: boolean }
+
+export type MessagePages = InfiniteData<CachedMessage[], unknown>
 
 export function compareMessages(a: ChatMessage, b: ChatMessage) {
   const time = a.created_at.localeCompare(b.created_at)
   return time !== 0 ? time : a.id.localeCompare(b.id)
 }
 
-export function orderedMessages(data: MessagePages | undefined): ChatMessage[] {
+export function orderedMessages(data: MessagePages | undefined): CachedMessage[] {
   if (!data) return []
-  const byId = new Map<string, ChatMessage>()
+  const byId = new Map<string, CachedMessage>()
   for (const page of data.pages) for (const message of page) byId.set(message.id, message)
   return [...byId.values()].sort(compareMessages)
 }
 
 export function newestCursor(data: MessagePages | undefined) {
-  const ordered = orderedMessages(data)
-  return ordered[ordered.length - 1]?.cursor
+  const synced = orderedMessages(data).filter((message) => !message.local)
+  return synced[synced.length - 1]?.cursor
+}
+
+export const AFTER_LIMIT = 100
+
+export async function collectAfter(
+  fetchAfter: (cursor: string) => Promise<ChatMessage[]>,
+  cursor: string,
+  maxPages = 5,
+) {
+  const messages: ChatMessage[] = []
+  let next = cursor
+  for (let page = 0; page < maxPages; page += 1) {
+    const batch = await fetchAfter(next)
+    messages.push(...batch)
+    const newest = [...batch].sort(compareMessages).at(-1)
+    if (batch.length < AFTER_LIMIT || !newest?.cursor) return { messages, complete: true }
+    next = newest.cursor
+  }
+  return { messages, complete: false }
 }
 
 export function insertMessages(
   data: MessagePages | undefined,
-  incoming: ChatMessage[],
+  incoming: CachedMessage[],
 ): MessagePages | undefined {
   if (!data || incoming.length === 0) return data
   const updates = new Map(incoming.map((message) => [message.id, message]))

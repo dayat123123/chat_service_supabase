@@ -1,15 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  ImagePlusIcon,
+  EllipsisIcon,
+  FileTextIcon,
   LinkIcon,
   ListChecksIcon,
   LoaderCircleIcon,
-  PlusIcon,
-  SendHorizontalIcon,
+  PaperclipIcon,
   ShieldAlertIcon,
-  StickyNoteIcon,
+  SlashIcon,
   XIcon,
-  FileTextIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +20,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  floatClass,
+  Tooltip,
 } from '@/components/ui/menu'
 import { useCommandHandler } from '@/features/command/bus'
 import { customerKeys } from '@/features/customer/hooks'
@@ -52,6 +53,26 @@ import {
 } from '../types'
 import { SpecialMessageDialog, type SpecialKind, type SpecialMessage } from './special-dialogs'
 
+const MAX_INPUT_HEIGHT = 182
+
+function ToolButton({
+  label,
+  onClick,
+  children,
+}: {
+  label: string
+  onClick?: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <Tooltip content={label}>
+      <Button variant="ghost" size="icon-xs" aria-label={label} onClick={onClick}>
+        {children}
+      </Button>
+    </Tooltip>
+  )
+}
+
 type Props = {
   ticket: Ticket
   agent: AgentProfile
@@ -75,6 +96,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
   const [highlight, setHighlight] = useState(0)
   const [special, setSpecial] = useState<SpecialKind | null>(null)
   const textarea = useRef<HTMLTextAreaElement>(null)
+  const listId = `quick-replies-${ticket.id}`
   const fileInput = useRef<HTMLInputElement>(null)
   const quickReplies = useQuickReplies()
 
@@ -89,7 +111,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
     const element = textarea.current
     if (!element) return
     element.style.height = 'auto'
-    element.style.height = `${Math.min(element.scrollHeight, 220)}px`
+    element.style.height = `${Math.min(element.scrollHeight, MAX_INPUT_HEIGHT)}px`
   }, [value, mode])
 
   const filesRef = useRef(files)
@@ -245,6 +267,20 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
     if (mode === 'reply' && next.trim()) onTyping()
   }
 
+  const startQuickReply = () => {
+    const element = textarea.current
+    if (!element) return
+    const caret = element.selectionStart
+    const before = value.slice(0, caret)
+    const insert = before === '' || /\s$/.test(before) ? '/' : ' /'
+    const position = caret + insert.length
+    onChange(before + insert + value.slice(caret), position)
+    requestAnimationFrame(() => {
+      element.focus()
+      element.setSelectionRange(position, position)
+    })
+  }
+
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (matches.length > 0 && token) {
       if (event.key === 'ArrowDown') {
@@ -282,7 +318,10 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
 
   return (
     <div
-      className={cn('relative border-t bg-card p-3 compact:p-2', note && 'bg-note/60')}
+      className={cn(
+        'relative shrink-0 border-t px-(--pane-px) pt-2 pb-3 compact:pb-2',
+        note ? 'bg-note' : 'bg-background',
+      )}
       onDragOver={(event) => {
         if (note || !event.dataTransfer.types.includes('Files')) return
         event.preventDefault()
@@ -297,61 +336,58 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
       }}
     >
       {dragging ? (
-        <div className="pointer-events-none absolute inset-1 z-20 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
+        <div className="pointer-events-none absolute inset-1 z-20 flex items-center justify-center rounded-lg border border-dashed border-strong bg-background text-row text-muted-foreground">
           {t('composer.dropHere')}
         </div>
       ) : null}
-      <div className="mb-2 flex items-center gap-2">
-        <div
-          role="tablist"
-          aria-label={t('composer.reply')}
-          className="inline-flex rounded-lg bg-muted p-0.5"
-        >
-          {(['reply', 'note'] as const).map((item) => (
-            <button
-              key={item}
-              type="button"
-              role="tab"
-              aria-selected={mode === item}
-              onClick={() => focus(item)}
-              className={cn(
-                'inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                mode === item
-                  ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {item === 'note' ? <StickyNoteIcon className="size-3.5" /> : null}
-              {t(`composer.${item}`)}
-            </button>
+      <div className="mb-2 flex min-w-0 items-center gap-3">
+        <div role="tablist" aria-label={t('composer.reply')} className="flex shrink-0 items-center gap-2">
+          {(['reply', 'note'] as const).map((item, index) => (
+            <span key={item} className="flex items-center gap-2">
+              {index > 0 ? <span aria-hidden="true" className="h-3 w-px bg-border" /> : null}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === item}
+                onClick={() => focus(item)}
+                className={cn(
+                  'rounded-sm text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+                  mode === item
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {t(`composer.${item}`)}
+              </button>
+            </span>
           ))}
         </div>
         {note ? (
-          <span className="rounded-md bg-note px-2 py-0.5 text-[11px] font-semibold text-note-foreground">
-            {t('composer.notVisible')}
-          </span>
+          <span className="truncate text-xs text-muted-foreground">{t('composer.notVisible')}</span>
         ) : null}
         {replyTo && !note ? (
-          <span className="flex min-w-0 items-center gap-1 rounded-md bg-accent px-2 py-0.5 text-[11px] text-accent-foreground">
+          <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
             <span className="truncate">
               {t('conversation.replyingTo', {
                 name: replyTo.sender_display_name ?? replyTo.sender_username ?? '',
               })}
             </span>
-            <button type="button" aria-label={t('conversation.cancelReply')} onClick={onCancelReply}>
+            <button
+              type="button"
+              aria-label={t('conversation.cancelReply')}
+              onClick={onCancelReply}
+              className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
               <XIcon className="size-3" />
             </button>
           </span>
         ) : null}
       </div>
       {blocked || secret ? (
-        <div
-          role="alert"
-          className="mb-2 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
-        >
-          <ShieldAlertIcon className="mt-0.5 size-4 shrink-0" />
+        <p role="alert" className="mb-2 flex items-start gap-1.5 text-xs text-destructive">
+          <ShieldAlertIcon className="mt-px size-3.5 shrink-0" />
           <span>{blocked ?? t('composer.secretBlocked')}</span>
-        </div>
+        </p>
       ) : null}
       {files.length > 0 ? (
         <div className="mb-2 flex flex-wrap gap-2">
@@ -360,7 +396,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
               <img
                 src={file.preview}
                 alt={file.file.name}
-                className="size-16 rounded-md border object-cover"
+                className="size-14 rounded-md border object-cover"
               />
               <button
                 type="button"
@@ -369,7 +405,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
                   URL.revokeObjectURL(file.preview)
                   setFiles((current) => current.filter((item) => item.id !== file.id))
                 }}
-                className="absolute -top-1.5 -right-1.5 inline-flex size-5 items-center justify-center rounded-full bg-foreground text-background shadow"
+                className="absolute -top-1.5 -right-1.5 inline-flex size-5 items-center justify-center rounded-full border bg-background text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
               >
                 <XIcon className="size-3" />
               </button>
@@ -380,13 +416,15 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
       <div className="relative">
         {matches.length > 0 && token ? (
           <ul
+            id={listId}
             role="listbox"
             aria-label={t('composer.quickReplies')}
-            className="absolute bottom-full left-0 z-30 mb-2 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg"
+            className={cn(floatClass, 'absolute bottom-full left-0 mb-2 max-h-64 w-full overflow-y-auto p-1')}
           >
             {matches.map((reply, index) => (
               <li
                 key={reply.id}
+                id={`${listId}-${index}`}
                 role="option"
                 aria-selected={index === highlight}
                 onMouseDown={(event) => {
@@ -395,12 +433,12 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
                 }}
                 onMouseEnter={() => setHighlight(index)}
                 className={cn(
-                  'cursor-pointer rounded-md px-2.5 py-1.5 text-sm',
-                  index === highlight ? 'bg-accent text-accent-foreground' : '',
+                  'cursor-pointer rounded-md px-2 py-1.5 text-sm',
+                  index === highlight && 'bg-muted',
                 )}
               >
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-semibold">/{reply.shortcut}</span>
+                  <span className="font-mono text-xs text-muted-foreground">/{reply.shortcut}</span>
                   <span className="truncate font-medium">{reply.title}</span>
                 </div>
                 <p className="line-clamp-1 text-xs text-muted-foreground">{reply.body}</p>
@@ -410,37 +448,10 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         ) : null}
         <div
           className={cn(
-            'flex items-end gap-2 rounded-xl border bg-background p-1.5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/30',
-            note && 'border-note-border bg-note',
+            'rounded-lg border transition-[border-color,box-shadow] focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/10',
+            note ? 'border-note-border' : 'bg-background',
           )}
         >
-          {!note ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm" aria-label={t('composer.more')}>
-                  <PlusIcon />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" side="top">
-                <DropdownMenuItem onSelect={() => fileInput.current?.click()}>
-                  <ImagePlusIcon />
-                  {t('composer.attach')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setSpecial('card')}>
-                  <FileTextIcon />
-                  {t('composer.sendCard')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setSpecial('help')}>
-                  <LinkIcon />
-                  {t('composer.sendHelpLink')}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setSpecial('options')}>
-                  <ListChecksIcon />
-                  {t('composer.sendOptions')}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
           <textarea
             ref={textarea}
             rows={1}
@@ -448,7 +459,8 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
             maxLength={MAX_BODY}
             aria-label={note ? t('composer.note') : t('composer.reply')}
             aria-autocomplete="list"
-            aria-expanded={matches.length > 0 && token !== null}
+            aria-controls={matches.length > 0 && token ? listId : undefined}
+            aria-activedescendant={matches.length > 0 && token ? `${listId}-${highlight}` : undefined}
             placeholder={note ? t('composer.notePlaceholder') : t('composer.placeholder')}
             onChange={(event) => onChange(event.target.value, event.target.selectionStart)}
             onKeyDown={onKeyDown}
@@ -464,27 +476,61 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
                 addFiles(images)
               }
             }}
-            className="max-h-[220px] min-h-9 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none placeholder:text-muted-foreground"
+            className="block max-h-[182px] min-h-[42px] w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal outline-none"
           />
-          <Button
-            size="icon-sm"
-            aria-label={note ? t('composer.saveNote') : t('composer.send')}
-            disabled={busy || (!value.trim() && files.length === 0) || secret}
-            onClick={() => void submit()}
-          >
-            {busy ? (
-              <LoaderCircleIcon className="animate-spin" />
-            ) : note ? (
-              <StickyNoteIcon />
-            ) : (
-              <SendHorizontalIcon />
-            )}
-          </Button>
-        </div>
-        <div className="tabular mt-1 flex justify-end text-[11px] text-muted-foreground">
-          <span className={cn(value.length > MAX_BODY - 100 && 'text-destructive')}>
-            {t('composer.chars', { count: value.length, max: MAX_BODY })}
-          </span>
+          <div className="flex items-center gap-0.5 px-1.5 pb-1.5">
+            {!note ? (
+              <>
+                <ToolButton label={t('composer.attach')} onClick={() => fileInput.current?.click()}>
+                  <PaperclipIcon />
+                </ToolButton>
+                <ToolButton label={t('composer.sendCard')} onClick={() => setSpecial('card')}>
+                  <FileTextIcon />
+                </ToolButton>
+                <ToolButton label={t('composer.insertQuickReply')} onClick={startQuickReply}>
+                  <SlashIcon />
+                </ToolButton>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon-xs" aria-label={t('composer.more')}>
+                      <EllipsisIcon />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="top">
+                    <DropdownMenuItem onSelect={() => setSpecial('help')}>
+                      <LinkIcon />
+                      {t('composer.sendHelpLink')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => setSpecial('options')}>
+                      <ListChecksIcon />
+                      {t('composer.sendOptions')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : null}
+            <div className="ml-auto flex min-w-0 items-center gap-3 pl-2">
+              <span className="hidden truncate text-xs text-muted-foreground lg:inline">
+                {t('composer.hint')}
+              </span>
+              <span
+                className={cn(
+                  'tabular text-xs text-muted-foreground',
+                  value.length > MAX_BODY - 100 && 'text-destructive',
+                )}
+              >
+                {t('composer.chars', { count: value.length, max: MAX_BODY })}
+              </span>
+              <Button
+                size="sm"
+                disabled={busy || (!value.trim() && files.length === 0) || secret}
+                onClick={() => void submit()}
+              >
+                {busy ? <LoaderCircleIcon className="animate-spin" /> : null}
+                {note ? t('composer.saveNote') : t('composer.send')}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
       <input

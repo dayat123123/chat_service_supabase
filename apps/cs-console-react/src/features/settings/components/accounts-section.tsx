@@ -251,7 +251,7 @@ function AccountDialog({
               />
               {self ? <p className="text-xs text-muted-foreground">{t('settings.selfLocked')}</p> : null}
               {disabling ? (
-                <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <p role="alert" className="text-row text-destructive">
                   {t('settings.disableWarning', { count: account.active_tickets })}
                 </p>
               ) : null}
@@ -259,7 +259,7 @@ function AccountDialog({
           ) : null}
           <FormError error={save.error} />
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={save.isPending} onClick={onClose}>
+            <Button type="button" variant="ghost" disabled={save.isPending} onClick={onClose}>
               {t('app.cancel')}
             </Button>
             <Button type="submit" variant={disabling ? 'destructive' : 'default'} disabled={save.isPending}>
@@ -295,7 +295,7 @@ function CreatedDialog({ created, onClose }: { created: CreatedAccount | null; o
         {created ? (
           <>
             <DialogHeader>
-              <ShieldCheckIcon className="size-6 text-sla-ok" aria-hidden="true" />
+              <ShieldCheckIcon className="size-5 text-success" aria-hidden="true" />
               <DialogTitle>{t('settings.accountCreatedTitle')}</DialogTitle>
               <DialogDescription>
                 {t('settings.accountCreatedBody', {
@@ -373,10 +373,7 @@ function AccountsTable({
       </TableHeader>
       <TableBody>
         {accounts.map((account) => (
-          <TableRow
-            key={account.id}
-            className={cn(account.disabled_at && 'bg-muted/40 text-muted-foreground')}
-          >
+          <TableRow key={account.id} className={cn(account.disabled_at && 'text-muted-foreground')}>
             <TableCell className="font-medium">
               {account.display_name}{' '}
               <span className="font-normal text-muted-foreground">({account.agent_code})</span>
@@ -396,8 +393,8 @@ function AccountsTable({
             </TableCell>
             <TableCell>
               {account.totp ? (
-                <span className="inline-flex items-center gap-1 text-sla-ok">
-                  <ShieldCheckIcon className="size-4" aria-hidden="true" />
+                <span className="inline-flex items-center gap-1 text-success">
+                  <ShieldCheckIcon className="size-3.5" aria-hidden="true" />
                   {t('settings.twoFactorOn')}
                 </span>
               ) : (
@@ -409,7 +406,7 @@ function AccountsTable({
                 <Tooltip content={t('settings.disabledSince', { time: stamp(account.disabled_at) })}>
                   <span
                     tabIndex={0}
-                    className="rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                   >
                     <ActiveBadge active={false} inactiveLabel={t('settings.accountDisabled')} />
                   </span>

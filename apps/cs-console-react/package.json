@@ -21,7 +21,8 @@
     "gen:types": "node scripts/gen-types.mjs",
     "license:check": "node scripts/license-check.mjs",
     "size:check": "node scripts/bundle-size.mjs",
-    "ci": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run build && npm run size:check && npm run license:check"
+    "ci": "npm run lint && npm run lint:tokens && npm run format:check && npm run typecheck && npm run test && npm run build && npm run size:check && npm run license:check",
+    "lint:tokens": "node scripts/token-lint.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "5.3.0",
@@ -51,6 +52,7 @@
     "zustand": "5.0.16"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.3",

@@ -9,7 +9,7 @@ App contoh yang meniru cara OLT memasang `olt_social`:
    - **Windows** dan **web** (layar lebar): NavigationRail, dengan stream dan detail post berdampingan.
    - **Android**: NavigationBar di bawah.
 
-Menu yang tersedia: Stream, Saham, Chat, Notifikasi, dan Profil. Ada juga tombol untuk mengganti tema terang/gelap dan bahasa ID/EN.
+Menu yang tersedia: Stream, Saham, Chat, Notifikasi, dan Profil. Ada juga tombol untuk mengganti tema terang/gelap, bahasa ID/EN, dan gaya chat bawaan/kustom. Tombol gaya chat (ikon palet) memasang contoh builder dari `lib/custom_chat_style.dart` lewat `OltChatBuildersScope`: gelembung pesan, composer, tile daftar chat, dan pemisah hari versi host, dengan logika tetap dari package.
 
 ## Menjalankan
 

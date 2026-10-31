@@ -74,7 +74,7 @@ export function RevealDialog({
           </p>
         ) : null}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t('app.cancel')}
           </Button>
           <Button

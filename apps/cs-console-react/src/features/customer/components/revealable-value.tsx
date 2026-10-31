@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { Tooltip } from '@/components/ui/menu'
 import { clock } from '@/lib/time'
 
 import { useRevealedValue } from '../hooks'
@@ -11,10 +12,12 @@ import { RevealDialog } from './reveal-dialog'
 
 export function InfoRow({ label, value, action }: { label: string; value: ReactNode; action?: ReactNode }) {
   return (
-    <div className="grid grid-cols-[112px_1fr_auto] items-start gap-2 py-1 text-xs">
+    <div className="grid min-h-7 grid-cols-[104px_minmax(0,1fr)] items-start gap-x-3 py-1 text-row">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="min-w-0 break-words">{value ?? '–'}</dd>
-      {action ?? <span />}
+      <dd className="tabular flex min-w-0 items-start justify-between gap-2">
+        <span className="min-w-0 break-words">{value ?? '–'}</span>
+        {action}
+      </dd>
     </div>
   )
 }
@@ -40,23 +43,30 @@ export function RevealableValue({
       label={label}
       value={
         revealed ? (
-          <span className="font-medium text-foreground">
+          <span>
             {revealed.value}
-            <span className="block text-[10px] text-muted-foreground">
+            <span className="block text-xs text-muted-foreground">
               {t('customer.revealedUntil', { time: clock(new Date(revealed.until)) })}
             </span>
           </span>
         ) : (
-          <span className="tabular">{masked ?? '–'}</span>
+          <span className="font-mono text-xs">{masked ?? '–'}</span>
         )
       }
       action={
         canReveal && masked && !revealed ? (
           <>
-            <Button size="xs" variant="link" className="h-auto px-0" onClick={() => setOpen(true)}>
-              <EyeIcon />
-              {t('customer.reveal')}
-            </Button>
+            <Tooltip content={t('customer.reveal')}>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="-my-1 size-6"
+                aria-label={t('customer.reveal')}
+                onClick={() => setOpen(true)}
+              >
+                <EyeIcon />
+              </Button>
+            </Tooltip>
             <RevealDialog
               ticketId={ticketId}
               field={field}

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { MessageList } from '@/features/conversation/components/message-list'
 import type { ChatMessage, PendingMessage } from '@/features/conversation/types'
-import { TicketCard } from '@/features/tickets/components/ticket-card'
+import { TicketRow } from '@/features/tickets/components/ticket-row'
 import { ticketPriorities, type Ticket } from '@/features/tickets/types'
 
 const TICKETS = 1000
@@ -141,12 +141,12 @@ function PerfTickets({
   const virtualizer = useVirtualizer({
     count: tickets.length,
     getScrollElement: () => listRef.current,
-    estimateSize: () => 102,
+    estimateSize: () => 76,
     overscan: 8,
     getItemKey: (index) => tickets[index]?.id ?? index,
   })
   return (
-    <div ref={listRef} className="scrollbar-thin overflow-y-auto border-r bg-card" data-testid="perf-tickets">
+    <div ref={listRef} className="overflow-y-auto border-r bg-subtle" data-testid="perf-tickets">
       <div style={{ height: virtualizer.getTotalSize() }} className="relative w-full">
         {virtualizer.getVirtualItems().map((item) => {
           const ticket = tickets[item.index]
@@ -159,7 +159,7 @@ function PerfTickets({
               className="absolute top-0 left-0 w-full"
               style={{ transform: `translateY(${item.start}px)` }}
             >
-              <TicketCard
+              <TicketRow
                 ticket={ticket}
                 topicName={ticket.topic}
                 selected={ticket.id === selected}
@@ -224,9 +224,9 @@ export function PerfPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex flex-wrap items-center gap-3 border-b bg-card px-4 py-3">
-        <GaugeIcon className="size-5 text-primary" aria-hidden="true" />
-        <h1 className="text-base font-semibold">{t('perf.title')}</h1>
+      <header className="flex flex-wrap items-center gap-3 border-b bg-background px-4 py-3">
+        <GaugeIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+        <h1 className="text-panel font-semibold">{t('perf.title')}</h1>
         <span className="text-sm text-muted-foreground">
           {TICKETS} {t('nav.tickets').toLowerCase()} · {MESSAGES} msg
         </span>

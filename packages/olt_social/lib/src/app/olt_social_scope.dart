@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:olt_social/src/app/olt_social.dart';
 import 'package:olt_social/src/app/olt_social_dependencies.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/olt_chat_room.dart';
 import 'package:olt_social/src/features/post/presentation/widgets/olt_post_detail.dart';
 import 'package:olt_social/src/features/profile/presentation/widgets/olt_user_profile.dart';
@@ -54,13 +55,16 @@ abstract final class OltNavigator {
 
   static void _push(BuildContext context, String? title, Widget body) {
     final dependencies = OltSocialScope.of(context);
+    final carry = carryChatBuilders(context);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => OltSocialScope(
-          dependencies: dependencies,
-          child: Scaffold(
-            appBar: AppBar(title: title == null ? null : Text(title)),
-            body: SafeArea(top: false, child: body),
+        builder: (_) => carry(
+          OltSocialScope(
+            dependencies: dependencies,
+            child: Scaffold(
+              appBar: AppBar(title: title == null ? null : Text(title)),
+              body: SafeArea(top: false, child: body),
+            ),
           ),
         ),
       ),

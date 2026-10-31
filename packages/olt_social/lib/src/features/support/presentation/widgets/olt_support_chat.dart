@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/app/olt_social_scope.dart';
 import 'package:olt_social/src/app/olt_support_scope.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/olt_chat_room.dart';
 import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
 import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
@@ -134,12 +135,15 @@ class OltSupportPage extends StatelessWidget {
 Future<void> openOltSupport(BuildContext context, {String? topic, SupportCard? card, String? screen}) {
   final deps = OltSocialScope.of(context);
   final support = OltSupportScope.of(context);
+  final carry = carryChatBuilders(context);
   return Navigator.of(context).push(MaterialPageRoute<void>(
-    builder: (_) => OltSocialScope(
-      dependencies: deps,
-      child: OltSupportScope(
-        dependencies: support,
-        child: OltSupportPage(topic: topic, card: card, screen: screen),
+    builder: (_) => carry(
+      OltSocialScope(
+        dependencies: deps,
+        child: OltSupportScope(
+          dependencies: support,
+          child: OltSupportPage(topic: topic, card: card, screen: screen),
+        ),
       ),
     ),
   ));

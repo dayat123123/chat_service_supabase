@@ -47,6 +47,7 @@ supportedLocales: OltSocialLocalizations.supportedLocales,
 | Thread komentar | Garis indentasi per level. Mulai level 4, indentasi berhenti dan muncul "Lanjutkan thread". Tersedia "Lihat N balasan lainnya" dan collapse/expand per cabang |
 | Optimistic update | Like post/komentar, follow, watch, dan kirim pesan. Bila server gagal, perubahan dibatalkan dan SnackBar ditampilkan |
 | Chat | Centang ala WhatsApp: jam (mengirim), ✓ (sampai server), ✓✓ abu-abu (sudah diterima perangkat penerima yang online), ✓✓ biru (sudah dibaca). Di grup, centang naik setelah **semua** anggota menerima/membaca; room saham hanya ✓. Badge belum dibaca per room, balas pesan, reconnect otomatis dengan pengisian celah pesan dan tanda terima |
+| Lazy load chat | Pesan dimuat 30 per halaman memakai cursor (bukan offset). Halaman lebih lama diambil saat scroll mendekati pesan tertua, dan otomatis bila halaman pertama belum memenuhi layar. Daftar room juga dimuat 30 per halaman dengan aturan yang sama. Setelah koneksi pulih, pesan yang terlewat disusulkan per 100 sampai habis; bila lebih dari 500, room dimuat ulang dari pesan terbaru dan pesan lama tetap bisa dimuat dengan scroll |
 | Badge tab chat | `OltChatBadge` menampilkan jumlah **chat** (DM & grup yang tidak dibisukan) yang punya pesan belum dibaca, seperti tab Chat WhatsApp; `99+` bila lebih. Room saham tidak dihitung. Diperbarui saat pesan masuk dan saat room dibuka |
 | Mengetik & online | "mengetik…" (DM) atau "Budi sedang mengetik…" (grup) tampil di daftar chat dan di room. Titik hijau dan teks "Online" untuk lawan bicara DM |
 | Polling | Tombol polling di composer: 2–4 pilihan (maks 40 karakter, tidak boleh sama), durasi 1 jam–7 hari. Satu suara per user dan tidak bisa diubah; pembuat tidak ikut memilih. Hasil (persentase, pilihan Anda, pilihan teratas) tampil setelah memilih, saat polling selesai, atau bagi pembuat |
@@ -70,6 +71,95 @@ ThemeData(
 );
 ```
 
+## Kustomisasi UI chat (builder)
+
+Tampilan chat bisa diganti per bagian tanpa menulis ulang logikanya. Setiap builder menerima tiga hal:
+- `details`: data siap tampil dan handler yang sudah tersambung ke logika package (kirim, balas, hapus, kirim ulang, bisukan, buka room, dan lain-lain);
+- `fallback`: tampilan bawaan bagian itu;
+- `context`.
+
+Lazy load, kirim ulang otomatis, indikator mengetik, dan tanda terima tetap diurus package.
+
+Pasang sekali untuk seluruh aplikasi:
+
+```dart
+MaterialApp(
+  builder: (context, child) => OltChatBuildersScope(
+    builders: OltChatBuilders(
+      message: (context, d, fallback) {
+        final m = d.message;
+        if (m.kind != MessageKind.text || m.isDeleted || m.senderRole != null) return fallback;
+        final scheme = Theme.of(context).colorScheme;
+        return Align(
+          alignment: d.isMine ? Alignment.centerRight : Alignment.centerLeft,
+          child: GestureDetector(
+            onTap: d.onRetry,
+            onLongPress: d.onShowActions,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: d.isMine ? scheme.primaryContainer : scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                SocialText(m.body ?? ''),
+                Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(d.timeLabel),
+                  if (d.isMine) ReceiptIcon(receipt: d.receipt, sendStatus: m.status, color: scheme.outline),
+                ]),
+              ]),
+            ),
+          ),
+        );
+      },
+      composer: (context, d, fallback) => Row(children: [
+        ...d.extraActions,
+        IconButton(onPressed: d.onPickImage, icon: const Icon(Icons.image_outlined)),
+        Expanded(
+          child: OltComposerField(
+            controller: d.controller,
+            focusNode: d.focusNode,
+            hintText: d.hintText,
+            maxLength: d.maxLength,
+            onSubmit: d.onSend,
+          ),
+        ),
+        IconButton(onPressed: d.onSend, icon: const Icon(Icons.send)),
+      ]),
+    ),
+    child: child!,
+  ),
+);
+```
+
+Builder juga bisa dipasang per widget: `OltChatList(builders: ...)` atau `OltChatRoom(roomId: id, builders: ...)`. Builder per widget menimpa builder global untuk bagian yang sama.
+
+| Builder | `details` | Data dan handler |
+|---|---|---|
+| `message` | `OltMessageDetails` | `message`, `isMine`, `receipt`, `showSender`, `startsGroup`, `timeLabel`; `onReply`, `onDelete` (dengan konfirmasi bawaan), `onReport`, `onRetry`, `onSenderTap`, `onShowActions` (menu aksi bawaan) |
+| `composer` | `OltComposerDetails` | `controller`, `focusNode`, `hintText`, `maxLength`, `uploading`, `replyTo`, `replyPreview`, `extraActions`; `onSend`, `onPickImage`, `onCancelReply` |
+| `roomHeader` | `OltRoomHeaderDetails` | `room`, `title`, `subtitle`, `highlightSubtitle`, `online`, `typing`, `memberCount`; `onTap`, `onToggleMute`, `onLeave` |
+| `typingIndicator` | `OltTypingDetails` | `users`, `text` (dipanggil hanya saat ada yang mengetik) |
+| `connectionBanner` | `OltConnectionDetails` | `status`, `label` (dipanggil hanya saat menyambung ulang) |
+| `dayDivider` | `OltDayDetails` | `day`, `label` |
+| `roomTile` | `OltRoomTileDetails` | `room`, `title`, `preview`, `typingText`, `timeLabel`, `online`, `selected`, `lastMessageReceipt`; `onTap` |
+| `listHeader` | `OltChatListHeaderDetails` | `title`; `onNewGroup`, `onRefresh` |
+| `loading` | `OltLoadingDetails` | `kind`: `rooms`, `moreRooms`, `messages`, `olderMessages` |
+| `empty` | `OltEmptyDetails` | `kind`: `rooms`, `messages`, `noRoomSelected`; `message` |
+| `error` | `OltErrorDetails` | `error`, `message` (terlokalisasi); `onRetry` |
+
+Aturan pakai:
+- **Handler `null` berarti aksinya tidak berlaku.** Contohnya `onDelete` untuk pesan orang lain, atau `onRetry` untuk pesan yang sudah terkirim. Pasang langsung ke `onPressed` supaya tombol otomatis nonaktif.
+- **Teks sudah terlokalisasi:** waktu, teks mengetik, pratinjau "Anda: …", subjudul header, pesan kosong, dan pesan error.
+- **Kembalikan `fallback` untuk yang tidak ingin digambar sendiri**, misalnya pesan sistem, kartu order, dan pilihan cepat dari CS.
+- **Composer kustom sebaiknya menampilkan `extraActions`.** Chat CS memakainya untuk tombol lampirkan order.
+- **Tile kustom wajib menampilkan `OfficialBadge` untuk room CS** (`room.pinned` bernilai `true`) supaya nasabah tetap bisa membedakan CS resmi dari akun palsu. Room CS selalu ada di urutan teratas daftar.
+- **Pesan dari CS wajib tetap memperlihatkan penanda resmi.** Cara paling aman: kembalikan `fallback` bila `message.senderRole != null`, karena tampilan bawaan sudah memuat label CS Resmi, kartu, pilihan cepat, dan rating.
+- **Widget `header:` dan `composer:` di `OltChatRoom` tetap didukung** dan didahulukan dari builder.
+- **Builder ikut terbawa ke halaman yang dibuka package:** room di layar sempit, chat CS, dan riwayat tiket.
+- **Komponen siap pakai untuk UI sendiri:** `OltComposerField` (Enter mengirim, autocomplete `$KODE`/`@user`), `SocialText`, `AttachmentGrid`, `ReceiptIcon`, `OltAvatar`, `OltRoomAvatar`, `OltCountBadge`.
+
 ## Arsitektur
 
 Clean Architecture **per fitur**. Setiap fitur berdiri sendiri dengan tiga lapisan:
@@ -91,7 +181,7 @@ lib/src/
     moderation/    laporan & blokir                   media/         unggah & tampilkan lampiran
       domain/        entitas immutable (freezed), kontrak repository, layanan domain
       data/          model JSON (freezed + json_serializable), implementasi repository
-      presentation/  cubit/ (flutter_bloc) dan widgets/
+      presentation/  cubit/ (flutter_bloc), widgets/, dan builders/ (khusus chat: kontrak builder UI)
 ```
 
 Aturan dependensi:
@@ -100,6 +190,7 @@ Aturan dependensi:
 - Fitur boleh memakai **domain** fitur lain (mis. `compose` memakai `poll/domain`), tidak pernah lapisan `data`-nya.
 - `app` adalah satu-satunya tempat yang mengenal semua implementasi.
 - Cubit selalu di file sendiri (`presentation/cubit/`), terpisah dari widget.
+- Widget chat bawaan dan builder kustom memakai `details` yang sama. Logika (handler) dibuat sekali di widget pengendali, lalu tampilan bawaan (`_Default*`) maupun builder host hanya menggambarnya.
 - Import di dalam package memakai `package:olt_social/...` (lint `always_use_package_imports`).
 - Kode tanpa komentar; penjelasan ada di dokumen ini dan di `docs/`.
 

@@ -76,12 +76,64 @@ void main() {
   test('getRooms memetakan lawan bicara DM dan status pesan terakhir', () async {
     when(() => api.rpcRows('get_my_rooms', any())).thenAnswer((_) async => [roomRow(status: 'read')]);
 
-    final room = (await ChatRepositoryImpl(api).getRooms()).single;
+    final room = (await ChatRepositoryImpl(api).getRooms()).items.single;
 
     expect(room.type, RoomType.direct);
     expect(room.otherUser!.name, 'Sari');
     expect(room.unreadCount, 2);
     expect(room.lastMessageStatus, ReceiptStatus.read);
+  });
+
+  test('getRooms memuat per halaman dan memberi cursor halaman berikutnya', () async {
+    when(() => api.rpcRows('get_my_rooms', any())).thenAnswer((_) async => [
+      roomRow(id: 'r-1', cursor: '0|2026-10-29T03:00:00.000000Z|r-1'),
+      roomRow(id: 'r-2', cursor: '0|2026-10-29T02:00:00.000000Z|r-2'),
+    ]);
+
+    final page = await ChatRepositoryImpl(api).getRooms(cursor: '1|2026-10-29T05:00:00.000000Z|r-0', limit: 2);
+
+    verify(() => api.rpcRows('get_my_rooms', {'p_cursor': '1|2026-10-29T05:00:00.000000Z|r-0', 'p_limit': 2}))
+        .called(1);
+    expect(page.items.map((r) => r.id), ['r-1', 'r-2']);
+    expect(page.nextCursor, '0|2026-10-29T02:00:00.000000Z|r-2');
+  });
+
+  test('getRooms halaman terakhir tidak punya cursor lanjutan', () async {
+    when(() => api.rpcRows('get_my_rooms', any())).thenAnswer((_) async => [roomRow()]);
+
+    final page = await ChatRepositoryImpl(api).getRooms(limit: 2);
+
+    expect(page.items, hasLength(1));
+    expect(page.nextCursor, isNull);
+  });
+
+  test('getRoom memuat satu room lewat get_my_room, null bila bukan anggota', () async {
+    when(() => api.rpcRows('get_my_room', {'p_room_id': 'r-1'})).thenAnswer((_) async => [roomRow()]);
+    when(() => api.rpcRows('get_my_room', {'p_room_id': 'r-9'})).thenAnswer((_) async => []);
+    final repo = ChatRepositoryImpl(api);
+
+    expect((await repo.getRoom('r-1'))!.otherUser!.username, 'sari_invest');
+    expect(await repo.getRoom('r-9'), isNull);
+  });
+
+  test('getMessagesAfter memberi cursor pesan terbaru bila halaman penuh', () async {
+    Map<String, dynamic> row(String id, String at) => {
+      ...messageRow(id),
+      'created_at': at,
+      'cursor': '$at|$id',
+    };
+    when(() => api.rpcRows('get_messages', any())).thenAnswer((_) async => [
+      row('m-3', '2026-10-29T03:03:00Z'),
+      row('m-2', '2026-10-29T03:02:00Z'),
+    ]);
+    final repo = ChatRepositoryImpl(api);
+
+    final full = await repo.getMessagesAfter('r-1', 'c-0', limit: 2);
+    final partial = await repo.getMessagesAfter('r-1', 'c-0', limit: 3);
+
+    verify(() => api.rpcRows('get_messages', {'p_room_id': 'r-1', 'p_after': 'c-0', 'p_limit': 2})).called(1);
+    expect(full.nextCursor, '2026-10-29T03:03:00Z|m-3');
+    expect(partial.nextCursor, isNull);
   });
 
   test('markDelivered meneruskan daftar room ke RPC', () async {

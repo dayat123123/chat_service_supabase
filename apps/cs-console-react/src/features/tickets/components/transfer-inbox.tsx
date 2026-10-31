@@ -1,9 +1,8 @@
-import { ArrowRightLeftIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
-import { PriorityBadge } from '@/components/badges'
+import { PriorityText } from '@/components/badges'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
@@ -34,26 +33,23 @@ export function TransferInbox({
 
   if (incoming.length === 0 && outgoing.length === 0) return null
   return (
-    <div className="flex flex-col gap-2 border-b bg-accent/40 p-3 compact:p-2">
+    <div className="flex shrink-0 flex-col border-b bg-background">
       {incoming.length > 0 ? (
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-accent-foreground">
-          <ArrowRightLeftIcon className="size-3.5" />
+        <p className="px-3 pt-2.5 text-label font-medium text-muted-foreground uppercase">
           {t('tickets.transfersIn')}
         </p>
       ) : null}
       {incoming.map((request) => (
-        <div key={request.id} className="rounded-lg border bg-card p-2.5 shadow-xs">
-          <div className="flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-              {customerName(request.ticket)}
-            </span>
-            <PriorityBadge priority={request.ticket.priority} />
+        <div key={request.id} className="border-b px-3 py-(--row-py) last:border-b-0">
+          <div className="flex items-center gap-2 text-row">
+            <span className="min-w-0 flex-1 truncate font-medium">{customerName(request.ticket)}</span>
+            <PriorityText priority={request.ticket.priority} className="text-xs" />
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {request.ticket.ticket_number} · {t('tickets.transferFrom', { name: request.from_name ?? '' })}
             {request.expires_at ? ` · ${t('tickets.expiresAt', { time: clock(request.expires_at) })}` : ''}
           </p>
-          {request.note ? <p className="mt-1 line-clamp-3 text-xs">“{request.note}”</p> : null}
+          {request.note ? <p className="mt-1 line-clamp-3 text-xs">{request.note}</p> : null}
           <div className="mt-2 flex gap-2">
             <Button
               size="xs"
@@ -88,10 +84,12 @@ export function TransferInbox({
         </div>
       ))}
       {outgoing.length > 0 ? (
-        <p className="text-xs font-semibold text-muted-foreground">{t('tickets.transfersOut')}</p>
+        <p className="px-3 pt-2.5 text-label font-medium text-muted-foreground uppercase">
+          {t('tickets.transfersOut')}
+        </p>
       ) : null}
       {outgoing.map((transfer) => (
-        <div key={transfer.id} className="flex items-center gap-2 text-xs">
+        <div key={transfer.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
           <span className="min-w-0 flex-1 truncate">
             {t('tickets.transferTo', { name: transfer.to_name ?? '' })}
             {transfer.expires_at ? ` · ${t('tickets.expiresAt', { time: clock(transfer.expires_at) })}` : ''}
@@ -119,7 +117,7 @@ export function TransferInbox({
             aria-label={t('tickets.rejectReason')}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejecting(null)}>
+            <Button variant="ghost" onClick={() => setRejecting(null)}>
               {t('app.cancel')}
             </Button>
             <Button

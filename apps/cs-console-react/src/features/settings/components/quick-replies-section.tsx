@@ -76,7 +76,7 @@ function ReplyDialog({ reply, onClose }: { reply: QuickReplyConfig | null; onClo
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-xl" closeLabel={t('app.close')} aria-describedby={undefined}>
+      <DialogContent className="sm:max-w-[520px]" closeLabel={t('app.close')} aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>{reply ? t('settings.editQuickReplyTitle') : t('settings.addQuickReply')}</DialogTitle>
         </DialogHeader>
@@ -84,7 +84,7 @@ function ReplyDialog({ reply, onClose }: { reply: QuickReplyConfig | null; onClo
           <div className="grid grid-cols-[1fr_auto] gap-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="reply-shortcut">{t('settings.shortcut')}</Label>
-              <div className="flex items-center rounded-md border bg-card shadow-xs focus-within:ring-[3px] focus-within:ring-ring/50">
+              <div className="flex items-center rounded-md border bg-background transition-[border-color,box-shadow] focus-within:border-ring/60 focus-within:ring-2 focus-within:ring-ring/15">
                 <span className="pl-3 text-sm text-muted-foreground" aria-hidden="true">
                   /
                 </span>
@@ -92,7 +92,7 @@ function ReplyDialog({ reply, onClose }: { reply: QuickReplyConfig | null; onClo
                   id="reply-shortcut"
                   autoFocus
                   maxLength={32}
-                  className="border-0 pl-1 shadow-none focus-visible:ring-0"
+                  className="border-0 pl-1 focus-visible:ring-0"
                   aria-invalid={errors.shortcut ? true : undefined}
                   {...form.register('shortcut')}
                 />
@@ -154,7 +154,7 @@ function ReplyDialog({ reply, onClose }: { reply: QuickReplyConfig | null; onClo
           />
           <FormError error={save.error} />
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={save.isPending} onClick={onClose}>
+            <Button type="button" variant="ghost" disabled={save.isPending} onClick={onClose}>
               {t('app.cancel')}
             </Button>
             <Button type="submit" disabled={save.isPending}>

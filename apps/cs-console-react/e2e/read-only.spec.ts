@@ -14,7 +14,7 @@ test('CS yang bukan pemilik hanya melihat pratinjau hanya-baca', async ({ browse
 
     await openTicket(nadia.page, ticket.id, ticket.ticket_number)
     await expect(nadia.page.getByText(opening)).toBeVisible()
-    await expect(nadia.page.getByText('Pratinjau hanya-baca. Ambil tiket ini untuk membalas.')).toBeVisible()
+    await expect(nadia.page.getByText('Ambil tiket ini untuk membalas')).toBeVisible()
     await expect(nadia.page.getByRole('textbox', { name: 'Balas' })).toHaveCount(0)
     await expect(nadia.page.getByRole('button', { name: 'Ambil tiket', exact: true })).toBeEnabled()
 

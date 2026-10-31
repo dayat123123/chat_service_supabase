@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/receipt_icon.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/room_visuals.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/typing_text.dart';
@@ -30,31 +32,59 @@ class RoomTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.oltL10n;
-    final theme = Theme.of(context);
-    return ListTile(
+    final preview = room.lastMessagePreview;
+    final fromMe = room.lastMessageSenderId != null && room.lastMessageSenderId == me?.id;
+    final details = OltRoomTileDetails(
+      room: room,
+      title: roomTitle(room),
+      timeLabel: l10n.relativeTime(room.sortTime),
+      online: online,
       selected: selected,
+      typing: typing,
       onTap: onTap,
-      leading: roomAvatar(context, room, online: online),
+      preview: preview == null || !fromMe || room.type == RoomType.direct ? preview : '${l10n.you}: $preview',
+      typingText: typing.isEmpty ? null : typingText(l10n, typing, direct: room.type == RoomType.direct),
+      lastMessageReceipt: fromMe ? room.lastMessageStatus : null,
+    );
+    return buildChatPart(OltChatBuilders.of(context).roomTile, context, details, _DefaultRoomTile(details: details));
+  }
+}
+
+class _DefaultRoomTile extends StatelessWidget {
+  const _DefaultRoomTile({required this.details});
+
+  final OltRoomTileDetails details;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = details;
+    final room = d.room;
+    final theme = Theme.of(context);
+    final t = OltSocialTheme.of(context);
+    return ListTile(
+      selected: d.selected,
+      onTap: d.onTap,
+      leading: roomAvatar(context, room, online: d.online),
       title: room.type == RoomType.support
           ? Row(
               children: [
-                Flexible(child: Text(roomTitle(room), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                Flexible(child: Text(d.title, maxLines: 1, overflow: TextOverflow.ellipsis)),
                 const SizedBox(width: 6),
-                OfficialBadge(color: OltSocialTheme.of(context).link),
+                OfficialBadge(color: t.link),
                 const SizedBox(width: 4),
                 Icon(Icons.push_pin, size: 14, color: theme.colorScheme.outline),
               ],
             )
-          : Text(roomTitle(room), maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: typing.isNotEmpty ? _typingLine(context) : _previewLine(context),
+          : Text(d.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: _subtitle(context),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            l10n.relativeTime(room.sortTime),
+            d.timeLabel,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: room.unreadCount > 0 && !room.muted ? OltSocialTheme.of(context).unreadBadge : null,
+              color: room.unreadCount > 0 && !room.muted ? t.unreadBadge : null,
             ),
           ),
           const SizedBox(height: 4),
@@ -70,30 +100,34 @@ class RoomTile extends StatelessWidget {
     );
   }
 
-  Widget _typingLine(BuildContext context) {
-    final text = typingText(context.oltL10n, typing, direct: room.type == RoomType.direct);
-    return Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(color: OltSocialTheme.of(context).onlineIndicator, fontWeight: FontWeight.w600),
-    );
-  }
-
-  Widget? _previewLine(BuildContext context) {
-    final preview = room.lastMessagePreview;
+  Widget? _subtitle(BuildContext context) {
+    final d = details;
+    final typing = d.typingText;
+    if (typing != null) {
+      return Text(
+        typing,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(color: OltSocialTheme.of(context).onlineIndicator, fontWeight: FontWeight.w600),
+      );
+    }
+    final preview = d.preview;
     if (preview == null) return null;
-    final l10n = context.oltL10n;
-    final fromMe = room.lastMessageSenderId != null && room.lastMessageSenderId == me?.id;
-    final style = room.unreadCount > 0 ? const TextStyle(fontWeight: FontWeight.w600) : null;
-    final text = fromMe && room.type != RoomType.direct ? '${l10n.you}: $preview' : preview;
+    final receipt = d.lastMessageReceipt;
     return Row(
       children: [
-        if (fromMe && room.lastMessageStatus != null) ...[
-          ReceiptIcon(receipt: room.lastMessageStatus, color: Theme.of(context).colorScheme.outline),
+        if (receipt != null) ...[
+          ReceiptIcon(receipt: receipt, color: Theme.of(context).colorScheme.outline),
           const SizedBox(width: 4),
         ],
-        Expanded(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
+        Expanded(
+          child: Text(
+            preview,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: d.room.unreadCount > 0 ? const TextStyle(fontWeight: FontWeight.w600) : null,
+          ),
+        ),
       ],
     );
   }

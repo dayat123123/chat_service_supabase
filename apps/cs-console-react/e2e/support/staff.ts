@@ -11,7 +11,7 @@ export async function signIn(page: Page, name: StaffName, { online = true }: { o
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
   await page.getByLabel('Kode 6 digit').fill(await freshTotp(person.totp_secret))
   await page.getByRole('button', { name: 'Verifikasi' }).click()
-  await expect(page.getByRole('button', { name: 'Akun' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Akun', exact: true })).toBeVisible()
   if (online && !person.roles.includes('cs_admin')) await goOnline(page)
 }
 
@@ -32,7 +32,7 @@ export async function staffPage(browser: Browser, name: StaffName) {
 }
 
 export async function signOut(page: Page) {
-  await page.getByRole('button', { name: 'Akun' }).click()
+  await page.getByRole('button', { name: 'Akun', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Keluar' }).click()
   await expect(page.getByRole('button', { name: 'Masuk', exact: true })).toBeVisible()
 }

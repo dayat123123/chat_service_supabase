@@ -4,6 +4,8 @@ import 'package:olt_social/src/app/olt_social_scope.dart';
 import 'package:olt_social/src/core/network/realtime_status.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
 import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
 import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/message_composer.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/message_list.dart';
@@ -22,6 +24,7 @@ class OltChatRoom extends StatelessWidget {
     this.repository,
     this.header,
     this.composer,
+    this.builders,
   });
 
   final String roomId;
@@ -29,18 +32,23 @@ class OltChatRoom extends StatelessWidget {
   final ChatRepository? repository;
   final Widget? header;
   final Widget? composer;
+  final OltChatBuilders? builders;
 
   @override
   Widget build(BuildContext context) {
     final deps = OltSocialScope.of(context);
-    return BlocProvider(
-      create: (_) => ChatRoomCubit(
-        chat: repository ?? deps.chat,
-        media: deps.media,
-        me: deps.ensureSignedIn,
-        roomId: roomId,
-      )..load(),
-      child: _ChatRoomView(showHeader: showHeader, header: header, composer: composer),
+    return withChatBuilders(
+      context,
+      builders,
+      BlocProvider(
+        create: (_) => ChatRoomCubit(
+          chat: repository ?? deps.chat,
+          media: deps.media,
+          me: deps.ensureSignedIn,
+          roomId: roomId,
+        )..load(),
+        child: _ChatRoomView(showHeader: showHeader, header: header, composer: composer),
+      ),
     );
   }
 }
@@ -54,6 +62,7 @@ class _ChatRoomView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final builders = OltChatBuilders.of(context);
     return BlocConsumer<ChatRoomCubit, ChatRoomState>(
       listenWhen: (a, b) => a.actionErrorId != b.actionErrorId,
       listener: (context, state) => showOltError(context, state.actionError!),
@@ -61,8 +70,22 @@ class _ChatRoomView extends StatelessWidget {
       builder: (context, state) {
         final cubit = context.read<ChatRoomCubit>();
         return switch (state.status) {
-          LoadStatus.initial || LoadStatus.loading => const OltSkeleton(itemCount: 6),
-          LoadStatus.failure => OltErrorView(error: state.error!, onRetry: cubit.load),
+          LoadStatus.initial || LoadStatus.loading => buildChatPart(
+            builders.loading,
+            context,
+            const OltLoadingDetails(OltChatLoad.messages),
+            const OltSkeleton(itemCount: 6),
+          ),
+          LoadStatus.failure => buildChatPart(
+            builders.error,
+            context,
+            OltErrorDetails(
+              error: state.error!,
+              message: context.oltL10n.errorMessage(state.error!),
+              onRetry: cubit.load,
+            ),
+            OltErrorView(error: state.error!, onRetry: cubit.load),
+          ),
           LoadStatus.ready => Column(
             children: [
               if (header != null) header! else if (showHeader) const RoomHeader(),
@@ -84,22 +107,28 @@ class _ReconnectBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final reconnecting = context.select((ChatRoomCubit c) => c.state.connection == RealtimeStatus.reconnecting);
-    if (!reconnecting) return const SizedBox.shrink();
+    final status = context.select((ChatRoomCubit c) => c.state.connection);
+    if (status != RealtimeStatus.reconnecting) return const SizedBox.shrink();
+    final label = context.oltL10n.reconnecting;
     final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      color: theme.colorScheme.tertiaryContainer,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        children: [
-          SizedBox.square(
-            dimension: 14,
-            child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onTertiaryContainer),
-          ),
-          const SizedBox(width: 8),
-          Text(context.oltL10n.reconnecting, style: TextStyle(color: theme.colorScheme.onTertiaryContainer)),
-        ],
+    return buildChatPart(
+      OltChatBuilders.of(context).connectionBanner,
+      context,
+      OltConnectionDetails(status: status, label: label),
+      Container(
+        width: double.infinity,
+        color: theme.colorScheme.tertiaryContainer,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        child: Row(
+          children: [
+            SizedBox.square(
+              dimension: 14,
+              child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.onTertiaryContainer),
+            ),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: theme.colorScheme.onTertiaryContainer)),
+          ],
+        ),
       ),
     );
   }
@@ -113,13 +142,22 @@ class _TypingIndicator extends StatelessWidget {
     final state = context.select((ChatRoomCubit c) => c.state);
     if (state.typing.isEmpty) return const SizedBox(height: 0);
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          typingText(context.oltL10n, state.typing.values, direct: state.room?.type == RoomType.direct),
-          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant, fontStyle: FontStyle.italic),
+    final text = typingText(context.oltL10n, state.typing.values, direct: state.room?.type == RoomType.direct);
+    return buildChatPart(
+      OltChatBuilders.of(context).typingIndicator,
+      context,
+      OltTypingDetails(users: state.typing.values.toList(), text: text),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            text,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
         ),
       ),
     );

@@ -69,6 +69,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     required Future<UserSummary> Function() me,
     required this.roomId,
     this.pageSize = 30,
+    this.maxGapPages = 5,
   }) : _meProvider = me,
        super(const ChatRoomState());
 
@@ -77,6 +78,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   final Future<UserSummary> Function() _meProvider;
   final String roomId;
   final int pageSize;
+  final int maxGapPages;
 
   ChatRoomConnection? _connection;
   StreamSubscription<ChatRoomEvent>? _events;
@@ -92,18 +94,18 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     try {
       final me = await _meProvider();
       final results = await Future.wait([
-        _chat.getRooms(),
+        _chat.getRoom(roomId),
         _chat.getMembers(roomId),
         _chat.getMessages(roomId, limit: pageSize),
       ]);
       if (isClosed) return;
-      final rooms = results[0] as List<ChatRoom>;
+      final room = results[0] as ChatRoom?;
       final members = results[1] as List<RoomMember>;
       final page = results[2] as Paged<ChatMessage>;
       emit(state.copyWith(
         status: LoadStatus.ready,
         me: me,
-        room: rooms.where((r) => r.id == roomId).firstOrNull,
+        room: room,
         members: {for (final m in members) m.user.id: m},
         messages: List<ChatMessage>.of(page.items),
         nextCursor: page.nextCursor,
@@ -191,27 +193,32 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     return resolved;
   }
 
-  void _upsert(ChatMessage message) {
+  void _upsert(ChatMessage message) => _upsertAll([message]);
+
+  void _upsertAll(Iterable<ChatMessage> incoming) {
     if (isClosed) return;
     final list = [...state.messages];
-    final index = list.indexWhere(
-      (m) => m.id == message.id || (message.clientId != null && m.clientId == message.clientId),
-    );
-    if (index >= 0) {
-      final old = list[index];
-      list[index] = message.copyWith(
-        sender: message.sender ?? old.sender,
-        replyToBody: message.replyToBody ?? old.replyToBody,
-        replyToSenderUsername: message.replyToSenderUsername ?? old.replyToSenderUsername,
-        cursor: message.cursor ?? old.cursor,
-        status: MessageStatus.sent,
+    for (final message in incoming) {
+      final index = list.indexWhere(
+        (m) => m.id == message.id || (message.clientId != null && m.clientId == message.clientId),
       );
-    } else {
-      list.add(message);
+      if (index >= 0) {
+        final old = list[index];
+        list[index] = message.copyWith(
+          sender: message.sender ?? old.sender,
+          replyToBody: message.replyToBody ?? old.replyToBody,
+          replyToSenderUsername: message.replyToSenderUsername ?? old.replyToSenderUsername,
+          cursor: message.cursor ?? old.cursor,
+          status: MessageStatus.sent,
+        );
+      } else {
+        list.add(message);
+      }
     }
-    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    emit(state.copyWith(messages: list));
+    emit(state.copyWith(messages: list..sort(_newestFirst)));
   }
+
+  static int _newestFirst(ChatMessage a, ChatMessage b) => b.createdAt.compareTo(a.createdAt);
 
   Future<void> _reloadMembers() async {
     try {
@@ -231,12 +238,25 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   Future<void> _fillGap() async {
     final newest = state.messages.where((m) => !m.isLocal).firstOrNull;
     if (newest == null) return;
-    final cursor = newest.cursor ?? '${newest.createdAt.toUtc().toIso8601String()}|${newest.id}';
+    String? cursor = newest.cursor ?? '${newest.createdAt.toUtc().toIso8601String()}|${newest.id}';
     try {
-      for (final m in await _chat.getMessagesAfter(roomId, cursor)) {
-        _upsert(m);
+      for (var page = 0; cursor != null; page++) {
+        if (page == maxGapPages) return await _reloadLatest();
+        final batch = await _chat.getMessagesAfter(roomId, cursor);
+        if (isClosed) return;
+        _upsertAll(batch.items);
+        cursor = batch.nextCursor;
       }
     } catch (_) {}
+  }
+
+  Future<void> _reloadLatest() async {
+    final page = await _chat.getMessages(roomId, limit: pageSize);
+    if (isClosed) return;
+    emit(state.copyWith(
+      messages: [...state.messages.where((m) => m.isLocal), ...page.items]..sort(_newestFirst),
+      nextCursor: page.nextCursor,
+    ));
   }
 
   Future<void> loadOlder() async {

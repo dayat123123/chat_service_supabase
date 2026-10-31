@@ -5,13 +5,15 @@ import { useTranslation } from 'react-i18next'
 
 import { EmptyState } from '@/components/states'
 import { Button } from '@/components/ui/button'
+import type { AgentNote } from '@/features/customer/types'
 
 import { buildRows, type MessageRow } from '../rows'
 import { isStaffMessage, type ChatMessage, type PendingMessage } from '../types'
-import { MessageBubble, PendingBubble, SystemMessage } from './message-bubble'
+import { MessageBubble, NoteMessage, PendingBubble, SystemMessage } from './message-bubble'
 
 type Props = {
   messages: ChatMessage[]
+  notes?: AgentNote[]
   pending: PendingMessage[]
   meId: string
   customerReadAt: string | null
@@ -29,6 +31,7 @@ const NEAR_BOTTOM = 96
 
 export function MessageList({
   messages,
+  notes,
   pending,
   meId,
   customerReadAt,
@@ -42,18 +45,19 @@ export function MessageList({
   onDiscard,
 }: Props) {
   const { t } = useTranslation()
-  const rows = useMemo(() => buildRows(messages, pending), [messages, pending])
+  const rows = useMemo(() => buildRows(messages, pending, { notes }), [messages, pending, notes])
   const scrollRef = useRef<HTMLDivElement>(null)
   const atBottom = useRef(true)
   const anchor = useRef<{ key: string; delta: number; count: number } | null>(null)
   const lastKey = useRef<string | undefined>(undefined)
+  const lastCount = useRef(0)
   const initialized = useRef(false)
   const [unseen, setUnseen] = useState(0)
 
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => (rows[index]?.kind === 'day' ? 40 : 72),
+    estimateSize: (index) => (rows[index]?.kind === 'day' ? 36 : 64),
     overscan: 12,
     getItemKey: (index) => rows[index]?.key ?? index,
   })
@@ -95,14 +99,18 @@ export function MessageList({
     if (!initialized.current) {
       initialized.current = true
       lastKey.current = last.key
+      lastCount.current = rows.length
       requestAnimationFrame(() => virtualizer.scrollToIndex(rows.length - 1, { align: 'end' }))
       return
     }
-    if (last.key === lastKey.current) return
+    const newLast = last.key !== lastKey.current
+    const grew = rows.length > lastCount.current
     lastKey.current = last.key
+    lastCount.current = rows.length
+    if (!newLast && !grew) return
     const ownMessage = last.kind === 'pending' || (last.kind === 'message' && last.message.sender_id === meId)
-    if (atBottom.current || ownMessage) requestAnimationFrame(() => scrollToEnd())
-    else setUnseen((count) => count + 1)
+    if (atBottom.current || (newLast && ownMessage)) requestAnimationFrame(() => scrollToEnd())
+    else if (newLast) setUnseen((count) => count + 1)
   }, [rows, meId, scrollToEnd, virtualizer])
 
   const onScroll = () => {
@@ -116,13 +124,14 @@ export function MessageList({
   const renderRow = (row: MessageRow) => {
     if (row.kind === 'day') {
       return (
-        <div className="flex justify-center py-2">
-          <span className="rounded-full bg-muted px-3 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {row.label}
-          </span>
+        <div className="flex items-center gap-3 px-(--pane-px) pt-4 pb-1">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">{row.label}</span>
+          <span className="h-px flex-1 bg-border" />
         </div>
       )
     }
+    if (row.kind === 'note') return <NoteMessage note={row.note} />
     if (row.kind === 'pending') {
       return (
         <PendingBubble
@@ -138,7 +147,6 @@ export function MessageList({
     return (
       <MessageBubble
         message={message}
-        mine={message.sender_id === meId}
         staff={staff}
         first={row.first}
         last={row.last}
@@ -155,7 +163,7 @@ export function MessageList({
       <div
         ref={scrollRef}
         onScroll={onScroll}
-        className="h-full scrollbar-thin overflow-y-auto"
+        className="h-full overflow-y-auto"
         role="log"
         aria-live="polite"
         aria-relevant="additions"
@@ -170,7 +178,7 @@ export function MessageList({
         {rows.length === 0 ? (
           <EmptyState className="h-full" title={t('conversation.emptyHistory')} />
         ) : (
-          <div style={{ height: virtualizer.getTotalSize() }} className="relative w-full pb-2">
+          <div style={{ height: virtualizer.getTotalSize() }} className="relative w-full">
             {virtualizer.getVirtualItems().map((item) => {
               const row = rows[item.index]
               if (!row) return null
@@ -192,7 +200,8 @@ export function MessageList({
       {unseen > 0 ? (
         <Button
           size="sm"
-          className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full shadow-md"
+          variant="outline"
+          className="absolute bottom-3 left-1/2 -translate-x-1/2 shadow-float"
           onClick={scrollToEnd}
         >
           <ArrowDownIcon />

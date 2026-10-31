@@ -1,13 +1,10 @@
 import {
   AlertCircleIcon,
-  BadgeCheckIcon,
   CheckCheckIcon,
   CheckIcon,
   ExternalLinkIcon,
-  FileTextIcon,
   LoaderCircleIcon,
   ReplyIcon,
-  WalletIcon,
 } from 'lucide-react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,38 +19,35 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/dialog'
 import { Tooltip } from '@/components/ui/menu'
+import type { AgentNote } from '@/features/customer/types'
 import { clock } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
 import type { ChatMessage, PendingMessage } from '../types'
 import { AttachmentImage } from './attachment-image'
 
-const separatorCodes = new Set([
-  'ticket_opened',
-  'ticket_closed',
-  'ticket_resolved',
-  'ticket_reopened',
-  'ticket_reopened_owner',
-])
-
 export const SystemMessage = memo(function SystemMessage({ message }: { message: ChatMessage }) {
-  const code = typeof message.payload.code === 'string' ? message.payload.code : ''
-  if (separatorCodes.has(code)) {
-    return (
-      <div className="flex items-center gap-3 px-6 py-1.5" role="note">
-        <span className="h-px flex-1 bg-border" />
-        <span className="max-w-[70%] text-center text-[11px] text-muted-foreground">
-          {message.body} · {clock(message.created_at)}
-        </span>
-        <span className="h-px flex-1 bg-border" />
-      </div>
-    )
-  }
   return (
-    <div className="flex justify-center px-6 py-1" role="note">
-      <p className="max-w-[80%] rounded-lg bg-muted px-3 py-1.5 text-center text-xs text-muted-foreground">
-        {message.body} <span className="tabular opacity-70">{clock(message.created_at)}</span>
+    <div className="flex justify-center px-(--pane-px) py-1.5" role="note">
+      <p className="max-w-[80%] text-center text-xs text-muted-foreground">
+        {message.body} · <span className="tabular">{clock(message.created_at)}</span>
       </p>
+    </div>
+  )
+})
+
+export const NoteMessage = memo(function NoteMessage({ note }: { note: AgentNote }) {
+  const { t } = useTranslation()
+  return (
+    <div className="px-(--pane-px) py-1.5" role="note">
+      <div className="border-l-2 border-note-border bg-note px-3 py-2">
+        <p className="text-xs text-muted-foreground">
+          {t('conversation.internalNote')}
+          {note.author?.display_name ? ` · ${note.author.display_name}` : ''} ·{' '}
+          <span className="tabular">{clock(note.created_at)}</span>
+        </p>
+        <p className="mt-0.5 text-sm leading-normal break-words whitespace-pre-wrap">{note.body}</p>
+      </div>
     </div>
   )
 })
@@ -92,13 +86,13 @@ function SafeLink({
           event.preventDefault()
           setConfirming(true)
         }}
-        className="mt-1 inline-flex max-w-full items-center gap-1 font-medium underline underline-offset-2"
+        className="mt-1 inline-flex max-w-full items-center gap-1 underline underline-offset-2"
       >
         <ExternalLinkIcon className="size-3.5 shrink-0" />
         <span className="truncate">{title || url}</span>
       </a>
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
-        <AlertDialogContent className="sm:max-w-md">
+        <AlertDialogContent>
           <AlertDialogTitle>{t('conversation.externalTitle')}</AlertDialogTitle>
           <AlertDialogDescription>{t('conversation.externalBody', { host })}</AlertDialogDescription>
           <p className="text-xs break-all text-muted-foreground">{url}</p>
@@ -112,9 +106,35 @@ function SafeLink({
   )
 }
 
+export function OrderCard({
+  card,
+  onOpen,
+}: {
+  card: { card: string; ref: string }
+  onOpen?: (card: { card: string; ref: string }) => void
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="flex min-w-52 flex-col gap-1 rounded-lg border bg-background p-2.5 text-foreground">
+      <span className="text-label font-medium text-muted-foreground uppercase">
+        {card.card === 'cash_transaction' ? t('conversation.cardCash') : t('conversation.cardOrder')}
+      </span>
+      <span className="truncate font-mono text-row">{card.ref}</span>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={() => onOpen(card)}
+          className="self-start rounded-sm text-xs underline decoration-strong underline-offset-4 outline-none hover:decoration-current focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          {t('conversation.openCard')}
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 type BubbleProps = {
   message: ChatMessage
-  mine: boolean
   staff: boolean
   first: boolean
   last: boolean
@@ -126,7 +146,6 @@ type BubbleProps = {
 
 export const MessageBubble = memo(function MessageBubble({
   message,
-  mine,
   staff,
   first,
   last,
@@ -136,7 +155,6 @@ export const MessageBubble = memo(function MessageBubble({
   onOpenCard,
 }: BubbleProps) {
   const { t } = useTranslation()
-  const right = staff
   const name = message.sender_display_name ?? message.sender_username ?? ''
   const options = Array.isArray(message.payload.options)
     ? message.payload.options.filter((option): option is string => typeof option === 'string')
@@ -153,44 +171,33 @@ export const MessageBubble = memo(function MessageBubble({
       : null
   const url =
     message.kind === 'help_link' && typeof message.payload.url === 'string' ? message.payload.url : null
+  const status = read ? t('conversation.read') : t('conversation.sent')
 
   return (
     <div
       className={cn(
-        'group flex px-4 compact:px-3',
-        right ? 'justify-end' : 'justify-start',
-        first ? 'mt-2 compact:mt-1.5' : 'mt-0.5',
+        'group flex px-(--pane-px)',
+        staff ? 'justify-end' : 'justify-start',
+        first ? 'pt-3 compact:pt-2' : 'pt-0.5',
       )}
     >
-      <div className={cn('flex max-w-[78%] flex-col', right ? 'items-end' : 'items-start')}>
+      <div className={cn('flex max-w-[68%] min-w-0 flex-col', staff ? 'items-end' : 'items-start')}>
         {first ? (
-          <div className="mb-0.5 flex items-center gap-1.5 px-1 text-[11px] text-muted-foreground">
-            <span className="font-semibold text-foreground">
-              {staff ? name : name || t('conversation.customer')}
-            </span>
-            {staff ? (
-              <span className="inline-flex items-center gap-0.5 font-medium text-sla-ok">
-                <BadgeCheckIcon className="size-3" aria-hidden="true" />
-                {t('conversation.official')}
-              </span>
-            ) : null}
-          </div>
+          <p className="mb-1 px-1 text-xs font-medium text-muted-foreground">
+            {staff ? name : name || t('conversation.customer')}
+          </p>
         ) : null}
-        <div className={cn('flex items-end gap-1', right ? 'flex-row-reverse' : 'flex-row')}>
+        <div className={cn('flex max-w-full items-end gap-1', staff ? 'flex-row-reverse' : 'flex-row')}>
           <div
             className={cn(
-              'rounded-2xl px-3 py-2 text-sm compact:py-1.5',
-              mine
-                ? 'bg-bubble-mine text-bubble-mine-foreground'
-                : staff
-                  ? 'bg-secondary text-secondary-foreground'
-                  : 'bg-bubble-theirs text-bubble-theirs-foreground',
-              right ? (last ? 'rounded-br-md' : '') : last ? 'rounded-bl-md' : '',
+              'min-w-0 rounded-xl px-3 py-2 text-sm leading-normal',
+              staff ? 'bg-bubble-agent text-bubble-agent-foreground' : 'bg-muted text-foreground',
+              last && (staff ? 'rounded-br-sm' : 'rounded-bl-sm'),
             )}
           >
             {message.reply_to_body ? (
               <div className="mb-1.5 border-l-2 border-current/40 pl-2 text-xs opacity-80">
-                <div className="font-semibold">{message.reply_to_sender_username ?? ''}</div>
+                <div className="font-medium">{message.reply_to_sender_username ?? ''}</div>
                 <div className="line-clamp-2">{message.reply_to_body}</div>
               </div>
             ) : null}
@@ -211,28 +218,9 @@ export const MessageBubble = memo(function MessageBubble({
               </div>
             ) : null}
             {card ? (
-              <div className="flex min-w-48 items-center gap-2 rounded-lg bg-card/90 p-2 text-card-foreground">
-                {card.card === 'cash_transaction' ? (
-                  <WalletIcon className="size-5 text-primary" />
-                ) : (
-                  <FileTextIcon className="size-5 text-primary" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="text-xs text-muted-foreground">
-                    {card.card === 'cash_transaction'
-                      ? t('conversation.cardCash')
-                      : t('conversation.cardOrder')}
-                  </div>
-                  <div className="tabular truncate font-semibold">{card.ref}</div>
-                </div>
-                {onOpenCard ? (
-                  <Button size="xs" variant="outline" onClick={() => onOpenCard(card)}>
-                    {t('conversation.openCard')}
-                  </Button>
-                ) : null}
-              </div>
+              <OrderCard card={card} onOpen={onOpenCard} />
             ) : message.is_deleted ? (
-              <p className="italic opacity-70">{t('conversation.deleted')}</p>
+              <p className="italic opacity-80">{t('conversation.deleted')}</p>
             ) : message.body ? (
               <p className="break-words whitespace-pre-wrap">{message.body}</p>
             ) : null}
@@ -240,32 +228,17 @@ export const MessageBubble = memo(function MessageBubble({
             {options.length > 0 ? (
               <div className="mt-1.5 flex flex-wrap gap-1" aria-label={t('conversation.quickOptions')}>
                 {options.map((option) => (
-                  <span key={option} className="rounded-full border border-current/30 px-2 py-0.5 text-xs">
+                  <span key={option} className="rounded-md border border-current/30 px-2 py-0.5 text-xs">
                     {option}
                   </span>
                 ))}
               </div>
             ) : null}
             {masked.length > 0 ? (
-              <p className="mt-1 text-[11px] opacity-75">
+              <p className="mt-1 text-xs opacity-80">
                 {t('conversation.masked', { fields: masked.join(', ') })}
               </p>
             ) : null}
-            <div
-              className={cn(
-                'tabular mt-0.5 flex items-center gap-1 text-[10px] opacity-70',
-                right ? 'justify-end' : '',
-              )}
-            >
-              {clock(message.created_at)}
-              {staff ? (
-                <Tooltip content={read ? t('conversation.read') : t('conversation.sent')}>
-                  <span aria-label={read ? t('conversation.read') : t('conversation.sent')}>
-                    {read ? <CheckCheckIcon className="size-3.5" /> : <CheckIcon className="size-3.5" />}
-                  </span>
-                </Tooltip>
-              ) : null}
-            </div>
           </div>
           {onReply ? (
             <Button
@@ -279,6 +252,18 @@ export const MessageBubble = memo(function MessageBubble({
             </Button>
           ) : null}
         </div>
+        {last ? (
+          <p className="tabular mt-1 flex items-center gap-1 px-1 text-xs text-muted-foreground">
+            {clock(message.created_at)}
+            {staff ? (
+              <Tooltip content={status}>
+                <span aria-label={status} role="img">
+                  {read ? <CheckCheckIcon className="size-3.5" /> : <CheckIcon className="size-3.5" />}
+                </span>
+              </Tooltip>
+            ) : null}
+          </p>
+        ) : null}
       </div>
     </div>
   )
@@ -296,14 +281,14 @@ export function PendingBubble({
   const { t } = useTranslation()
   const failed = pending.status === 'failed'
   return (
-    <div className="mt-0.5 flex justify-end px-4 compact:px-3">
-      <div className="flex max-w-[78%] flex-col items-end">
+    <div className="flex justify-end px-(--pane-px) pt-0.5">
+      <div className="flex max-w-[68%] min-w-0 flex-col items-end">
         <div
           className={cn(
-            'rounded-2xl rounded-br-md px-3 py-2 text-sm',
+            'min-w-0 rounded-xl rounded-br-sm px-3 py-2 text-sm leading-normal',
             failed
-              ? 'border border-destructive/40 bg-destructive/10 text-foreground'
-              : 'bg-bubble-mine/70 text-bubble-mine-foreground',
+              ? 'border border-destructive bg-background text-foreground'
+              : 'bg-bubble-agent/70 text-bubble-agent-foreground',
           )}
         >
           {pending.files.length > 0 ? (
@@ -320,7 +305,7 @@ export function PendingBubble({
           ) : null}
           {pending.body ? <p className="break-words whitespace-pre-wrap">{pending.body}</p> : null}
         </div>
-        <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground" aria-live="polite">
+        <div className="mt-1 flex items-center gap-2 px-1 text-xs text-muted-foreground" aria-live="polite">
           {failed ? (
             <>
               <span className="inline-flex items-center gap-1 text-destructive">

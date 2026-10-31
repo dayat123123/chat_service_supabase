@@ -11,7 +11,7 @@ import { readLocal, writeLocal } from '@/lib/storage'
 import { uuid } from '@/lib/utils'
 
 import { conversationApi, PAGE_SIZE } from './api'
-import { insertMessages, newestCursor, orderedMessages, type MessagePages } from './cache'
+import { collectAfter, insertMessages, newestCursor, orderedMessages, type MessagePages } from './cache'
 import type { ChatMessage, LocalAttachment, PendingMessage, RoomMember, SendResult } from './types'
 
 export const conversationKeys = {
@@ -96,13 +96,18 @@ export function useRoom(ticket: Ticket, me: { id: string; username: string; disp
       await client.invalidateQueries({ queryKey: key })
       return
     }
-    const fresh = await conversationApi.after(roomId, cursor)
-    if (fresh.length === 0) return
-    client.setQueryData<MessagePages>(key, (data) => insertMessages(data, fresh))
-    const pending = usePending.getState()
-    fresh.forEach((message) => {
-      if (message.client_id) pending.remove(message.client_id)
-    })
+    const { messages: fresh, complete } = await collectAfter(
+      (after) => conversationApi.after(roomId, after),
+      cursor,
+    )
+    if (fresh.length > 0) {
+      client.setQueryData<MessagePages>(key, (data) => insertMessages(data, fresh))
+      const pending = usePending.getState()
+      fresh.forEach((message) => {
+        if (message.client_id) pending.remove(message.client_id)
+      })
+    }
+    if (!complete) await client.invalidateQueries({ queryKey: key })
   }, [client, roomId])
 
   useEffect(() => {
@@ -210,7 +215,7 @@ export function useSendMessage(ticket: Ticket, meId: string) {
         })
         if (result.status === 'sent') {
           client.setQueryData<MessagePages>(conversationKeys.messages(pending.roomId), (data) =>
-            insertMessages(data, [result.message]),
+            insertMessages(data, [{ ...result.message, local: true }]),
           )
           pending.files.forEach((file) => URL.revokeObjectURL(file.preview))
         }

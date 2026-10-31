@@ -25,7 +25,7 @@ function Separator({
 
 function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <div data-slot="skeleton" className={cn('animate-pulse rounded-md bg-muted', className)} {...props} />
+    <div data-slot="skeleton" className={cn('animate-pulse rounded-sm bg-muted', className)} {...props} />
   )
 }
 
@@ -34,42 +34,12 @@ function Kbd({ className, ...props }: React.ComponentProps<'kbd'>) {
     <kbd
       data-slot="kbd"
       className={cn(
-        'pointer-events-none inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded border bg-muted px-1 font-sans text-[11px] font-medium text-muted-foreground select-none',
+        'pointer-events-none inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-sm border px-1 font-sans text-[11px] font-medium text-muted-foreground select-none',
         className,
       )}
       {...props}
     />
   )
-}
-
-function Card({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot="card"
-      className={cn('flex flex-col rounded-xl border bg-card text-card-foreground shadow-xs', className)}
-      {...props}
-    />
-  )
-}
-
-function CardHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot="card-header"
-      className={cn('flex items-center gap-2 px-4 pt-4 pb-2', className)}
-      {...props}
-    />
-  )
-}
-
-function CardTitle({ className, ...props }: React.ComponentProps<'h3'>) {
-  return (
-    <h3 data-slot="card-title" className={cn('text-sm leading-none font-semibold', className)} {...props} />
-  )
-}
-
-function CardContent({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="card-content" className={cn('px-4 pb-4', className)} {...props} />
 }
 
 function Avatar({ name, className, ...props }: React.ComponentProps<'span'> & { name: string }) {
@@ -78,7 +48,7 @@ function Avatar({ name, className, ...props }: React.ComponentProps<'span'> & { 
       data-slot="avatar"
       aria-hidden="true"
       className={cn(
-        'inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-secondary-foreground',
+        'inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-medium text-muted-foreground',
         className,
       )}
       {...props}
@@ -88,4 +58,4 @@ function Avatar({ name, className, ...props }: React.ComponentProps<'span'> & { 
   )
 }
 
-export { Avatar, Card, CardContent, CardHeader, CardTitle, Kbd, Separator, Skeleton }
+export { Avatar, Kbd, Separator, Skeleton }

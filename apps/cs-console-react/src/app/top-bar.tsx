@@ -1,15 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import {
-  BarChart3Icon,
-  BellIcon,
-  BellOffIcon,
-  KeyboardIcon,
-  LayoutDashboardIcon,
-  LogOutIcon,
-  SearchIcon,
-  SettingsIcon,
-  TicketIcon,
-} from 'lucide-react'
+import { BellIcon, BellOffIcon, KeyboardIcon, LogOutIcon, SearchIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -35,32 +25,24 @@ import { ActiveCount, ConnectionIndicator, StatusMenu } from '@/features/presenc
 import { handlesTickets, isAdmin, isSupervisor } from '@/features/presence/types'
 import { notificationPermission, playSound, requestNotificationPermission } from '@/lib/alerts'
 import { usePreferences, type Density, type Theme, type TicketAlerts } from '@/lib/preferences'
-import { cn } from '@/lib/utils'
 
 function NavLink({
   to,
-  icon: Icon,
   label,
-  badge,
+  count,
 }: {
   to: '/' | '/dashboard' | '/reports' | '/settings'
-  icon: React.ComponentType<{ className?: string }>
   label: string
-  badge?: number
+  count?: number
 }) {
   return (
     <Link
       to={to}
       activeOptions={{ exact: to === '/' }}
-      className="relative inline-flex h-8 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[status=active]:bg-accent data-[status=active]:font-semibold data-[status=active]:text-accent-foreground"
+      className="relative inline-flex h-12 items-center gap-1.5 px-2 text-row text-muted-foreground transition-colors outline-none after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset data-[status=active]:font-medium data-[status=active]:text-foreground data-[status=active]:after:bg-foreground"
     >
-      <Icon className="size-4" />
-      <span className="hidden md:inline">{label}</span>
-      {badge ? (
-        <span className="tabular absolute -top-1 -right-1 inline-flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-          {badge}
-        </span>
-      ) : null}
+      {label}
+      {count ? <span className="tabular text-xs font-medium text-danger">{count}</span> : null}
     </Link>
   )
 }
@@ -116,28 +98,25 @@ function AccountMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2 px-1.5" aria-label={t('nav.account')}>
-          <Avatar name={agent.display_name} className="size-7 bg-primary/12 text-primary" />
-          <span className="hidden text-sm font-medium lg:inline">
-            {agent.display_name} <span className="text-muted-foreground">({agent.agent_code})</span>
-          </span>
+        <Button variant="ghost" size="icon-sm" className="rounded-full" aria-label={t('nav.account')}>
+          <Avatar name={agent.display_name} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel className="text-foreground">
-          <div className="text-sm font-semibold">{agent.display_name}</div>
-          <div className="font-normal text-muted-foreground">
+        <DropdownMenuLabel className="flex flex-col gap-0.5">
+          <span className="text-sm font-medium text-foreground">{agent.display_name}</span>
+          <span>
             {agent.agent_code} · {roles}
-          </div>
+          </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>{t('preferences.theme')}</DropdownMenuSubTrigger>
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)}>
-              <DropdownMenuRadioItem value="system">{t('preferences.system')}</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="light">{t('preferences.light')}</DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="dark">{t('preferences.dark')}</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="system">{t('preferences.system')}</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
@@ -187,40 +166,35 @@ export function TopBar({ attention }: { attention: number }) {
   const supervisor = isSupervisor(agent)
   const admin = isAdmin(agent)
   return (
-    <header className="flex h-14 shrink-0 items-center gap-3 border-b bg-card px-3 lg:px-4">
-      <Logo compact className="mr-1 hidden sm:flex" />
-      <nav aria-label="Menu" className="flex items-center gap-1">
-        {tickets ? <NavLink to="/" icon={TicketIcon} label={t('nav.tickets')} /> : null}
+    <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3 lg:px-4">
+      <Logo className="mr-2 hidden sm:flex" />
+      <nav aria-label="Menu" className="flex items-center">
+        {tickets ? <NavLink to="/" label={t('nav.tickets')} /> : null}
         {supervisor ? (
-          <NavLink
-            to="/dashboard"
-            icon={LayoutDashboardIcon}
-            label={t('nav.dashboard')}
-            badge={attention || undefined}
-          />
+          <NavLink to="/dashboard" label={t('nav.dashboard')} count={attention || undefined} />
         ) : null}
-        {supervisor || admin ? <NavLink to="/reports" icon={BarChart3Icon} label={t('nav.reports')} /> : null}
-        {admin ? <NavLink to="/settings" icon={SettingsIcon} label={t('nav.settings')} /> : null}
+        {supervisor || admin ? <NavLink to="/reports" label={t('nav.reports')} /> : null}
+        {admin ? <NavLink to="/settings" label={t('nav.settings')} /> : null}
       </nav>
-      <button
-        type="button"
-        onClick={() => setPalette(true)}
-        className={cn(
-          'ml-2 hidden h-8 w-64 items-center gap-2 rounded-md border bg-background px-3 text-sm text-muted-foreground transition-colors outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 xl:flex',
-        )}
-      >
-        <SearchIcon className="size-4" />
-        <span className="flex-1 text-left">{t('nav.searchHint')}</span>
-        <Kbd>Ctrl K</Kbd>
-      </button>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="hidden min-w-0 flex-1 justify-center px-2 lg:flex">
+        <button
+          type="button"
+          onClick={() => setPalette(true)}
+          className="flex h-8 w-full max-w-[360px] items-center gap-2 rounded-md bg-muted px-2.5 text-row text-muted-foreground transition-colors outline-none hover:bg-selected focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <SearchIcon className="size-4" />
+          <span className="flex-1 truncate text-left">{t('nav.searchHint')}</span>
+          <Kbd>Ctrl K</Kbd>
+        </button>
+      </div>
+      <div className="ml-auto flex items-center gap-1 lg:ml-0">
+        <ConnectionIndicator />
         {tickets ? (
           <>
             <StatusMenu />
             <ActiveCount />
           </>
         ) : null}
-        <ConnectionIndicator />
         <AlertsMenu />
         <AccountMenu />
       </div>

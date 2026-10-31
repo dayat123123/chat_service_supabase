@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, InboxIcon, RotateCcwIcon } from 'lucide-react'
+import { AlertCircleIcon, RotateCcwIcon } from 'lucide-react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -9,20 +9,17 @@ import { logger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
 
 export function EmptyState({
-  icon: Icon = InboxIcon,
   title,
   className,
   children,
 }: {
-  icon?: React.ComponentType<{ className?: string }>
   title: string
   className?: string
   children?: React.ReactNode
 }) {
   return (
     <div className={cn('flex flex-col items-center justify-center gap-2 p-6 text-center', className)}>
-      <Icon className="size-8 text-muted-foreground/60" aria-hidden="true" />
-      <p className="text-sm text-muted-foreground">{title}</p>
+      <p className="text-row text-muted-foreground">{title}</p>
       {children}
     </div>
   )
@@ -43,8 +40,10 @@ export function ErrorState({
       role="alert"
       className={cn('flex flex-col items-center justify-center gap-3 p-6 text-center', className)}
     >
-      <AlertTriangleIcon className="size-7 text-destructive" aria-hidden="true" />
-      <p className="text-sm">{errorText(error)}</p>
+      <p className="inline-flex items-center gap-1.5 text-row text-destructive">
+        <AlertCircleIcon className="size-4 shrink-0" aria-hidden="true" />
+        {errorText(error)}
+      </p>
       {onRetry ? (
         <Button variant="outline" size="sm" onClick={onRetry}>
           <RotateCcwIcon />
@@ -57,14 +56,12 @@ export function ErrorState({
 
 export function ListSkeleton({ rows = 6, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn('flex flex-col gap-3 p-3', className)} aria-busy="true">
+    <div className={cn('flex flex-col', className)} aria-busy="true">
       {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex gap-3">
-          <Skeleton className="size-8 rounded-full" />
-          <div className="flex flex-1 flex-col gap-2">
-            <Skeleton className="h-3.5 w-2/3" />
-            <Skeleton className="h-3 w-full" />
-          </div>
+        <div key={i} className="flex flex-col gap-2 border-b px-3 py-3">
+          <Skeleton className="h-2.5 w-2/5" />
+          <Skeleton className="h-2 w-3/5" />
+          <Skeleton className="h-2 w-4/5" />
         </div>
       ))}
     </div>
@@ -88,10 +85,9 @@ class Boundary extends React.Component<BoundaryProps, BoundaryState> {
   override render() {
     if (this.state.failed) {
       return (
-        <div role="alert" className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-          <AlertTriangleIcon className="size-7 text-destructive" aria-hidden="true" />
+        <div role="alert" className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
           <p className="font-medium">{this.props.title}</p>
-          <p className="max-w-xs text-sm text-muted-foreground">{this.props.body}</p>
+          <p className="max-w-xs text-row text-muted-foreground">{this.props.body}</p>
           <Button
             variant="outline"
             size="sm"

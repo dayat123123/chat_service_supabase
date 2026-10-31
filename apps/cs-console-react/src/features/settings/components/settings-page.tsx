@@ -45,9 +45,9 @@ export function SettingsPage() {
     <div className="flex h-full flex-col md:flex-row">
       <nav
         aria-label={t('settings.title')}
-        className="flex shrink-0 scrollbar-thin gap-1 overflow-x-auto border-b bg-card p-2 md:w-60 md:flex-col md:overflow-x-visible md:border-r md:border-b-0 md:p-3"
+        className="flex shrink-0 gap-0.5 overflow-x-auto border-b bg-subtle p-2 md:w-56 md:flex-col md:overflow-x-visible md:border-r md:border-b-0 md:p-3"
       >
-        <h1 className="hidden px-3 pt-1 pb-3 text-lg font-semibold md:block">{t('settings.title')}</h1>
+        <h1 className="hidden px-2.5 pt-1 pb-3 text-panel font-semibold md:block">{t('settings.title')}</h1>
         {sections.map((item) => (
           <button
             key={item.id}
@@ -55,8 +55,8 @@ export function SettingsPage() {
             aria-current={section === item.id ? 'page' : undefined}
             onClick={() => setSection(item.id)}
             className={cn(
-              'inline-flex h-9 shrink-0 items-center gap-2.5 rounded-md px-3 text-left text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50',
-              section === item.id && 'bg-accent font-semibold text-accent-foreground',
+              'inline-flex h-8 shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-row whitespace-nowrap text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
+              section === item.id && 'bg-selected font-medium text-foreground',
             )}
           >
             <item.icon className="size-4" />
@@ -64,7 +64,7 @@ export function SettingsPage() {
           </button>
         ))}
       </nav>
-      <div className="min-h-0 flex-1 scrollbar-thin overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <SectionBoundary key={section} label={`settings:${section}`}>
           {content[section]()}
         </SectionBoundary>

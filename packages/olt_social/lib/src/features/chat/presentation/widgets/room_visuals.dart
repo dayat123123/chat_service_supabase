@@ -8,6 +8,17 @@ String roomTitle(ChatRoom room) => switch (room.type) {
   RoomType.stock => '\$${room.stockCode}',
 };
 
+class OltRoomAvatar extends StatelessWidget {
+  const OltRoomAvatar({super.key, required this.room, this.online = false, this.radius = 20});
+
+  final ChatRoom room;
+  final bool online;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) => roomAvatar(context, room, online: online, radius: radius);
+}
+
 Widget roomAvatar(BuildContext context, ChatRoom room, {bool online = false, double radius = 20}) {
   final scheme = Theme.of(context).colorScheme;
   return switch (room.type) {

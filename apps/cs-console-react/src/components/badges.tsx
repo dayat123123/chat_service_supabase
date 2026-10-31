@@ -1,27 +1,20 @@
-import { ClockIcon, ShieldAlertIcon, StarIcon, FlagIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { AgentStatus } from '@/features/presence/types'
-import { waitTone } from '@/lib/sla'
+import { waitTone, type WaitTone } from '@/lib/sla'
 import { waitLabel } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
 const priorityClass: Record<string, string> = {
-  P1: 'text-p1 bg-p1/10 border-p1/30',
-  P2: 'text-p2 bg-p2/10 border-p2/30',
-  P3: 'text-p3 bg-p3/10 border-p3/30',
-  P4: 'text-p4 bg-p4/10 border-p4/30',
+  P1: 'text-danger',
+  P2: 'text-warning',
 }
 
-export function PriorityBadge({ priority, className }: { priority: string; className?: string }) {
+export function PriorityText({ priority, className }: { priority: string; className?: string }) {
   const { t } = useTranslation()
   return (
     <span
-      className={cn(
-        'tabular inline-flex h-5 items-center rounded-md border px-1.5 text-[11px] font-bold',
-        priorityClass[priority] ?? priorityClass.P4,
-        className,
-      )}
+      className={cn('tabular font-medium', priorityClass[priority] ?? 'text-muted-foreground', className)}
       aria-label={`${t('tickets.priority')} ${priority}`}
     >
       {priority}
@@ -29,98 +22,89 @@ export function PriorityBadge({ priority, className }: { priority: string; class
   )
 }
 
-const flagStyle = {
-  fraud: { className: 'text-flag-fraud border-flag-fraud/40', icon: ShieldAlertIcon },
-  complaint: { className: 'text-flag-complaint border-flag-complaint/40', icon: FlagIcon },
-  vip: { className: 'text-flag-vip border-flag-vip/40', icon: StarIcon },
+const flagClass = {
+  fraud: 'text-danger',
+  complaint: 'text-info',
+  vip: 'text-muted-foreground',
 } as const
 
-export function FlagBadge({ flag }: { flag: string }) {
+export function FlagText({ flag, className }: { flag: string; className?: string }) {
   const { t } = useTranslation()
-  const style = flagStyle[flag as keyof typeof flagStyle]
-  if (!style) return null
-  const Icon = style.icon
+  const tone = flagClass[flag as keyof typeof flagClass]
+  if (!tone) return null
   return (
-    <span
-      className={cn(
-        'inline-flex h-5 items-center gap-1 rounded-md border px-1.5 text-[11px] font-medium',
-        style.className,
-      )}
-    >
-      <Icon className="size-3" aria-hidden="true" />
-      {t(`tickets.flags.${flag as keyof typeof flagStyle}`)}
+    <span className={cn('font-medium', tone, className)}>
+      {t(`tickets.flags.${flag as keyof typeof flagClass}`)}
     </span>
   )
 }
 
-const toneClass = {
-  ok: 'text-sla-ok bg-sla-ok/10',
-  warn: 'text-sla-warn bg-sla-warn/12',
-  late: 'text-sla-late bg-sla-late/10',
+const dotClass: Record<WaitTone | 'neutral', string> = {
+  ok: 'bg-signal-success',
+  warn: 'bg-signal-warning',
+  late: 'bg-signal-danger',
+  neutral: 'bg-signal-neutral',
 }
 
-export function WaitBadge({
-  minutes,
-  warn,
-  late,
-  label,
-  urgent,
-}: {
-  minutes: number
-  warn: number
-  late: number
-  label?: string
-  urgent?: boolean
-}) {
-  const tone = urgent ? 'late' : waitTone(minutes, warn, late)
-  return (
-    <span
-      className={cn(
-        'tabular inline-flex h-5 items-center gap-1 rounded-md px-1.5 text-[11px] font-semibold',
-        toneClass[tone],
-      )}
-    >
-      <ClockIcon className="size-3" aria-hidden="true" />
-      {label ?? waitLabel(minutes)}
-    </span>
-  )
-}
-
-const statusDot: Record<AgentStatus, string> = {
-  online: 'bg-status-online',
-  busy: 'bg-status-busy',
-  break: 'bg-status-break',
-  offline: 'bg-status-offline',
-}
-
-export function StatusDot({ status, className }: { status: AgentStatus; className?: string }) {
+export function Dot({ tone, className }: { tone: WaitTone | 'neutral'; className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={cn('inline-block size-2.5 rounded-full', statusDot[status], className)}
+      className={cn('inline-block size-2 shrink-0 rounded-full', dotClass[tone], className)}
     />
   )
 }
 
-const ticketStatusClass: Record<string, string> = {
-  open: 'bg-accent text-accent-foreground',
-  claimed: 'bg-primary/12 text-primary',
-  waiting_customer: 'bg-sla-warn/12 text-sla-warn',
-  resolved: 'bg-sla-ok/12 text-sla-ok',
-  closed: 'bg-muted text-muted-foreground',
+export function WaitTime({
+  minutes,
+  warn,
+  late,
+  urgent,
+  className,
+}: {
+  minutes: number
+  warn: number
+  late: number
+  urgent?: boolean
+  className?: string
+}) {
+  const tone = urgent ? 'late' : waitTone(minutes, warn, late)
+  return (
+    <span className={cn('tabular inline-flex items-center gap-1.5 text-xs text-muted-foreground', className)}>
+      <Dot tone={tone} />
+      {waitLabel(minutes)}
+    </span>
+  )
 }
 
-export function TicketStatusBadge({ status }: { status: string }) {
+const statusTone: Record<AgentStatus, WaitTone | 'neutral'> = {
+  online: 'ok',
+  busy: 'late',
+  break: 'warn',
+  offline: 'neutral',
+}
+
+export function StatusDot({ status, className }: { status: AgentStatus; className?: string }) {
+  return <Dot tone={statusTone[status]} className={className} />
+}
+
+export function TicketStatusText({ status, className }: { status: string; className?: string }) {
   const { t } = useTranslation()
-  const known = status in ticketStatusClass
+  const known = ['open', 'claimed', 'waiting_customer', 'resolved', 'closed'].includes(status)
+  return (
+    <span className={cn('text-xs text-muted-foreground', className)}>
+      {known ? t(`tickets.status.${status as 'open'}`) : status}
+    </span>
+  )
+}
+
+export function UnreadBadge({ count, label }: { count: number; label: string }) {
   return (
     <span
-      className={cn(
-        'inline-flex h-5 items-center rounded-md px-1.5 text-[11px] font-medium',
-        known ? ticketStatusClass[status] : ticketStatusClass.closed,
-      )}
+      className="tabular inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[11px] font-medium text-primary-foreground"
+      aria-label={label}
     >
-      {known ? t(`tickets.status.${status as 'open'}`) : status}
+      {count}
     </span>
   )
 }

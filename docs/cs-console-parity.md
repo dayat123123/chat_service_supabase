@@ -139,9 +139,12 @@ B4: memanggil `agent_set_status('offline')` saat tab ditutup akan mengirim "CS s
 | 3 kolom bisa diubah ukurannya dan diingat; panel nasabah bisa diciutkan; drawer < 1280 px; daftar/chat bergantian < 900 px | `tickets-page.tsx` | visual |
 | Palet perintah Ctrl+K (tiket, aksi, navigasi, status, tampilan) | `command-palette.tsx` | unit `search.test`, visual |
 | Pintasan J/K/A/R/N/E/Ctrl+Enter, `?` daftar pintasan | `use-hotkeys.ts`, `shortcuts-dialog.tsx` | manual |
-| Tema terang/gelap/sistem, kepadatan Nyaman/Padat, Bahasa ID/EN | `lib/preferences.ts`, `i18n/` | visual |
+| Tema terang (default)/gelap/ikuti sistem, kepadatan Nyaman/Padat, Bahasa ID/EN | `lib/preferences.ts`, `public/theme.js`, `i18n/` | visual, axe |
+| Design token netral (tanpa rona biru), tipografi Inter 12/13/14/15/18, radius 6/8/12, bayangan hanya untuk elemen melayang | `styles/globals.css` | `npm run lint:tokens`, axe |
+| Halaman acuan `/dev/ui` (hanya `APP_ENV=development`): token, tipografi, tombol, input, baris tiket, bubble, catatan internal, kartu order, dialog, menu, toast di kedua tema | `features/dev-ui/` | visual, axe |
+| Catatan internal tampil di linimasa percakapan | `rows.ts`, `message-bubble.tsx` | unit `rows.test` |
 | Error boundary per kolom/bagian | `components/states.tsx` | manual |
-| Bundle awal 255 KB gzip; workspace, grafik, supervisor, admin dimuat setelah login | `app/app.tsx` | `npm run size:check` |
+| Bundle awal 268 KB gzip; workspace, grafik, supervisor, admin dimuat setelah login | `app/app.tsx` | `npm run size:check` |
 
 ## Hasil verifikasi (30 Okt 2026)
 
@@ -150,3 +153,16 @@ B4: memanggil `agent_set_status('offline')` saat tab ditutup akan mengirim "CS s
 - Kinerja: 1000 tiket + 5000 pesan digulir bersamaan ~109 fps, p95 frame ~11 ms (Chrome tanpa batas vsync; headless dengan vsync dibatasi ~32 fps oleh lingkungan, aplikasi mencapai batas itu).
 - Lighthouse halaman login (mobile & desktop): Performance 100, Accessibility 100, Best Practices 100. SEO tidak ditargetkan (`noindex`, konsol internal).
 - Lisensi: 165 paket runtime permisif; satu-satunya MPL-2.0 adalah `lightningcss` (alat build Tailwind, tidak ikut ke bundle).
+
+## Hasil verifikasi perbaikan tampilan (30 Okt 2026)
+
+Mengikuti [PROMPT-CS-UI-POLISH.md](PROMPT-CS-UI-POLISH.md). Daftar masalah dan deviasi ada di [cs-ui-audit.md](cs-ui-audit.md).
+
+- Unit: 70 tes (14 file) lulus, termasuk kursor sinkron pesan dan pengelompokan 2 menit.
+- E2E: 21 tes lulus dalam satu run penuh.
+  - Termasuk tes baru: kontras WCAG AA dengan axe di kedua tema (login, 2FA, `/dev/ui`, daftar tiket, percakapan, dashboard, laporan, pengaturan).
+  - Juga tes tata letak 1366×768, 1920×1080, dan 2560×1440: tanpa scroll horizontal dan tanpa teks terpotong.
+- Kinerja: 1000 tiket + 5000 pesan 140–157 fps, p95 frame 9,2–11,7 ms (dua run terakhir).
+- Lint token (`npm run lint:tokens`) menolak kode hex, kelas warna Tailwind mentah, fungsi warna CSS, `rounded-2xl`/`3xl`, dan bayangan selain `shadow-float` di luar `globals.css`.
+- Lisensi: 160 paket runtime permisif; `@axe-core/playwright` dan `axe-core` (MPL-2.0) hanya dipakai di tes.
+

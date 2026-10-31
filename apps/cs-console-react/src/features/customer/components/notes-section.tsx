@@ -33,51 +33,48 @@ export function NotesSection({ customerId, ticketId }: { customerId: string; tic
   }
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-[11px] text-muted-foreground">{t('customer.notesHint')}</p>
-      <div className="rounded-lg border border-note-border bg-note p-2 text-note-foreground">
-        <Textarea
-          value={body}
-          maxLength={2000}
-          onChange={(event) => setBody(event.target.value)}
-          placeholder={t('customer.notePlaceholder')}
-          aria-label={t('customer.addNote')}
-          className="min-h-14 border-0 bg-transparent p-1 text-note-foreground shadow-none focus-visible:ring-0"
-        />
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-          <ToggleGroup
-            type="single"
-            value={scope}
-            onValueChange={(value) => value && setScope(value as 'ticket' | 'customer')}
-            className="border-note-border"
-          >
-            <ToggleGroupItem value="ticket" className="h-7 px-2 text-[11px]">
-              {t('customer.noteTicket')}
-            </ToggleGroupItem>
-            <ToggleGroupItem value="customer" className="h-7 px-2 text-[11px]">
-              {t('customer.noteCustomer')}
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <Button size="xs" disabled={!body.trim() || addNote.isPending} onClick={submit}>
-            {t('customer.addNote')}
-          </Button>
-        </div>
+      <p className="text-xs text-muted-foreground">{t('customer.notesHint')}</p>
+      <Textarea
+        value={body}
+        maxLength={2000}
+        onChange={(event) => setBody(event.target.value)}
+        placeholder={t('customer.notePlaceholder')}
+        aria-label={t('customer.addNote')}
+        className="min-h-16 text-row"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <ToggleGroup
+          type="single"
+          value={scope}
+          onValueChange={(value) => value && setScope(value as 'ticket' | 'customer')}
+        >
+          <ToggleGroupItem value="ticket" className="h-7 px-2 text-xs">
+            {t('customer.noteTicket')}
+          </ToggleGroupItem>
+          <ToggleGroupItem value="customer" className="h-7 px-2 text-xs">
+            {t('customer.noteCustomer')}
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <Button size="xs" disabled={!body.trim() || addNote.isPending} onClick={submit}>
+          {t('customer.addNote')}
+        </Button>
       </div>
       {notes.data?.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{t('customer.noNotes')}</p>
+        <p className="text-row text-muted-foreground">{t('customer.noNotes')}</p>
       ) : null}
       <ul className="flex flex-col gap-1.5">
         {(notes.data ?? []).map((note) => (
           <li
             key={note.id}
             className={cn(
-              'rounded-md border border-note-border bg-note px-2.5 py-2 text-xs text-note-foreground',
-              note.kind === 'handover' && 'border-primary/40 bg-accent text-accent-foreground',
+              'border-l-2 px-2.5 py-1.5',
+              note.kind === 'handover' ? 'border-strong bg-muted' : 'border-note-border bg-note',
             )}
           >
-            <div className="mb-0.5 text-[10px] opacity-80">
+            <div className="tabular text-xs text-muted-foreground">
               {note.author?.display_name ?? '–'} · {stamp(note.created_at)}
             </div>
-            <p className="whitespace-pre-wrap">{note.body}</p>
+            <p className="mt-0.5 text-row whitespace-pre-wrap">{note.body}</p>
           </li>
         ))}
       </ul>

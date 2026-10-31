@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/app/olt_social_scope.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
 import 'package:olt_social/src/features/chat/domain/entities/receipt.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
 import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/receipt_icon.dart';
 import 'package:olt_social/src/features/media/presentation/widgets/attachment_grid.dart';
@@ -14,40 +16,107 @@ import 'package:olt_social/src/shared/presentation/theme/olt_social_theme.dart';
 import 'package:olt_social/src/shared/presentation/widgets/feedback.dart';
 import 'package:olt_social/src/shared/presentation/widgets/social_text.dart';
 
-class MessageBubble extends StatefulWidget {
+class MessageBubble extends StatelessWidget {
   const MessageBubble({
     super.key,
     required this.message,
     required this.mine,
     required this.receipt,
     required this.showSender,
+    this.startsGroup = true,
   });
 
   final ChatMessage message;
   final bool mine;
   final ReceiptStatus? receipt;
   final bool showSender;
+  final bool startsGroup;
 
   @override
-  State<MessageBubble> createState() => _MessageBubbleState();
+  Widget build(BuildContext context) {
+    final details = _details(context);
+    final fallback = message.isSystem ? SupportSystemNotice(message: message) : _DefaultBubble(details: details);
+    return buildChatPart(OltChatBuilders.of(context).message, context, details, fallback);
+  }
+
+  OltMessageDetails _details(BuildContext context) {
+    final cubit = context.read<ChatRoomCubit>();
+    final m = message;
+    final sender = m.sender;
+    final support = m.senderRole != null;
+    final sent = m.status == MessageStatus.sent && !m.isDeleted && !m.isSystem;
+    late final OltMessageDetails details;
+    details = OltMessageDetails(
+      message: m,
+      isMine: mine,
+      receipt: receipt,
+      showSender: showSender,
+      startsGroup: startsGroup,
+      timeLabel: context.oltL10n.clockTime(m.createdAt),
+      onReply: sent ? () => cubit.setReplyTo(m) : null,
+      onDelete: sent && mine && !support ? () => _delete(context, cubit) : null,
+      onReport: sent && !mine && !support
+          ? () => showReportDialog(context, target: ReportTarget.message, targetId: m.id)
+          : null,
+      onRetry: m.status == MessageStatus.failed ? () => cubit.retry(m) : null,
+      onSenderTap: sender != null && !support && !mine ? () => OltNavigator.openUser(context, sender) : null,
+      onShowActions: sent ? () => _showActions(context, details) : null,
+    );
+    return details;
+  }
+
+  Future<void> _delete(BuildContext context, ChatRoomCubit cubit) async {
+    if (await confirmOlt(context, context.oltL10n.deleteMessageConfirm)) await cubit.deleteMessage(message);
+  }
+
+  Future<void> _showActions(BuildContext context, OltMessageDetails details) async {
+    final l10n = context.oltL10n;
+    final action = await showModalBottomSheet<VoidCallback>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (handler, icon, label) in [
+              (details.onReply, Icons.reply, l10n.replyToMessage),
+              (details.onDelete, Icons.delete_outline, l10n.delete),
+              (details.onReport, Icons.flag_outlined, l10n.report),
+            ])
+              if (handler != null)
+                ListTile(leading: Icon(icon), title: Text(label), onTap: () => Navigator.pop(sheetContext, handler)),
+          ],
+        ),
+      ),
+    );
+    if (context.mounted) action?.call();
+  }
 }
 
-class _MessageBubbleState extends State<MessageBubble> {
+class _DefaultBubble extends StatefulWidget {
+  const _DefaultBubble({required this.details});
+
+  final OltMessageDetails details;
+
+  @override
+  State<_DefaultBubble> createState() => _DefaultBubbleState();
+}
+
+class _DefaultBubbleState extends State<_DefaultBubble> {
   bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final m = widget.message;
-    if (m.isSystem) return SupportSystemNotice(message: m);
+    final d = widget.details;
+    final m = d.message;
     final support = m.senderRole != null;
     final l10n = context.oltL10n;
     final theme = Theme.of(context);
     final t = OltSocialTheme.of(context);
-    final cubit = context.read<ChatRoomCubit>();
-    final bg = widget.mine ? t.myBubble : t.otherBubble;
-    final fg = widget.mine ? t.onMyBubble : t.onOtherBubble;
+    final bg = d.isMine ? t.myBubble : t.otherBubble;
+    final fg = d.isMine ? t.onMyBubble : t.onOtherBubble;
     final meta = theme.textTheme.labelSmall?.copyWith(color: fg.withValues(alpha: 0.7));
     final width = MediaQuery.sizeOf(context).width * 0.72;
+    final senderStyle = theme.textTheme.labelMedium?.copyWith(color: t.link, fontWeight: FontWeight.w700);
 
     final bubble = Container(
       constraints: BoxConstraints(maxWidth: width > 520 ? 520 : width),
@@ -57,24 +126,19 @@ class _MessageBubbleState extends State<MessageBubble> {
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(16),
           topRight: const Radius.circular(16),
-          bottomLeft: Radius.circular(widget.mine ? 16 : 4),
-          bottomRight: Radius.circular(widget.mine ? 4 : 16),
+          bottomLeft: Radius.circular(d.isMine ? 16 : 4),
+          bottomRight: Radius.circular(d.isMine ? 4 : 16),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (widget.showSender && m.sender != null)
+          if (d.showSender && m.sender != null)
             if (m.isOfficial)
               OfficialSenderLabel(sender: m.sender!, color: t.link)
-            else if (support)
-              Text(m.sender!.name, style: theme.textTheme.labelMedium?.copyWith(color: t.link, fontWeight: FontWeight.w700))
             else
-              GestureDetector(
-                onTap: () => OltNavigator.openUser(context, m.sender!),
-                child: Text(m.sender!.name, style: theme.textTheme.labelMedium?.copyWith(color: t.link, fontWeight: FontWeight.w700)),
-              ),
+              GestureDetector(onTap: d.onSenderTap, child: Text(m.sender!.name, style: senderStyle)),
           if (m.replyToId != null)
             Container(
               margin: const EdgeInsets.only(top: 4, bottom: 4),
@@ -96,14 +160,14 @@ class _MessageBubbleState extends State<MessageBubble> {
           else ...[
             if (m.attachments.isNotEmpty) AttachmentGrid(attachments: m.attachments, maxHeight: 220),
             if (m.kind == MessageKind.card)
-              SupportMessageExtras(message: m, color: fg, mine: widget.mine)
+              SupportMessageExtras(message: m, color: fg, mine: d.isMine)
             else ...[
               if ((m.body ?? '').isNotEmpty)
                 support
                     ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))
                     : SocialText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
               if (m.kind == MessageKind.quickReply || m.kind == MessageKind.helpLink)
-                SupportMessageExtras(message: m, color: fg, mine: widget.mine),
+                SupportMessageExtras(message: m, color: fg, mine: d.isMine),
             ],
           ],
           const SizedBox(height: 2),
@@ -111,10 +175,10 @@ class _MessageBubbleState extends State<MessageBubble> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (m.editedAt != null && !m.isDeleted) Text('${l10n.edited} ', style: meta),
-              Text(l10n.clockTime(m.createdAt), style: meta),
-              if (widget.mine) ...[
+              Text(d.timeLabel, style: meta),
+              if (d.isMine) ...[
                 const SizedBox(width: 4),
-                ReceiptIcon(receipt: widget.receipt, sendStatus: m.status, color: fg.withValues(alpha: 0.7)),
+                ReceiptIcon(receipt: d.receipt, sendStatus: m.status, color: fg.withValues(alpha: 0.7)),
               ],
             ],
           ),
@@ -122,23 +186,24 @@ class _MessageBubbleState extends State<MessageBubble> {
       ),
     );
 
-    final actions = _hovered && !m.isDeleted && m.status == MessageStatus.sent
+    final actions = _hovered && (d.onReply != null || d.onDelete != null)
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                tooltip: l10n.replyToMessage,
-                visualDensity: VisualDensity.compact,
-                iconSize: 18,
-                onPressed: () => cubit.setReplyTo(m),
-                icon: const Icon(Icons.reply),
-              ),
-              if (widget.mine && !support)
+              if (d.onReply != null)
+                IconButton(
+                  tooltip: l10n.replyToMessage,
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 18,
+                  onPressed: d.onReply,
+                  icon: const Icon(Icons.reply),
+                ),
+              if (d.onDelete != null)
                 IconButton(
                   tooltip: l10n.delete,
                   visualDensity: VisualDensity.compact,
                   iconSize: 18,
-                  onPressed: () => _delete(context),
+                  onPressed: d.onDelete,
                   icon: const Icon(Icons.delete_outline),
                 ),
             ],
@@ -149,17 +214,17 @@ class _MessageBubbleState extends State<MessageBubble> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: Padding(
-        padding: EdgeInsets.only(top: widget.showSender ? 8 : 2, bottom: 2),
+        padding: EdgeInsets.only(top: d.showSender ? 8 : 2, bottom: 2),
         child: Row(
-          mainAxisAlignment: widget.mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          mainAxisAlignment: d.isMine ? MainAxisAlignment.end : MainAxisAlignment.start,
           children: [
-            if (widget.mine) actions,
+            if (d.isMine) actions,
             Flexible(
               child: GestureDetector(
-                onTap: m.status == MessageStatus.failed ? () => cubit.retry(m) : null,
-                onLongPress: m.isDeleted || m.status != MessageStatus.sent ? null : () => _showActions(context),
+                onTap: d.onRetry,
+                onLongPress: d.onShowActions,
                 child: Column(
-                  crossAxisAlignment: widget.mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  crossAxisAlignment: d.isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                   children: [
                     bubble,
                     if (m.status == MessageStatus.failed)
@@ -168,46 +233,10 @@ class _MessageBubbleState extends State<MessageBubble> {
                 ),
               ),
             ),
-            if (!widget.mine) actions,
+            if (!d.isMine) actions,
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _delete(BuildContext context) async {
-    final cubit = context.read<ChatRoomCubit>();
-    if (await confirmOlt(context, context.oltL10n.deleteMessageConfirm)) await cubit.deleteMessage(widget.message);
-  }
-
-  Future<void> _showActions(BuildContext context) async {
-    final l10n = context.oltL10n;
-    final cubit = context.read<ChatRoomCubit>();
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(leading: const Icon(Icons.reply), title: Text(l10n.replyToMessage), onTap: () => Navigator.pop(sheetContext, 'reply')),
-            if (widget.message.senderRole != null)
-              const SizedBox.shrink()
-            else if (widget.mine)
-              ListTile(leading: const Icon(Icons.delete_outline), title: Text(l10n.delete), onTap: () => Navigator.pop(sheetContext, 'delete'))
-            else
-              ListTile(leading: const Icon(Icons.flag_outlined), title: Text(l10n.report), onTap: () => Navigator.pop(sheetContext, 'report')),
-          ],
-        ),
-      ),
-    );
-    if (!context.mounted) return;
-    switch (action) {
-      case 'reply':
-        cubit.setReplyTo(widget.message);
-      case 'delete':
-        await _delete(context);
-      case 'report':
-        await showReportDialog(context, target: ReportTarget.message, targetId: widget.message.id);
-    }
   }
 }

@@ -1,41 +1,46 @@
-import {
-  ArrowLeftIcon,
-  ChevronDownIcon,
-  ClockIcon,
-  MoveRightIcon,
-  PanelRightCloseIcon,
-  PanelRightOpenIcon,
-  SquareCheckBigIcon,
-  Undo2Icon,
-  UserPlusIcon,
-  ArrowRightLeftIcon,
-} from 'lucide-react'
+import { ArrowLeftIcon, EllipsisIcon, PanelRightCloseIcon, PanelRightOpenIcon } from 'lucide-react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { FlagBadge, PriorityBadge, TicketStatusBadge } from '@/components/badges'
+import { Dot, FlagText, PriorityText } from '@/components/badges'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Tooltip,
 } from '@/components/ui/menu'
-import { Kbd } from '@/components/ui/primitives'
 import { useTopicName } from '@/features/tickets/hooks'
 import { customerName, ticketPriorities, type Ticket } from '@/features/tickets/types'
-import { stamp } from '@/lib/time'
-import { cn } from '@/lib/utils'
+import { useNow } from '@/hooks/use-now'
+import { minutesSince, stamp, waitLabel } from '@/lib/time'
 
 import type { TicketAction } from './action-dialogs'
+
+const WIDE_HEADER = 720
+
+function useWide() {
+  const [wide, setWide] = useState(true)
+  const ref = useCallback((node: HTMLElement | null) => {
+    if (!node) return
+    const observer = new ResizeObserver(([entry]) => setWide((entry?.contentRect.width ?? 0) >= WIDE_HEADER))
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+  return [wide, ref] as const
+}
 
 type Props = {
   ticket: Ticket
   meId: string
   owner: boolean
   supervisor: boolean
-  joined: boolean
   customerOnline: boolean
   infoOpen: boolean
   busy: boolean
@@ -43,7 +48,6 @@ type Props = {
   onBack?: () => void
   onAction: (action: TicketAction) => void
   onWait: () => void
-  onJoin: () => void
   onPriority: (priority: string) => void
 }
 
@@ -52,7 +56,6 @@ export function ConversationHeader({
   meId,
   owner,
   supervisor,
-  joined,
   customerOnline,
   infoOpen,
   busy,
@@ -60,11 +63,12 @@ export function ConversationHeader({
   onBack,
   onAction,
   onWait,
-  onJoin,
   onPriority,
 }: Props) {
   const { t } = useTranslation()
   const topicName = useTopicName()
+  const now = useNow(30_000)
+  const [wide, headerRef] = useWide()
   const active = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
   const canChangePriority = active && (owner || supervisor)
   const ownerName = ticket.owner
@@ -72,73 +76,122 @@ export function ConversationHeader({
       ? t('app.you')
       : ticket.owner.display_name
     : null
+  const started = ticket.claimed_at ?? ticket.created_at
+  const meta = [
+    topicName(ticket.topic),
+    <PriorityText key="priority" priority={ticket.priority} />,
+    ...ticket.flags.map((flag) => <FlagText key={flag} flag={flag} />),
+    ownerName ? t('conversation.owner', { name: ownerName }) : null,
+    ticket.status === 'waiting_customer' ? t('tickets.status.waiting_customer') : null,
+    active && started ? (
+      <span key="duration" className="tabular">
+        {waitLabel(minutesSince(started, now))}
+      </span>
+    ) : null,
+    ticket.complaint_due_at ? (
+      <span key="due" className="text-info">
+        {t('conversation.complaintDue', { time: stamp(ticket.complaint_due_at) })}
+      </span>
+    ) : null,
+  ].filter(Boolean)
   return (
-    <header className="flex flex-col gap-2 border-b bg-card px-4 py-3 compact:py-2">
-      <div className="flex items-start gap-2">
-        {onBack ? (
-          <Button variant="ghost" size="icon-sm" aria-label={t('tickets.list')} onClick={onBack}>
-            <ArrowLeftIcon />
+    <header
+      ref={headerRef}
+      className="flex shrink-0 items-center gap-3 border-b bg-background px-(--pane-px) py-2.5 compact:py-2"
+    >
+      {onBack ? (
+        <Button variant="ghost" size="icon-sm" aria-label={t('tickets.list')} onClick={onBack}>
+          <ArrowLeftIcon />
+        </Button>
+      ) : null}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-baseline gap-2">
+          <h2 className="truncate text-panel font-medium">{customerName(ticket)}</h2>
+          <span className="shrink-0 font-mono text-xs text-muted-foreground select-all">
+            {ticket.ticket_number}
+          </span>
+          <span className="inline-flex shrink-0 items-center self-center">
+            <Dot tone={customerOnline ? 'ok' : 'neutral'} />
+            <span className="sr-only">
+              {customerOnline ? t('conversation.customerOnline') : t('conversation.customerAway')}
+            </span>
+          </span>
+        </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {meta.map((item, index) => (
+            <span key={index}>
+              {index > 0 ? ' · ' : null}
+              {item}
+            </span>
+          ))}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {owner ? (
+          <>
+            {wide ? (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy || ticket.status === 'waiting_customer'}
+                onClick={onWait}
+              >
+                {t('conversation.waitCustomer')}
+              </Button>
+            ) : null}
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction('release')}>
+              {t('conversation.release')}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || ticket.transfer !== null}
+              onClick={() => onAction('transfer')}
+            >
+              {t('conversation.transfer')}
+            </Button>
+            <Tooltip content={t('conversation.resolveHint')}>
+              <Button size="sm" disabled={busy} onClick={() => onAction('resolve')}>
+                {t('conversation.resolve')}
+              </Button>
+            </Tooltip>
+          </>
+        ) : null}
+        {supervisor && !owner && active ? (
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction('reassign')}>
+            {t('conversation.reassign')}
           </Button>
         ) : null}
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <h2 className="tabular text-base font-semibold select-all">#{ticket.ticket_number}</h2>
-            <span className="text-sm text-muted-foreground">· {topicName(ticket.topic)}</span>
-            {canChangePriority ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={t('conversation.changePriority')}
-                    className="inline-flex items-center rounded-md outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                  >
-                    <PriorityBadge priority={ticket.priority} />
-                    <ChevronDownIcon className="size-3.5 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-24">
-                  <DropdownMenuRadioGroup value={ticket.priority} onValueChange={onPriority}>
-                    {ticketPriorities.map((priority) => (
-                      <DropdownMenuRadioItem key={priority} value={priority}>
-                        {priority}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <PriorityBadge priority={ticket.priority} />
-            )}
-            <TicketStatusBadge status={ticket.status} />
-            {ticket.flags.map((flag) => (
-              <FlagBadge key={flag} flag={flag} />
-            ))}
-          </div>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1 font-medium text-foreground">
-              <span
-                className={cn(
-                  'size-2 rounded-full',
-                  customerOnline ? 'bg-status-online' : 'bg-status-offline',
-                )}
-                aria-hidden="true"
-              />
-              {customerName(ticket)}
-              <span className="sr-only">
-                {customerOnline ? t('conversation.customerOnline') : t('conversation.customerAway')}
-              </span>
-            </span>
-            {ownerName ? <span>· {t('conversation.owner', { name: ownerName })}</span> : null}
-            {ticket.created_at ? (
-              <span>· {t('conversation.createdAt', { time: stamp(ticket.created_at) })}</span>
-            ) : null}
-            {ticket.complaint_due_at ? (
-              <span className="text-flag-complaint">
-                · {t('conversation.complaintDue', { time: stamp(ticket.complaint_due_at) })}
-              </span>
-            ) : null}
-          </p>
-        </div>
+        {canChangePriority || owner ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" aria-label={t('conversation.moreActions')}>
+                <EllipsisIcon />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {owner && !wide ? (
+                <DropdownMenuItem disabled={busy || ticket.status === 'waiting_customer'} onSelect={onWait}>
+                  {t('conversation.waitCustomer')}
+                </DropdownMenuItem>
+              ) : null}
+              {canChangePriority ? (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>{t('conversation.changePriority')}</DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuRadioGroup value={ticket.priority} onValueChange={onPriority}>
+                      {ticketPriorities.map((priority) => (
+                        <DropdownMenuRadioItem key={priority} value={priority}>
+                          {priority}
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         <Tooltip content={infoOpen ? t('customer.collapse') : t('customer.expand')}>
           <Button
             variant="ghost"
@@ -150,55 +203,6 @@ export function ConversationHeader({
           </Button>
         </Tooltip>
       </div>
-      {owner || (supervisor && active) ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {owner ? (
-            <>
-              <Button
-                size="xs"
-                variant="outline"
-                disabled={busy || ticket.status === 'waiting_customer'}
-                onClick={onWait}
-              >
-                <ClockIcon />
-                {t('conversation.waitCustomer')}
-              </Button>
-              <Button size="xs" variant="outline" disabled={busy} onClick={() => onAction('release')}>
-                <Undo2Icon />
-                {t('conversation.release')}
-              </Button>
-              <Button
-                size="xs"
-                variant="outline"
-                disabled={busy || ticket.transfer !== null}
-                onClick={() => onAction('transfer')}
-              >
-                <ArrowRightLeftIcon />
-                {t('conversation.transfer')}
-              </Button>
-              <Button size="xs" disabled={busy} onClick={() => onAction('resolve')}>
-                <SquareCheckBigIcon />
-                {t('conversation.resolve')}
-                <Kbd className="ml-1 h-4 bg-primary-foreground/20 text-primary-foreground">E</Kbd>
-              </Button>
-            </>
-          ) : null}
-          {supervisor && !owner ? (
-            <>
-              {!joined ? (
-                <Button size="xs" variant="outline" disabled={busy} onClick={onJoin}>
-                  <UserPlusIcon />
-                  {t('conversation.join')}
-                </Button>
-              ) : null}
-              <Button size="xs" variant="outline" disabled={busy} onClick={() => onAction('reassign')}>
-                <MoveRightIcon />
-                {t('conversation.reassign')}
-              </Button>
-            </>
-          ) : null}
-        </div>
-      ) : null}
     </header>
   )
 }

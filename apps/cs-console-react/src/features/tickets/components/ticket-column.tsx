@@ -1,12 +1,22 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { FilterXIcon, SearchIcon, XIcon } from 'lucide-react'
+import { ListFilterIcon, SearchIcon, XIcon } from 'lucide-react'
 import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Dot } from '@/components/badges'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/controls'
 import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/menu'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
 import { atCapacity, isSupervisor } from '@/features/presence/types'
@@ -24,38 +34,107 @@ import {
 } from '../hooks'
 import { isFiltered, noFilter, visibleTickets } from '../logic'
 import { emptyLists, ticketFlags, ticketPriorities, type TicketFilter, type TicketTab } from '../types'
-import { TicketCard } from './ticket-card'
+import { TicketRow } from './ticket-row'
 import { TransferInbox } from './transfer-inbox'
 
 const ALL = '__all__'
 
-function FilterSelect({
-  value,
-  label,
-  allLabel,
-  options,
-  onChange,
-}: {
-  value: string | null
+type FilterGroup = {
+  key: keyof TicketFilter
   label: string
   allLabel: string
   options: { value: string; label: string }[]
-  onChange: (value: string | null) => void
+}
+
+function FilterMenu({
+  groups,
+  filter,
+  onChange,
+}: {
+  groups: FilterGroup[]
+  filter: TicketFilter
+  onChange: (patch: Partial<TicketFilter>) => void
 }) {
+  const { t } = useTranslation()
+  const active = groups.filter((group) => filter[group.key] !== null).length
   return (
-    <Select value={value ?? ALL} onValueChange={(next) => onChange(next === ALL ? null : next)}>
-      <SelectTrigger aria-label={label} className="h-8 min-w-0 flex-1 px-2 text-xs">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value={ALL}>{allLabel}</SelectItem>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" className="shrink-0">
+          <ListFilterIcon />
+          {t('tickets.filter')}
+          {active > 0 ? <span className="tabular text-muted-foreground">{active}</span> : null}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        {groups.map((group) => (
+          <DropdownMenuSub key={group.key}>
+            <DropdownMenuSubTrigger>{group.label}</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-72 overflow-y-auto">
+              <DropdownMenuRadioGroup
+                value={filter[group.key] ?? ALL}
+                onValueChange={(value) => onChange({ [group.key]: value === ALL ? null : value })}
+              >
+                <DropdownMenuRadioItem value={ALL}>{group.allLabel}</DropdownMenuRadioItem>
+                {group.options.map((option) => (
+                  <DropdownMenuRadioItem key={option.value} value={option.value}>
+                    {option.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         ))}
-      </SelectContent>
-    </Select>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+function FilterChips({
+  groups,
+  filter,
+  onChange,
+  onClear,
+}: {
+  groups: FilterGroup[]
+  filter: TicketFilter
+  onChange: (patch: Partial<TicketFilter>) => void
+  onClear: () => void
+}) {
+  const { t } = useTranslation()
+  const chips = groups.flatMap((group) => {
+    const value = filter[group.key]
+    if (value === null) return []
+    const option = group.options.find((item) => item.value === value)
+    return [{ group, text: `${group.label}: ${option?.label ?? value}` }]
+  })
+  if (chips.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {chips.map(({ group, text }) => (
+        <span
+          key={group.key}
+          className="inline-flex h-6 max-w-full items-center gap-1 rounded-md border bg-background pr-0.5 pl-2 text-xs"
+        >
+          <span className="truncate">{text}</span>
+          <button
+            type="button"
+            aria-label={t('tickets.removeFilter', { name: group.label })}
+            onClick={() => onChange({ [group.key]: null })}
+            className="inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <XIcon className="size-3" />
+          </button>
+        </span>
+      ))}
+      <button
+        type="button"
+        onClick={onClear}
+        className="rounded-sm px-1 text-xs text-muted-foreground underline-offset-4 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        {t('tickets.clearFilters')}
+      </button>
+    </div>
   )
 }
 
@@ -93,7 +172,7 @@ export function TicketColumn() {
   const virtualizer = useVirtualizer({
     count: tickets.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => (density === 'compact' ? 78 : 102),
+    estimateSize: () => (density === 'compact' ? 64 : 76),
     overscan: 8,
     getItemKey: (index) => tickets[index]?.id ?? index,
   })
@@ -135,89 +214,95 @@ export function TicketColumn() {
         }[tab]
 
   const updateFilter = (patch: Partial<TicketFilter>) => setFilter({ ...filter, ...patch })
+  const groups: FilterGroup[] = [
+    {
+      key: 'topic',
+      label: t('tickets.topic'),
+      allLabel: t('tickets.allTopics'),
+      options: (topics.data ?? []).map((topic) => ({ value: topic.code, label: topic.name })),
+    },
+    {
+      key: 'priority',
+      label: t('tickets.priority'),
+      allLabel: t('tickets.allPriorities'),
+      options: ticketPriorities.map((priority) => ({ value: priority, label: priority })),
+    },
+    {
+      key: 'flag',
+      label: t('tickets.flag'),
+      allLabel: t('tickets.allFlags'),
+      options: ticketFlags.map((flag) => ({ value: flag, label: t(`tickets.flags.${flag}`) })),
+    },
+  ]
 
   return (
-    <section aria-label={t('tickets.list')} className="flex h-full flex-col bg-card">
-      <div className="flex flex-col gap-2 border-b p-3 compact:gap-1.5 compact:p-2">
-        <div role="tablist" aria-label={t('tickets.list')} className="flex flex-wrap gap-1">
-          {tabs.map((item) => (
+    <section aria-label={t('tickets.list')} className="flex h-full flex-col bg-subtle">
+      <div
+        role="tablist"
+        aria-label={t('tickets.list')}
+        className="flex shrink-0 gap-4 overflow-x-auto border-b px-3"
+      >
+        {tabs.map((item) => {
+          const selected = !searching && tab === item.value
+          return (
             <button
               key={item.value}
               type="button"
               role="tab"
-              aria-selected={!searching && tab === item.value}
+              aria-selected={selected}
               onClick={() => {
                 setTab(item.value)
                 setQuery('')
               }}
               className={cn(
-                'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                !searching && tab === item.value
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                'relative inline-flex h-10 shrink-0 items-center gap-1.5 text-row whitespace-nowrap transition-colors outline-none after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset',
+                selected
+                  ? 'font-medium text-foreground after:bg-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               {item.label}
-              <span className="tabular opacity-80">{item.count}</span>
+              {item.value !== 'resolved_today' ? (
+                <span className="tabular font-normal text-muted-foreground">{item.count}</span>
+              ) : null}
             </button>
-          ))}
+          )
+        })}
+      </div>
+      <div className="flex shrink-0 flex-col gap-2 border-b px-3 py-2">
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <SearchIcon className="pointer-events-none absolute top-2 left-2.5 size-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('tickets.searchPlaceholder')}
+              aria-label={t('tickets.searchLabel')}
+              className={cn('h-8 pl-8 text-row', query ? 'pr-8' : 'pr-2')}
+            />
+            {query ? (
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className="absolute top-1 right-1 size-6"
+                aria-label={t('tickets.clearSearch')}
+                onClick={() => setQuery('')}
+              >
+                <XIcon />
+              </Button>
+            ) : null}
+          </div>
+          <FilterMenu groups={groups} filter={filter} onChange={updateFilter} />
         </div>
-        <div className="relative">
-          <SearchIcon className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('tickets.searchPlaceholder')}
-            aria-label={t('tickets.searchLabel')}
-            className="h-9 pr-8 pl-8"
-          />
-          {query ? (
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className="absolute top-1 right-1"
-              aria-label={t('tickets.clearSearch')}
-              onClick={() => setQuery('')}
-            >
-              <XIcon />
-            </Button>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <FilterSelect
-            value={filter.topic}
-            label={t('tickets.topic')}
-            allLabel={t('tickets.allTopics')}
-            options={(topics.data ?? []).map((topic) => ({ value: topic.code, label: topic.name }))}
-            onChange={(topic) => updateFilter({ topic })}
-          />
-          <FilterSelect
-            value={filter.priority}
-            label={t('tickets.priority')}
-            allLabel={t('tickets.allPriorities')}
-            options={ticketPriorities.map((priority) => ({ value: priority, label: priority }))}
-            onChange={(priority) => updateFilter({ priority })}
-          />
-          <FilterSelect
-            value={filter.flag}
-            label={t('tickets.flag')}
-            allLabel={t('tickets.allFlags')}
-            options={ticketFlags.map((flag) => ({ value: flag, label: t(`tickets.flags.${flag}`) }))}
-            onChange={(flag) => updateFilter({ flag })}
-          />
-          {isFiltered(filter) ? (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={t('tickets.clearFilters')}
-              onClick={() => setFilter(noFilter)}
-            >
-              <FilterXIcon />
-            </Button>
-          ) : null}
-        </div>
+        <FilterChips
+          groups={groups}
+          filter={filter}
+          onChange={updateFilter}
+          onClear={() => setFilter(noFilter)}
+        />
         {tab === 'open' && !searching && !canClaim ? (
-          <p role="status" className="rounded-md bg-sla-warn/12 px-2.5 py-1.5 text-xs text-sla-warn">
+          <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Dot tone="warn" />
             {agent.status !== 'online' ? t('tickets.needOnline') : t('tickets.atCapacity')}
           </p>
         ) : null}
@@ -230,13 +315,13 @@ export function TicketColumn() {
         ) : null}
       </div>
       <TransferInbox incoming={data.transfers_in} outgoing={data.transfers_out} />
-      <div ref={scrollRef} className="relative min-h-0 flex-1 scrollbar-thin overflow-y-auto">
+      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto">
         {lists.isPending ? (
           <ListSkeleton />
         ) : lists.isError && !lists.data ? (
           <ErrorState error={lists.error} onRetry={() => void lists.refetch()} />
         ) : tickets.length === 0 ? (
-          <EmptyState title={empty} />
+          <EmptyState className="h-full" title={empty} />
         ) : (
           <div style={{ height: virtualizer.getTotalSize() }} className="relative w-full">
             {virtualizer.getVirtualItems().map((item) => {
@@ -250,7 +335,7 @@ export function TicketColumn() {
                   className="absolute top-0 left-0 w-full"
                   style={{ transform: `translateY(${item.start}px)` }}
                 >
-                  <TicketCard
+                  <TicketRow
                     ticket={ticket}
                     topicName={topicName(ticket.topic)}
                     selected={ticket.id === selectedId}

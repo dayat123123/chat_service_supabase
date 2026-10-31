@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
-import { PriorityBadge } from '@/components/badges'
+import { PriorityText } from '@/components/badges'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -223,7 +223,7 @@ function TopicDialog({ topic, onClose }: { topic: TopicConfig | null; onClose: (
           />
           <FormError error={save.error} />
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={save.isPending} onClick={onClose}>
+            <Button type="button" variant="ghost" disabled={save.isPending} onClick={onClose}>
               {t('app.cancel')}
             </Button>
             <Button type="submit" disabled={save.isPending}>
@@ -281,7 +281,7 @@ export function TopicsSection() {
                   </TableCell>
                   <TableCell>{skillName(topic.skill)}</TableCell>
                   <TableCell>
-                    <PriorityBadge priority={topic.default_priority} />
+                    <PriorityText priority={topic.default_priority} />
                   </TableCell>
                   <TableCell className="max-w-56 truncate" title={topic.help_url ?? undefined}>
                     {topic.help_url ?? '–'}

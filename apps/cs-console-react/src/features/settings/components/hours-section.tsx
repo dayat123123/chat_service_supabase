@@ -189,7 +189,7 @@ function HolidayDialog({ year, onClose }: { year: number; onClose: () => void })
           </div>
           <FormError error={save.error} />
           <DialogFooter>
-            <Button type="button" variant="outline" disabled={save.isPending} onClick={onClose}>
+            <Button type="button" variant="ghost" disabled={save.isPending} onClick={onClose}>
               {t('app.cancel')}
             </Button>
             <Button type="submit" disabled={save.isPending}>
@@ -259,10 +259,8 @@ function Holidays() {
                     <TableCell>
                       <span
                         className={cn(
-                          'inline-flex h-5 items-center rounded-full px-2 text-[11px] font-semibold',
-                          holiday.kind === 'exchange'
-                            ? 'bg-accent text-accent-foreground'
-                            : 'bg-sla-warn/14 text-sla-warn',
+                          'text-xs',
+                          holiday.kind === 'exchange' ? 'text-muted-foreground' : 'font-medium text-warning',
                         )}
                       >
                         {holidayKinds.includes(holiday.kind)

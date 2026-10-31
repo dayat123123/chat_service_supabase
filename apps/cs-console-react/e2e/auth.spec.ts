@@ -26,7 +26,9 @@ test('login email + password lalu TOTP, salah kode ditolak, lalu keluar', async 
 
   await page.getByLabel('Kode 6 digit').fill(await freshTotp(nadia.totp_secret))
   await page.getByRole('button', { name: 'Verifikasi' }).click()
-  await expect(page.getByRole('button', { name: 'Akun' })).toContainText('Nadia')
+  await page.getByRole('button', { name: 'Akun', exact: true }).click()
+  await expect(page.getByRole('menu')).toContainText('Nadia')
+  await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Ubah status' })).toContainText('Offline')
   await expect(page).toHaveTitle(/CS Console/)
 

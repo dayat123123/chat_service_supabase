@@ -2,6 +2,8 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/core/media/image_mime.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
 import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
 import 'package:olt_social/src/shared/presentation/widgets/olt_composer_field.dart';
@@ -17,6 +19,8 @@ class MessageComposer extends StatefulWidget {
 }
 
 class _MessageComposerState extends State<MessageComposer> {
+  static const _maxLength = 4000;
+
   final _controller = TextEditingController();
   final _focus = FocusNode();
 
@@ -56,71 +60,99 @@ class _MessageComposerState extends State<MessageComposer> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.oltL10n;
+    final builder = OltChatBuilders.of(context).composer;
     return BlocConsumer<ChatRoomCubit, ChatRoomState>(
       listenWhen: (a, b) => a.replyTo?.id != b.replyTo?.id && b.replyTo != null,
       listener: (_, _) => _focus.requestFocus(),
       buildWhen: (a, b) => a.replyTo != b.replyTo || a.uploading != b.uploading,
       builder: (context, state) {
         final replyTo = state.replyTo;
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (replyTo != null)
-                  Row(
-                    children: [
-                      const Icon(Icons.reply, size: 16),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${replyTo.sender?.name ?? l10n.someone}: ${replyTo.body ?? l10n.attachment}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: l10n.cancel,
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => context.read<ChatRoomCubit>().setReplyTo(null),
-                        icon: const Icon(Icons.close, size: 18),
-                      ),
-                    ],
+        final details = OltComposerDetails(
+          controller: _controller,
+          focusNode: _focus,
+          hintText: l10n.messageHint,
+          maxLength: _maxLength,
+          uploading: state.uploading,
+          onSend: _send,
+          replyTo: replyTo,
+          replyPreview: replyTo == null ? null : '${replyTo.sender?.name ?? l10n.someone}: ${replyTo.body ?? l10n.attachment}',
+          onCancelReply: replyTo == null ? null : () => context.read<ChatRoomCubit>().setReplyTo(null),
+          onPickImage: state.uploading ? null : _pickImage,
+          extraActions: widget.leading,
+        );
+        return buildChatPart(builder, context, details, _DefaultComposer(details: details));
+      },
+    );
+  }
+}
+
+class _DefaultComposer extends StatelessWidget {
+  const _DefaultComposer({required this.details});
+
+  final OltComposerDetails details;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = details;
+    final l10n = context.oltL10n;
+    final replyPreview = d.replyPreview;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (replyPreview != null)
+              Row(
+                children: [
+                  const Icon(Icons.reply, size: 16),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      replyPreview,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
                   ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    ...widget.leading,
-                    IconButton(
-                      tooltip: l10n.composeAddImage,
-                      onPressed: state.uploading ? null : _pickImage,
-                      icon: state.uploading
-                          ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.add_photo_alternate_outlined),
-                    ),
-                    Expanded(
-                      child: OltComposerField(
-                        controller: _controller,
-                        focusNode: _focus,
-                        hintText: l10n.messageHint,
-                        maxLength: 4000,
-                        maxLines: 5,
-                        onSubmit: _send,
-                        decoration: const InputDecoration(border: OutlineInputBorder(), counterText: '', isDense: true),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filled(tooltip: l10n.composeSubmit, onPressed: _send, icon: const Icon(Icons.send)),
-                  ],
+                  IconButton(
+                    tooltip: l10n.cancel,
+                    visualDensity: VisualDensity.compact,
+                    onPressed: d.onCancelReply,
+                    icon: const Icon(Icons.close, size: 18),
+                  ),
+                ],
+              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                ...d.extraActions,
+                IconButton(
+                  tooltip: l10n.composeAddImage,
+                  onPressed: d.onPickImage,
+                  icon: d.uploading
+                      ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.add_photo_alternate_outlined),
                 ),
+                Expanded(
+                  child: OltComposerField(
+                    controller: d.controller,
+                    focusNode: d.focusNode,
+                    hintText: d.hintText,
+                    maxLength: d.maxLength,
+                    maxLines: 5,
+                    onSubmit: d.onSend,
+                    decoration: const InputDecoration(border: OutlineInputBorder(), counterText: '', isDense: true),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(tooltip: l10n.composeSubmit, onPressed: d.onSend, icon: const Icon(Icons.send)),
               ],
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 }

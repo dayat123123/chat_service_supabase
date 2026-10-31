@@ -11,7 +11,7 @@ dependencies:
     git:
       url: <url repo internal>
       path: packages/olt_social
-      ref: v0.1.0            # pin tag/commit
+      ref: v0.2.0            # pin tag/commit
   flutter_localizations:
     sdk: flutter
 ```
@@ -89,6 +89,7 @@ MaterialApp(
 
 - **Lokalisasi:** tanpa delegate pun package tetap tampil dalam bahasa Indonesia.
 - **Warna bullish/bearish dan indentasi thread:** sesuaikan lewat `OltSocialTheme` (ThemeExtension). Lihat README package.
+- **Tampilan chat versi OLT:** pasang `OltChatBuildersScope` di `MaterialApp.builder`, lalu isi builder untuk bagian yang ingin diganti (gelembung pesan, composer, header room, tile daftar chat, status kosong/error, dan lainnya). Builder menerima data siap tampil dan handler yang sudah jadi, jadi OLT hanya menggambar UI. Contoh dan daftar lengkapnya ada di README package, bagian "Kustomisasi UI chat (builder)".
 
 ## 5. Tempatkan widget
 
@@ -164,8 +165,10 @@ Jenis error (`kind`) yang tersedia: `network`, `unauthenticated`, `rateLimited`,
 
 ## 7. Memakai API tanpa UI bawaan
 
-Bila OLT ingin membuat UI sendiri, semua repository tersedia di `OltSocial.instance`:
+Bila hanya tampilan yang ingin diganti, pakai builder (langkah 4) supaya logika chat tetap dari package. Bila OLT ingin membuat UI sendiri sepenuhnya, semua repository tersedia di `OltSocial.instance`:
 - `feed.getFeed(FeedScope.stock('BBCA'), cursor: ..., limit: 20)` mengembalikan `Paged<Post>`.
+- `chat.getRooms(cursor: ..., limit: 30)` mengembalikan `Paged<ChatRoom>`; room CS selalu di halaman pertama. `chat.getRoom(roomId)` memuat satu room.
+- `chat.getMessages(roomId, cursor: ..., limit: 30)` memuat pesan dari yang terbaru per halaman. `chat.getMessagesAfter(roomId, cursor)` menyusulkan pesan baru; selama `nextCursor` tidak `null`, masih ada pesan berikutnya.
 - `comments.getThread(postId, maxDepth: 3)`.
 - `chat.connectRoom(roomId, me: user).events` adalah stream realtime room (pesan, mengetik, tanda terima, presence).
 - `chat.watchRoomSignals({roomId, ...}, me: user)` memantau mengetik, tanda terima, dan presence banyak room sekaligus (untuk daftar chat buatan sendiri).

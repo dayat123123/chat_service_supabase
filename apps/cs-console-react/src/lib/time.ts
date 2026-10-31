@@ -48,7 +48,7 @@ export function shortDate(value: string | Date) {
 export function dayLabel(value: string | Date, now: Date = new Date()) {
   if (sameZonedDay(value, now)) return i18n.t('time.today')
   if (sameZonedDay(value, subDays(now, 1))) return i18n.t('time.yesterday')
-  return format(value, 'EEEE, d MMMM yyyy')
+  return format(value, 'd MMM yyyy')
 }
 
 export function minutesSince(value: string | Date | null | undefined, now: Date = new Date()) {

@@ -8,11 +8,13 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-const popupClass =
-  'z-50 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95'
+const floatClass =
+  'z-50 rounded-lg border bg-popover text-popover-foreground shadow-float duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0'
+
+const popupClass = cn(floatClass, 'overflow-hidden p-1')
 
 const itemClass =
-  "relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+  "relative flex h-8 cursor-default items-center gap-2 rounded-md px-2 text-sm outline-hidden select-none focus:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground"
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
@@ -47,7 +49,11 @@ function DropdownMenuItem({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & { destructive?: boolean }) {
   return (
     <DropdownMenuPrimitive.Item
-      className={cn(itemClass, destructive && 'text-destructive focus:text-destructive', className)}
+      className={cn(
+        itemClass,
+        destructive && "text-destructive [&_svg:not([class*='text-'])]:text-destructive",
+        className,
+      )}
       {...props}
     />
   )
@@ -93,7 +99,7 @@ function DropdownMenuLabel({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Label>) {
   return (
     <DropdownMenuPrimitive.Label
-      className={cn('px-2 py-1.5 text-xs font-medium text-muted-foreground', className)}
+      className={cn('px-2 py-1.5 text-xs text-muted-foreground', className)}
       {...props}
     />
   )
@@ -113,7 +119,7 @@ function DropdownMenuSubTrigger({
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger>) {
   return (
     <DropdownMenuPrimitive.SubTrigger
-      className={cn(itemClass, 'data-[state=open]:bg-accent', className)}
+      className={cn(itemClass, 'data-[state=open]:bg-muted', className)}
       {...props}
     >
       {children}
@@ -148,7 +154,7 @@ function PopoverContent({
       <PopoverPrimitive.Content
         align={align}
         sideOffset={sideOffset}
-        className={cn(popupClass, 'w-72 p-3 outline-hidden', className)}
+        className={cn(floatClass, 'w-72 p-3 outline-hidden', className)}
         {...props}
       />
     </PopoverPrimitive.Portal>
@@ -178,7 +184,7 @@ function Tooltip({
         <TooltipPrimitive.Content
           side={side}
           sideOffset={6}
-          className="z-50 max-w-xs rounded-md bg-foreground px-2.5 py-1.5 text-xs text-background shadow-md data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0"
+          className="z-50 max-w-xs rounded-md bg-foreground px-2 py-1 text-xs text-background duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0"
         >
           {content}
         </TooltipPrimitive.Content>
@@ -201,6 +207,8 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  floatClass,
+  itemClass,
   Popover,
   PopoverAnchor,
   PopoverContent,

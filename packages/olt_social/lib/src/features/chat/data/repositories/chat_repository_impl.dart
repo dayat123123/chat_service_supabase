@@ -7,6 +7,7 @@ import 'package:olt_social/src/core/paging/paged.dart';
 import 'package:olt_social/src/features/chat/data/models/chat_models.dart';
 import 'package:olt_social/src/features/chat/data/realtime/room_channel_hub.dart';
 import 'package:olt_social/src/features/chat/data/realtime/room_connection.dart';
+import 'package:olt_social/src/features/chat/data/repositories/message_pages.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
@@ -26,9 +27,19 @@ class ChatRepositoryImpl implements ChatRepository {
   final _unreadChanges = StreamController<void>.broadcast();
 
   @override
-  Future<List<ChatRoom>> getRooms() async {
-    final rows = await _api.rpcRows('get_my_rooms');
-    return [for (final row in rows) RoomSummaryModel.fromJson(row).toEntity()];
+  Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30}) async {
+    final rows = await _api.rpcRows('get_my_rooms', {'p_cursor': cursor, 'p_limit': limit});
+    final models = [for (final row in rows) RoomSummaryModel.fromJson(row)];
+    return Paged(
+      [for (final model in models) model.toEntity()],
+      nextCursor: models.length < limit ? null : models.last.cursor,
+    );
+  }
+
+  @override
+  Future<ChatRoom?> getRoom(String roomId) async {
+    final rows = await _api.rpcRows('get_my_room', {'p_room_id': roomId});
+    return rows.isEmpty ? null : RoomSummaryModel.fromJson(rows.first).toEntity();
   }
 
   @override
@@ -39,9 +50,9 @@ class ChatRepositoryImpl implements ChatRepository {
   }
 
   @override
-  Future<List<ChatMessage>> getMessagesAfter(String roomId, String cursor) async {
-    final rows = await _api.rpcRows('get_messages', {'p_room_id': roomId, 'p_after': cursor, 'p_limit': 100});
-    return [for (final row in rows) ChatMessageModel.fromJson(row).toEntity()];
+  Future<Paged<ChatMessage>> getMessagesAfter(String roomId, String cursor, {int limit = 100}) async {
+    final rows = await _api.rpcRows('get_messages', {'p_room_id': roomId, 'p_after': cursor, 'p_limit': limit});
+    return newerPage([for (final row in rows) ChatMessageModel.fromJson(row).toEntity()], limit);
   }
 
   @override

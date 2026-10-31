@@ -34,7 +34,7 @@ export function applyDensity(density: Density) {
 
 function readTheme(): Theme {
   const value = readLocal('theme')
-  return value === 'light' || value === 'dark' ? value : 'system'
+  return value === 'dark' || value === 'system' ? value : 'light'
 }
 
 function readAlerts(): TicketAlerts {

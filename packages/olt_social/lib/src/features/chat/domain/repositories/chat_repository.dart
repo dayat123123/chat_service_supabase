@@ -6,11 +6,13 @@ import 'package:olt_social/src/shared/domain/entities/attachment.dart';
 import 'package:olt_social/src/shared/domain/entities/user.dart';
 
 abstract interface class ChatRepository {
-  Future<List<ChatRoom>> getRooms();
+  Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30});
+
+  Future<ChatRoom?> getRoom(String roomId);
 
   Future<Paged<ChatMessage>> getMessages(String roomId, {String? cursor, int limit = 30});
 
-  Future<List<ChatMessage>> getMessagesAfter(String roomId, String cursor);
+  Future<Paged<ChatMessage>> getMessagesAfter(String roomId, String cursor, {int limit = 100});
 
   Future<ChatMessage> sendMessage(
     String roomId, {

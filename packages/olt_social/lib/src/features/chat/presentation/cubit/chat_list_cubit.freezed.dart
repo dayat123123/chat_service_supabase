@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ChatListState {
 
- LoadStatus get status; List<ChatRoom> get rooms; Map<String, Set<String>> get presence; Map<String, Map<String, UserSummary>> get typing; UserSummary? get me; Object? get error;
+ LoadStatus get status; List<ChatRoom> get rooms; String? get nextCursor; bool get loadingMore; Map<String, Set<String>> get presence; Map<String, Map<String, UserSummary>> get typing; UserSummary? get me; Object? get error;
 /// Create a copy of ChatListState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $ChatListStateCopyWith<ChatListState> get copyWith => _$ChatListStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatListState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.rooms, rooms)&&const DeepCollectionEquality().equals(other.presence, presence)&&const DeepCollectionEquality().equals(other.typing, typing)&&(identical(other.me, me) || other.me == me)&&const DeepCollectionEquality().equals(other.error, error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatListState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.rooms, rooms)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.loadingMore, loadingMore) || other.loadingMore == loadingMore)&&const DeepCollectionEquality().equals(other.presence, presence)&&const DeepCollectionEquality().equals(other.typing, typing)&&(identical(other.me, me) || other.me == me)&&const DeepCollectionEquality().equals(other.error, error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(rooms),const DeepCollectionEquality().hash(presence),const DeepCollectionEquality().hash(typing),me,const DeepCollectionEquality().hash(error));
+int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(rooms),nextCursor,loadingMore,const DeepCollectionEquality().hash(presence),const DeepCollectionEquality().hash(typing),me,const DeepCollectionEquality().hash(error));
 
 @override
 String toString() {
-  return 'ChatListState(status: $status, rooms: $rooms, presence: $presence, typing: $typing, me: $me, error: $error)';
+  return 'ChatListState(status: $status, rooms: $rooms, nextCursor: $nextCursor, loadingMore: $loadingMore, presence: $presence, typing: $typing, me: $me, error: $error)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $ChatListStateCopyWith<$Res>  {
   factory $ChatListStateCopyWith(ChatListState value, $Res Function(ChatListState) _then) = _$ChatListStateCopyWithImpl;
 @useResult
 $Res call({
- LoadStatus status, List<ChatRoom> rooms, Map<String, Set<String>> presence, Map<String, Map<String, UserSummary>> typing, UserSummary? me, Object? error
+ LoadStatus status, List<ChatRoom> rooms, String? nextCursor, bool loadingMore, Map<String, Set<String>> presence, Map<String, Map<String, UserSummary>> typing, UserSummary? me, Object? error
 });
 
 
@@ -62,11 +62,13 @@ class _$ChatListStateCopyWithImpl<$Res>
 
 /// Create a copy of ChatListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? rooms = null,Object? presence = null,Object? typing = null,Object? me = freezed,Object? error = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? rooms = null,Object? nextCursor = freezed,Object? loadingMore = null,Object? presence = null,Object? typing = null,Object? me = freezed,Object? error = freezed,}) {
   return _then(_self.copyWith(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as LoadStatus,rooms: null == rooms ? _self.rooms : rooms // ignore: cast_nullable_to_non_nullable
-as List<ChatRoom>,presence: null == presence ? _self.presence : presence // ignore: cast_nullable_to_non_nullable
+as List<ChatRoom>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
+as String?,loadingMore: null == loadingMore ? _self.loadingMore : loadingMore // ignore: cast_nullable_to_non_nullable
+as bool,presence: null == presence ? _self.presence : presence // ignore: cast_nullable_to_non_nullable
 as Map<String, Set<String>>,typing: null == typing ? _self.typing : typing // ignore: cast_nullable_to_non_nullable
 as Map<String, Map<String, UserSummary>>,me: freezed == me ? _self.me : me // ignore: cast_nullable_to_non_nullable
 as UserSummary?,error: freezed == error ? _self.error : error ,
@@ -166,10 +168,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( LoadStatus status,  List<ChatRoom> rooms,  Map<String, Set<String>> presence,  Map<String, Map<String, UserSummary>> typing,  UserSummary? me,  Object? error)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( LoadStatus status,  List<ChatRoom> rooms,  String? nextCursor,  bool loadingMore,  Map<String, Set<String>> presence,  Map<String, Map<String, UserSummary>> typing,  UserSummary? me,  Object? error)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChatListState() when $default != null:
-return $default(_that.status,_that.rooms,_that.presence,_that.typing,_that.me,_that.error);case _:
+return $default(_that.status,_that.rooms,_that.nextCursor,_that.loadingMore,_that.presence,_that.typing,_that.me,_that.error);case _:
   return orElse();
 
 }
@@ -187,10 +189,10 @@ return $default(_that.status,_that.rooms,_that.presence,_that.typing,_that.me,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( LoadStatus status,  List<ChatRoom> rooms,  Map<String, Set<String>> presence,  Map<String, Map<String, UserSummary>> typing,  UserSummary? me,  Object? error)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( LoadStatus status,  List<ChatRoom> rooms,  String? nextCursor,  bool loadingMore,  Map<String, Set<String>> presence,  Map<String, Map<String, UserSummary>> typing,  UserSummary? me,  Object? error)  $default,) {final _that = this;
 switch (_that) {
 case _ChatListState():
-return $default(_that.status,_that.rooms,_that.presence,_that.typing,_that.me,_that.error);case _:
+return $default(_that.status,_that.rooms,_that.nextCursor,_that.loadingMore,_that.presence,_that.typing,_that.me,_that.error);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +209,10 @@ return $default(_that.status,_that.rooms,_that.presence,_that.typing,_that.me,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( LoadStatus status,  List<ChatRoom> rooms,  Map<String, Set<String>> presence,  Map<String, Map<String, UserSummary>> typing,  UserSummary? me,  Object? error)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( LoadStatus status,  List<ChatRoom> rooms,  String? nextCursor,  bool loadingMore,  Map<String, Set<String>> presence,  Map<String, Map<String, UserSummary>> typing,  UserSummary? me,  Object? error)?  $default,) {final _that = this;
 switch (_that) {
 case _ChatListState() when $default != null:
-return $default(_that.status,_that.rooms,_that.presence,_that.typing,_that.me,_that.error);case _:
+return $default(_that.status,_that.rooms,_that.nextCursor,_that.loadingMore,_that.presence,_that.typing,_that.me,_that.error);case _:
   return null;
 
 }
@@ -222,7 +224,7 @@ return $default(_that.status,_that.rooms,_that.presence,_that.typing,_that.me,_t
 
 
 class _ChatListState extends ChatListState {
-  const _ChatListState({this.status = LoadStatus.initial, final  List<ChatRoom> rooms = const <ChatRoom>[], final  Map<String, Set<String>> presence = const <String, Set<String>>{}, final  Map<String, Map<String, UserSummary>> typing = const <String, Map<String, UserSummary>>{}, this.me, this.error}): _rooms = rooms,_presence = presence,_typing = typing,super._();
+  const _ChatListState({this.status = LoadStatus.initial, final  List<ChatRoom> rooms = const <ChatRoom>[], this.nextCursor, this.loadingMore = false, final  Map<String, Set<String>> presence = const <String, Set<String>>{}, final  Map<String, Map<String, UserSummary>> typing = const <String, Map<String, UserSummary>>{}, this.me, this.error}): _rooms = rooms,_presence = presence,_typing = typing,super._();
   
 
 @override@JsonKey() final  LoadStatus status;
@@ -233,6 +235,8 @@ class _ChatListState extends ChatListState {
   return EqualUnmodifiableListView(_rooms);
 }
 
+@override final  String? nextCursor;
+@override@JsonKey() final  bool loadingMore;
  final  Map<String, Set<String>> _presence;
 @override@JsonKey() Map<String, Set<String>> get presence {
   if (_presence is EqualUnmodifiableMapView) return _presence;
@@ -260,16 +264,16 @@ _$ChatListStateCopyWith<_ChatListState> get copyWith => __$ChatListStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatListState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._rooms, _rooms)&&const DeepCollectionEquality().equals(other._presence, _presence)&&const DeepCollectionEquality().equals(other._typing, _typing)&&(identical(other.me, me) || other.me == me)&&const DeepCollectionEquality().equals(other.error, error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatListState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._rooms, _rooms)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.loadingMore, loadingMore) || other.loadingMore == loadingMore)&&const DeepCollectionEquality().equals(other._presence, _presence)&&const DeepCollectionEquality().equals(other._typing, _typing)&&(identical(other.me, me) || other.me == me)&&const DeepCollectionEquality().equals(other.error, error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(_rooms),const DeepCollectionEquality().hash(_presence),const DeepCollectionEquality().hash(_typing),me,const DeepCollectionEquality().hash(error));
+int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(_rooms),nextCursor,loadingMore,const DeepCollectionEquality().hash(_presence),const DeepCollectionEquality().hash(_typing),me,const DeepCollectionEquality().hash(error));
 
 @override
 String toString() {
-  return 'ChatListState(status: $status, rooms: $rooms, presence: $presence, typing: $typing, me: $me, error: $error)';
+  return 'ChatListState(status: $status, rooms: $rooms, nextCursor: $nextCursor, loadingMore: $loadingMore, presence: $presence, typing: $typing, me: $me, error: $error)';
 }
 
 
@@ -280,7 +284,7 @@ abstract mixin class _$ChatListStateCopyWith<$Res> implements $ChatListStateCopy
   factory _$ChatListStateCopyWith(_ChatListState value, $Res Function(_ChatListState) _then) = __$ChatListStateCopyWithImpl;
 @override @useResult
 $Res call({
- LoadStatus status, List<ChatRoom> rooms, Map<String, Set<String>> presence, Map<String, Map<String, UserSummary>> typing, UserSummary? me, Object? error
+ LoadStatus status, List<ChatRoom> rooms, String? nextCursor, bool loadingMore, Map<String, Set<String>> presence, Map<String, Map<String, UserSummary>> typing, UserSummary? me, Object? error
 });
 
 
@@ -297,11 +301,13 @@ class __$ChatListStateCopyWithImpl<$Res>
 
 /// Create a copy of ChatListState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? rooms = null,Object? presence = null,Object? typing = null,Object? me = freezed,Object? error = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? rooms = null,Object? nextCursor = freezed,Object? loadingMore = null,Object? presence = null,Object? typing = null,Object? me = freezed,Object? error = freezed,}) {
   return _then(_ChatListState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as LoadStatus,rooms: null == rooms ? _self._rooms : rooms // ignore: cast_nullable_to_non_nullable
-as List<ChatRoom>,presence: null == presence ? _self._presence : presence // ignore: cast_nullable_to_non_nullable
+as List<ChatRoom>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
+as String?,loadingMore: null == loadingMore ? _self.loadingMore : loadingMore // ignore: cast_nullable_to_non_nullable
+as bool,presence: null == presence ? _self._presence : presence // ignore: cast_nullable_to_non_nullable
 as Map<String, Set<String>>,typing: null == typing ? _self._typing : typing // ignore: cast_nullable_to_non_nullable
 as Map<String, Map<String, UserSummary>>,me: freezed == me ? _self.me : me // ignore: cast_nullable_to_non_nullable
 as UserSummary?,error: freezed == error ? _self.error : error ,

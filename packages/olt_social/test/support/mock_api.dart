@@ -64,8 +64,32 @@ Map<String, dynamic> commentRow(String id, {String? parentId, int depth = 0, boo
   'cursor': '1',
 };
 
-Map<String, dynamic> roomRow({String status = 'delivered', String sender = 'u-1'}) => {
-  'id': 'r-1',
+Map<String, dynamic> messageRow(String id) => {
+  'id': id,
+  'room_id': 'r-1',
+  'sender_id': 'u-2',
+  'sender_username': 'sari_invest',
+  'sender_display_name': 'Sari',
+  'sender_avatar_url': null,
+  'body': 'Pesan $id',
+  'is_deleted': false,
+  'reply_to_id': null,
+  'reply_to_body': null,
+  'reply_to_sender_username': null,
+  'attachments': <Object?>[],
+  'client_id': null,
+  'edited_at': null,
+  'created_at': '2026-10-29T03:00:00+00:00',
+  'cursor': '2026-10-29T03:00:00.000000Z|$id',
+};
+
+Map<String, dynamic> roomRow({
+  String id = 'r-1',
+  String status = 'delivered',
+  String sender = 'u-1',
+  String cursor = '0|2026-10-29T03:00:00.000000Z|r-1',
+}) => {
+  'id': id,
   'type': 'direct',
   'name': null,
   'stock_code': null,
@@ -85,4 +109,5 @@ Map<String, dynamic> roomRow({String status = 'delivered', String sender = 'u-1'
   'other_display_name': 'Sari',
   'other_avatar_url': null,
   'other_is_verified': false,
+  'cursor': cursor,
 };

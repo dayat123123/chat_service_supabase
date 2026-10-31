@@ -7,6 +7,7 @@ import 'package:olt_social/src/core/paging/paged.dart';
 import 'package:olt_social/src/features/chat/data/models/chat_models.dart';
 import 'package:olt_social/src/features/chat/data/realtime/room_channel_hub.dart';
 import 'package:olt_social/src/features/chat/data/realtime/room_connection.dart';
+import 'package:olt_social/src/features/chat/data/repositories/message_pages.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
@@ -30,7 +31,11 @@ class SupportChatRepository implements ChatRepository {
   static const _locked = OltSocialException(OltSocialErrorKind.forbidden, code: 'support_message_locked');
 
   @override
-  Future<List<ChatRoom>> getRooms() => _rooms();
+  Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30}) async =>
+      cursor == null ? Paged(await _rooms()) : const Paged.empty();
+
+  @override
+  Future<ChatRoom?> getRoom(String roomId) async => (await _rooms()).where((r) => r.id == roomId).firstOrNull;
 
   @override
   Future<Paged<ChatMessage>> getMessages(String roomId, {String? cursor, int limit = 30}) async {
@@ -40,9 +45,9 @@ class SupportChatRepository implements ChatRepository {
   }
 
   @override
-  Future<List<ChatMessage>> getMessagesAfter(String roomId, String cursor) async {
-    final rows = await _cs.rpcRows('get_messages', {'p_room_id': roomId, 'p_after': cursor, 'p_limit': 100});
-    return [for (final row in rows) ChatMessageModel.fromJson(row).toEntity()];
+  Future<Paged<ChatMessage>> getMessagesAfter(String roomId, String cursor, {int limit = 100}) async {
+    final rows = await _cs.rpcRows('get_messages', {'p_room_id': roomId, 'p_after': cursor, 'p_limit': limit});
+    return newerPage([for (final row in rows) ChatMessageModel.fromJson(row).toEntity()], limit);
   }
 
   @override

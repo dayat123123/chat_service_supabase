@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/app/olt_social_scope.dart';
 import 'package:olt_social/src/app/olt_support_scope.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
 import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
 import 'package:olt_social/src/features/support/presentation/cubit/support_cubit.dart';
 import 'package:olt_social/src/features/support/presentation/widgets/olt_support_tickets.dart';
@@ -132,10 +133,13 @@ class SupportHeader extends StatelessWidget {
       case _MenuAction.myTickets:
         if (!context.mounted) return;
         final deps = OltSocialScope.of(context);
+        final carry = carryChatBuilders(context);
         await Navigator.of(context).push(MaterialPageRoute<void>(
-          builder: (_) => OltSocialScope(
-            dependencies: deps,
-            child: Scaffold(appBar: AppBar(title: Text(l10n.supportMyTickets)), body: const OltSupportTickets()),
+          builder: (_) => carry(
+            OltSocialScope(
+              dependencies: deps,
+              child: Scaffold(appBar: AppBar(title: Text(l10n.supportMyTickets)), body: const OltSupportTickets()),
+            ),
           ),
         ));
     }

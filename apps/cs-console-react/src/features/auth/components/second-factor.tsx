@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CheckIcon, CopyIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 
@@ -9,9 +9,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { errorText } from '@/lib/error-text'
+import { cn } from '@/lib/utils'
 
 import { useAuth } from '../hooks'
 import { AuthError, AuthFrame, FieldError, SubmitButton } from './auth-frame'
+
+const CODE_LENGTH = 6
 
 const codeSchema = z.object({
   code: z
@@ -25,7 +28,11 @@ function CodeForm({ submitLabel }: { submitLabel: string }) {
   const busy = useAuth((state) => state.busy)
   const verify = useAuth((state) => state.verify)
   const form = useForm<{ code: string }>({ resolver: zodResolver(codeSchema), defaultValues: { code: '' } })
+  const code = useWatch({ control: form.control, name: 'code' })
+  const [focused, setFocused] = useState(false)
+  const { onBlur, ...field } = form.register('code')
   const error = form.formState.errors.code
+  const active = Math.min(code.length, CODE_LENGTH - 1)
   return (
     <form
       noValidate
@@ -34,17 +41,38 @@ function CodeForm({ submitLabel }: { submitLabel: string }) {
     >
       <div className="flex flex-col gap-2">
         <Label htmlFor="code">{t('auth.code')}</Label>
-        <Input
-          id="code"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          autoFocus
-          maxLength={6}
-          className="tabular h-11 text-center text-lg tracking-[0.5em]"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? 'code-error' : undefined}
-          {...form.register('code')}
-        />
+        <div className="relative">
+          <Input
+            id="code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            autoFocus
+            maxLength={CODE_LENGTH}
+            className="absolute inset-0 h-full cursor-text caret-transparent opacity-0"
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? 'code-error' : undefined}
+            onFocus={() => setFocused(true)}
+            onBlur={(event) => {
+              setFocused(false)
+              void onBlur(event)
+            }}
+            {...field}
+          />
+          <div aria-hidden="true" className="pointer-events-none grid grid-cols-6 gap-2">
+            {Array.from({ length: CODE_LENGTH }, (_, index) => (
+              <span
+                key={index}
+                className={cn(
+                  'tabular flex h-11 items-center justify-center rounded-md border bg-background font-mono text-lg',
+                  error && 'border-destructive',
+                  focused && index === active && 'border-ring/60 ring-2 ring-ring/15',
+                )}
+              >
+                {code[index] ?? ''}
+              </span>
+            ))}
+          </div>
+        </div>
         <FieldError id="code-error" message={error?.message && t(error.message as 'auth.codeInvalid')} />
       </div>
       <SubmitButton busy={busy} label={submitLabel} />
@@ -89,13 +117,13 @@ export function EnrollPage({ secret, qr }: { secret: string; qr: string }) {
           alt={t('auth.qrAlt')}
           width={184}
           height={184}
-          className="rounded-lg border bg-white p-2"
+          className="rounded-lg border bg-qr p-2"
         />
       </div>
       <div className="flex items-center gap-2">
         <div className="flex-1">
           <p className="text-xs text-muted-foreground">{t('auth.manualKey')}</p>
-          <p className="font-mono text-sm break-all select-all">{grouped}</p>
+          <p className="font-mono text-row break-all select-all">{grouped}</p>
         </div>
         <Button
           variant="ghost"

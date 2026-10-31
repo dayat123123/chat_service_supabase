@@ -8,6 +8,7 @@ import 'package:olt_social/src/features/chat/domain/entities/chat_events.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_message.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
 import 'package:olt_social/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/olt_chat_room.dart';
 import 'package:olt_social/src/features/support/domain/entities/support_ticket.dart';
 import 'package:olt_social/src/features/support/domain/repositories/support_repository.dart';
@@ -67,16 +68,19 @@ class _OltSupportTicketsState extends State<OltSupportTickets> {
   Future<void> _openTranscript(BuildContext context, SupportTicket ticket) {
     final deps = OltSocialScope.of(context);
     final support = OltSupportScope.of(context).support;
+    final carry = carryChatBuilders(context);
     return Navigator.of(context).push(MaterialPageRoute<void>(
-      builder: (_) => OltSocialScope(
-        dependencies: deps,
-        child: Scaffold(
-          appBar: AppBar(title: Text('${ticket.ticketNumber} · ${ticket.topicName ?? ticket.topic}')),
-          body: OltChatRoom(
-            roomId: ticket.roomId,
-            repository: _TranscriptRepository(support, ticket),
-            showHeader: false,
-            composer: const SizedBox.shrink(),
+      builder: (_) => carry(
+        OltSocialScope(
+          dependencies: deps,
+          child: Scaffold(
+            appBar: AppBar(title: Text('${ticket.ticketNumber} · ${ticket.topicName ?? ticket.topic}')),
+            body: OltChatRoom(
+              roomId: ticket.roomId,
+              repository: _TranscriptRepository(support, ticket),
+              showHeader: false,
+              composer: const SizedBox.shrink(),
+            ),
           ),
         ),
       ),
@@ -92,10 +96,15 @@ class _TranscriptRepository implements ChatRepository {
 
   static const _readOnly = OltSocialException(OltSocialErrorKind.forbidden, code: 'transcript_read_only');
 
+  ChatRoom get _room =>
+      ChatRoom(id: _ticket.roomId, type: RoomType.support, createdAt: _ticket.createdAt, lastReadAt: _ticket.createdAt);
+
   @override
-  Future<List<ChatRoom>> getRooms() async => [
-    ChatRoom(id: _ticket.roomId, type: RoomType.support, createdAt: _ticket.createdAt, lastReadAt: _ticket.createdAt),
-  ];
+  Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30}) async =>
+      cursor == null ? Paged([_room]) : const Paged.empty();
+
+  @override
+  Future<ChatRoom?> getRoom(String roomId) async => roomId == _ticket.roomId ? _room : null;
 
   @override
   Future<Paged<ChatMessage>> getMessages(String roomId, {String? cursor, int limit = 30}) async {
@@ -105,7 +114,8 @@ class _TranscriptRepository implements ChatRepository {
   }
 
   @override
-  Future<List<ChatMessage>> getMessagesAfter(String roomId, String cursor) async => const [];
+  Future<Paged<ChatMessage>> getMessagesAfter(String roomId, String cursor, {int limit = 100}) async =>
+      const Paged.empty();
 
   @override
   Future<List<RoomMember>> getMembers(String roomId) async => const [];

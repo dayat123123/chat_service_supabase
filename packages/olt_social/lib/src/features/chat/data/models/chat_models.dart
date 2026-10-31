@@ -148,6 +148,7 @@ abstract class RoomSummaryModel with _$RoomSummaryModel {
     String? otherDisplayName,
     String? otherAvatarUrl,
     @Default(false) bool otherIsVerified,
+    String? cursor,
   }) = _RoomSummaryModel;
 
   const RoomSummaryModel._();

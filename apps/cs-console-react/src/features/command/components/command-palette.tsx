@@ -19,7 +19,7 @@ import {
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { PriorityBadge, StatusDot, TicketStatusBadge } from '@/components/badges'
+import { PriorityText, StatusDot, TicketStatusText } from '@/components/badges'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import {
   Command,
@@ -238,7 +238,7 @@ function PaletteBody({
   return (
     <Command shouldFilter={false} loop label={t('command.label')}>
       <CommandInput value={query} onValueChange={setQuery} placeholder={t('command.placeholder')} />
-      <CommandList className="max-h-[min(420px,60vh)] scrollbar-thin">
+      <CommandList className="max-h-[min(420px,60vh)]">
         {searching ? (
           <div className="px-3 py-2 text-xs text-muted-foreground" aria-live="polite">
             {t('tickets.searching')}
@@ -256,13 +256,15 @@ function PaletteBody({
                 onSelect={() => choose(() => onOpenTicket(ticket.id))}
               >
                 <TicketIcon className="text-muted-foreground" />
-                <span className="tabular font-semibold">#{ticket.ticket_number}</span>
                 <span className="min-w-0 flex-1 truncate">
                   {customerName(ticket)}
                   <span className="text-muted-foreground"> · {topicName(ticket.topic)}</span>
                 </span>
-                <PriorityBadge priority={ticket.priority} />
-                <TicketStatusBadge status={ticket.status} />
+                <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {ticket.ticket_number}
+                </span>
+                <PriorityText priority={ticket.priority} className="w-5 shrink-0 text-xs" />
+                <TicketStatusText status={ticket.status} className="hidden w-28 shrink-0 truncate sm:block" />
               </CommandItem>
             ))}
           </Section>
@@ -289,7 +291,7 @@ function PaletteBody({
                 value={item.id}
                 onSelect={() => choose(() => setStatus.mutate({ status: item.status }))}
               >
-                <StatusDot status={item.status} className="mx-0.5" />
+                <StatusDot status={item.status} className="mx-1" />
                 <span className="flex-1 truncate">{item.label}</span>
               </CommandItem>
             ))}
@@ -322,7 +324,7 @@ export function CommandPalette({ onOpenTicket }: { onOpenTicket: (ticketId: stri
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
-        className="top-[16%] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-xl"
+        className="top-[16%] translate-y-0 gap-0 overflow-hidden p-0 sm:max-w-[560px]"
         aria-describedby={undefined}
         onCloseAutoFocus={(event) => {
           if (!chosen.current) return

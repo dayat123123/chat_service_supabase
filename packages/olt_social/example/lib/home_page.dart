@@ -141,6 +141,11 @@ class _HomePageState extends State<HomePage> {
     final actions = [
       IconButton(tooltip: 'Tema terang/gelap', onPressed: () => toggleTheme(context), icon: const Icon(Icons.brightness_6)),
       IconButton(tooltip: 'Bahasa ID/EN', onPressed: () => toggleLocale(context), icon: const Icon(Icons.translate)),
+      IconButton(
+        tooltip: 'Gaya chat bawaan/kustom',
+        onPressed: () => toggleChatStyle(context),
+        icon: const Icon(Icons.palette_outlined),
+      ),
       IconButton(tooltip: 'Logout', onPressed: _logout, icon: const Icon(Icons.logout)),
     ];
 

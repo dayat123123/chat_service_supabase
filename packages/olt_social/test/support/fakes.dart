@@ -9,6 +9,8 @@ const bob = UserSummary(id: 'u-b', username: 'bob_user', displayName: 'Bob');
 
 final now = DateTime.now().toUtc();
 
+String messageCursor(ChatMessage m) => m.cursor ?? '${m.createdAt.toUtc().toIso8601String()}|${m.id}';
+
 ThreadComment comment(
   String id, {
   String? parentId,
@@ -116,13 +118,36 @@ class FakeChatRepository extends Fake implements ChatRepository {
   final watchedRoomIds = <Set<String>>[];
   final delivered = <List<String>?>[];
   final readRooms = <String>[];
+  final olderCursors = <String?>[];
+  final roomCursors = <String?>[];
+  final mutedRooms = <String, bool>{};
+  final deletedMessages = <String>[];
+  Object? messagesError;
+  final afterCursors = <String>[];
   int unreadChats = 0;
   int unreadChatCalls = 0;
   Object? unreadChatError;
   Object? sendError;
 
   @override
-  Future<List<ChatRoom>> getRooms() async => rooms;
+  Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30}) async {
+    roomCursors.add(cursor);
+    final ordered = [...rooms]..sort(_listOrder);
+    final start = cursor == null ? 0 : ordered.indexWhere((r) => r.id == cursor) + 1;
+    if (start == 0 && cursor != null) throw StateError('cursor room tidak dikenal: $cursor');
+    final items = ordered.skip(start).take(limit).toList();
+    return Paged(items, nextCursor: items.length < limit ? null : items.last.id);
+  }
+
+  @override
+  Future<ChatRoom?> getRoom(String roomId) async => rooms.where((r) => r.id == roomId).firstOrNull;
+
+  static int _listOrder(ChatRoom a, ChatRoom b) {
+    final pinned = (b.type == RoomType.support ? 1 : 0) - (a.type == RoomType.support ? 1 : 0);
+    if (pinned != 0) return pinned;
+    final time = (b.lastMessageAt ?? b.createdAt).compareTo(a.lastMessageAt ?? a.createdAt);
+    return time != 0 ? time : b.id.compareTo(a.id);
+  }
 
   @override
   Future<int> unreadChatCount() async {
@@ -139,7 +164,34 @@ class FakeChatRepository extends Fake implements ChatRepository {
   Future<List<RoomMember>> getMembers(String roomId) async => members;
 
   @override
-  Future<Paged<ChatMessage>> getMessages(String roomId, {String? cursor, int limit = 30}) async => Paged(messages);
+  Future<Paged<ChatMessage>> getMessages(String roomId, {String? cursor, int limit = 30}) async {
+    olderCursors.add(cursor);
+    final error = messagesError;
+    if (error != null) throw error;
+    final newestFirst = [...messages]..sort((a, b) => _byTime(b, a));
+    final start = cursor == null ? 0 : _indexOf(newestFirst, cursor) + 1;
+    final items = newestFirst.skip(start).take(limit).toList();
+    return Paged(items, nextCursor: items.length < limit ? null : messageCursor(items.last));
+  }
+
+  @override
+  Future<Paged<ChatMessage>> getMessagesAfter(String roomId, String cursor, {int limit = 100}) async {
+    afterCursors.add(cursor);
+    final oldestFirst = [...messages]..sort(_byTime);
+    final items = oldestFirst.skip(_indexOf(oldestFirst, cursor) + 1).take(limit).toList();
+    return Paged(items.reversed.toList(), nextCursor: items.length < limit ? null : messageCursor(items.last));
+  }
+
+  static int _byTime(ChatMessage a, ChatMessage b) {
+    final time = a.createdAt.compareTo(b.createdAt);
+    return time != 0 ? time : a.id.compareTo(b.id);
+  }
+
+  static int _indexOf(List<ChatMessage> list, String cursor) {
+    final index = list.indexWhere((m) => messageCursor(m) == cursor);
+    if (index < 0) throw StateError('cursor tidak dikenal: $cursor');
+    return index;
+  }
 
   @override
   Stream<RoomActivity> watchRoomActivity() => activity.stream;
@@ -158,6 +210,12 @@ class FakeChatRepository extends Fake implements ChatRepository {
 
   @override
   Future<void> markRoomRead(String roomId) async => readRooms.add(roomId);
+
+  @override
+  Future<void> setMuted(String roomId, {required bool muted}) async => mutedRooms[roomId] = muted;
+
+  @override
+  Future<void> deleteMessage(String messageId) async => deletedMessages.add(messageId);
 
   @override
   Future<ChatMessage> sendMessage(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:olt_social/src/features/chat/domain/entities/chat_room.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_builders.dart';
+import 'package:olt_social/src/features/chat/presentation/builders/olt_chat_details.dart';
 import 'package:olt_social/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:olt_social/src/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:olt_social/src/shared/presentation/l10n/l10n.dart';
@@ -19,9 +21,11 @@ class _MessageListState extends State<MessageList> {
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() {
-      if (_scroll.position.extentAfter < 400) context.read<ChatRoomCubit>().loadOlder();
-    });
+    _scroll.addListener(_loadOlderNearTop);
+  }
+
+  void _loadOlderNearTop() {
+    if (_scroll.hasClients && _scroll.position.extentAfter < 400) context.read<ChatRoomCubit>().loadOlder();
   }
 
   @override
@@ -32,13 +36,23 @@ class _MessageListState extends State<MessageList> {
 
   @override
   Widget build(BuildContext context) {
+    final builders = OltChatBuilders.of(context);
+    final l10n = context.oltL10n;
     return BlocBuilder<ChatRoomCubit, ChatRoomState>(
       buildWhen: (a, b) =>
           a.messages != b.messages || a.members != b.members || a.loadingOlder != b.loadingOlder || a.room != b.room,
       builder: (context, state) {
         if (state.messages.isEmpty) {
-          return OltEmptyView(message: context.oltL10n.messageHint, icon: Icons.waving_hand_outlined);
+          return buildChatPart(
+            builders.empty,
+            context,
+            OltEmptyDetails(kind: OltChatEmpty.messages, message: l10n.messageHint),
+            OltEmptyView(message: l10n.messageHint, icon: Icons.waving_hand_outlined),
+          );
         }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadOlderNearTop();
+        });
         return ListView.builder(
           controller: _scroll,
           reverse: true,
@@ -46,7 +60,12 @@ class _MessageListState extends State<MessageList> {
           itemCount: state.messages.length + (state.loadingOlder ? 1 : 0),
           itemBuilder: (context, i) {
             if (i == state.messages.length) {
-              return const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator()));
+              return buildChatPart(
+                builders.loading,
+                context,
+                const OltLoadingDetails(OltChatLoad.olderMessages),
+                const Padding(padding: EdgeInsets.all(12), child: Center(child: CircularProgressIndicator())),
+              );
             }
             final message = state.messages[i];
             final older = i + 1 < state.messages.length ? state.messages[i + 1] : null;
@@ -63,12 +82,19 @@ class _MessageListState extends State<MessageList> {
               mine: mine,
               receipt: state.receiptOf(message),
               showSender: !grouped && state.room?.type != RoomType.direct && !mine,
+              startsGroup: !grouped,
             );
             if (!newDay) return bubble;
+            final divider = buildChatPart(
+              builders.dayDivider,
+              context,
+              OltDayDetails(day: message.createdAt, label: l10n.dayLabel(message.createdAt)),
+              _DayDivider(time: message.createdAt),
+            );
             return Column(
               key: ValueKey('day-${message.clientId ?? message.id}'),
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [_DayDivider(time: message.createdAt), bubble],
+              children: [divider, bubble],
             );
           },
         );

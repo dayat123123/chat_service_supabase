@@ -87,4 +87,53 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 900));
     expect(chat.readRooms, ['dm']);
   });
+
+  group('tersambung ulang setelah putus', () {
+    List<ChatMessage> missed(int count) => [
+      for (var i = 1; i <= count; i++)
+        ChatMessage(
+          id: 'n-${i.toString().padLeft(3, '0')}',
+          roomId: 'dm',
+          senderId: alice.id,
+          sender: alice,
+          body: 'Baru $i',
+          createdAt: sentAt.add(Duration(seconds: i)),
+        ),
+    ];
+
+    Future<void> reconnect(FakeChatRepository repository) async {
+      repository.roomEvents
+        ..add(const ConnectionChanged(RealtimeStatus.connected))
+        ..add(const ConnectionChanged(RealtimeStatus.reconnecting))
+        ..add(const ConnectionChanged(RealtimeStatus.connected));
+      await pumpEventQueue();
+    }
+
+    test('lebih dari 100 pesan masuk selama putus: semuanya disusulkan', () async {
+      chat.messages = [...missed(150), ...chat.messages];
+      await reconnect(chat);
+
+      expect(cubit.state.messages, hasLength(152));
+      expect(cubit.state.messages.first.id, 'n-150');
+      expect(cubit.state.messages[50].id, 'n-100');
+    });
+
+    test('susulan terlalu panjang: room dimuat ulang dari pesan terbaru', () async {
+      final far = ChatRoomCubit(chat: chat, media: _NoMedia(), me: () async => me, roomId: 'dm', maxGapPages: 2);
+      addTearDown(far.close);
+      await far.load();
+      chat.sendError = Exception('offline');
+      await far.send('Belum terkirim');
+      chat.messages = [...missed(250), ...chat.messages];
+      await reconnect(chat);
+
+      final unsent = far.state.messages.where((m) => m.isLocal).toList();
+      final synced = far.state.messages.where((m) => !m.isLocal).toList();
+      expect(unsent.single.body, 'Belum terkirim');
+      expect(synced, hasLength(30));
+      expect(synced.first.id, 'n-250');
+      expect(synced.last.id, 'n-221');
+      expect(far.state.nextCursor, isNotNull);
+    });
+  });
 }

@@ -19,8 +19,8 @@ import { formatDay, formatNumber } from '@/lib/time'
 import type { ReportStats } from '../types'
 
 const series = [
-  { key: 'created', label: 'reports.created', color: chartColors.series1 },
-  { key: 'resolved', label: 'reports.resolved', color: chartColors.series2 },
+  { key: 'created', label: 'reports.created', color: chartColors.neutral, dash: '4 3' },
+  { key: 'resolved', label: 'reports.resolved', color: chartColors.accent, dash: undefined },
 ] as const
 
 const endLabel =
@@ -28,7 +28,7 @@ const endLabel =
   ({ x, y, value, index }: LabelProps) => {
     if (index !== last || x === undefined || y === undefined) return null
     return (
-      <text x={Number(x) + 8} y={Number(y)} dy={4} fill="var(--foreground)" fontSize={12} fontWeight={600}>
+      <text x={Number(x) + 8} y={Number(y)} dy={4} fill={chartColors.label} fontSize={12} fontWeight={500}>
         {formatNumber(Number(value ?? 0))}
       </text>
     )
@@ -53,11 +53,17 @@ export function DailyChart({ daily }: { daily: ReportStats[] }) {
       <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         {series.map((item) => (
           <li key={item.key} className="inline-flex items-center gap-1.5">
-            <span
-              aria-hidden="true"
-              className="h-0.5 w-4 rounded-full"
-              style={{ backgroundColor: item.color }}
-            />
+            <svg aria-hidden="true" width="16" height="2" className="shrink-0">
+              <line
+                x1="0"
+                y1="1"
+                x2="16"
+                y2="1"
+                stroke={item.color}
+                strokeWidth="2"
+                strokeDasharray={item.dash}
+              />
+            </svg>
             {t(item.label)}
           </li>
         ))}
@@ -65,7 +71,7 @@ export function DailyChart({ daily }: { daily: ReportStats[] }) {
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: labelled ? 40 : 16, bottom: 0, left: 0 }}>
-            <CartesianGrid vertical={false} stroke={chartColors.grid} />
+            <CartesianGrid vertical={false} stroke={chartColors.grid} strokeDasharray="2 4" />
             <XAxis
               dataKey="day"
               tickLine={false}
@@ -93,10 +99,11 @@ export function DailyChart({ daily }: { daily: ReportStats[] }) {
                 name={t(item.label)}
                 stroke={item.color}
                 strokeWidth={2}
+                strokeDasharray={item.dash}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                dot={dots ? { r: 4, strokeWidth: 2, stroke: chartColors.surface, fill: item.color } : false}
-                activeDot={{ r: 5, strokeWidth: 2, stroke: chartColors.surface, fill: item.color }}
+                dot={dots ? { r: 3, strokeWidth: 2, stroke: chartColors.surface, fill: item.color } : false}
+                activeDot={{ r: 4, strokeWidth: 2, stroke: chartColors.surface, fill: item.color }}
                 isAnimationActive={false}
               >
                 {labelled ? <LabelList dataKey={item.key} content={endLabel(last)} /> : null}

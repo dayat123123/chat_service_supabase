@@ -1,10 +1,11 @@
 export const chartColors = {
-  series1: 'var(--chart-1)',
-  series2: 'var(--chart-2)',
+  accent: 'var(--primary)',
+  neutral: 'var(--chart-neutral)',
   grid: 'var(--border)',
-  axis: 'var(--muted-foreground)',
-  surface: 'var(--card)',
-  cursor: 'var(--muted)',
+  axis: 'var(--text-muted)',
+  label: 'var(--text)',
+  surface: 'var(--bg)',
+  cursor: 'var(--bg-muted)',
 }
 
-export const axisTick = { fill: chartColors.axis, fontSize: 11 }
+export const axisTick = { fill: chartColors.axis, fontSize: 12 }

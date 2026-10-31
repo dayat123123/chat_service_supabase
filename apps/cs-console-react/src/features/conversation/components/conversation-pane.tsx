@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { LoaderCircleIcon, LockIcon } from 'lucide-react'
+import { LoaderCircleIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 
 import { ErrorState } from '@/components/states'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/primitives'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
 import { CardDetailDialog, type CardRef } from '@/features/customer/components/card-detail-dialog'
+import { useNotes } from '@/features/customer/hooks'
 import { atCapacity, isSupervisor } from '@/features/presence/types'
 import { ticketsApi } from '@/features/tickets/api'
 import { useClaimTicket, useTicketAction, useTicketDetail, useTopics } from '@/features/tickets/hooks'
@@ -30,27 +31,50 @@ import { Composer } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { MessageList } from './message-list'
 
-function ReadOnlyBar({ ticket }: { ticket: Ticket }) {
+function ReadOnlyBar({
+  ticket,
+  canJoin,
+  joining,
+  onJoin,
+}: {
+  ticket: Ticket
+  canJoin: boolean
+  joining: boolean
+  onJoin: () => void
+}) {
   const { t } = useTranslation()
   const agent = useAgent()
   const claim = useClaimTicket()
   const canClaim = agent.status === 'online' && !atCapacity(agent)
-  const text =
-    ticket.status === 'open'
-      ? t('conversation.readOnlyPreview')
-      : ticket.status === 'resolved'
-        ? t('conversation.resolvedNote')
-        : ticket.status === 'closed'
-          ? t('conversation.closedNote')
-          : t('conversation.handledByOther', { name: ticket.owner?.display_name ?? '' })
+  const owned = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
   return (
-    <div className="flex items-center gap-3 border-t bg-muted/60 px-4 py-3" role="status">
-      <LockIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <p className="flex-1 text-sm text-muted-foreground">{text}</p>
+    <div
+      className="flex min-h-12 shrink-0 items-center gap-3 border-t bg-subtle px-(--pane-px) py-2"
+      role="status"
+    >
+      <p className="min-w-0 flex-1 text-row text-muted-foreground">
+        {ticket.status === 'open' ? (
+          t('conversation.readOnlyPreview')
+        ) : ticket.status === 'resolved' ? (
+          t('conversation.resolvedNote')
+        ) : ticket.status === 'closed' ? (
+          t('conversation.closedNote')
+        ) : (
+          <Trans
+            i18nKey="conversation.handledByOther"
+            values={{ name: ticket.owner?.display_name ?? '' }}
+            components={{ strong: <strong className="font-medium text-foreground" /> }}
+          />
+        )}
+      </p>
       {ticket.status === 'open' ? (
         <Button size="sm" disabled={!canClaim || claim.isPending} onClick={() => claim.mutate(ticket.id)}>
           {claim.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
           {t('tickets.claimTicket')}
+        </Button>
+      ) : owned && canJoin ? (
+        <Button size="sm" variant="outline" disabled={joining} onClick={onJoin}>
+          {t('conversation.join')}
         </Button>
       ) : null}
     </div>
@@ -79,6 +103,11 @@ function Conversation({
   const room = useRoom(ticket, me)
   const messages = useMessages(ticket.room_id)
   const members = useMembers(ticket.room_id)
+  const notes = useNotes(ticket.customer?.id)
+  const ticketNotes = useMemo(
+    () => (notes.data ?? []).filter((note) => note.ticket_id === ticket.id),
+    [notes.data, ticket.id],
+  )
   const pendingAll = usePending((state) => state.items)
   const pending = useMemo(
     () => pendingAll.filter((item) => item.roomId === ticket.room_id),
@@ -177,7 +206,6 @@ function Conversation({
         meId={agent.id}
         owner={owner}
         supervisor={supervisor}
-        joined={joined}
         customerOnline={room.customerOnline}
         infoOpen={infoOpen}
         busy={busy}
@@ -185,20 +213,20 @@ function Conversation({
         onBack={onBack}
         onAction={setAction}
         onWait={() => wait.mutate(undefined)}
-        onJoin={() => join.mutate(undefined)}
         onPriority={(value) => priority.mutate(value)}
       />
       {messages.isPending ? (
-        <div className="flex flex-1 flex-col gap-3 p-4">
-          <Skeleton className="h-10 w-2/3" />
-          <Skeleton className="ml-auto h-10 w-1/2" />
-          <Skeleton className="h-10 w-3/5" />
+        <div className="flex flex-1 flex-col gap-3 p-(--pane-px)" aria-busy="true">
+          <Skeleton className="h-8 w-2/3 rounded-xl" />
+          <Skeleton className="ml-auto h-8 w-1/2 rounded-xl" />
+          <Skeleton className="h-8 w-3/5 rounded-xl" />
         </div>
       ) : messages.isError ? (
         <ErrorState className="flex-1" error={messages.error} onRetry={() => void messages.refetch()} />
       ) : (
         <MessageList
           messages={messages.messages}
+          notes={ticketNotes}
           pending={pending}
           meId={agent.id}
           customerReadAt={customer?.last_read_at ?? null}
@@ -212,7 +240,7 @@ function Conversation({
           onDiscard={discard}
         />
       )}
-      <div className="min-h-5 px-4 pb-1 text-xs text-muted-foreground" aria-live="polite">
+      <div className="min-h-5 px-(--pane-px) pb-1 text-xs text-muted-foreground" aria-live="polite">
         {room.typing ? t('conversation.typing', { name: room.typing }) : null}
       </div>
       {canReply ? (
@@ -226,7 +254,12 @@ function Conversation({
           onStopTyping={room.stopTyping}
         />
       ) : (
-        <ReadOnlyBar ticket={ticket} />
+        <ReadOnlyBar
+          ticket={ticket}
+          canJoin={supervisor && !joined}
+          joining={join.isPending}
+          onJoin={() => join.mutate(undefined)}
+        />
       )}
       <ActionDialog
         action={action}
@@ -257,9 +290,9 @@ export function ConversationPane({
   const detail = useTicketDetail(ticketId)
   if (detail.isPending) {
     return (
-      <div className="flex h-full flex-col gap-3 p-4" aria-busy="true">
-        <Skeleton className="h-6 w-1/3" />
-        <Skeleton className="h-4 w-1/2" />
+      <div className="flex h-full flex-col gap-2 p-(--pane-px)" aria-busy="true">
+        <Skeleton className="h-3 w-1/4" />
+        <Skeleton className="h-2.5 w-2/5" />
       </div>
     )
   }

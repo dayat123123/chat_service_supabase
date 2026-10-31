@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:olt_social/olt_social.dart';
 
+import 'custom_chat_style.dart';
 import 'fake_olt_auth.dart';
 
 const _anonKey = String.fromEnvironment('OLT_SOCIAL_ANON_KEY');
@@ -32,6 +33,7 @@ class ExampleApp extends StatefulWidget {
 class _ExampleAppState extends State<ExampleApp> {
   ThemeMode _themeMode = ThemeMode.system;
   Locale _locale = const Locale('id');
+  bool _customChat = false;
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +60,11 @@ class _ExampleAppState extends State<ExampleApp> {
         toggleLocale: () => setState(() {
           _locale = _locale.languageCode == 'id' ? const Locale('en') : const Locale('id');
         }),
-        child: child!,
+        toggleChatStyle: () => setState(() => _customChat = !_customChat),
+        child: OltChatBuildersScope(
+          builders: _customChat ? customChatBuilders : const OltChatBuilders(),
+          child: child!,
+        ),
       ),
     );
   }
@@ -76,10 +82,16 @@ Future<void> _startSocial(FakeOltAuth auth) async {
 }
 
 class _SettingsScope extends InheritedWidget {
-  const _SettingsScope({required this.toggleTheme, required this.toggleLocale, required super.child});
+  const _SettingsScope({
+    required this.toggleTheme,
+    required this.toggleLocale,
+    required this.toggleChatStyle,
+    required super.child,
+  });
 
   final VoidCallback toggleTheme;
   final VoidCallback toggleLocale;
+  final VoidCallback toggleChatStyle;
 
   @override
   bool updateShouldNotify(_SettingsScope oldWidget) => false;
@@ -90,6 +102,9 @@ void toggleTheme(BuildContext context) =>
 
 void toggleLocale(BuildContext context) =>
     context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleLocale();
+
+void toggleChatStyle(BuildContext context) =>
+    context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleChatStyle();
 
 void openOltStockPage(BuildContext context, String code) {
   Navigator.of(context).push(

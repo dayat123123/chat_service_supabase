@@ -28,7 +28,7 @@ export function SortableTable<T extends RowData>({
     initialState: { sorting: initialSorting },
   })
   if (data.length === 0) {
-    return <p className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">{empty}</p>
+    return <p className="border-y py-3 text-row text-muted-foreground">{empty}</p>
   }
   return (
     <Table>
@@ -57,7 +57,7 @@ export function SortableTable<T extends RowData>({
                       onClick={header.column.getToggleSortingHandler()}
                       aria-label={t('reports.sortBy', { column: title })}
                       className={cn(
-                        'inline-flex items-center gap-1 rounded-sm outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                        'inline-flex items-center gap-1 rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
                         numeric && 'flex-row-reverse',
                         sorted && 'text-foreground',
                       )}

@@ -2,6 +2,7 @@ import { toApiError } from '@/lib/errors'
 import { rpc, supabase } from '@/lib/supabase'
 import { uuid } from '@/lib/utils'
 
+import { AFTER_LIMIT } from './cache'
 import type { Attachment, ChatMessage, QuickReply, RoomMember, SendResult } from './types'
 
 export const PAGE_SIZE = 50
@@ -44,9 +45,9 @@ export const conversationApi = {
       await rpc<ChatMessage[]>('get_messages', { p_room_id: roomId, p_cursor: cursor, p_limit: PAGE_SIZE })
     ).map(normalize),
   after: async (roomId: string, cursor: string) =>
-    (await rpc<ChatMessage[]>('get_messages', { p_room_id: roomId, p_after: cursor, p_limit: 100 })).map(
-      normalize,
-    ),
+    (
+      await rpc<ChatMessage[]>('get_messages', { p_room_id: roomId, p_after: cursor, p_limit: AFTER_LIMIT })
+    ).map(normalize),
   send: async (input: SendInput): Promise<SendResult> => {
     const result = await rpc<{ status: string; message?: unknown; code?: string }>('agent_send_message', {
       p_ticket_id: input.ticketId,

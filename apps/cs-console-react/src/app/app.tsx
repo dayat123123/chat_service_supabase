@@ -1,9 +1,9 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 import { LoaderCircleIcon } from 'lucide-react'
-import { lazy, Suspense, useEffect } from 'react'
-import { Toaster } from 'sonner'
+import { lazy, Suspense, useEffect, useState } from 'react'
 
 import { TooltipProvider } from '@/components/ui/menu'
+import { AppToaster } from '@/components/ui/toaster'
 import { LoginPage } from '@/features/auth/components/login-page'
 import { EnrollPage, PasswordPage, TotpPage } from '@/features/auth/components/second-factor'
 import { onSignedOut, useAuth } from '@/features/auth/hooks'
@@ -11,6 +11,7 @@ import { usePreferences, watchSystemTheme } from '@/lib/preferences'
 import { createQueryClient } from '@/lib/query-client'
 import { realtime } from '@/lib/realtime'
 import { removeLocalPrefix } from '@/lib/storage'
+import { appEnv } from '@/lib/supabase'
 import { tabs } from '@/lib/tabs'
 
 const queryClient = createQueryClient()
@@ -19,10 +20,18 @@ const loadWorkspace = () => import('./workspace')
 
 const Workspace = lazy(() => loadWorkspace().then((module) => ({ default: module.Workspace })))
 
+const DevUiPage = lazy(() =>
+  import('@/features/dev-ui/dev-ui-page').then((module) => ({ default: module.DevUiPage })),
+)
+
+function isDevUi() {
+  return window.location.pathname === '/dev/ui' && appEnv().appEnv === 'development'
+}
+
 function Loading() {
   return (
     <div className="flex h-full items-center justify-center" aria-busy="true">
-      <LoaderCircleIcon className="size-6 animate-spin text-muted-foreground" />
+      <LoaderCircleIcon className="size-4 animate-spin text-muted-foreground" />
     </div>
   )
 }
@@ -57,6 +66,7 @@ function AuthGate() {
 
 export function App() {
   const theme = usePreferences((state) => state.theme)
+  const [devUi] = useState(isDevUi)
 
   useEffect(() => {
     tabs.start()
@@ -78,8 +88,14 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthGate />
-        <Toaster theme={theme} position="bottom-left" richColors closeButton visibleToasts={4} />
+        {devUi ? (
+          <Suspense fallback={<Loading />}>
+            <DevUiPage />
+          </Suspense>
+        ) : (
+          <AuthGate />
+        )}
+        <AppToaster theme={theme} />
       </TooltipProvider>
     </QueryClientProvider>
   )

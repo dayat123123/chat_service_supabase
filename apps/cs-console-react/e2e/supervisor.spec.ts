@@ -20,7 +20,7 @@ test('supervisor bergabung ke tiket lalu memindahkannya ke CS lain', async ({ br
     await sinta.page.getByRole('link', { name: 'Tiket' }).click()
     await openTab(sinta.page, /^Semua aktif/)
     await openTicket(sinta.page, ticket.id, ticket.ticket_number)
-    await expect(sinta.page.getByText('Ditangani oleh Nadia. Kolom balas dinonaktifkan.')).toBeVisible()
+    await expect(sinta.page.getByText('Ditangani oleh Nadia')).toBeVisible()
     await expect(sinta.page.getByRole('textbox', { name: 'Balas' })).toHaveCount(0)
     await sinta.page.getByRole('button', { name: 'Gabung', exact: true }).click()
     await expect(sinta.page.getByText('Anda bergabung ke tiket ini.')).toBeVisible()
@@ -29,7 +29,7 @@ test('supervisor bergabung ke tiket lalu memindahkannya ke CS lain', async ({ br
     const note = `Supervisor ikut membantu ${tag()}`
     await box.fill(note)
     await box.press('Enter')
-    await expect(nadia.page.getByText(note)).toBeVisible()
+    await expect(nadia.page.getByRole('log').getByText(note)).toBeVisible()
 
     await sinta.page.getByRole('button', { name: 'Pindahkan ke…', exact: true }).click()
     const reassign = sinta.page.getByRole('dialog', { name: 'Pindahkan tiket' })

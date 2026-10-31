@@ -56,7 +56,7 @@ export function IdleGuard({ minutes }: { minutes: number }) {
 
   return (
     <AlertDialog open={remaining !== null}>
-      <AlertDialogContent className="sm:max-w-sm">
+      <AlertDialogContent>
         <AlertDialogTitle>{t('auth.idleTitle')}</AlertDialogTitle>
         <AlertDialogDescription aria-live="polite">
           {t('auth.idleBody', { seconds: remaining ?? 0 })}

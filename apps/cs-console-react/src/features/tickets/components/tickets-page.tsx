@@ -1,4 +1,3 @@
-import { MessagesSquareIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Group, Panel, Separator, useDefaultLayout } from 'react-resizable-panels'
@@ -25,7 +24,7 @@ function CustomerColumn({ ticketId }: { ticketId: string }) {
 
 function ResizeHandle() {
   return (
-    <Separator className="relative w-px bg-border transition-colors outline-none after:absolute after:inset-y-0 after:-left-1 after:w-3 hover:bg-primary/60 focus-visible:bg-primary data-[separator=active]:bg-primary" />
+    <Separator className="relative w-px bg-border transition-colors outline-none after:absolute after:inset-y-0 after:-left-1 after:w-3 hover:bg-strong focus-visible:bg-foreground data-[separator=active]:bg-foreground" />
   )
 }
 
@@ -57,11 +56,7 @@ export function TicketsPage() {
       />
     </SectionBoundary>
   ) : (
-    <EmptyState
-      icon={MessagesSquareIcon}
-      className="h-full bg-background"
-      title={t('tickets.selectTicket')}
-    />
+    <EmptyState className="h-full bg-background" title={t('tickets.selectTicket')} />
   )
 
   const sheet =

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { ChartTooltip } from '@/components/chart-tooltip'
 import { Skeleton } from '@/components/ui/primitives'
@@ -19,9 +19,9 @@ export function QueueChart({ open, total }: { open: Ticket[] | undefined; total:
   )
   const shown = open?.length ?? 0
   return (
-    <section className="flex flex-col rounded-xl border bg-card shadow-xs" aria-labelledby="queue-title">
-      <header className="px-4 pt-4">
-        <h2 id="queue-title" className="text-sm font-semibold">
+    <section className="flex min-w-0 flex-col gap-3" aria-labelledby="queue-title">
+      <header>
+        <h2 id="queue-title" className="text-panel font-semibold">
           {t('dashboard.queueByPriority')}
         </h2>
         {open && total > shown ? (
@@ -31,28 +31,27 @@ export function QueueChart({ open, total }: { open: Ticket[] | undefined; total:
         ) : null}
       </header>
       {open === undefined ? (
-        <Skeleton className="m-4 h-40" />
+        <Skeleton className="h-40" />
       ) : (
-        <figure className="h-52 px-2 pt-2 pb-3">
+        <figure className="h-48 border-y py-3">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
               layout="vertical"
-              margin={{ top: 4, right: 40, bottom: 0, left: 4 }}
-              barCategoryGap="30%"
+              margin={{ top: 0, right: 32, bottom: 0, left: 0 }}
+              barCategoryGap="32%"
             >
-              <CartesianGrid horizontal={false} stroke={chartColors.grid} />
-              <XAxis type="number" allowDecimals={false} tickLine={false} axisLine={false} tick={axisTick} />
+              <XAxis type="number" hide allowDecimals={false} />
               <YAxis
                 type="category"
                 dataKey="priority"
-                width={36}
+                width={32}
                 tickLine={false}
-                axisLine={{ stroke: chartColors.grid }}
-                tick={{ ...axisTick, fontSize: 12, fontWeight: 600 }}
+                axisLine={false}
+                tick={{ ...axisTick, fontWeight: 500 }}
               />
               <Tooltip
-                cursor={{ fill: chartColors.cursor, opacity: 0.6 }}
+                cursor={{ fill: chartColors.cursor }}
                 content={({ active, payload, label }) => (
                   <ChartTooltip
                     active={active}
@@ -64,18 +63,22 @@ export function QueueChart({ open, total }: { open: Ticket[] | undefined; total:
               <Bar
                 dataKey="count"
                 name={t('dashboard.tickets')}
-                fill={chartColors.series1}
                 radius={[0, 4, 4, 0]}
-                maxBarSize={24}
+                maxBarSize={14}
                 isAnimationActive={false}
               >
+                {data.map((item) => (
+                  <Cell
+                    key={item.priority}
+                    fill={item.priority === 'P1' ? chartColors.accent : chartColors.neutral}
+                  />
+                ))}
                 <LabelList
                   dataKey="count"
                   position="right"
                   offset={8}
-                  fill="var(--foreground)"
+                  fill={chartColors.label}
                   fontSize={12}
-                  fontWeight={600}
                 />
               </Bar>
             </BarChart>

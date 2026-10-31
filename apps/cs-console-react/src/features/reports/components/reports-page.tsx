@@ -1,18 +1,9 @@
 import { subDays } from 'date-fns'
-import {
-  CalendarRangeIcon,
-  CheckCheckIcon,
-  DownloadIcon,
-  HandIcon,
-  HourglassIcon,
-  MessageSquareReplyIcon,
-  StarIcon,
-  TicketIcon,
-} from 'lucide-react'
+import { CalendarRangeIcon, DownloadIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { StatTile } from '@/components/stat-tile'
+import { MetricStrip } from '@/components/metric-strip'
 import { ErrorState } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/controls'
@@ -89,7 +80,7 @@ function CustomRange({
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn(active && 'bg-accent text-accent-foreground')}>
+        <Button variant="outline" size="sm" className={cn(active && 'border-strong bg-muted')}>
           <CalendarRangeIcon />
           {t('reports.custom')}
         </Button>
@@ -160,7 +151,7 @@ function ExportMenu({ report }: { report: ReportSummary | undefined }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" disabled={!report}>
+        <Button size="sm" variant="outline" disabled={!report}>
           <DownloadIcon />
           {t('reports.exportCsv')}
         </Button>
@@ -311,49 +302,35 @@ function ReportBody({ report }: { report: ReportSummary }) {
   }, [report.topics])
   return (
     <>
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
-        <StatTile label={t('reports.created')} value={formatNumber(totals.created)} icon={TicketIcon} />
-        <StatTile
-          label={t('reports.resolved')}
-          value={formatNumber(totals.resolved)}
-          caption={
-            totals.created === 0
-              ? undefined
-              : t('reports.percentOfTickets', {
-                  percent: Math.round((totals.resolved * 100) / totals.created),
-                })
-          }
-          icon={CheckCheckIcon}
-        />
-        <StatTile
-          label={t('reports.claimTime')}
-          value={minutesLabel(totals.avg_claim_minutes)}
-          icon={HandIcon}
-        />
-        <StatTile
-          label={t('reports.firstResponse')}
-          value={minutesLabel(totals.avg_first_response_minutes)}
-          icon={MessageSquareReplyIcon}
-        />
-        <StatTile
-          label={t('reports.duration')}
-          value={minutesLabel(totals.avg_resolution_minutes)}
-          icon={HourglassIcon}
-        />
-        <StatTile
-          label={t('reports.avgRating')}
-          value={totals.avg_rating === null ? '–' : `${formatRating(totals.avg_rating)} ★`}
-          caption={t('reports.ratingCount', { count: totals.ratings })}
-          icon={StarIcon}
-          tone="rating"
-        />
-      </section>
+      <MetricStrip
+        metrics={[
+          { label: t('reports.created'), value: formatNumber(totals.created) },
+          {
+            label: t('reports.resolved'),
+            value: formatNumber(totals.resolved),
+            caption:
+              totals.created === 0
+                ? undefined
+                : t('reports.percentOfTickets', {
+                    percent: Math.round((totals.resolved * 100) / totals.created),
+                  }),
+          },
+          { label: t('reports.claimTime'), value: minutesLabel(totals.avg_claim_minutes) },
+          { label: t('reports.firstResponse'), value: minutesLabel(totals.avg_first_response_minutes) },
+          { label: t('reports.duration'), value: minutesLabel(totals.avg_resolution_minutes) },
+          {
+            label: t('reports.avgRating'),
+            value: totals.avg_rating === null ? '–' : `${formatRating(totals.avg_rating)}/5`,
+            caption: t('reports.ratingCount', { count: totals.ratings }),
+          },
+        ]}
+      />
       <section className="flex flex-col gap-3" aria-labelledby="daily-title">
-        <h2 id="daily-title" className="text-sm font-semibold">
+        <h2 id="daily-title" className="text-panel font-semibold">
           {t('reports.perDay')}
         </h2>
         {report.daily.length > 1 ? (
-          <div className="rounded-xl border bg-card p-4 shadow-xs">
+          <div className="border-t pt-3">
             <DailyChart daily={report.daily} />
           </div>
         ) : null}
@@ -367,7 +344,7 @@ function ReportBody({ report }: { report: ReportSummary }) {
       </section>
       <div className="grid items-start gap-6 xl:grid-cols-5">
         <section className="flex flex-col gap-3 xl:col-span-3" aria-labelledby="agents-report-title">
-          <h2 id="agents-report-title" className="text-sm font-semibold">
+          <h2 id="agents-report-title" className="text-panel font-semibold">
             {t('reports.perAgent')}
           </h2>
           <SortableTable
@@ -378,7 +355,7 @@ function ReportBody({ report }: { report: ReportSummary }) {
           />
         </section>
         <section className="flex flex-col gap-3 xl:col-span-2" aria-labelledby="topics-report-title">
-          <h2 id="topics-report-title" className="text-sm font-semibold">
+          <h2 id="topics-report-title" className="text-panel font-semibold">
             {t('reports.topTopics')}
           </h2>
           <SortableTable
@@ -407,12 +384,12 @@ export function ReportsPage() {
   }
 
   return (
-    <div className="h-full scrollbar-thin overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-4 py-5 lg:px-6">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">{t('reports.title')}</h1>
-            <p className="text-sm text-muted-foreground">{rangeLabel(range)}</p>
+            <h1 className="text-lg font-semibold">{t('reports.title')}</h1>
+            <p className="text-row text-muted-foreground">{rangeLabel(range)}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <ToggleGroup
@@ -447,12 +424,15 @@ export function ReportsPage() {
           <ErrorState error={report.error} onRetry={() => void report.refetch()} />
         ) : (
           <div className="flex flex-col gap-6" aria-busy="true">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-6">
+            <div className="grid grid-cols-2 gap-6 border-y py-4 md:grid-cols-3 xl:grid-cols-6">
               {Array.from({ length: 6 }, (_, i) => (
-                <Skeleton key={i} className="h-[86px] rounded-xl" />
+                <div key={i} className="flex flex-col gap-2">
+                  <Skeleton className="h-2 w-20" />
+                  <Skeleton className="h-4 w-12" />
+                </div>
               ))}
             </div>
-            <Skeleton className="h-72 rounded-xl" />
+            <Skeleton className="h-2 w-2/3" />
           </div>
         )}
       </div>

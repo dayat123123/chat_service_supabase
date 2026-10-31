@@ -3,10 +3,15 @@ import { mkdirSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
 
 import { Customer } from './support/customer'
+import { member } from './support/env'
+import { audit, checkLayout } from './support/quality'
 import { claim, signIn } from './support/staff'
 import { tag } from './support/text'
 
 const dir = process.env.E2E_SCREENSHOT_DIR ?? 'e2e-artifacts/screens'
+const customerName = process.env.E2E_VISUAL_CUSTOMER ?? 'sari_invest'
+const themes = ['light', 'dark'] as const
+type Theme = (typeof themes)[number]
 
 function watchErrors(page: Page) {
   const errors: string[] = []
@@ -14,60 +19,128 @@ function watchErrors(page: Page) {
   return errors
 }
 
-async function chooseTheme(page: Page, theme: 'Terang' | 'Gelap') {
-  await page.getByRole('button', { name: 'Akun' }).click()
+async function chooseTheme(page: Page, theme: Theme) {
+  await page.getByRole('button', { name: 'Akun', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Tema' }).click()
-  await page.getByRole('menuitemradio', { name: theme }).click()
+  await page.getByRole('menuitemradio', { name: theme === 'dark' ? 'Gelap' : 'Terang' }).click()
   await page.keyboard.press('Escape')
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(page.locator('html')).toHaveClass(theme === 'dark' ? /\bdark\b/ : /^(?!.*\bdark\b)/)
+}
+
+async function shoot(page: Page, name: string, fullPage = false) {
+  await page.evaluate(() => {
+    if (!document.querySelector('[role="dialog"], [role="menu"]'))
+      (document.activeElement as HTMLElement | null)?.blur()
+  })
+  await page.waitForTimeout(250)
+  await page.screenshot({ path: `${dir}/${name}.png`, fullPage })
+}
+
+async function eachTheme(page: Page, name: string, show?: () => Promise<void>, hide?: () => Promise<void>) {
+  for (const theme of themes) {
+    await chooseTheme(page, theme)
+    await show?.()
+    await shoot(page, `${name}-${theme}`)
+    await hide?.()
+  }
 }
 
 test.beforeAll(() => mkdirSync(dir, { recursive: true }))
 
-for (const scheme of ['light', 'dark'] as const) {
-  test(`halaman login (${scheme})`, async ({ browser }) => {
-    const context = await browser.newContext({ colorScheme: scheme })
+for (const theme of themes) {
+  test(`login dan verifikasi dua langkah (${theme})`, async ({ browser }) => {
+    const context = await browser.newContext()
+    await context.addInitScript((value) => localStorage.setItem('cs-console.theme', value), theme)
     const page = await context.newPage()
     const errors = watchErrors(page)
+    const person = member('Laras')
     await page.goto('/')
     await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
-    await expect(page.locator('html')).toHaveClass(scheme === 'dark' ? /dark/ : /^(?!.*dark)/)
-    await page.screenshot({ path: `${dir}/login-${scheme}.png` })
+    await shoot(page, `login-${theme}`)
+    await page.getByLabel('Email', { exact: true }).fill(person.email)
+    await page.getByLabel('Password', { exact: true }).fill(person.password)
+    await page.getByRole('button', { name: 'Masuk', exact: true }).click()
+    await expect(page.getByLabel('Kode 6 digit')).toBeVisible()
+    await shoot(page, `totp-${theme}`)
     expect(errors).toEqual([])
     await context.close()
   })
 }
 
-test('ruang kerja tiket terang dan gelap', async ({ page }) => {
+test('halaman acuan /dev/ui', async ({ page }) => {
   const errors = watchErrors(page)
-  const customer = await Customer.login('sari_invest')
+  await page.goto('/dev/ui')
+  await expect(page.getByRole('heading', { name: 'Acuan tampilan' })).toBeVisible()
+  await expect(page.locator('[data-theme-column]')).toHaveCount(2)
+  await page.waitForTimeout(300)
+  await page.screenshot({ path: `${dir}/dev-ui.png`, fullPage: true })
+  for (const theme of themes) {
+    await page.locator(`[data-theme-column="${theme}"]`).screenshot({ path: `${dir}/dev-ui-${theme}.png` })
+  }
+  expect(errors).toEqual([])
+})
+
+test('ruang kerja tiket, percakapan (kontras + resolusi), dialog, palet, layar sempit', async ({ page }) => {
+  const errors = watchErrors(page)
+  const customer = await Customer.login(customerName)
   try {
     await signIn(page, 'Laras')
     await expect(page.getByText('Pilih tiket dari daftar di kiri.')).toBeVisible()
-    await page.screenshot({ path: `${dir}/workspace-empty-light.png` })
+    await eachTheme(page, 'workspace-empty')
+
     const ticket = await customer.openTicket(`Penarikan dana saya tertahan sejak kemarin ${tag()}`)
     await claim(page, ticket.id, ticket.ticket_number)
-    await customer.send('Mohon dibantu cek ya kak, terima kasih')
+    const followUp = `Mohon dibantu cek ya kak ${tag()}`
+    const reply = `Baik, kami cek status penarikannya sekarang ${tag()}`
+    await customer.send(followUp)
     const box = page.getByRole('textbox', { name: 'Balas' })
-    await box.fill('Baik Bu Sari, kami cek status penarikannya sekarang.')
+    await box.fill(reply)
     await box.press('Enter')
-    await expect(page.getByRole('log').getByText('Mohon dibantu cek ya kak, terima kasih')).toBeVisible()
-    await chooseTheme(page, 'Terang')
-    await page.screenshot({ path: `${dir}/workspace-light.png` })
-    await chooseTheme(page, 'Gelap')
-    await expect(page.locator('html')).toHaveClass(/dark/)
-    await page.screenshot({ path: `${dir}/workspace-dark.png` })
-    await page.keyboard.press('Control+k')
-    await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible()
-    await page.getByRole('combobox').fill('selesai')
-    await page.screenshot({ path: `${dir}/command-palette-dark.png` })
-    await page.keyboard.press('Escape')
-    await chooseTheme(page, 'Terang')
+    const log = page.getByRole('log')
+    await expect(log.getByText(followUp)).toBeVisible()
+    await expect(log.getByText(reply)).toBeVisible()
+    await eachTheme(page, 'conversation')
+    for (const theme of themes) {
+      await chooseTheme(page, theme)
+      await audit(page, `conversation-${theme}`)
+    }
+    await checkLayout(page, 'percakapan')
+
+    await eachTheme(
+      page,
+      'dialog-resolve',
+      async () => {
+        await page.getByRole('button', { name: /^Selesaikan/ }).click()
+        await expect(page.getByRole('dialog', { name: 'Selesaikan tiket' })).toBeVisible()
+      },
+      async () => {
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+      },
+    )
+
+    await eachTheme(
+      page,
+      'command-palette',
+      async () => {
+        await page.keyboard.press('Control+k')
+        await expect(page.getByRole('dialog', { name: 'Command palette' })).toBeVisible()
+        await page.getByRole('combobox').fill('tiket')
+      },
+      async () => {
+        await page.keyboard.press('Escape')
+        await expect(page.getByRole('dialog')).toHaveCount(0)
+      },
+    )
+
     await page.setViewportSize({ width: 820, height: 1000 })
-    await expect(page.getByRole('button', { name: 'Daftar tiket' })).toBeVisible()
-    await page.screenshot({ path: `${dir}/workspace-narrow-light.png` })
+    await eachTheme(page, 'conversation-narrow')
     await page.getByRole('button', { name: 'Daftar tiket' }).click()
     await expect(page.getByRole('region', { name: 'Daftar tiket' })).toBeVisible()
-    await page.screenshot({ path: `${dir}/tickets-narrow-light.png` })
+    await eachTheme(page, 'tickets-narrow')
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await chooseTheme(page, 'light')
     expect(errors).toEqual([])
   } finally {
     await customer.closeActiveTicket()
@@ -80,11 +153,12 @@ test('dashboard dan laporan supervisor', async ({ page }) => {
   await page.getByRole('link', { name: 'Dashboard' }).click()
   await expect(page.getByRole('heading', { name: 'Dashboard supervisor' })).toBeVisible()
   await expect(page.getByText('Antrean per prioritas')).toBeVisible()
-  await page.screenshot({ path: `${dir}/dashboard-light.png`, fullPage: true })
+  await eachTheme(page, 'dashboard')
   await page.getByRole('link', { name: 'Laporan' }).click()
   await expect(page.getByRole('heading', { name: 'Laporan' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Tiket per hari' })).toBeVisible()
-  await page.screenshot({ path: `${dir}/reports-light.png`, fullPage: true })
+  await eachTheme(page, 'reports')
+  await chooseTheme(page, 'light')
   expect(errors).toEqual([])
 })
 
@@ -93,9 +167,10 @@ test('pengaturan admin', async ({ page }) => {
   await signIn(page, 'Adi')
   await expect(page.getByRole('heading', { name: 'Akun CS' })).toBeVisible()
   await expect(page.getByRole('cell', { name: /Nadia/ })).toBeVisible()
-  await page.screenshot({ path: `${dir}/settings-accounts-light.png`, fullPage: true })
+  await eachTheme(page, 'settings-accounts')
   await page.getByRole('button', { name: 'Jam layanan & libur' }).click()
   await expect(page.getByRole('heading', { name: 'Jam layanan (WIB)' })).toBeVisible()
-  await page.screenshot({ path: `${dir}/settings-hours-light.png`, fullPage: true })
+  await eachTheme(page, 'settings-hours')
+  await chooseTheme(page, 'light')
   expect(errors).toEqual([])
 })
