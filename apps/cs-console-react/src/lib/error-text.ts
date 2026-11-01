@@ -20,6 +20,9 @@ const nasabahCodes = [
   'invalid_user_status',
   'status_reason_required',
   'invalid_login_id',
+  'too_many_accounts',
+  'invalid_account_link',
+  'links_client_only',
 ] as const
 
 type NasabahCode = (typeof nasabahCodes)[number]

@@ -135,11 +135,22 @@ Menu ada di bar atas sebelum **Pengaturan**.
 - **Online ID**:
   - daftar dan pencarian, serta detail dengan rekening tertaut;
   - pengajuan buat/ubah/hapus, reset password/PIN, dan **ubah status** cepat;
+  - form pengajuan buat/ubah mengikuti aturan form Online ID di aplikasi csAdmin lama (`legacy/user-management-flutter/csAdmin_New`, `add_edit_online_id_dialog.dart`):
+    - **Rekening tertaut langsung di form** untuk tipe Nasabah (akun dengan izin manage), jadi buat Online ID dan tautkan rekening cukup satu pengajuan. csAdmin menerimanya lewat `ArrayAccountLink`/`ArrayAccountUnLink` di `create-approval-login`, dan rekening ditautkan saat pengajuan disetujui.
+    - Email wajib dengan format valid (tanpa kolom ketik ulang).
+    - Di layar lebar form dua kolom: data akun di kiri, rekening tertaut di kanan.
+    - Nomor HP wajib, 7–20 digit (boleh diawali `+`). Tanggal lahir wajib, paling jauh 80 tahun lalu dan tidak di masa depan. Nilai lama yang tidak diubah tetap diterima, kecuali tanggal lahir placeholder `1900-01-01`.
+    - Sales memilih **kode sales** (StaffId) dan Cabang/CS cabang memilih **kode cabang** dari data rekening (`get-list-link-account`). Kode yang tidak ada ditolak.
+    - Hanya akun Demo yang punya masa berlaku: tanggal dari hari ini sampai 1 Januari tiga tahun lagi, atau centang **Tidak pernah kedaluwarsa**. Tanggal baru dikirim sebagai `yyyy-MM-dd 00:00:00`; tanggal lama yang tidak diubah dikirim apa adanya.
+    - Ganti tipe akun mengosongkan kode sales/cabang dan masa berlaku, serta membatalkan perubahan tautan rekening. Mengubah Nasabah ke tipe lain tidak melepas rekening yang sudah tertaut (sama seperti app lama).
+    - Status akun tidak ada di form: Online ID baru selalu Aktif, dan perubahan status lewat **Ubah status** (wajib alasan, izin `online_user.status`).
+    - Sebelum terkirim ada konfirmasi berisi jumlah rekening yang akan ditautkan/dilepas.
+    - Daftar kode rekening yang ditautkan dan yang dilepas masing-masing maksimal 255 karakter setelah digabung koma, karena parameter `@ArrayAccountLink`/`@ArrayAccountUnLink` di csAdmin berupa VARCHAR(255). Lebih dari itu ditolak dengan pesan untuk membagi pengajuan.
   - kelola rekening tertaut, dengan dialog terbagi: **Sudah tertaut** (hapus centang untuk melepas), **Akan ditautkan**, dan **Tambah rekening** (pencarian katalog), plus ringkasan jumlah setelah disetujui;
   - baris yang email, nomor HP, atau tanggal lahirnya kosong diberi penanda. Sakelar **Hanya data belum lengkap** menyaring halaman yang sedang tampil, dan tombol **Lengkapi data** membuka form pengajuan perubahan.
 - **Panel info nasabah di tiket**: bagian **Akun Nasabah** paling atas, untuk akun yang punya izin baca (view/manage/demo/approve/approve_own/status). Isinya:
   - LoginId, tipe, dan status;
-  - email dan HP dengan tanda terverifikasi, tanggal lahir, tanggal terdaftar, salah password/PIN, dan hak akses aplikasi;
+  - email dan HP dengan tanda terverifikasi, tanggal lahir, tanggal terdaftar, salah password/PIN, dan fitur tambahan;
   - rekening tertaut dengan nama, cabang, RDN, bank, dan SID (4 pertama, lalu **Tampilkan semua**);
   - tautan **Buka di Akun Nasabah** (`/nasabah?q=<LoginId>`).
 
@@ -163,7 +174,7 @@ Parameter lain dibuang, dan nilai yang tidak lolos dijawab `400 invalid_query` t
 | `GET /online/get-online-user` | `nasabah.online_user.profile` | view/manage/demo/approve/approve_own/status | Endpoint baru csAdmin; `loginId` divalidasi; satu user persis + rekening tertaut |
 | `GET /online/get-linked-account-online-user` | `nasabah.online_user.linked_accounts` | idem | – |
 | `GET /online/get-list-link-account` | – | manage | – |
-| `POST /online/create-approval-login` | `nasabah.approval.create` | manage, demo | Demo-only: tipe akun 0, tanpa tautan rekening, dan Online ID yang diubah/dihapus memang akun demo |
+| `POST /online/create-approval-login` | `nasabah.approval.create` | manage, demo | LoginId baru `^[A-Za-z0-9._@-]{1,50}$` (`invalid_login_id`). `ArrayAccountLink`/`ArrayAccountUnLink` berupa array kode unik yang dirapikan, masing-masing maksimal 255 karakter setelah digabung (`invalid_account_link`, `too_many_accounts`). Tautan baru hanya untuk tipe Nasabah, kecuali hapus (`links_client_only`). Demo-only: tipe akun 0, tanpa tautan rekening, dan Online ID yang diubah/dihapus memang akun demo |
 | `POST /online/change-password-and-pin-online-user` | `nasabah.online_user.reset_credential` | manage | Email penerima diambil dari data nasabah di csAdmin; ditolak bila nasabah belum punya email |
 | `PUT /online/update-status-online-user` | `nasabah.online_user.status` | status | Status 0–3; alasan 10–200 karakter wajib dan ikut tercatat di audit; Online ID harus ada |
 | `GET /online/get-list-approval-online-user` | – | approve/approve_own/manage/demo | – |

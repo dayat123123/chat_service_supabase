@@ -23,7 +23,12 @@ const (
 	Opening    = "opening_account.send"
 )
 
-const demoLoginType = 0
+const (
+	demoLoginType       = 0
+	clientLoginType     = 1
+	deleteAction        = 3
+	maxAccountListChars = 255
+)
 
 var (
 	pageRe  = regexp.MustCompile(`^[1-9][0-9]{0,5}$`)
@@ -62,7 +67,7 @@ var Online = []gateway.Route{
 		Query: query{}},
 	{Method: http.MethodPost, Path: "/online/create-approval-login", Action: "approval.create",
 		Permissions: []string{Manage, Demo}, Query: query{}, ActorFields: []string{"CreatedBy"},
-		SubjectFields: []string{"LoginId", "ActionType", "LoginType"}, Guard: demoScope, Audit: true},
+		SubjectFields: []string{"LoginId", "ActionType", "LoginType"}, Guard: approvalRequest, Audit: true},
 	{Method: http.MethodPost, Path: "/online/change-password-and-pin-online-user", Action: "online_user.reset_credential",
 		Permissions: []string{Manage}, Query: query{}, ActorFields: []string{"ModifiedBy"},
 		SubjectFields: []string{"LoginId", "ActionType"}, Guard: customerEmail, Audit: true},
@@ -88,14 +93,66 @@ func reject(status int, code, message string) error {
 	return &gateway.Rejection{Status: status, Code: code, Message: message}
 }
 
-func demoScope(ctx context.Context, call gateway.Caller, req *gateway.Request) error {
+func approvalRequest(ctx context.Context, call gateway.Caller, req *gateway.Request) error {
+	if number(req.Fields["ActionType"]) == 1 && !idRe.MatchString(text(req.Fields["LoginId"])) {
+		return reject(http.StatusBadRequest, "invalid_login_id", "LoginId may only use letters, digits and . _ @ -")
+	}
+	links, err := accountList(req.Fields["ArrayAccountLink"])
+	if err != nil {
+		return err
+	}
+	unlinks, err := accountList(req.Fields["ArrayAccountUnLink"])
+	if err != nil {
+		return err
+	}
+	if links != nil {
+		req.Fields["ArrayAccountLink"] = links
+	}
+	if unlinks != nil {
+		req.Fields["ArrayAccountUnLink"] = unlinks
+	}
+	if err := demoScope(ctx, call, req, len(links)+len(unlinks) > 0); err != nil {
+		return err
+	}
+	if len(links) > 0 && number(req.Fields["LoginType"]) != clientLoginType && number(req.Fields["ActionType"]) != deleteAction {
+		return reject(http.StatusBadRequest, "links_client_only", "Only client logins can be linked to customer accounts")
+	}
+	return nil
+}
+
+func accountList(v any) ([]string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	items, ok := v.([]any)
+	if !ok {
+		return nil, reject(http.StatusBadRequest, "invalid_account_link", "Account lists must be arrays of account ids")
+	}
+	ids := make([]string, 0, len(items))
+	seen := map[string]bool{}
+	for _, item := range items {
+		id := strings.TrimSpace(text(item))
+		key := strings.ToUpper(id)
+		if !idRe.MatchString(id) || seen[key] {
+			return nil, reject(http.StatusBadRequest, "invalid_account_link", "Account ids must be unique account codes")
+		}
+		seen[key] = true
+		ids = append(ids, id)
+	}
+	if len(strings.Join(ids, ",")) > maxAccountListChars {
+		return nil, reject(http.StatusBadRequest, "too_many_accounts", "Too many accounts in one submission; split it into several")
+	}
+	return ids, nil
+}
+
+func demoScope(ctx context.Context, call gateway.Caller, req *gateway.Request, touchesAccounts bool) error {
 	if req.Grant.Allows([]string{Manage}) {
 		return nil
 	}
 	if number(req.Fields["LoginType"]) != demoLoginType {
 		return reject(http.StatusForbidden, "demo_only", "This account may only manage demo logins")
 	}
-	if len(list(req.Fields["ArrayAccountLink"])) > 0 || len(list(req.Fields["ArrayAccountUnLink"])) > 0 {
+	if touchesAccounts {
 		return reject(http.StatusForbidden, "demo_only", "Demo logins cannot be linked to customer accounts")
 	}
 	if number(req.Fields["ActionType"]) == 1 {
@@ -268,9 +325,4 @@ func number(v any) int64 {
 		}
 	}
 	return -1
-}
-
-func list(v any) []any {
-	items, _ := v.([]any)
-	return items
 }

@@ -13,6 +13,9 @@ export const loginTypes = [0, 1, 2, 3, 4, 5] as const
 export type LoginType = (typeof loginTypes)[number]
 export const DEMO = 0
 export const CLIENT = 1
+export const SALES = 2
+
+export const MAX_LINK_CHARS = 255
 
 export const userStatuses = [0, 1, 2, 3] as const
 export type UserStatus = (typeof userStatuses)[number]
@@ -115,9 +118,20 @@ export type OnlineUserForm = {
   salesId: string
   status: UserStatus
   flags: number
+  neverExpired: boolean
   accountExpired: string
+  expiredAt: string
   links: string[]
 }
+
+export type FormContext = {
+  previous: OnlineUser | null
+  previousLinks: string[]
+  catalog: CatalogAccount[] | undefined
+  today?: Date
+}
+
+export type SalesOption = { id: string; count: number }
 
 export type ApprovalFilter = { status: ApprovalStatus | -1; action: ApprovalAction | -1; query: string }
 

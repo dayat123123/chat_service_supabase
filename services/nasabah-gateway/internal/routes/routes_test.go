@@ -149,6 +149,49 @@ func TestDemoOnlyAccountsManageDemoLoginsOnly(t *testing.T) {
 	}
 }
 
+func TestApprovalAccountListsFitTheCustomerAdminParameter(t *testing.T) {
+	guard := route("/online/create-approval-login").Guard
+	manager := []string{Manage}
+	call := &fakeCaller{}
+	submit := func(fields map[string]any) error {
+		return guard(context.Background(), call, request(manager, "CS-1", fields))
+	}
+
+	fields := map[string]any{"LoginId": "budi", "LoginType": 1.0, "ActionType": 1.0, "ArrayAccountLink": []any{" C1 ", "C2"}, "ArrayAccountUnLink": nil}
+	if err := submit(fields); err != nil {
+		t.Fatalf("new client login with accounts: %v", err)
+	}
+	if got := fields["ArrayAccountLink"]; !slices.Equal(got.([]string), []string{"C1", "C2"}) {
+		t.Errorf("account ids are trimmed before forwarding: %v", got)
+	}
+
+	many := make([]any, 0, 40)
+	for i := range 40 {
+		many = append(many, "ACCT"+strings.Repeat("0", 3)+string(rune('A'+i%26))+string(rune('A'+i/26)))
+	}
+	if code := rejection(t, submit(map[string]any{"LoginId": "budi", "LoginType": 1.0, "ActionType": 1.0, "ArrayAccountLink": many})); code != "too_many_accounts" {
+		t.Errorf("joined ids over 255 characters: %s", code)
+	}
+	if code := rejection(t, submit(map[string]any{"LoginId": "budi", "LoginType": 1.0, "ActionType": 2.0, "ArrayAccountLink": []any{"C1", "c1"}})); code != "invalid_account_link" {
+		t.Errorf("duplicate ids: %s", code)
+	}
+	if code := rejection(t, submit(map[string]any{"LoginId": "budi", "LoginType": 1.0, "ActionType": 2.0, "ArrayAccountLink": []any{"C1,C2"}})); code != "invalid_account_link" {
+		t.Errorf("ids that would split inside the stored list: %s", code)
+	}
+	if code := rejection(t, submit(map[string]any{"LoginId": "budi", "LoginType": 1.0, "ActionType": 2.0, "ArrayAccountLink": "C1"})); code != "invalid_account_link" {
+		t.Errorf("non-array list: %s", code)
+	}
+	if code := rejection(t, submit(map[string]any{"LoginId": "sales01", "LoginType": 2.0, "ActionType": 1.0, "ArrayAccountLink": []any{"C1"}})); code != "links_client_only" {
+		t.Errorf("linking accounts to a sales login: %s", code)
+	}
+	if err := submit(map[string]any{"LoginId": "sales01", "LoginType": 2.0, "ActionType": 3.0, "ArrayAccountUnLink": []any{"C1"}}); err != nil {
+		t.Errorf("deleting a login unlinks its accounts: %v", err)
+	}
+	if code := rejection(t, submit(map[string]any{"LoginId": "budi santoso", "LoginType": 1.0, "ActionType": 1.0})); code != "invalid_login_id" {
+		t.Errorf("new login ids must be lookup-safe: %s", code)
+	}
+}
+
 func TestCredentialResetsAlwaysMailTheStoredAddress(t *testing.T) {
 	guard := route("/online/change-password-and-pin-online-user").Guard
 	users := &fakeCaller{replies: map[string]string{

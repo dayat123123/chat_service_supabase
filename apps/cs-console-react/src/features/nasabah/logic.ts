@@ -1,8 +1,14 @@
+import { format, isValid, parseISO, subYears } from 'date-fns'
+
 import {
   CLIENT,
   DEMO,
+  MAX_LINK_CHARS,
+  SALES,
   type Approval,
   type ApprovalAction,
+  type CatalogAccount,
+  type FormContext,
   type IncompleteField,
   type LoginType,
   type NasabahPermission,
@@ -10,6 +16,7 @@ import {
   type OnlineUserForm,
   type OpeningAccount,
   type Page,
+  type SalesOption,
   type UserFlag,
   type UserStatus,
   userFlags,
@@ -119,19 +126,14 @@ export function toList<T>(raw: { data?: T[] | null } | null | undefined): T[] {
   return Array.isArray(raw?.data) ? raw.data : []
 }
 
-const stamp = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/
+const stamp = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::(\d{2}))?/
 
 export function legacyDate(value: string | null | undefined) {
   return /^\d{4}-\d{2}-\d{2}/.test(value ?? '') ? (value ?? '').slice(0, 10) : ''
 }
 
-export function legacyDateTimeInput(value: string | null | undefined) {
-  const match = stamp.exec(value ?? '')
-  return match ? `${match[1]}T${match[2]}` : ''
-}
-
-export function inputToLegacyDateTime(value: string) {
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::(\d{2}))?$/.exec(value.trim())
+function legacyDateTime(value: string) {
+  const match = stamp.exec(value)
   return match ? `${match[1]} ${match[2]}:${match[3] ?? '00'}` : ''
 }
 
@@ -145,6 +147,20 @@ export function toggleFlag(permissions: number, bit: number, on: boolean) {
 
 export const needsSalesId = (type: number) => type === 2 || type === 3 || type === 5
 
+const day = (date: Date) => format(date, 'yyyy-MM-dd')
+
+const isDay = (value: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(value) && isValid(parseISO(value)) && day(parseISO(value)) === value
+
+export function dateBounds(today = new Date()) {
+  return {
+    birthMin: day(subYears(today, 80)),
+    birthMax: day(today),
+    expiredMin: day(today),
+    expiredMax: `${today.getFullYear() + 3}-01-01`,
+  }
+}
+
 export function emptyForm(loginType: LoginType = CLIENT): OnlineUserForm {
   return {
     loginId: '',
@@ -155,12 +171,15 @@ export function emptyForm(loginType: LoginType = CLIENT): OnlineUserForm {
     salesId: '',
     status: 1,
     flags: 0,
+    neverExpired: loginType !== DEMO,
     accountExpired: '',
+    expiredAt: '',
     links: [],
   }
 }
 
 export function formFromUser(user: OnlineUser, links: string[]): OnlineUserForm {
+  const expiredAt = legacyDateTime(user.AccountExpired ?? '')
   return {
     loginId: user.LoginId,
     loginType: (user.LoginType as LoginType) ?? CLIENT,
@@ -170,28 +189,118 @@ export function formFromUser(user: OnlineUser, links: string[]): OnlineUserForm 
     salesId: user.SalesId ?? '',
     status: (user.Status as UserStatus) ?? 1,
     flags: user.Permissions ?? 0,
-    accountExpired: legacyDateTimeInput(user.AccountExpired),
+    neverExpired: expiredAt === '',
+    accountExpired: legacyDate(expiredAt),
+    expiredAt,
     links: [...links],
   }
 }
 
-export type FormProblem = 'loginId' | 'salesId' | 'email' | 'demoOnly' | 'accountExpired'
+export function withLoginType(
+  form: OnlineUserForm,
+  loginType: LoginType,
+  previousLinks: string[],
+): OnlineUserForm {
+  return {
+    ...form,
+    loginType,
+    salesId: '',
+    neverExpired: loginType !== DEMO,
+    accountExpired: '',
+    links: [...previousLinks],
+  }
+}
 
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export function salesOptions(catalog: CatalogAccount[] | undefined, loginType: number): SalesOption[] {
+  if (!catalog || !needsSalesId(loginType)) return []
+  const counts = new Map<string, number>()
+  for (const account of catalog) {
+    const id = (loginType === SALES ? account.StaffId : account.Branch).trim()
+    if (id) counts.set(id, (counts.get(id) ?? 0) + 1)
+  }
+  return [...counts].map(([id, count]) => ({ id, count })).sort((a, b) => a.id.localeCompare(b.id))
+}
 
-export function formProblems(form: OnlineUserForm, perms: readonly string[]): FormProblem[] {
+export function linkChanges(action: ApprovalAction, form: OnlineUserForm, previousLinks: string[]) {
+  if (action === 3) return { link: [], unlink: [...previousLinks] }
+  if (form.loginType !== CLIENT) return { link: [], unlink: [] }
+  return {
+    link: form.links.filter((id) => !previousLinks.includes(id)),
+    unlink: previousLinks.filter((id) => !form.links.includes(id)),
+  }
+}
+
+export const fitsLinkParameter = (ids: string[]) => ids.join(',').length <= MAX_LINK_CHARS
+
+export type FormProblem =
+  | 'loginId'
+  | 'email'
+  | 'phone'
+  | 'birthDate'
+  | 'salesId'
+  | 'salesUnknown'
+  | 'accountExpired'
+  | 'links'
+  | 'demoOnly'
+
+const loginIdPattern = /^[A-Za-z0-9._@-]{3,50}$/
+
+const emailPattern = /^[A-Za-z0-9._+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/
+
+const phonePattern = /^\+?[0-9]{7,20}$/
+
+export function formProblems(
+  form: OnlineUserForm,
+  perms: readonly string[],
+  context: FormContext,
+): FormProblem[] {
   const problems: FormProblem[] = []
-  if (!/^\S{3,50}$/.test(form.loginId.trim())) problems.push('loginId')
-  if (form.email.trim() && !emailPattern.test(form.email.trim())) problems.push('email')
-  if (needsSalesId(form.loginType) && !form.salesId.trim()) problems.push('salesId')
-  if (form.loginType === DEMO && form.accountExpired && !inputToLegacyDateTime(form.accountExpired))
-    problems.push('accountExpired')
+  const { previous } = context
+  const bounds = dateBounds(context.today)
+  const email = form.email.trim()
+  if (!previous && !loginIdPattern.test(form.loginId.trim())) problems.push('loginId')
+  if (email.length > 100 || !emailPattern.test(email)) problems.push('email')
+  if (!phonePattern.test(form.phone.trim())) problems.push('phone')
+  const keptBirth =
+    previous !== null && form.birthDate === legacyDate(previous.BirthDate) && form.birthDate > '1900-01-01'
+  if (
+    !keptBirth &&
+    !(isDay(form.birthDate) && form.birthDate >= bounds.birthMin && form.birthDate <= bounds.birthMax)
+  )
+    problems.push('birthDate')
+  if (needsSalesId(form.loginType)) {
+    const salesId = form.salesId.trim()
+    if (!salesId) problems.push('salesId')
+    else if (!salesOptions(context.catalog, form.loginType).some((option) => option.id === salesId))
+      problems.push('salesUnknown')
+  }
+  if (form.loginType === DEMO && !form.neverExpired) {
+    const kept = form.expiredAt !== '' && form.accountExpired === legacyDate(form.expiredAt)
+    if (
+      !kept &&
+      !(
+        isDay(form.accountExpired) &&
+        form.accountExpired >= bounds.expiredMin &&
+        form.accountExpired <= bounds.expiredMax
+      )
+    )
+      problems.push('accountExpired')
+  }
+  const changes = linkChanges(previous ? 2 : 1, form, context.previousLinks)
+  if (!fitsLinkParameter(changes.link) || !fitsLinkParameter(changes.unlink)) problems.push('links')
   if (!has(perms, 'online_user.manage') && form.loginType !== DEMO) problems.push('demoOnly')
   return problems
 }
 
+function expiryValue(form: OnlineUserForm) {
+  if (form.loginType !== DEMO || form.neverExpired || !isDay(form.accountExpired)) return ''
+  return form.expiredAt && form.accountExpired === legacyDate(form.expiredAt)
+    ? form.expiredAt
+    : `${form.accountExpired} 00:00:00`
+}
+
 export function approvalPayload(action: ApprovalAction, form: OnlineUserForm, previousLinks: string[]) {
-  const links = form.loginType === CLIENT && action !== 3 ? form.links : []
+  const changes = linkChanges(action, form, previousLinks)
   const base = {
     LoginId: form.loginId.trim(),
     LoginType: form.loginType,
@@ -200,9 +309,9 @@ export function approvalPayload(action: ApprovalAction, form: OnlineUserForm, pr
     SalesId: needsSalesId(form.loginType) ? form.salesId.trim() : '',
     Email: form.email.trim(),
     LoginStatus: form.status,
-    AccountExpired: form.loginType === DEMO ? inputToLegacyDateTime(form.accountExpired) : '',
-    ArrayAccountLink: links.filter((id) => !previousLinks.includes(id)),
-    ArrayAccountUnLink: previousLinks.filter((id) => !links.includes(id)),
+    AccountExpired: expiryValue(form),
+    ArrayAccountLink: changes.link,
+    ArrayAccountUnLink: changes.unlink,
   }
   if (action === 3) return base
   return { ...base, BirthDate: form.birthDate, HandphoneNo: form.phone.trim() }
