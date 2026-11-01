@@ -111,7 +111,7 @@ export const en: Translation = {
   },
   nav: {
     nasabah: 'Customer accounts',
-    tickets: 'Tickets',
+    tickets: 'Customer service',
     dashboard: 'Dashboard',
     reports: 'Reports',
     settings: 'Settings',

@@ -158,7 +158,7 @@ Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
   - tiket fraud/pengaduan yang belum diambil;
   - tiket milik CS yang offline atau tidak mengirim heartbeat.
 - Tabel status CS: status, koneksi, tiket aktif/batas, selesai hari ini.
-- Tiket terlambat memicu suara + notifikasi browser untuk super admin (sekali per tiket). Jumlah tiket yang perlu perhatian tampil sebagai badge di menu Dashboard. Mengetuk tiket membukanya di tab Tiket (hanya baca), tempat super admin bisa memindahkan tiket atau mengubah prioritas.
+- Tiket terlambat memicu suara + notifikasi browser untuk super admin (sekali per tiket). Jumlah tiket yang perlu perhatian tampil sebagai badge di menu Dashboard. Mengetuk tiket membukanya di menu **Layanan Nasabah** (hanya baca), tempat super admin bisa memindahkan tiket atau mengubah prioritas.
 
 **Laporan** (`report_summary`, maksimal 93 hari, hari dihitung WIB): tiket per hari, waktu sampai diambil, waktu respons pertama, durasi sampai selesai, rating per CS, dan topik terbanyak. Ekspor CSV per bagian (harian, per CS, topik). Sel teks dinetralkan dari formula spreadsheet (`=`, `+`, `-`, `@`).
 

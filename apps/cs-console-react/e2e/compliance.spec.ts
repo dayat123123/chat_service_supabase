@@ -20,7 +20,7 @@ test('Kepatuhan meninjau pengaduan, memperpanjang tenggat, mengunduh transkrip, 
 
     await expect(page.getByRole('heading', { name: 'Ringkasan Kepatuhan' })).toBeVisible()
     const menu = page.getByRole('navigation', { name: 'Menu' })
-    await expect(menu.getByRole('link', { name: 'Tiket' })).toHaveCount(0)
+    await expect(menu.getByRole('link', { name: 'Layanan Nasabah' })).toHaveCount(0)
     for (const name of ['Ringkasan', 'Jejak Audit', 'Kebijakan']) {
       await expect(menu.getByRole('link', { name, exact: true })).toBeVisible()
     }

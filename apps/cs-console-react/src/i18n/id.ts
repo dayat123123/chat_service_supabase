@@ -108,7 +108,7 @@ export const id = {
   },
   nav: {
     nasabah: 'Akun Nasabah',
-    tickets: 'Tiket',
+    tickets: 'Layanan Nasabah',
     dashboard: 'Dashboard',
     reports: 'Laporan',
     settings: 'Pengaturan',

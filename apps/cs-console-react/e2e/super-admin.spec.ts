@@ -35,7 +35,7 @@ test('Super Admin memantau hanya-baca, membagikan tiket terbuka, lalu memindahka
     await expect(sinta.page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
     await expect(sinta.page.getByRole('cell', { name: /Nadia/ })).toBeVisible()
 
-    await sinta.page.getByRole('link', { name: 'Tiket' }).click()
+    await sinta.page.getByRole('link', { name: 'Layanan Nasabah' }).click()
     await expect(sinta.page.getByRole('tab', { name: /^Semua aktif/ })).toHaveAttribute(
       'aria-selected',
       'true',

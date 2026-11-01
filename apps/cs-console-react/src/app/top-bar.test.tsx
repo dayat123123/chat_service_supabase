@@ -30,7 +30,7 @@ describe('TopBar', () => {
     expect(screen.getByRole('button', { name: 'Ubah status: Online' })).toBeInTheDocument()
     expect(screen.getByText('Aktif 1/5')).toBeInTheDocument()
     expect(screen.queryByText('Mode pantau')).not.toBeInTheDocument()
-    expect(navLinks()).toEqual(['Tiket'])
+    expect(navLinks()).toEqual(['Layanan Nasabah'])
   })
 
   it('shows monitor mode and admin menus to Super Admins without status or capacity', () => {
@@ -39,7 +39,7 @@ describe('TopBar', () => {
     expect(screen.getByText('Mode pantau')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Ubah status/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/^Aktif \d+\/\d+$/)).not.toBeInTheDocument()
-    expect(navLinks()).toEqual(['Tiket', 'Dashboard', 'Laporan', 'Pengaturan'])
+    expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Pengaturan'])
   })
 
   it('places Akun Nasabah right before Pengaturan for CS accounts with customer access', () => {
@@ -48,14 +48,14 @@ describe('TopBar', () => {
       roles: ['cs_agent', 'cs_super_admin'],
       nasabah_permissions: ['online_user.view'],
     })
-    expect(navLinks()).toEqual(['Tiket', 'Dashboard', 'Laporan', 'Akun Nasabah', 'Pengaturan'])
+    expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Akun Nasabah', 'Pengaturan'])
   })
 
-  it('shows Akun Nasabah after Tiket to plain CS accounts with customer access', () => {
+  it('shows Akun Nasabah after Layanan Nasabah to plain CS accounts with customer access', () => {
     renderWithProviders(<TopBar attention={0} caseAttention={0} />, {
       ...agentFixture,
       nasabah_permissions: ['online_user.view'],
     })
-    expect(navLinks()).toEqual(['Tiket', 'Akun Nasabah'])
+    expect(navLinks()).toEqual(['Layanan Nasabah', 'Akun Nasabah'])
   })
 })
