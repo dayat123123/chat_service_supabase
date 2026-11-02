@@ -9,12 +9,12 @@ Desain, konfigurasi, daftar rute, dan catatan keamanan: [docs/nasabah/README.md]
 | `PORT` | `8080` | |
 | `JWT_SECRET` / `JWT_SECRET_FILE` | wajib | Memverifikasi token sesi console dan membuat token `service_role` untuk RPC `nasabah_access`/`nasabah_audit` |
 | `POSTGREST_URL` | `http://rest:3000` | |
-| `CSADMIN_URL` | kosong | Kosong = `503 not_configured` |
-| `CSADMIN_CLIENT_ID` | `web-cs` | Sama dengan `client_id` di blok `integration` csAdminEL.cfg |
 | `CSADMIN_SIGNING_KEY` / `CSADMIN_SIGNING_KEY_FILE` | kosong | Kunci privat Ed25519 (PEM PKCS#8). Kosong = `503 not_configured`. Saat start, gateway mencatat baris kunci publik untuk config csAdmin |
 | `CSADMIN_TIMEOUT` | `15s` | |
 | `ACCESS_CACHE_TTL` | `30s` | Cache permission per akun (penolakan 5 detik) |
 
-Endpoint: `/api-nasabah/online/...`, `GET /healthz`, `GET /readyz` (cek PostgREST), subcommand `healthcheck` untuk image distroless.
+Alamat dan client id CS Admin service tidak diatur lewat env: Super Admin mengisinya di web CS (Pengaturan → Integrasi API Nasabah), dan gateway hanya menyimpannya bila tes koneksi berhasil. Sebelum itu semua rute menjawab `503 not_configured`.
+
+Endpoint: `/api-nasabah/online/...`, `/api-nasabah/integration` (GET/PUT/DELETE) dan `/api-nasabah/integration/test` (POST) khusus Super Admin, `GET /healthz`, `GET /readyz` (cek PostgREST), subcommand `healthcheck` untuk image distroless.
 
 Tes: `go test ./...` atau `make test-nasabah-gateway`.

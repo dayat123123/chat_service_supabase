@@ -8,6 +8,7 @@ import { useAgent } from '@/features/auth/hooks'
 import { CommandPalette } from '@/features/command/components/command-palette'
 import { ShortcutsDialog } from '@/features/command/components/shortcuts-dialog'
 import { useConsoleAlerts, useDocumentTitle, useOverdueAlerts } from '@/features/notifications/hooks'
+import { useFreshPermissions } from '@/features/nasabah/hooks'
 import { useHeartbeat, useResumeStatus, useStatusOnClose } from '@/features/presence/hooks'
 import { useComplianceOverview } from '@/features/compliance/hooks'
 import { caseAttention } from '@/features/compliance/logic'
@@ -50,6 +51,7 @@ export function Shell() {
   )
 
   useTicketRealtime(agent.id, tickets, superAdmin)
+  useFreshPermissions(worker || superAdmin)
   useHeartbeat()
   useStatusOnClose(worker)
   useResumeStatus(worker)

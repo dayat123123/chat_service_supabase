@@ -554,42 +554,55 @@ export const en: Translation = {
     alertP1: 'P1 ticket unclaimed for more than (minutes)',
     integration: 'Customer API integration',
     integrationDescription:
-      'Connects the Customer accounts menu to the Customer API. The gateway picks up changes within 15 seconds of saving, without a restart.',
+      'Connects the Customer accounts menu to the CS Admin service. Agents see the menu only after the address and client id are saved with a successful connection test.',
+    integrationActive: 'Active',
+    integrationNotSet: 'Not set up',
+    integrationSince: 'Active since {{time}}, set up by {{name}}.',
+    integrationNotSetHint:
+      'Agents do not see the Customer accounts menu yet. Enter the address and client id, then choose Save & activate: the connection is tested first and saved only when it works.',
     csadminTitle: 'Address and client id',
     csadminUrl: 'Customer API address',
     csadminUrlHint:
       'Include the port and path prefix if any, e.g. http://192.168.10.10:8080 or http://host:9001/csAdmin.',
+    csadminUrlRequired: 'Enter the Customer API address',
     csadminUrlInvalid: 'The address must start with http:// or https:// and have no spaces, login, or query',
     csadminClientId: 'Client id',
-    csadminClientIdHint: 'Must match client_id in csAdminEL.cfg. Leave empty to use {{value}}.',
+    clientIdPlaceholder: 'e.g. web-cs',
+    clientIdUnknown: '<client id>',
+    csadminClientIdHint: 'Must match client_id in the CS Admin service config.',
+    csadminClientIdRequired: 'Enter the client id',
     csadminClientIdInvalid: 'Client id: 1–50 letters, digits, dots, _, or -',
-    csadminInUse: 'In use: {{url}} ({{source}})',
-    csadminFromSettings: 'from this page',
-    csadminFromServer: 'from docker/.env on the server',
-    csadminNone: 'No Customer API address yet, so the Customer accounts menu is off.',
     testConnection: 'Test connection',
+    saveActivate: 'Save & activate',
+    notSaved: 'Not saved.',
+    integrationSaved:
+      'The Customer API integration is active. Agents with permission now see the Customer accounts menu.',
+    disconnect: 'Disconnect',
+    disconnectTitle: 'Disconnect the Customer API integration?',
+    disconnectBody:
+      'The Customer accounts menu disappears for every agent until the integration is saved and tested again.',
+    disconnected: 'The Customer API integration is disconnected.',
     testResult: {
       ok: 'Connected. The Customer API issued an integration token ({{ms}} ms).',
       refused:
-        'The Customer API refused the integration key. Make sure client_id and public_key in csAdminEL.cfg match the block below, then restart the service.',
+        'The Customer API refused the integration key. Make sure client_id and public_key in the CS Admin service config match the block below, then restart the service.',
       ip_not_allowed:
-        'The Customer API refused this server IP. Add the web CS server IP to allowed_ips in csAdminEL.cfg.',
+        'The Customer API refused this server IP. Add the web CS server IP to allowed_ips in the CS Admin service config.',
       disabled:
-        'The integration is off in the Customer API: the integration block is missing, or the service is an older version.',
+        'The integration is off in the Customer API: the CS Admin service config has no integration block, or the service is an older version.',
       unexpected:
         'The Customer API gave an unexpected answer (HTTP {{status}}). Check the address and path prefix.',
       unreachable: 'The server cannot reach the Customer API. Check the address, port, and firewall.',
-      not_configured: 'Enter the Customer API address first.',
+      not_configured: 'Enter the address and client id first.',
       no_key:
         'The integration key is missing on the server. Run make gen-secrets, then restart nasabah-gateway.',
     },
     integrationKey: 'Integration key',
     integrationKeyHint:
-      'Paste this block into csAdminEL.cfg on the Customer API server, then restart the service. The public key is not a secret.',
+      'Paste this block into the CS Admin service config on the Customer API server, then restart the service. The public key is not a secret.',
     integrationKeyMissing:
       'The integration key is missing on the web CS server. Run make gen-secrets on the server, then restart nasabah-gateway.',
     integrationAllowedIps: 'For extra safety, also set allowed_ips = <web CS server IP> in the same block.',
-    integrationUnavailable: 'The Customer accounts gateway status could not be read.',
   },
   compliance: {
     overview: {
@@ -893,6 +906,8 @@ export const en: Translation = {
       session_flag: 'Session flagged (legacy)',
       session_reject: 'Session rejected (legacy)',
       session_transfer: 'Session transferred (legacy)',
+      setting_nasabah_integration: 'Customer API integration activated',
+      setting_nasabah_integration_cleared: 'Customer API integration disconnected',
       setting_update: 'Setting changed',
       ticket_claim: 'Ticket claimed',
       ticket_complaint_requested: 'Customer filed a complaint',

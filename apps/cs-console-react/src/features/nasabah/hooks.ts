@@ -32,11 +32,12 @@ export const nasabahKeys = {
 const sameSet = (a: readonly string[], b: readonly string[]) =>
   a.length === b.length && a.every((item) => b.includes(item))
 
-export function useFreshPermissions() {
+export function useFreshPermissions(enabled = true) {
   const updateAgent = useAuth((state) => state.updateAgent)
   const me = useQuery({
     queryKey: nasabahKeys.me,
     queryFn: presenceApi.me,
+    enabled,
     staleTime: 0,
     refetchInterval: 60_000,
     refetchOnWindowFocus: true,
@@ -44,8 +45,17 @@ export function useFreshPermissions() {
   useEffect(() => {
     const phase = useAuth.getState().phase
     if (!me.data || phase.kind !== 'ready') return
-    if (sameSet(phase.agent.nasabah_permissions, me.data.nasabah_permissions)) return
-    updateAgent({ ...phase.agent, nasabah_permissions: me.data.nasabah_permissions })
+    const ready = me.data.settings.nasabah_ready
+    if (
+      sameSet(phase.agent.nasabah_permissions, me.data.nasabah_permissions) &&
+      phase.agent.settings.nasabah_ready === ready
+    )
+      return
+    updateAgent({
+      ...phase.agent,
+      nasabah_permissions: me.data.nasabah_permissions,
+      settings: { ...phase.agent.settings, nasabah_ready: ready },
+    })
   }, [me.data, updateAgent])
 }
 

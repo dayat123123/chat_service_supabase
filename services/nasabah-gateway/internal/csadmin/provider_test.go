@@ -13,23 +13,23 @@ import (
 )
 
 type fakeSource struct {
-	mu       sync.Mutex
-	settings Settings
-	err      error
-	reads    int
+	mu     sync.Mutex
+	record Record
+	err    error
+	reads  int
 }
 
-func (f *fakeSource) Integration(context.Context) (Settings, error) {
+func (f *fakeSource) Integration(context.Context) (Record, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.reads++
-	return f.settings, f.err
+	return f.record, f.err
 }
 
-func (f *fakeSource) set(s Settings, err error) {
+func (f *fakeSource) set(r Record, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.settings, f.err = s, err
+	f.record, f.err = r, err
 }
 
 func newKey(t *testing.T) ed25519.PrivateKey {
@@ -41,51 +41,42 @@ func newKey(t *testing.T) ed25519.PrivateKey {
 	return key
 }
 
-func TestProviderPrefersWebSettingsOverServerValues(t *testing.T) {
-	source := &fakeSource{settings: Settings{URL: "http://10.0.0.5:9001/csAdmin/", ClientID: "web-cs.prod"}}
-	p := NewProvider(ProviderOptions{Source: source, Server: Settings{URL: "http://csadmin:8080", ClientID: "web-cs"}, Key: newKey(t)})
-
-	s := p.Session(context.Background())
-	if s.BaseURL() != "http://10.0.0.5:9001/csAdmin" || !s.Configured() {
-		t.Fatalf("session must use the web settings, got %q", s.BaseURL())
-	}
-	want := Effective{URL: "http://10.0.0.5:9001/csAdmin", URLSource: SourceSettings, ClientID: "web-cs.prod", ClientIDSource: SourceSettings}
-	if got := p.Effective(context.Background()); got != want {
-		t.Fatalf("effective = %+v", got)
-	}
+func active(url, clientID string) Record {
+	return Record{URL: url, ClientID: clientID, Configured: true}
 }
 
-func TestProviderFallsBackToServerValuesAndThenToNothing(t *testing.T) {
-	source := &fakeSource{}
-	p := NewProvider(ProviderOptions{Source: source, Server: Settings{URL: "http://csadmin:8080/", ClientID: "web-cs"}, Key: newKey(t)})
-	want := Effective{URL: "http://csadmin:8080", URLSource: SourceServer, ClientID: "web-cs", ClientIDSource: SourceServer}
-	if got := p.Effective(context.Background()); got != want {
-		t.Fatalf("effective = %+v", got)
+func TestProviderUsesOnlyTheVerifiedConsoleSettings(t *testing.T) {
+	source := &fakeSource{record: active("http://10.0.0.5:9001/csAdmin/", "web-cs.prod")}
+	p := NewProvider(ProviderOptions{Source: source, Key: newKey(t)})
+	if s := p.Session(context.Background()); s.BaseURL() != "http://10.0.0.5:9001/csAdmin" || !s.Configured() {
+		t.Fatalf("session must use the console settings, got %q", s.BaseURL())
 	}
 
-	empty := NewProvider(ProviderOptions{Source: source, Key: newKey(t)})
-	got := empty.Effective(context.Background())
-	if got.URLSource != SourceNone || got.ClientID != DefaultClientID || empty.Session(context.Background()).Configured() {
-		t.Fatalf("without any address the gateway must stay unconfigured, got %+v", got)
+	for name, record := range map[string]Record{
+		"nothing saved":  {},
+		"not verified":   {URL: "http://10.0.0.5:8080", ClientID: "web-cs"},
+		"no client id":   {URL: "http://10.0.0.5:8080", Configured: true},
+		"unsafe address": active("http://admin:secret@10.0.0.5", "web-cs"),
+		"invalid client": active("http://10.0.0.5:8080", "web cs"),
+	} {
+		empty := NewProvider(ProviderOptions{Source: &fakeSource{record: record}, Key: newKey(t)})
+		if empty.Session(context.Background()).Configured() {
+			t.Errorf("%s: there is no default address, the gateway must stay unconfigured", name)
+		}
 	}
-}
-
-func TestProviderIgnoresAnUnsafeStoredAddress(t *testing.T) {
-	source := &fakeSource{settings: Settings{URL: "http://admin:secret@10.0.0.5", ClientID: "web cs"}}
-	p := NewProvider(ProviderOptions{Source: source, Server: Settings{URL: "http://csadmin:8080", ClientID: "web-cs"}, Key: newKey(t)})
-	if got := p.Effective(context.Background()); got.URLSource != SourceServer || got.ClientIDSource != SourceServer {
-		t.Fatalf("invalid stored values must fall back to the server values, got %+v", got)
+	if NewProvider(ProviderOptions{Key: newKey(t)}).Session(context.Background()).Configured() {
+		t.Error("without a settings source the gateway must stay unconfigured")
 	}
 }
 
 func TestProviderReloadsAfterTheTTLAndOnlyReplacesTheSessionOnChange(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
-	source := &fakeSource{settings: Settings{URL: "http://10.0.0.5:8080"}}
+	source := &fakeSource{record: active("http://10.0.0.5:8080", "web-cs")}
 	p := NewProvider(ProviderOptions{Source: source, Key: newKey(t), TTL: 15 * time.Second})
 	p.now = func() time.Time { return now }
 
 	first := p.Session(context.Background())
-	source.set(Settings{URL: "http://10.0.0.6:8080"}, nil)
+	source.set(active("http://10.0.0.6:8080", "web-cs"), nil)
 	now = now.Add(10 * time.Second)
 	if p.Session(context.Background()) != first || source.reads != 1 {
 		t.Fatalf("settings must be cached for the TTL, reads = %d", source.reads)
@@ -101,24 +92,30 @@ func TestProviderReloadsAfterTheTTLAndOnlyReplacesTheSessionOnChange(t *testing.
 	if p.Session(context.Background()) != second || source.reads != 3 {
 		t.Fatalf("unchanged settings must keep the session and its token, reads = %d", source.reads)
 	}
+
+	source.set(Record{}, nil)
+	p.Refresh(context.Background())
+	if p.Session(context.Background()).Configured() {
+		t.Fatal("a cleared integration must take effect on refresh")
+	}
 }
 
 func TestProviderKeepsTheLastSessionWhenSettingsCannotBeRead(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
-	source := &fakeSource{settings: Settings{URL: "http://10.0.0.5:8080"}}
-	p := NewProvider(ProviderOptions{Source: source, Server: Settings{URL: "http://csadmin:8080"}, Key: newKey(t)})
+	source := &fakeSource{record: active("http://10.0.0.5:8080", "web-cs")}
+	p := NewProvider(ProviderOptions{Source: source, Key: newKey(t)})
 	p.now = func() time.Time { return now }
 
 	first := p.Session(context.Background())
-	source.set(Settings{}, errors.New("postgrest down"))
+	source.set(Record{}, errors.New("postgrest down"))
 	now = now.Add(time.Minute)
 	if p.Session(context.Background()) != first {
 		t.Fatal("a failed read must keep the current session")
 	}
 
-	cold := NewProvider(ProviderOptions{Source: source, Server: Settings{URL: "http://csadmin:8080"}, Key: newKey(t)})
-	if got := cold.Session(context.Background()).BaseURL(); got != "http://csadmin:8080" {
-		t.Fatalf("a failed first read must use the server values, got %q", got)
+	cold := NewProvider(ProviderOptions{Source: source, Key: newKey(t)})
+	if cold.Session(context.Background()).Configured() {
+		t.Fatal("a failed first read must leave the gateway unconfigured")
 	}
 }
 
@@ -144,14 +141,15 @@ func TestCheckClassifiesTheTokenExchange(t *testing.T) {
 		want     string
 		status   int
 	}{
-		"ok":          {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, p, CheckOK, http.StatusOK},
-		"wrong key":   {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{Key: newKey(t)}), CheckRefused, http.StatusUnauthorized},
-		"ip":          {Settings{URL: statusServer(t, http.StatusForbidden), ClientID: "web-cs"}, p, CheckIPNotAllowed, http.StatusForbidden},
-		"disabled":    {Settings{URL: statusServer(t, http.StatusNotFound), ClientID: "web-cs"}, p, CheckDisabled, http.StatusNotFound},
-		"unexpected":  {Settings{URL: statusServer(t, http.StatusInternalServerError), ClientID: "web-cs"}, p, CheckUnexpected, http.StatusInternalServerError},
-		"unreachable": {Settings{URL: unreachable.URL, ClientID: "web-cs"}, p, CheckUnreachable, 0},
-		"no address":  {Settings{ClientID: "web-cs"}, p, CheckNotConfigured, 0},
-		"no key":      {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{}), CheckNoKey, 0},
+		"ok":           {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, p, CheckOK, http.StatusOK},
+		"wrong key":    {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{Key: newKey(t)}), CheckRefused, http.StatusUnauthorized},
+		"ip":           {Settings{URL: statusServer(t, http.StatusForbidden), ClientID: "web-cs"}, p, CheckIPNotAllowed, http.StatusForbidden},
+		"disabled":     {Settings{URL: statusServer(t, http.StatusNotFound), ClientID: "web-cs"}, p, CheckDisabled, http.StatusNotFound},
+		"unexpected":   {Settings{URL: statusServer(t, http.StatusInternalServerError), ClientID: "web-cs"}, p, CheckUnexpected, http.StatusInternalServerError},
+		"unreachable":  {Settings{URL: unreachable.URL, ClientID: "web-cs"}, p, CheckUnreachable, 0},
+		"no address":   {Settings{ClientID: "web-cs"}, p, CheckNotConfigured, 0},
+		"no client id": {Settings{URL: server.URL + "/csAdmin"}, p, CheckNotConfigured, 0},
+		"no key":       {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{}), CheckNoKey, 0},
 	}
 	for name, c := range cases {
 		got := c.provider.Check(context.Background(), c.settings)

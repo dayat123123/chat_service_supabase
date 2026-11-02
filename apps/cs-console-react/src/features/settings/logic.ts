@@ -50,8 +50,6 @@ export const validCsadminUrl = (url: string) => url.length <= 200 && csadminUrlP
 
 export const validClientId = (clientId: string) => clientIdPattern.test(clientId)
 
-export const textSetting = (value: unknown) => (typeof value === 'string' ? value : '')
-
 export function csadminConfigBlock(clientId: string, publicKey: string) {
   return [
     '#INTEGRATION (web CS gateway)',

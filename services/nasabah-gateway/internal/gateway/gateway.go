@@ -59,19 +59,15 @@ type Route struct {
 	Audit         bool
 }
 
-type Admins interface {
-	IsSuperAdmin(ctx context.Context, userID string) (bool, error)
-}
-
 type Options struct {
-	Routes    []Route
-	Grants    access.Store
-	Admins    Admins
-	JWTSecret []byte
-	Upstream  *csadmin.Provider
-	Client    *http.Client
-	Log       *slog.Logger
-	Now       func() time.Time
+	Routes       []Route
+	Grants       access.Store
+	Integrations Integrations
+	JWTSecret    []byte
+	Upstream     *csadmin.Provider
+	Client       *http.Client
+	Log          *slog.Logger
+	Now          func() time.Time
 }
 
 type Gateway struct {

@@ -25,7 +25,7 @@ const statusCode: Record<number, string> = {
 }
 
 export async function gatewayRequest<T>(
-  method: 'GET' | 'POST' | 'PUT',
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   path: string,
   query: GatewayQuery = {},
   body?: unknown,

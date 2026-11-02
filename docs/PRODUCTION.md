@@ -72,12 +72,13 @@ Catatan:
      - Firewall saja tidak cukup. API nasabah (`PROXY_DOMAIN`) dan web CS sama-sama di port 443, dan firewall tidak bisa membedakan domain. Pembatasan per domain dilakukan `ipAllowList` ini. Firewall cukup membuka 22/80/443, dengan SSH hanya dari kantor.
 
   Sertifikat memakai Let's Encrypt HTTP-01 seperti `PROXY_DOMAIN`, jadi DNS publik domain ini harus mengarah ke server. IP di luar daftar tetap mendapat 403. Header keamanan dan CSP diatur nginx container `cs-console` berdasarkan `SUPABASE_URL`.
-- **Menu Akun Nasabah (csAdmin)** diatur dari web, bukan dari `docker/.env`:
+- **Menu Akun Nasabah (CS Admin service)** diatur dari web, tidak ada nilai di `docker/.env`:
   1. `make gen-secrets` sudah membuat kunci integrasi (`docker/secrets/csadmin_signing_key`).
-  2. Login sebagai Super Admin, lalu buka **Pengaturan → Integrasi API Nasabah**. Isi alamat csAdmin (dan client id bila bukan `web-cs`), klik **Tes koneksi**, lalu **Simpan**. Gateway memakainya paling lambat 15 detik kemudian, tanpa restart.
-  3. Salin blok `integration { … }` dari halaman yang sama ke `csAdminEL.cfg` di server csAdmin, lalu restart csAdmin. Sebaiknya tambahkan `allowed_ips = <IP server web CS>`. Tes koneksi harus menampilkan "Terhubung".
+  2. Login sebagai Super Admin, lalu buka **Pengaturan → Integrasi API Nasabah** (bertanda "Belum diatur"). Isi alamat dan client id.
+  3. Salin blok `integration { … }` dari halaman yang sama ke config CS Admin service di server API Nasabah (nama file mengikuti kode broker), lalu restart service-nya. Sebaiknya tambahkan `allowed_ips = <IP server web CS>`.
+  4. Klik **Simpan & aktifkan**. Gateway mengetes koneksi dulu dan hanya menyimpan bila berhasil. Setelah itu menu Akun Nasabah tampil untuk CS yang punya izin, paling lambat 1 menit, tanpa restart.
 
-  `CSADMIN_URL` dan `CSADMIN_CLIENT_ID` di `docker/.env` hanya dipakai bila pengaturan web kosong. Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
+  Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
 
 ## 3. Backup & restore
 

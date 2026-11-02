@@ -9,6 +9,7 @@ export type AgentSettings = {
   idle_logout_minutes: number
   assignment_mode: string
   outcomes: Record<string, Localized>
+  nasabah_ready: boolean
 }
 
 export type AgentProfile = {
@@ -44,6 +45,7 @@ export const defaultSettings: AgentSettings = {
   idle_logout_minutes: 30,
   assignment_mode: 'claim',
   outcomes: {},
+  nasabah_ready: false,
 }
 
 export function normalizeAgent(raw: AgentProfile): AgentProfile {
