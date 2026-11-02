@@ -5,6 +5,8 @@
 docker/.env.old
 # Docker secrets (make gen-secrets), termasuk cadangan .env lama
 docker/secrets/
+# Kode lama (csAdmin, notifEngine, app Flutter csAdmin): berisi kredensial default, hanya referensi lokal
+legacy/
 
 # Docker volume lokal (jika ada bind mount)
 docker/volumes/db/data/
