@@ -108,6 +108,19 @@ services:
     deploy:
       <<: *deploy
       replicas: 2
+  notifier:
+    image: ${REGISTRY}/olt-social/notifier:0.1.0
+    # Swarm: folder bind tidak ada di setiap node, jadi kredensial memakai Docker secret
+    # (docker/secrets/firebase_service_account; kosong = push belum dipasang).
+    volumes:
+      - type: tmpfs
+        target: /run/firebase
+    secrets: [jwt_secret, firebase_service_account]
+    environment:
+      FIREBASE_CREDENTIALS: /run/secrets/firebase_service_account
+    deploy:
+      <<: *deploy
+      replicas: 2
   cs-console:
     image: ${REGISTRY}/olt-social/cs-console:0.1.0
     environment:
@@ -186,3 +199,5 @@ secrets:
     file: ./secrets/storage_s3_access_key_id
   storage_s3_secret_access_key:
     file: ./secrets/storage_s3_secret_access_key
+  firebase_service_account:
+    file: ./secrets/firebase_service_account

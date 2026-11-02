@@ -79,6 +79,7 @@ export const settingsSections = [
   'messages',
   'assignment',
   'community',
+  'push',
   'integration',
 ] as const
 export type SettingsSection = (typeof settingsSections)[number]

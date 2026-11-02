@@ -5,6 +5,7 @@ import { toApiError } from '@/lib/errors'
 import { appEnv, rpc, supabase } from '@/lib/supabase'
 import { uuid } from '@/lib/utils'
 
+import { avatarPath } from './avatar-crop'
 import type {
   Campaign,
   CampaignDraft,
@@ -161,11 +162,18 @@ export const communityApi = {
     const size = await imageSize(file)
     return { path, mime: file.type, width: size.width, height: size.height }
   },
-  uploadAvatar: async (accountId: string, original: File) => {
+  uploadAvatar: async (accountId: string, photo: Blob) => {
+    const original = photo instanceof File ? photo : new File([photo], 'avatar.jpg', { type: photo.type })
     const file = await fitImage(original, MAX_AVATAR_BYTES)
     const path = `${accountId}/avatar-${Date.now()}.${extension[file.type] ?? 'jpg'}`
     const { error } = await supabase().storage.from('avatars').upload(path, file, { contentType: file.type })
     if (error) throw toApiError(error)
     return `${appEnv().publicApiUrl ?? appEnv().supabaseUrl}/storage/v1/object/public/avatars/${path}`
+  },
+  removeAvatar: async (accountId: string, url: string) => {
+    const path = avatarPath(url, accountId)
+    if (!path) return
+    const { error } = await supabase().storage.from('avatars').remove([path])
+    if (error) throw toApiError(error)
   },
 }

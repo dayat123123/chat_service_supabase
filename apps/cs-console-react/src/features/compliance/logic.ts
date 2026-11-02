@@ -61,6 +61,7 @@ export const auditActions = [
   'holiday.delete',
   'holiday.save',
   'message.secret_request_blocked',
+  'push.test',
   'quick_reply.save',
   'report.customer_trail',
   'secure_account.requested',
@@ -179,9 +180,24 @@ function isEmptyDetail(value: unknown) {
 
 const isoTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/
 
-function detailValue(value: unknown, formatTime: ((value: string) => string) | undefined) {
-  if (typeof value !== 'string') return JSON.stringify(value)
-  return formatTime && isoTimestamp.test(value) ? formatTime(value) : value
+type Change = { from: unknown; to: unknown }
+
+function isChange(value: object): value is Change {
+  const keys = Object.keys(value)
+  return keys.length === 2 && keys.includes('from') && keys.includes('to')
+}
+
+function changeSide(value: unknown, formatTime: ((value: string) => string) | undefined): string {
+  return value === null || value === undefined || value === '' ? '–' : detailValue(value, formatTime)
+}
+
+function detailValue(value: unknown, formatTime: ((value: string) => string) | undefined): string {
+  if (typeof value === 'string') return formatTime && isoTimestamp.test(value) ? formatTime(value) : value
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return JSON.stringify(value)
+  if (isChange(value)) return `${changeSide(value.from, formatTime)} → ${changeSide(value.to, formatTime)}`
+  return Object.entries(value)
+    .map(([key, item]) => `${key} ${detailValue(item, formatTime)}`)
+    .join(', ')
 }
 
 export function detailsText(details: Record<string, unknown>, formatTime?: (value: string) => string) {

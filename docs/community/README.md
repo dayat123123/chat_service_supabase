@@ -20,7 +20,14 @@ Tab yang tampil mengikuti izin: Stream dan Notifikasi (`post`/`publish`), Modera
 
 - Profil khusus (`olt_user_id = official:<id>`) yang **tidak bisa login** dari aplikasi. Selalu terverifikasi, tingkat kepercayaan 3, dan tercatat di `cs.official_accounts`.
 - Aplikasi menampilkan badge **Resmi** (bukan centang verifikasi biasa) untuk akun ini, berdasarkan `public.get_official_accounts()`, sehingga tidak bisa ditiru lewat nama.
-- Foto diunggah dari web ke bucket `avatars/<id akun>/`. URL disimpan dengan domain API publik (`PUBLIC_API_URL` di container web CS, diisi dari `SUPABASE_PUBLIC_URL`).
+- **Nama tampilan, username, bio, dan foto** dikelola di **Komunitas → Akun resmi**. Dialognya punya pratinjau tampilan profil di aplikasi (badge Resmi, jumlah pengikut, dan postingan) serta penghitung karakter. Mengganti username diberi peringatan karena mention lama tidak lagi mengarah ke akun itu.
+- **Foto** bisa dipilih sejak akun dibuat, lewat klik atau tarik-lepas. Pengaturannya:
+  - dipotong bulat di browser (geser, zoom dengan slider/gulir/tombol +/−, atau tombol panah);
+  - disimpan sebagai JPEG 512 × 512 di bucket `avatars/<id akun>/`, dan foto kecil diberi peringatan;
+  - diunggah hanya saat Simpan, jadi membatalkan dialog tidak meninggalkan file;
+  - foto lama dihapus setelah diganti atau dihapus (policy `olt_official_avatar_delete`);
+  - URL disimpan dengan domain API publik (`PUBLIC_API_URL` di container web CS, diisi dari `SUPABASE_PUBLIC_URL`).
+- Perubahan akun tercatat di audit `community.account_update` beserta nilai lama → baru (`changes`). Simpan tanpa perubahan tidak menambah audit.
 - Akun nonaktif tidak bisa dipakai untuk postingan atau notifikasi baru; postingan lamanya tetap tampil.
 
 ## Postingan resmi dan pengumuman
@@ -44,7 +51,7 @@ Kampanye notifikasi (`cs.community_campaigns`) punya alur persetujuan yang sama,
 
 Pengiriman membuat notifikasi tipe `announcement` di kotak notifikasi aplikasi, bertahap 5.000 penerima per putaran job. Akun staf dan akun resmi tidak ikut menerima.
 
-**Push ke layar HP belum aktif**: butuh project Firebase (FCM). Status kanal tampil di **Pengaturan → Komunitas** dan di tab Notifikasi (`cs_settings.community.push_ready`, diubah tim operasional setelah FCM dipasang). Semua data kampanye dan penerimanya sudah siap untuk pengirim push.
+**Push ke layar HP** dikirim otomatis oleh layanan notifier untuk setiap notifikasi pengumuman, begitu file Firebase dipasang ([docs/push](../push/README.md)). Status kanal tampil di tab Notifikasi dan, lengkap, di **Pengaturan → Push notification**. Detail kampanye menampilkan jumlah push terkirim, menunggu, dan gagal (`cs_api.community_campaign_push`).
 
 ## Moderasi
 

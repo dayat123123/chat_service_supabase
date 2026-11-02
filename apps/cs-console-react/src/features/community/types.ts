@@ -1,3 +1,5 @@
+import type { PushState } from '@/features/push/types'
+
 export const communityPermissions = [
   'community.post',
   'community.publish',
@@ -207,6 +209,7 @@ export type CommunityOverview = {
   accounts: number
   four_eyes: boolean
   push_ready: boolean
+  push_state: PushState
 }
 
 export const MAX_POST_BODY = 2000

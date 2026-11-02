@@ -51,7 +51,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
-        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-flutter-it-dummy e2e-windows-dummy \
+        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-flutter-it-dummy e2e-windows-dummy \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
@@ -61,6 +61,8 @@ check-config:
 	@test -f $(ENV) || { echo "docker/.env belum ada. Jalankan: make gen-secrets"; exit 1; }
 	@for s in $(SECRET_NAMES); do test -s $(SECRETS)/$$s || { echo "Secret $$s belum ada. Jalankan: make gen-secrets"; exit 1; }; done
 	@test -f $(SECRETS)/csadmin_signing_key || : > $(SECRETS)/csadmin_signing_key
+	@mkdir -p $(SECRETS)/firebase
+	@test -f $(SECRETS)/firebase_service_account || : > $(SECRETS)/firebase_service_account
 	@! grep -q '=CHANGE_ME' $(ENV) || { echo "docker/.env masih berisi CHANGE_ME:"; grep '=CHANGE_ME' $(ENV); exit 1; }
 	@if [ "$(PROFILE)" != dev ]; then for k in PROXY_DOMAIN ACME_EMAIL; do \
 	  grep -qE "^$$k=.+" $(ENV) || { echo "Profil $(PROFILE): $$k wajib diisi di docker/.env"; exit 1; }; done; fi
@@ -98,7 +100,7 @@ migrate: check-config ## Jalankan migrasi baru di supabase/migrations
 seed: check-config ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt test-nasabah-gateway ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier ## Tes backend (pgTAP + Go)
 
 test-db: check-config ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -205,6 +207,9 @@ test-dummy-olt: ## Unit test OLT dummy (Go, di container)
 
 test-nasabah-gateway: ## Unit test gateway menu Nasabah (Go, di container)
 	docker run --rm -v "$(CURDIR)/services/nasabah-gateway:/src" -w /src $(GO_IMG) go test ./...
+
+test-notifier: ## Unit test layanan push notifier (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/notifier:/src" -w /src $(GO_IMG) go test ./...
 
 test-flutter-it-dummy: check-config ## Integration test Flutter: login lewat OLT dummy (butuh up DUMMY_OLT=1)
 	cd $(PKG) && OLT_SOCIAL_IT_DUMMY=1 flutter test test/integration/dummy_olt_integration_test.dart
