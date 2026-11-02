@@ -339,6 +339,14 @@ export type Database = {
         Returns: Json
       }
       push_find_users: { Args: { p_query: string }; Returns: Json }
+      push_remove_credentials: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      push_set_credentials: {
+        Args: { p_credentials: Json; p_replace_project?: boolean }
+        Returns: Json
+      }
       push_status: { Args: Record<PropertyKey, never>; Returns: Json }
       push_test: { Args: { p_user_id: string }; Returns: Json }
       quick_replies: { Args: { p_language?: string }; Returns: Json }

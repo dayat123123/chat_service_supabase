@@ -765,14 +765,14 @@ services:
 
   # Push notification ke HP (services/notifier, docs/push/README.md). Mengambil antrean push dari
   # Postgres lewat PostgREST (RPC khusus service_role) dan mengirimnya lewat Firebase Cloud Messaging.
-  # Kredensial: taruh file service account Firebase (.json) di docker/secrets/firebase/; notifier
-  # membacanya otomatis tanpa restart. Tanpa file, notifier berjalan dalam status "belum dipasang"
-  # dan notifikasi tetap masuk ke kotak notifikasi aplikasi. Satu-satunya egress: Google (FCM + OAuth).
+  # Kunci Firebase diunggah Super Admin di web CS (Pengaturan → Push notification), disimpan
+  # terenkripsi di Vault, dan dimuat notifier tanpa restart. Tanpa kunci, notifier berjalan dalam
+  # status "belum dipasang" dan notifikasi tetap masuk ke kotak notifikasi aplikasi. Satu-satunya egress: Google (FCM + OAuth).
   notifier:
     <<: *base
     build:
       context: ../services/notifier
-    image: olt-social/notifier:0.1.0
+    image: olt-social/notifier:0.2.0
     networks: [app, egress]
     depends_on:
       migrate:
@@ -781,14 +781,11 @@ services:
         condition: service_healthy
     stop_grace_period: 30s
     secrets: [jwt_secret]
-    volumes:
-      - ./secrets/firebase:/run/firebase:ro
     environment:
       PORT: 8080
       LOG_LEVEL: ${NOTIFIER_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
-      FIREBASE_CREDENTIALS: /run/firebase
       ANDROID_CHANNEL_ID: ${NOTIFIER_ANDROID_CHANNEL_ID:-}
       BATCH_SIZE: ${NOTIFIER_BATCH_SIZE:-100}
       CONCURRENCY: ${NOTIFIER_CONCURRENCY:-20}
@@ -802,6 +799,41 @@ services:
     deploy:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
+
+  # Pembersih file Storage (services/janitor). Menghapus file akun yang dihapus (avatar, lampiran
+  # postingan/chat, dokumen CS) dan surat yang lewat masa simpan, dari antrean
+  # private.storage_cleanup_queue, lewat API storage agar file di disk/S3 ikut terhapus.
+  janitor:
+    <<: *base
+    build:
+      context: ../services/janitor
+    image: olt-social/janitor:0.1.0
+    networks: [app]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    stop_grace_period: 40s
+    secrets: [jwt_secret]
+    environment:
+      PORT: 8080
+      LOG_LEVEL: ${JANITOR_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      STORAGE_URL: http://storage:5000
+    healthcheck:
+      # Image distroless: binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/janitor", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 64M, pids: 64}
 
   # --- Customer service lewat chat (docs/cs-chat) -------------------------------
   # Profil compose `cs`: selalu aktif di dev; produksi menyalakannya dengan

@@ -66,6 +66,12 @@ type CommunityCode = (typeof communityCodes)[number]
 const isCommunityCode = (code: string): code is CommunityCode =>
   (communityCodes as readonly string[]).includes(code)
 
+const pushCodes = ['invalid_push_credentials', 'push_project_changed', 'push_credentials_missing'] as const
+
+type PushCode = (typeof pushCodes)[number]
+
+const isPushCode = (code: string): code is PushCode => (pushCodes as readonly string[]).includes(code)
+
 const isNasabahCode = (code: string): code is NasabahCode =>
   (nasabahCodes as readonly string[]).includes(code)
 
@@ -75,6 +81,7 @@ export function errorText(error: unknown): string {
   if (isNasabahCode(e.code)) return t(`nasabah.errors.${e.code}`)
   if (isBannedWordCode(e.code)) return t(`compliance.words.errors.${e.code}`)
   if (isCommunityCode(e.code)) return t(`community.errorCodes.${e.code}`)
+  if (isPushCode(e.code)) return t(`push.errorCodes.${e.code}`)
   switch (e.code) {
     case 'invalid_credentials':
       return t('errors.invalidLogin')

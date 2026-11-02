@@ -38,8 +38,12 @@ func classify(status int, header http.Header, body []byte, now time.Time) verdic
 	message := strings.TrimSpace(reply.Error.Message)
 	text := firstNonEmpty(message, fmt.Sprintf("HTTP %d", status))
 	switch code {
-	case "UNREGISTERED", "SENDER_ID_MISMATCH":
-		return outcome(push.Invalid, "Token perangkat tidak berlaku ("+code+")")
+	case "UNREGISTERED":
+		return outcome(push.Invalid, "Token perangkat tidak berlaku (UNREGISTERED)")
+	case "SENDER_ID_MISMATCH":
+		v := outcome(push.Failed, "Token perangkat milik project Firebase lain (SENDER_ID_MISMATCH)")
+		v.delivery.Problem = problemSenderMismatch
+		return v
 	case "INVALID_ARGUMENT":
 		if strings.Contains(strings.ToLower(text), "registration token") {
 			return outcome(push.Invalid, "Token perangkat tidak valid: "+text)

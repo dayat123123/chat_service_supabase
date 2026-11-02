@@ -22,10 +22,12 @@ type Store interface {
 	Claim(ctx context.Context, instance string, limit int, lease time.Duration) ([]push.Job, error)
 	Report(ctx context.Context, instance string, results []push.Result) (int, error)
 	Heartbeat(ctx context.Context, beat push.Heartbeat) (int, error)
+	Credentials(ctx context.Context, known int64) (push.Credentials, error)
 }
 
 type Sender interface {
-	Reload() (push.Status, bool)
+	Load(data []byte) push.Status
+	Verify(ctx context.Context) error
 	Send(ctx context.Context, job push.Job) push.Delivery
 }
 
@@ -58,8 +60,11 @@ type Worker struct {
 	wake         chan struct{}
 
 	mu          sync.Mutex
+	revision    int64
+	readError   string
 	status      push.Status
 	problem     string
+	probe       bool
 	pause       time.Duration
 	pausedUntil time.Time
 	queued      int
@@ -81,12 +86,13 @@ func New(opts Options) *Worker {
 		reportDelays: []time.Duration{250 * time.Millisecond, 500 * time.Millisecond, time.Second},
 		kick:         make(chan struct{}, 1),
 		wake:         make(chan struct{}, 1),
+		revision:     push.UnknownRevision,
 		pushes:       map[push.Outcome]uint64{},
 	}
 }
 
 func (w *Worker) Run(ctx context.Context) {
-	w.refresh()
+	w.refresh(ctx)
 	work, cancelWork := context.WithCancel(context.WithoutCancel(ctx))
 	defer cancelWork()
 	go w.enforceShutdown(ctx, work, cancelWork)
@@ -129,18 +135,99 @@ func (w *Worker) enforceShutdown(ctx, work context.Context, cancelWork context.C
 	}
 }
 
-func (w *Worker) refresh() bool {
-	status, changed := w.opts.Sender.Reload()
-	if !changed {
+func (w *Worker) refresh(ctx context.Context) bool {
+	w.mu.Lock()
+	known := w.revision
+	w.mu.Unlock()
+	fetch, cancel := context.WithTimeout(ctx, heartbeatTimeout)
+	creds, err := w.opts.Store.Credentials(fetch, known)
+	cancel()
+	if ctx.Err() != nil {
 		return false
 	}
+	w.noteReadError(err)
+	if err != nil {
+		return false
+	}
+	if creds.Unchanged {
+		return w.recheck(ctx)
+	}
+	status := push.Status{Configured: creds.Configured, Problem: creds.Problem}
+	if creds.Configured && creds.Problem == "" && creds.Data != nil {
+		status = w.opts.Sender.Load(creds.Data)
+	} else {
+		w.opts.Sender.Load(nil)
+	}
 	w.mu.Lock()
+	w.revision = creds.Revision
 	w.status = status
 	w.problem = ""
+	w.probe = false
 	w.pause = 0
 	w.pausedUntil = time.Time{}
 	w.mu.Unlock()
+	switch {
+	case !status.Configured:
+		w.log.Info("No Firebase credentials yet; push delivery is idle", "revision", creds.Revision)
+	case status.Problem != "":
+		w.log.Warn("Firebase credentials cannot be used", "revision", creds.Revision, "error", status.Problem)
+	default:
+		w.log.Info("Firebase credentials loaded", "revision", creds.Revision, "project_id", status.ProjectID)
+		w.verify(ctx)
+	}
 	return true
+}
+
+func (w *Worker) noteReadError(err error) {
+	text := ""
+	if err != nil {
+		text = err.Error()
+	}
+	w.mu.Lock()
+	before := w.readError
+	w.readError = text
+	w.mu.Unlock()
+	switch {
+	case text != "" && text != before:
+		w.log.Warn("Could not read Firebase credentials from the database", "error", text)
+	case text == "" && before != "":
+		w.log.Info("Reading Firebase credentials from the database works again")
+	}
+}
+
+func (w *Worker) recheck(ctx context.Context) bool {
+	w.mu.Lock()
+	due := w.probe && w.status.Configured && w.status.Problem == "" && !time.Now().Before(w.pausedUntil)
+	w.mu.Unlock()
+	if !due {
+		return false
+	}
+	return w.verify(ctx)
+}
+
+func (w *Worker) verify(ctx context.Context) bool {
+	err := w.opts.Sender.Verify(ctx)
+	if ctx.Err() != nil {
+		return false
+	}
+	w.mu.Lock()
+	before := w.problem
+	if err != nil {
+		w.problem, w.probe = err.Error(), true
+		w.pause = grow(w.pause, w.pauseMin, w.pauseMax)
+		w.pausedUntil = time.Now().Add(w.pause)
+	} else {
+		w.problem, w.probe, w.pause, w.pausedUntil = "", false, 0, time.Time{}
+	}
+	after, pause := w.problem, w.pause
+	project := w.status.ProjectID
+	w.mu.Unlock()
+	if err != nil {
+		w.log.Warn("Firebase credentials check failed", "project_id", project, "error", after, "retry_in", pause.String())
+	} else {
+		w.log.Info("Firebase credentials verified", "project_id", project)
+	}
+	return after != before
 }
 
 func (w *Worker) monitor(ctx context.Context) {
@@ -154,7 +241,7 @@ func (w *Worker) monitor(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-reload.C:
-			if !w.refresh() {
+			if !w.refresh(ctx) {
 				continue
 			}
 			notify(w.wake)
@@ -179,12 +266,13 @@ func (w *Worker) monitor(ctx context.Context) {
 func (w *Worker) heartbeat(ctx context.Context) error {
 	w.mu.Lock()
 	beat := push.Heartbeat{
-		Instance:   w.opts.Instance,
-		Version:    w.opts.Version,
-		Configured: w.status.Configured,
-		ProjectID:  w.status.ProjectID,
-		Error:      w.errorLocked(),
-		StartedAt:  w.opts.StartedAt,
+		Instance:            w.opts.Instance,
+		Version:             w.opts.Version,
+		Configured:          w.status.Configured,
+		ProjectID:           w.status.ProjectID,
+		Error:               w.errorLocked(),
+		StartedAt:           w.opts.StartedAt,
+		CredentialsRevision: w.revision,
 	}
 	w.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, heartbeatTimeout)
@@ -321,12 +409,12 @@ func (w *Worker) settle(deliveries []*push.Delivery) (*push.Delivery, time.Durat
 	case systemic != nil:
 		w.pause = grow(w.pause, w.pauseMin, w.pauseMax)
 		w.pausedUntil = time.Now().Add(w.pause)
-		w.problem = systemic.Problem
+		w.problem, w.probe = systemic.Problem, true
 		pause = w.pause
 	case problem != "":
-		w.problem = problem
+		w.problem, w.probe = problem, false
 	case healthy:
-		w.problem = ""
+		w.problem, w.probe = "", false
 		w.pause = 0
 	}
 	after := w.problem

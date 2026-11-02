@@ -17,7 +17,7 @@ import (
 	"olt-social/notifier/internal/worker"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
@@ -42,11 +42,10 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 
 	queue := store.NewPostgREST(cfg.PostgRESTURL, cfg.JWTSecret, cfg.JWTIssuer)
 	sender := fcm.New(fcm.Options{
-		Path:        cfg.FirebaseCredentials,
 		BaseURL:     cfg.FCMBaseURL,
+		TokenURL:    cfg.OAuthTokenURL,
 		ChannelID:   cfg.AndroidChannelID,
 		SendTimeout: cfg.SendTimeout,
-		Log:         log,
 	})
 	w := worker.New(worker.Options{
 		Store:             queue,

@@ -34,12 +34,11 @@ func newTokenServer(t *testing.T) *tokenServer {
 	return ts
 }
 
-func testAccount(tokenURI string) ServiceAccount {
+func testAccount() ServiceAccount {
 	return ServiceAccount{
 		ProjectID:    "demo-project",
 		ClientEmail:  "notifier@demo-project.iam.gserviceaccount.com",
 		PrivateKeyID: "kid-1",
-		TokenURI:     tokenURI,
 		Key:          testKey(),
 	}
 }
@@ -61,7 +60,7 @@ func TestTokenSourceExchangesASignedAssertion(t *testing.T) {
 		}
 		seen = verifyRS256(t, r.PostForm.Get("assertion"), &testKey().PublicKey)
 	}
-	source := newTokenSource(testAccount(server.URL+"/token"), server.Client(), time.Second, func() time.Time { return now })
+	source := newTokenSource(testAccount(), server.URL+"/token", server.Client(), time.Second, func() time.Time { return now })
 
 	token, fresh, err := source.Token(context.Background())
 	if err != nil || token != "tok-1" || !fresh {
@@ -89,9 +88,9 @@ func TestTokenSourceOmitsKidWithoutAKeyID(t *testing.T) {
 		_ = r.ParseForm()
 		seen = verifyRS256(t, r.PostForm.Get("assertion"), &testKey().PublicKey)
 	}
-	account := testAccount(server.URL + "/token")
+	account := testAccount()
 	account.PrivateKeyID = ""
-	if _, _, err := newTokenSource(account, server.Client(), time.Second, time.Now).Token(context.Background()); err != nil {
+	if _, _, err := newTokenSource(account, server.URL+"/token", server.Client(), time.Second, time.Now).Token(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := seen.header["kid"]; ok {
@@ -102,7 +101,7 @@ func TestTokenSourceOmitsKidWithoutAKeyID(t *testing.T) {
 func TestTokenSourceCachesUntilFiveMinutesBeforeExpiry(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	server := newTokenServer(t)
-	source := newTokenSource(testAccount(server.URL+"/token"), server.Client(), time.Second, func() time.Time { return now })
+	source := newTokenSource(testAccount(), server.URL+"/token", server.Client(), time.Second, func() time.Time { return now })
 	expect := func(step, wantToken string, wantFresh bool) {
 		t.Helper()
 		token, fresh, err := source.Token(context.Background())
@@ -129,7 +128,7 @@ func TestTokenSourceCachesUntilFiveMinutesBeforeExpiry(t *testing.T) {
 func TestTokenSourceSharesOneFetchBetweenConcurrentSenders(t *testing.T) {
 	server := newTokenServer(t)
 	server.delay = 100 * time.Millisecond
-	source := newTokenSource(testAccount(server.URL+"/token"), server.Client(), time.Second, time.Now)
+	source := newTokenSource(testAccount(), server.URL+"/token", server.Client(), time.Second, time.Now)
 
 	var wg sync.WaitGroup
 	tokens := make([]string, 20)
@@ -177,7 +176,7 @@ func TestTokenSourceExplainsFailures(t *testing.T) {
 			} else {
 				defer server.Close()
 			}
-			source := newTokenSource(testAccount(server.URL+"/token"), &http.Client{}, time.Second, time.Now)
+			source := newTokenSource(testAccount(), server.URL+"/token", &http.Client{}, time.Second, time.Now)
 			token, fresh, err := source.Token(context.Background())
 			if err == nil || err.Error() != tc.want || token != "" || fresh {
 				t.Fatalf("token = %q fresh = %v err = %v, want %q", token, fresh, err, tc.want)

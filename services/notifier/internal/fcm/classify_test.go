@@ -35,7 +35,7 @@ func TestClassify(t *testing.T) {
 		{name: "unregistered", status: 404, body: fcmError("NOT_FOUND", "UNREGISTERED", "Requested entity was not found."),
 			outcome: push.Invalid, err: "Token perangkat tidak berlaku (UNREGISTERED)"},
 		{name: "sender id mismatch", status: 403, body: fcmError("PERMISSION_DENIED", "SENDER_ID_MISMATCH", "SenderId mismatch"),
-			outcome: push.Invalid, err: "Token perangkat tidak berlaku (SENDER_ID_MISMATCH)"},
+			outcome: push.Failed, err: "Token perangkat milik project Firebase lain (SENDER_ID_MISMATCH)", problem: problemSenderMismatch},
 		{name: "malformed registration token", status: 400,
 			body:    fcmError("INVALID_ARGUMENT", "INVALID_ARGUMENT", "The registration token is not a valid FCM Registration Token"),
 			outcome: push.Invalid, err: "Token perangkat tidak valid: The registration token is not a valid FCM Registration Token"},

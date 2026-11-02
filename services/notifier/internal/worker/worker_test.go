@@ -23,6 +23,34 @@ type fakeStore struct {
 	reportCalls int
 	reports     [][]push.Result
 	beats       []push.Heartbeat
+	creds       push.Credentials
+	credsErr    error
+	asked       []int64
+}
+
+func (s *fakeStore) Credentials(_ context.Context, known int64) (push.Credentials, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.asked = append(s.asked, known)
+	if s.credsErr != nil {
+		return push.Credentials{}, s.credsErr
+	}
+	if known == s.creds.Revision {
+		return push.Credentials{Revision: known, Unchanged: true}, nil
+	}
+	return s.creds, nil
+}
+
+func (s *fakeStore) setCredentials(creds push.Credentials, err error) {
+	s.mu.Lock()
+	s.creds, s.credsErr = creds, err
+	s.mu.Unlock()
+}
+
+func (s *fakeStore) revisionsAsked() []int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.asked)
 }
 
 func (s *fakeStore) Claim(_ context.Context, instance string, limit int, lease time.Duration) ([]push.Job, error) {
@@ -99,23 +127,34 @@ func (s *fakeStore) setClaimErr(err error) {
 }
 
 type fakeSender struct {
-	mu      sync.Mutex
-	status  push.Status
-	changed bool
-	deliver func(ctx context.Context, job push.Job) push.Delivery
-	sent    []int64
+	mu        sync.Mutex
+	parsed    push.Status
+	loads     [][]byte
+	verifyErr error
+	verifies  int
+	deliver   func(ctx context.Context, job push.Job) push.Delivery
+	sent      []int64
 }
 
-func newSender(status push.Status, deliver func(ctx context.Context, job push.Job) push.Delivery) *fakeSender {
-	return &fakeSender{status: status, changed: true, deliver: deliver}
+func newSender(deliver func(ctx context.Context, job push.Job) push.Delivery) *fakeSender {
+	return &fakeSender{parsed: configured, deliver: deliver}
 }
 
-func (f *fakeSender) Reload() (push.Status, bool) {
+func (f *fakeSender) Load(data []byte) push.Status {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	changed := f.changed
-	f.changed = false
-	return f.status, changed
+	f.loads = append(f.loads, data)
+	if data == nil {
+		return push.Status{}
+	}
+	return f.parsed
+}
+
+func (f *fakeSender) Verify(context.Context) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.verifies++
+	return f.verifyErr
 }
 
 func (f *fakeSender) Send(ctx context.Context, job push.Job) push.Delivery {
@@ -126,10 +165,22 @@ func (f *fakeSender) Send(ctx context.Context, job push.Job) push.Delivery {
 	return deliver(ctx, job)
 }
 
-func (f *fakeSender) setStatus(status push.Status) {
+func (f *fakeSender) setParsed(status push.Status) {
 	f.mu.Lock()
-	f.status, f.changed = status, true
+	f.parsed = status
 	f.mu.Unlock()
+}
+
+func (f *fakeSender) setVerifyErr(err error) {
+	f.mu.Lock()
+	f.verifyErr = err
+	f.mu.Unlock()
+}
+
+func (f *fakeSender) calls() (loads [][]byte, verifies int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.loads), f.verifies
 }
 
 func (f *fakeSender) attempted() []int64 {
@@ -140,6 +191,7 @@ func (f *fakeSender) attempted() []int64 {
 
 var (
 	configured = push.Status{Configured: true, ProjectID: "demo-project"}
+	usable     = push.Credentials{Revision: 1, Configured: true, Data: []byte(`{"type":"service_account"}`)}
 	startedAt  = time.Date(2026, 11, 2, 1, 0, 0, 0, time.UTC)
 	delivered  = push.Delivery{Result: push.Result{Outcome: push.Sent}, Healthy: true}
 	outage     = push.Delivery{Result: push.Result{Outcome: push.Release}, Problem: "Tidak bisa menghubungi Firebase", Systemic: true}
@@ -226,8 +278,8 @@ func lastBeat(store *fakeStore) push.Heartbeat {
 }
 
 func TestWorkerReportsTheOutcomeOfEveryJob(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1, 2, 3, 4)}}
-	sender := newSender(configured, func(_ context.Context, job push.Job) push.Delivery {
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1, 2, 3, 4)}}
+	sender := newSender(func(_ context.Context, job push.Job) push.Delivery {
 		switch job.ID {
 		case 1:
 			return delivered
@@ -253,7 +305,8 @@ func TestWorkerReportsTheOutcomeOfEveryJob(t *testing.T) {
 	if !reflect.DeepEqual(reports[0], want) {
 		t.Fatalf("report = %+v", reports[0])
 	}
-	wantBeat := push.Heartbeat{Instance: "notifier-test", Version: "0.1.0", Configured: true, ProjectID: "demo-project", StartedAt: startedAt}
+	wantBeat := push.Heartbeat{Instance: "notifier-test", Version: "0.1.0", Configured: true, ProjectID: "demo-project",
+		StartedAt: startedAt, CredentialsRevision: 1}
 	if len(beats) == 0 || beats[0] != wantBeat {
 		t.Fatalf("beats = %+v", beats)
 	}
@@ -266,8 +319,8 @@ func TestWorkerReportsTheOutcomeOfEveryJob(t *testing.T) {
 }
 
 func TestWorkerReleasesTheRestOfTheBatchAndPausesOnASystemicFailure(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1, 2, 3)}}
-	sender := newSender(configured, func(_ context.Context, job push.Job) push.Delivery {
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1, 2, 3)}}
+	sender := newSender(func(_ context.Context, job push.Job) push.Delivery {
 		if job.ID == 2 {
 			return outage
 		}
@@ -308,8 +361,8 @@ func TestWorkerReleasesTheRestOfTheBatchAndPausesOnASystemicFailure(t *testing.T
 }
 
 func TestWorkerClearsTheErrorAfterASuccessfulSend(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1)}}
-	sender := newSender(configured, func(_ context.Context, job push.Job) push.Delivery {
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1)}}
+	sender := newSender(func(_ context.Context, job push.Job) push.Delivery {
 		if job.ID == 1 {
 			return outage
 		}
@@ -336,9 +389,9 @@ func TestWorkerClearsTheErrorAfterASuccessfulSend(t *testing.T) {
 }
 
 func TestWorkerReportsNonSystemicProblemsWithoutPausing(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1)}}
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1)}}
 	problem := "Firebase ditolak APNs/Web Push (periksa sertifikat atau kunci APNs di Firebase)"
-	sender := newSender(configured, func(_ context.Context, job push.Job) push.Delivery {
+	sender := newSender(func(_ context.Context, job push.Job) push.Delivery {
 		if job.ID == 1 {
 			return push.Delivery{Result: push.Result{Outcome: push.Failed, Error: "Auth error from APNS"}, Problem: problem}
 		}
@@ -361,17 +414,24 @@ func TestWorkerReportsNonSystemicProblemsWithoutPausing(t *testing.T) {
 }
 
 func TestWorkerDoesNotClaimWithoutUsableCredentials(t *testing.T) {
+	unreadable := "Kredensial Firebase tersimpan tidak bisa dibuka"
+	badKey := "Kredensial Firebase tidak valid: private_key bukan PEM"
 	cases := []struct {
 		name   string
-		status push.Status
+		creds  push.Credentials
+		parsed push.Status
+		want   push.Status
 	}{
-		{"not configured", push.Status{}},
-		{"unusable credentials", push.Status{Configured: true, Problem: "Ada lebih dari satu file .json di folder kredensial Firebase"}},
+		{"not configured", push.Credentials{}, configured, push.Status{}},
+		{"stored key unreadable", push.Credentials{Revision: 1, Configured: true, Problem: unreadable}, configured,
+			push.Status{Configured: true, Problem: unreadable}},
+		{"key does not parse", usable, push.Status{Configured: true, Problem: badKey}, push.Status{Configured: true, Problem: badKey}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			store := &fakeStore{batches: [][]push.Job{jobs(1)}}
-			sender := newSender(tc.status, always(delivered))
+			store := &fakeStore{creds: tc.creds, batches: [][]push.Job{jobs(1)}}
+			sender := newSender(always(delivered))
+			sender.setParsed(tc.parsed)
 			w := newWorker(store, sender, func(o *Options) { o.HeartbeatInterval = 20 * time.Millisecond })
 			start(t, w)
 
@@ -384,18 +444,23 @@ func TestWorkerDoesNotClaimWithoutUsableCredentials(t *testing.T) {
 				t.Fatalf("claims = %d", claims)
 			}
 			for _, beat := range beats {
-				if beat.Configured != tc.status.Configured || beat.Error != tc.status.Problem || beat.ProjectID != "" {
+				if beat.Configured != tc.want.Configured || beat.Error != tc.want.Problem || beat.ProjectID != "" ||
+					beat.CredentialsRevision != tc.creds.Revision {
 					t.Fatalf("beat = %+v", beat)
 				}
 			}
-			if snapshot := w.Metrics(); snapshot.Healthy || snapshot.Configured != tc.status.Configured {
+			if snapshot := w.Metrics(); snapshot.Healthy || snapshot.Configured != tc.want.Configured {
 				t.Fatalf("metrics = %+v", snapshot)
 			}
+			if _, verifies := sender.calls(); verifies != 0 {
+				t.Fatalf("unusable credentials must not be verified, verifies = %d", verifies)
+			}
 
-			sender.setStatus(configured)
+			sender.setParsed(configured)
+			store.setCredentials(push.Credentials{Revision: 2, Configured: true, Data: []byte(`{}`)}, nil)
 			eventually(t, "a configured heartbeat", func() bool {
 				beat := lastBeat(store)
-				return beat.Configured && beat.Error == "" && beat.ProjectID == "demo-project"
+				return beat.Configured && beat.Error == "" && beat.ProjectID == "demo-project" && beat.CredentialsRevision == 2
 			})
 			eventually(t, "delivery to start", reportCount(store))
 		})
@@ -404,25 +469,124 @@ func TestWorkerDoesNotClaimWithoutUsableCredentials(t *testing.T) {
 
 func TestWorkerSendsAHeartbeatAsSoonAsCredentialsChange(t *testing.T) {
 	store := &fakeStore{}
-	sender := newSender(push.Status{}, always(delivered))
-	start(t, newWorker(store, sender, nil))
+	start(t, newWorker(store, newSender(always(delivered)), nil))
 
 	eventually(t, "the first heartbeat", func() bool {
 		_, _, beats := store.state()
 		return len(beats) == 1
 	})
-	sender.setStatus(configured)
+	store.setCredentials(usable, nil)
 	eventually(t, "a heartbeat for the new credentials", func() bool {
 		_, _, beats := store.state()
-		return len(beats) == 2 && beats[1].Configured
+		return len(beats) == 2 && beats[1].Configured && beats[1].CredentialsRevision == 1
 	})
 }
 
+func TestWorkerFetchesTheKeyOnlyWhenItChanges(t *testing.T) {
+	store := &fakeStore{creds: usable}
+	sender := newSender(always(delivered))
+	start(t, newWorker(store, sender, nil))
+
+	eventually(t, "a few credential checks", func() bool { return len(store.revisionsAsked()) >= 4 })
+	asked := store.revisionsAsked()
+	if asked[0] != push.UnknownRevision || slices.ContainsFunc(asked[1:], func(r int64) bool { return r != 1 }) {
+		t.Fatalf("revisions asked = %v", asked)
+	}
+	if loads, verifies := sender.calls(); len(loads) != 1 || verifies != 1 {
+		t.Fatalf("loads = %d verifies = %d", len(loads), verifies)
+	}
+}
+
+func TestWorkerVerifiesNewCredentialsBeforeSending(t *testing.T) {
+	rejected := "Firebase menolak kredensial: Invalid JWT Signature."
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1)}}
+	sender := newSender(always(delivered))
+	sender.setVerifyErr(errors.New(rejected))
+	w := newWorker(store, sender, nil)
+	w.pauseMin = 300 * time.Millisecond
+	start(t, w)
+
+	eventually(t, "the rejection heartbeat", sawError(store, rejected))
+	time.Sleep(100 * time.Millisecond)
+	if claims, _, _ := store.state(); claims != 0 {
+		t.Fatalf("claims with rejected credentials = %d", claims)
+	}
+	sender.setVerifyErr(nil)
+	eventually(t, "the error to clear", func() bool {
+		_, _, beats := store.state()
+		return len(beats) > 1 && beats[len(beats)-1].Error == ""
+	})
+	eventually(t, "delivery to start", reportCount(store))
+	if _, verifies := sender.calls(); verifies < 2 {
+		t.Fatalf("verifies = %d", verifies)
+	}
+}
+
+func TestWorkerRechecksAfterAnOutageWithoutWaitingForTraffic(t *testing.T) {
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1)}}
+	w := newWorker(store, newSender(always(outage)), nil)
+	w.pauseMin = 50 * time.Millisecond
+	start(t, w)
+
+	eventually(t, "the outage heartbeat", sawError(store, "Tidak bisa menghubungi Firebase"))
+	eventually(t, "the error to clear without another push", func() bool { return lastBeat(store).Error == "" })
+	if _, reports, _ := store.state(); len(reports) != 1 {
+		t.Fatalf("reports = %d", len(reports))
+	}
+}
+
+func TestWorkerKeepsProblemsTheCheckCannotSee(t *testing.T) {
+	problem := "Firebase ditolak APNs/Web Push (periksa sertifikat atau kunci APNs di Firebase)"
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1)}}
+	sender := newSender(always(push.Delivery{Result: push.Result{Outcome: push.Failed, Error: "Auth error from APNS"}, Problem: problem}))
+	start(t, newWorker(store, sender, func(o *Options) { o.HeartbeatInterval = 20 * time.Millisecond }))
+
+	eventually(t, "the problem heartbeat", sawError(store, problem))
+	time.Sleep(100 * time.Millisecond)
+	if beat := lastBeat(store); beat.Error != problem {
+		t.Fatalf("a passing credentials check must not hide an APNs problem: %+v", beat)
+	}
+}
+
+func TestWorkerDropsRemovedCredentials(t *testing.T) {
+	store := &fakeStore{creds: usable}
+	sender := newSender(always(delivered))
+	start(t, newWorker(store, sender, nil))
+
+	eventually(t, "claims with credentials", func() bool {
+		claims, _, _ := store.state()
+		return claims > 0
+	})
+	store.setCredentials(push.Credentials{Revision: 2}, nil)
+	eventually(t, "a heartbeat without credentials", func() bool {
+		beat := lastBeat(store)
+		return !beat.Configured && beat.CredentialsRevision == 2
+	})
+	claims, _, _ := store.state()
+	time.Sleep(50 * time.Millisecond)
+	if after, _, _ := store.state(); after != claims {
+		t.Fatalf("claims after removal = %d, before = %d", after, claims)
+	}
+	if loads, _ := sender.calls(); loads[len(loads)-1] != nil {
+		t.Fatal("the sender must forget removed credentials")
+	}
+}
+
+func TestWorkerKeepsSendingWhenTheKeyCannotBeReread(t *testing.T) {
+	store := &fakeStore{creds: usable}
+	start(t, newWorker(store, newSender(always(delivered)), nil))
+
+	eventually(t, "the configured heartbeat", func() bool { return lastBeat(store).Configured })
+	store.setCredentials(usable, errors.New("rpc push_credentials: status 503"))
+	store.enqueue(jobs(1))
+	eventually(t, "delivery during the outage", reportCount(store))
+}
+
 func TestWorkerFinishesTheInFlightBatchOnShutdown(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1, 2)}}
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1, 2)}}
 	release := make(chan struct{})
 	started := make(chan struct{}, 2)
-	sender := newSender(configured, func(_ context.Context, job push.Job) push.Delivery {
+	sender := newSender(func(_ context.Context, job push.Job) push.Delivery {
 		started <- struct{}{}
 		<-release
 		return delivered
@@ -450,10 +614,10 @@ func TestWorkerFinishesTheInFlightBatchOnShutdown(t *testing.T) {
 }
 
 func TestWorkerAbandonsSendsAfterTheShutdownTimeout(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1, 2, 3)}}
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1, 2, 3)}}
 	started := make(chan struct{}, 3)
 	stopped := push.Delivery{Result: push.Result{Outcome: push.Release, Error: "Pengiriman dihentikan karena notifier berhenti", RetryAfter: time.Second}}
-	sender := newSender(configured, func(ctx context.Context, job push.Job) push.Delivery {
+	sender := newSender(func(ctx context.Context, job push.Job) push.Delivery {
 		started <- struct{}{}
 		<-ctx.Done()
 		return stopped
@@ -486,8 +650,8 @@ func TestWorkerAbandonsSendsAfterTheShutdownTimeout(t *testing.T) {
 }
 
 func TestWorkerClaimsAgainRightAwayAfterAFullBatch(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1, 2), jobs(3)}}
-	start(t, newWorker(store, newSender(configured, always(delivered)), func(o *Options) {
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1, 2), jobs(3)}}
+	start(t, newWorker(store, newSender(always(delivered)), func(o *Options) {
 		o.BatchSize = 2
 		o.PollInterval = time.Hour
 	}))
@@ -503,8 +667,8 @@ func TestWorkerClaimsAgainRightAwayAfterAFullBatch(t *testing.T) {
 }
 
 func TestWorkerStopsStartingSendsBeforeTheLeaseEnds(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1, 2)}}
-	sender := newSender(configured, func(context.Context, push.Job) push.Delivery {
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1, 2)}}
+	sender := newSender(func(context.Context, push.Job) push.Delivery {
 		time.Sleep(300 * time.Millisecond)
 		return delivered
 	})
@@ -523,8 +687,8 @@ func TestWorkerStopsStartingSendsBeforeTheLeaseEnds(t *testing.T) {
 }
 
 func TestWorkerRetriesTheReport(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1)}, reportFails: 3}
-	start(t, newWorker(store, newSender(configured, always(delivered)), nil))
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1)}, reportFails: 3}
+	start(t, newWorker(store, newSender(always(delivered)), nil))
 
 	eventually(t, "a report", reportCount(store))
 	if calls := store.reportAttempts(); calls != 4 {
@@ -533,8 +697,8 @@ func TestWorkerRetriesTheReport(t *testing.T) {
 }
 
 func TestWorkerMovesOnWhenTheReportKeepsFailing(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1), jobs(2)}, reportFails: 4}
-	start(t, newWorker(store, newSender(configured, always(delivered)), nil))
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1), jobs(2)}, reportFails: 4}
+	start(t, newWorker(store, newSender(always(delivered)), nil))
 
 	eventually(t, "the next batch", reportCount(store))
 	_, reports, _ := store.state()
@@ -544,8 +708,8 @@ func TestWorkerMovesOnWhenTheReportKeepsFailing(t *testing.T) {
 }
 
 func TestWorkerBacksOffWhileClaimsFail(t *testing.T) {
-	store := &fakeStore{batches: [][]push.Job{jobs(1)}, claimErr: errors.New("rpc push_claim: status 503")}
-	start(t, newWorker(store, newSender(configured, always(delivered)), nil))
+	store := &fakeStore{creds: usable, batches: [][]push.Job{jobs(1)}, claimErr: errors.New("rpc push_claim: status 503")}
+	start(t, newWorker(store, newSender(always(delivered)), nil))
 
 	time.Sleep(300 * time.Millisecond)
 	claims, _, _ := store.state()

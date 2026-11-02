@@ -21,6 +21,7 @@ const (
 
 type tokenSource struct {
 	account ServiceAccount
+	url     string
 	http    *http.Client
 	timeout time.Duration
 	now     func() time.Time
@@ -37,8 +38,8 @@ type tokenCall struct {
 	err   error
 }
 
-func newTokenSource(account ServiceAccount, client *http.Client, timeout time.Duration, now func() time.Time) *tokenSource {
-	return &tokenSource{account: account, http: client, timeout: timeout, now: now}
+func newTokenSource(account ServiceAccount, tokenURL string, client *http.Client, timeout time.Duration, now func() time.Time) *tokenSource {
+	return &tokenSource{account: account, url: tokenURL, http: client, timeout: timeout, now: now}
 }
 
 func (t *tokenSource) Token(ctx context.Context) (string, bool, error) {
@@ -93,7 +94,7 @@ func (t *tokenSource) fetch(ctx context.Context) (string, time.Duration, error) 
 	assertion, err := jwt.SignRS256(header, map[string]any{
 		"iss":   t.account.ClientEmail,
 		"scope": messagingScope,
-		"aud":   t.account.TokenURI,
+		"aud":   t.url,
 		"iat":   now.Unix(),
 		"exp":   now.Add(time.Hour).Unix(),
 	}, t.account.Key)
@@ -103,7 +104,7 @@ func (t *tokenSource) fetch(ctx context.Context) (string, time.Duration, error) 
 	form := url.Values{"grant_type": {jwtBearerGrant}, "assertion": {assertion}}
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.account.TokenURI, strings.NewReader(form.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.url, strings.NewReader(form.Encode()))
 	if err != nil {
 		return "", 0, problemError(problemTokenUnreachable)
 	}

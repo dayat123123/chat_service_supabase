@@ -19,7 +19,7 @@ param(
                  'test', 'test-db', 'test-bridge', 'test-flutter', 'test-flutter-it',
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
-                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-flutter-it-dummy', 'e2e-windows-dummy',
+                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
@@ -134,11 +134,6 @@ function Assert-Config {
     if (-not (Test-Path -LiteralPath $csadminSigningKey)) {
         [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $csadminSigningKey), '')
     }
-    New-Item -ItemType Directory -Force -Path (Join-Path $PSScriptRoot (Join-Path $SecretsDir 'firebase')) | Out-Null
-    $firebaseSecret = Join-Path $SecretsDir 'firebase_service_account'
-    if (-not (Test-Path -LiteralPath $firebaseSecret)) {
-        [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $firebaseSecret), '')
-    }
     $placeholders = Select-String -LiteralPath $EnvFile -Pattern '=CHANGE_ME' -SimpleMatch
     if ($placeholders) {
         $placeholders | ForEach-Object { Write-Host $_.Line }
@@ -186,6 +181,7 @@ switch ($Target) {
   test-dummy-olt  Unit test OLT dummy (Go, di container)
   test-nasabah-gateway  Unit test gateway menu Nasabah (Go, di container)
   test-notifier  Unit test layanan push notifier (Go, di container)
+  test-janitor   Unit test pembersih file storage (Go, di container)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
@@ -235,6 +231,7 @@ switch ($Target) {
         & $PSCommandPath test-dummy-olt
         & $PSCommandPath test-nasabah-gateway
         & $PSCommandPath test-notifier
+        & $PSCommandPath test-janitor
     }
     'test-flutter' {
         Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
@@ -373,6 +370,10 @@ switch ($Target) {
     }
     'test-notifier' {
         $src = Join-Path $PSScriptRoot 'services/notifier'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    'test-janitor' {
+        $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
     'test-flutter-it-dummy' {

@@ -51,7 +51,7 @@ Kampanye notifikasi (`cs.community_campaigns`) punya alur persetujuan yang sama,
 
 Pengiriman membuat notifikasi tipe `announcement` di kotak notifikasi aplikasi, bertahap 5.000 penerima per putaran job. Akun staf dan akun resmi tidak ikut menerima.
 
-**Push ke layar HP** dikirim otomatis oleh layanan notifier untuk setiap notifikasi pengumuman, begitu file Firebase dipasang ([docs/push](../push/README.md)). Status kanal tampil di tab Notifikasi dan, lengkap, di **Pengaturan → Push notification**. Detail kampanye menampilkan jumlah push terkirim, menunggu, dan gagal (`cs_api.community_campaign_push`).
+**Push ke layar HP** dikirim otomatis oleh layanan notifier untuk setiap notifikasi pengumuman, begitu kunci Firebase diunggah di Pengaturan → Push notification ([docs/push](../push/README.md)). Status kanal tampil di tab Notifikasi dan, lengkap, di **Pengaturan → Push notification**. Detail kampanye menampilkan jumlah push terkirim, menunggu, dan gagal (`cs_api.community_campaign_push`).
 
 ## Moderasi
 

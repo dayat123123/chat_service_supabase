@@ -12,44 +12,44 @@ import (
 )
 
 type Config struct {
-	Port                int
-	LogLevel            slog.Level
-	JWTSecret           []byte
-	JWTIssuer           string
-	PostgRESTURL        string
-	InstanceID          string
-	FirebaseCredentials string
-	FCMBaseURL          string
-	AndroidChannelID    string
-	BatchSize           int
-	Concurrency         int
-	Lease               time.Duration
-	PollInterval        time.Duration
-	HeartbeatInterval   time.Duration
-	SendTimeout         time.Duration
-	CredentialsReload   time.Duration
-	ShutdownTimeout     time.Duration
+	Port              int
+	LogLevel          slog.Level
+	JWTSecret         []byte
+	JWTIssuer         string
+	PostgRESTURL      string
+	InstanceID        string
+	OAuthTokenURL     string
+	FCMBaseURL        string
+	AndroidChannelID  string
+	BatchSize         int
+	Concurrency       int
+	Lease             time.Duration
+	PollInterval      time.Duration
+	HeartbeatInterval time.Duration
+	SendTimeout       time.Duration
+	CredentialsReload time.Duration
+	ShutdownTimeout   time.Duration
 }
 
 func Load() (Config, error) {
 	var errs []error
 	cfg := Config{
-		Port:                intEnv("PORT", 8080, &errs),
-		JWTIssuer:           stringEnv("JWT_ISSUER", "supabase"),
-		PostgRESTURL:        urlEnv("POSTGREST_URL", "http://rest:3000", &errs),
-		InstanceID:          stringEnv("INSTANCE_ID", hostname()),
-		FirebaseCredentials: stringEnv("FIREBASE_CREDENTIALS", "/run/firebase"),
-		FCMBaseURL:          urlEnv("FCM_BASE_URL", "https://fcm.googleapis.com", &errs),
-		AndroidChannelID:    stringEnv("ANDROID_CHANNEL_ID", ""),
-		BatchSize:           intEnv("BATCH_SIZE", 100, &errs),
-		Concurrency:         intEnv("CONCURRENCY", 20, &errs),
-		Lease:               durationEnv("LEASE", time.Minute, &errs),
-		PollInterval:        durationEnv("POLL_INTERVAL", time.Second, &errs),
-		HeartbeatInterval:   durationEnv("HEARTBEAT_INTERVAL", 30*time.Second, &errs),
-		SendTimeout:         durationEnv("SEND_TIMEOUT", 10*time.Second, &errs),
-		CredentialsReload:   durationEnv("CREDENTIALS_RELOAD", 30*time.Second, &errs),
-		ShutdownTimeout:     durationEnv("SHUTDOWN_TIMEOUT", 20*time.Second, &errs),
-		JWTSecret:           []byte(secretEnv("JWT_SECRET", &errs)),
+		Port:              intEnv("PORT", 8080, &errs),
+		JWTIssuer:         stringEnv("JWT_ISSUER", "supabase"),
+		PostgRESTURL:      urlEnv("POSTGREST_URL", "http://rest:3000", &errs),
+		InstanceID:        stringEnv("INSTANCE_ID", hostname()),
+		OAuthTokenURL:     urlEnv("OAUTH_TOKEN_URL", "https://oauth2.googleapis.com/token", &errs),
+		FCMBaseURL:        urlEnv("FCM_BASE_URL", "https://fcm.googleapis.com", &errs),
+		AndroidChannelID:  stringEnv("ANDROID_CHANNEL_ID", ""),
+		BatchSize:         intEnv("BATCH_SIZE", 100, &errs),
+		Concurrency:       intEnv("CONCURRENCY", 20, &errs),
+		Lease:             durationEnv("LEASE", time.Minute, &errs),
+		PollInterval:      durationEnv("POLL_INTERVAL", time.Second, &errs),
+		HeartbeatInterval: durationEnv("HEARTBEAT_INTERVAL", 30*time.Second, &errs),
+		SendTimeout:       durationEnv("SEND_TIMEOUT", 10*time.Second, &errs),
+		CredentialsReload: durationEnv("CREDENTIALS_RELOAD", 5*time.Second, &errs),
+		ShutdownTimeout:   durationEnv("SHUTDOWN_TIMEOUT", 20*time.Second, &errs),
+		JWTSecret:         []byte(secretEnv("JWT_SECRET", &errs)),
 	}
 	if err := cfg.LogLevel.UnmarshalText([]byte(stringEnv("LOG_LEVEL", "info"))); err != nil {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
