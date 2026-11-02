@@ -1,6 +1,6 @@
 # Push notification ke HP
 
-Semua notifikasi aplikasi nasabah bisa dikirim sebagai push ke layar HP lewat Firebase Cloud Messaging (FCM). Ini mencakup balasan, mention, like, follow, chat, balasan CS, pengumuman, dan push uji. Push dikirim oleh layanan **notifier** (`services/notifier`). Migrasi: `0058_push_notifications`.
+Semua notifikasi aplikasi nasabah bisa dikirim sebagai push ke layar HP lewat Firebase Cloud Messaging (FCM). Ini mencakup balasan, mention, like, follow, chat, balasan CS, pengumuman, dan push uji. Push dikirim oleh layanan **notifier** (`services/notifier`). Migrasi: `0058_push_notifications`, `0059_push_credentials`.
 
 ```
 public.notifications ──trigger──▶ private.push_queue ──push_claim──▶ notifier ──HTTP v1──▶ FCM ──▶ HP
@@ -9,36 +9,42 @@ public.notifications ──trigger──▶ private.push_queue ──push_claim�
 
 - Fitur yang membuat baris `public.notifications` otomatis ikut dikirim sebagai push. Jadi fitur notifikasi baru tidak perlu kode push tambahan.
 - Notifier hanya mengirim isi antrean dan tidak tahu jenis notifikasi. Push jenis baru cukup masuk antrean (lihat [Menambah jenis push](#menambah-jenis-push)).
-- Tanpa file Firebase, semua tetap berjalan. Notifikasi masuk ke kotak notifikasi aplikasi, notifier berstatus **Belum dipasang**, dan antrean yang belum terkirim kedaluwarsa sendiri.
+- Tanpa kunci Firebase, semua tetap berjalan. Notifikasi masuk ke kotak notifikasi aplikasi, notifier berstatus **Belum dipasang**, dan antrean yang belum terkirim kedaluwarsa sendiri.
 
 ## Memasang Firebase (operasional)
 
-Yang dibutuhkan hanya satu file JSON *service account* dari project Firebase yang sama dengan aplikasi OLT (`google-services.json` / `GoogleService-Info.plist`).
+Yang dibutuhkan hanya satu file JSON *service account* dari project Firebase yang sama dengan aplikasi OLT (`google-services.json` / `GoogleService-Info.plist`). Semuanya dilakukan dari web CS. Tidak perlu masuk ke server.
 
 1. Di Firebase Console, buka **Project settings → Service accounts**, lalu klik **Generate new private key**.
-2. Simpan file itu di server, di `docker/secrets/firebase/` (nama file bebas, akhiran `.json`, cukup satu file). Pastikan file bisa dibaca container:
-   ```bash
-   chmod 755 docker/secrets/firebase && chmod 644 docker/secrets/firebase/*.json
-   ```
-3. Tunggu sekitar 30 detik. Notifier membaca file itu otomatis tanpa restart. Status di web CS (**Pengaturan → Push notification**) berubah menjadi **Aktif** dan menampilkan id project Firebase.
-4. Dari halaman yang sama, kirim **push uji** ke akun Anda sendiri, cari dengan username. Akun itu harus sudah membuka aplikasi OLT yang mendaftarkan token (lihat bagian berikut).
+2. Di web CS, sebagai Super Admin, buka **Pengaturan → Push notification → Kunci Firebase**. Pilih atau tarik file JSON itu ke kotak unggah.
+3. Browser memeriksa file sebelum dikirim. Salah pilih file langsung ditolak dengan penjelasan, misalnya `google-services.json` (konfigurasi aplikasi Android, bukan kunci), file selain akun layanan, atau kunci privat yang rusak. Periksa project dan akun layanan di pratinjau, lalu klik **Simpan kunci**.
+4. Dalam beberapa detik notifier memuat kunci baru tanpa restart dan memeriksanya ke Google: mengambil token OAuth, lalu mengirim pesan `validate_only` ke FCM. Status berubah menjadi **Aktif**, dan kartu kunci menampilkan "Dipakai notifier dan diterima Google".
+5. Dari halaman yang sama, kirim **push uji** ke akun Anda sendiri, cari dengan username. Akun itu harus sudah membuka aplikasi OLT yang mendaftarkan token (lihat bagian berikut).
 
 Untuk iOS, unggah juga **APNs Authentication Key** di Firebase Console (**Project settings → Cloud Messaging → Apple app configuration**). Tanpa kunci itu, push iOS gagal dan status menjadi **Bermasalah**: "Firebase ditolak APNs/Web Push".
 
-File itu berisi kunci privat. Jangan kirim lewat chat atau email, dan jangan commit (`docker/secrets/` sudah di-gitignore). Rotasi kunci:
-1. Buat kunci baru dan ganti file lama.
+**Penyimpanan.** Kunci disimpan terenkripsi di Supabase Vault (`vault.secrets`) dan hanya bisa dibaca notifier lewat RPC `push_credentials` (khusus `service_role`). Web hanya menampilkan project, email akun layanan, ID kunci, serta siapa dan kapan mengunggah. Kunci tidak bisa diunduh lagi. Setiap pemasangan dan penghapusan tercatat di **Kepatuhan → Jejak Audit** (`push.credentials_set`, `push.credentials_removed`) tanpa isi kunci. Setelah diunggah, hapus file JSON dari komputer.
+
+**Ganti kunci (rotasi).**
+1. Buat kunci baru di Firebase Console, lalu unggah dengan **Ganti kunci**.
 2. Tunggu status kembali Aktif.
 3. Hapus kunci lama di Google Cloud Console (**IAM → Service accounts → Keys**).
 
-**Profil cluster (Swarm).** Folder bind tidak tersedia di setiap node, jadi kredensial memakai Docker secret `docker/secrets/firebase_service_account`. File kosong berarti push belum dipasang. Isi file itu dengan JSON yang sama, lalu deploy ulang stack.
+Mengunggah kunci dari **project lain** harus dikonfirmasi lewat tombol **Ganti project dan simpan**. Perangkat yang terdaftar lewat project lama tidak menerima push sampai aplikasinya memakai project yang sama. Token yang ternyata milik project lain (`SENDER_ID_MISMATCH`) tidak menghapus perangkat. Push itu ditandai gagal dan status menampilkan peringatannya, jadi salah unggah project tidak menghapus pendaftaran perangkat.
+
+**Hapus kunci** menghentikan push ke HP dalam beberapa detik. Notifikasi tetap masuk ke kotak notifikasi aplikasi, dan push yang sedang antre kedaluwarsa setelah `push.ttl_hours`.
+
+**Restore ke server baru.** Kunci enkripsi Vault ada di volume `db-config` (`/etc/postgresql-custom/pgsodium_root.key`), bukan di dump database. Bila database dipulihkan ke server tanpa volume itu, notifier berstatus **Bermasalah**: "Kredensial Firebase tersimpan tidak bisa dibuka". Unggah ulang kunci Firebase dari web.
+
+**Profil cluster (Swarm).** Tidak ada langkah tambahan. Semua replika notifier membaca kunci yang sama dari database.
 
 ### Status di web CS
 
 | Status | Arti | Tindakan |
 |---|---|---|
-| Aktif | Notifier hidup dan kredensial diterima | – |
-| Belum dipasang | Notifier hidup, file kredensial belum ada atau kosong | Pasang file (langkah di atas) |
-| Bermasalah | File ada tetapi tidak valid, ditolak Google/Firebase, atau APNs ditolak | Baca pesan error di halaman; biasanya kunci dicabut, project salah, atau API FCM belum aktif |
+| Aktif | Notifier hidup, kunci dimuat dan diterima Google/FCM | – |
+| Belum dipasang | Notifier hidup, kunci Firebase belum diunggah | Unggah kunci (langkah di atas) |
+| Bermasalah | Kunci tidak valid, ditolak Google/Firebase (dicabut, API FCM belum aktif), tidak bisa dibuka, atau APNs ditolak | Baca pesan error di halaman. Notifier memeriksa ulang sendiri dengan jeda 15 detik sampai 5 menit, dan status kembali Aktif begitu masalahnya beres |
 | Layanan mati | Tidak ada heartbeat notifier dalam 90 detik | `make up` / periksa `docker compose logs notifier` |
 
 Halaman yang sama juga menampilkan:
@@ -137,7 +143,7 @@ Fungsi ini mengembalikan jumlah perangkat yang masuk antrean (0 bila pengguna be
 
 - **Antrean per perangkat** (`private.push_queue`). `push_claim` memakai `FOR UPDATE SKIP LOCKED` dengan lease, jadi notifier aman dijalankan beberapa replika. Bila notifier mati di tengah jalan, push diambil ulang setelah lease habis. Pengiriman bersifat *at-least-once*.
 - **Retry dengan backoff** (30 detik, digandakan sampai 30 menit, ditambah jitter, atau mengikuti `Retry-After` FCM). Setelah `push.max_attempts` percobaan, push ditandai gagal. Gangguan layanan, seperti kredensial ditolak atau Google tidak bisa dihubungi, tidak menghabiskan jatah percobaan: notifier berhenti sebentar dan antrean menunggu.
-- **Token mati** (`UNREGISTERED`, `SENDER_ID_MISMATCH`, token tidak valid) langsung menghapus perangkat dan menghentikan push lain ke token itu.
+- **Token mati** (`UNREGISTERED`, token tidak valid) langsung menghapus perangkat dan menghentikan push lain ke token itu. Token dari project Firebase lain (`SENDER_ID_MISMATCH`) hanya menggagalkan push itu dan memunculkan peringatan, karena biasanya penyebabnya kunci dari project yang salah.
 - **Kedaluwarsa**: push yang belum terkirim setelah `push.ttl_hours` ditutup oleh job `push-maintenance` (pg_cron, tiap menit). Job yang sama menghapus riwayat lebih tua dari `push.retention_days` dan perangkat yang tidak membuka aplikasi selama `push.device_stale_days`.
 
 | Pengaturan (`private.settings`) | Default |
@@ -153,7 +159,8 @@ Fungsi ini mengembalikan jumlah perangkat yang masuk antrean (0 bila pengguna be
 - Token perangkat ada di `private.push_devices`. Tabel ini tidak bisa dibaca aplikasi, dan notifier tidak pernah mencatat token lengkap.
 - Hapus akun (`deleted_at`) langsung menghapus perangkat dan antrean push pengguna itu.
 - Perangkat yang berganti akun membatalkan push milik akun lama yang belum terkirim.
-- RPC notifier (`push_claim`, `push_report`, `push_heartbeat`) hanya untuk `service_role`. Notifier tidak terekspos ke internet; satu-satunya egress-nya adalah Google (OAuth + FCM).
+- Kunci Firebase terenkripsi di Vault dan tidak pernah dikirim balik ke web. Hanya Super Admin yang bisa mengunggah atau menghapusnya.
+- RPC notifier (`push_claim`, `push_report`, `push_heartbeat`, `push_credentials`) hanya untuk `service_role`. Notifier tidak terekspos ke internet; satu-satunya egress-nya adalah Google (OAuth + FCM).
 - Push uji dari web CS hanya untuk Super Admin dan tercatat di **Kepatuhan → Jejak Audit** (`push.test`).
 
 ## Monitoring

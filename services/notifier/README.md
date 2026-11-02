@@ -1,8 +1,8 @@
 # notifier
 
-Pengirim push notification. Notifier mengambil (claim) antrean push dari Postgres lewat RPC PostgREST `push_claim`, mengirimnya ke Firebase Cloud Messaging (FCM HTTP v1), lalu melaporkan hasil semua pesan sekaligus lewat `push_report`. Setiap 30 detik, dan juga langsung saat start, saat kredensial berubah, atau saat status error berubah, notifier mengirim `push_heartbeat`. Dari heartbeat inilah web CS menampilkan status push. Notifier hanya memakai standard library Go dan tidak membutuhkan SDK Firebase.
+Pengirim push notification. Notifier mengambil (claim) antrean push dari Postgres lewat RPC PostgREST `push_claim`, mengirimnya ke Firebase Cloud Messaging (FCM HTTP v1), lalu melaporkan hasil semua pesan sekaligus lewat `push_report`. Setiap 30 detik, dan juga langsung saat start, saat kunci Firebase berubah, atau saat status error berubah, notifier mengirim `push_heartbeat` beserta revisi kunci yang sedang dipakai. Dari heartbeat inilah web CS menampilkan status push. Notifier hanya memakai standard library Go dan tidak membutuhkan SDK Firebase.
 
-Antrean, backoff per pesan, batas percobaan, dan penghapusan perangkat yang tokennya mati diatur oleh database (migrasi `0058_push_notifications.sql`). Notifier hanya mengirim pesan dan memberi label hasilnya. Pengiriman bersifat *at-least-once*: jika notifier mati di tengah batch, baris yang sedang dikunci kembali ke antrean setelah masa `LEASE` habis.
+Antrean, backoff per pesan, batas percobaan, penghapusan perangkat yang tokennya mati, dan penyimpanan kunci Firebase diatur oleh database (migrasi `0058_push_notifications.sql` dan `0059_push_credentials.sql`). Notifier hanya mengirim pesan dan memberi label hasilnya. Pengiriman bersifat *at-least-once*: jika notifier mati di tengah batch, baris yang sedang dikunci kembali ke antrean setelah masa `LEASE` habis.
 
 ## Konfigurasi
 
@@ -14,8 +14,8 @@ Antrean, backoff per pesan, batas percobaan, dan penghapusan perangkat yang toke
 | `JWT_ISSUER` | `supabase` | |
 | `POSTGREST_URL` | `http://rest:3000` | |
 | `INSTANCE_ID` | hostname | Nama instance di heartbeat dan kunci claim (maks. 100 karakter) |
-| `FIREBASE_CREDENTIALS` | `/run/firebase` | File atau folder kredensial akun layanan Firebase (lihat di bawah) |
-| `CREDENTIALS_RELOAD` | `30s` | Interval cek ulang file kredensial (1s–10m) |
+| `CREDENTIALS_RELOAD` | `5s` | Interval cek revisi kunci Firebase di database (1s–10m) |
+| `OAUTH_TOKEN_URL` | `https://oauth2.googleapis.com/token` | Endpoint token Google. `token_uri` di file kunci diabaikan |
 | `FCM_BASE_URL` | `https://fcm.googleapis.com` | |
 | `ANDROID_CHANNEL_ID` | kosong | `android.notification.channel_id`. Kosong = tidak dikirim |
 | `BATCH_SIZE` | `100` | Jumlah pesan per claim (1–500) |
@@ -28,21 +28,17 @@ Antrean, backoff per pesan, batas percobaan, dan penghapusan perangkat yang toke
 
 Notifier berhenti mengambil pesan baru dalam satu batch jika batas `LEASE` hampir habis. Pesan yang belum sempat dikirim dilepas lagi ke antrean (`release`), supaya instance lain tidak mengirim pesan yang sama dua kali.
 
-## Kredensial Firebase
+## Kunci Firebase
 
-Di stack compose, foldernya `docker/secrets/firebase/` (di-mount read-only ke `/run/firebase`); di profil cluster, Docker secret `firebase_service_account`. Panduan operasional dan integrasi aplikasi: [docs/push](../../docs/push/README.md).
+Super Admin mengunggah file JSON kunci akun layanan di web CS (**Pengaturan → Push notification**). Database menyimpannya terenkripsi di Supabase Vault bersama nomor revisi. Panduan operasional dan integrasi aplikasi: [docs/push](../../docs/push/README.md).
 
-Taruh **satu** file JSON kunci akun layanan di folder yang di-mount ke `FIREBASE_CREDENTIALS`. Notifier tidak perlu di-restart. Dalam `CREDENTIALS_RELOAD` (30 detik) file itu terbaca dan heartbeat langsung dikirim. Cara mendapatkan file: Firebase Console → Project settings → Service accounts → *Generate new private key*.
+- Setiap `CREDENTIALS_RELOAD` notifier memanggil RPC `push_credentials(p_revision)` dengan revisi yang sedang dipakai. Bila revisinya sama, database hanya menjawab `unchanged` tanpa mengirim kunci. Bila berubah, kunci baru dimuat tanpa restart, token akses lama dibuang, dan status error serta jeda kirim di-reset.
+- Kunci yang baru dimuat langsung **diperiksa**: notifier mengambil token OAuth2 (assertion JWT RS256, `scope` `firebase.messaging`), lalu mengirim pesan `validate_only` ke FCM dengan token perangkat palsu. Balasan "token tidak valid" berarti kunci, izin, dan API FCM beres. Kunci yang dicabut (`invalid_grant`), API FCM yang belum aktif (403), atau project yang salah (404) langsung tampil sebagai error di web CS sebelum ada push yang dikirim.
+- Kunci dihapus dari web → notifier melepas kunci dan berhenti mengambil antrean (`configured=false`).
+- Kunci yang tidak bisa dibuka (misalnya database dipulihkan ke server tanpa kunci enkripsi Vault) → status error "Kredensial Firebase tersimpan tidak bisa dibuka". Unggah ulang dari web.
+- Database tidak bisa dihubungi saat cek revisi → notifier tetap memakai kunci terakhir dan mencoba lagi di interval berikutnya. Error ini dicatat sekali di log, bukan setiap interval.
 
-- **Folder**: notifier memakai satu-satunya file `*.json` di folder itu. File berawalan titik, file selain `.json`, subfolder, dan file kosong diabaikan.
-- **File**: `FIREBASE_CREDENTIALS` juga boleh langsung menunjuk ke file, misalnya Docker secret.
-- **Belum dikonfigurasi**: path tidak ada, folder tidak berisi `.json`, atau file kosong/hanya spasi (placeholder secret). Status `configured=false`, tanpa error.
-- **Error kredensial**: ada lebih dari satu `.json`, file tidak bisa dibaca, atau isinya bukan akun layanan (`type` harus `service_account`, wajib ada `project_id`, `client_email`, `private_key` RSA PEM PKCS#8/PKCS#1). Status `configured=true` dan pesan error tampil di web CS.
-- File diganti atau dihapus (path, ukuran, atau waktu ubah berubah) → kredensial dimuat ulang, token akses lama dibuang, dan status error serta jeda kirim di-reset.
-
-Image berjalan sebagai user `nonroot` (uid 65532). File kredensial harus bisa dibaca user itu, misalnya `chmod 644` atau grup yang sesuai. Mount sebaiknya read-only. Isi kredensial dan token akses tidak pernah ditulis ke log. Token perangkat di log hanya ditampilkan 6 karakter terakhirnya.
-
-Token akses OAuth2 dibuat dari assertion JWT RS256 (`scope` `firebase.messaging`) dan disimpan di cache sampai 5 menit sebelum kedaluwarsa.
+Kunci, token akses, dan isi kunci tidak pernah ditulis ke log. Token perangkat di log hanya ditampilkan 6 karakter terakhirnya. Token akses disimpan di cache sampai 5 menit sebelum kedaluwarsa.
 
 ## Status di web CS
 
@@ -53,17 +49,19 @@ Web CS hanya membaca heartbeat 90 detik terakhir:
 | offline | Tidak ada heartbeat |
 | belum dikonfigurasi | `configured=false` |
 | aktif | `configured=true` dan tanpa error |
-| error | `configured=true` dan ada error (kredensial salah, Firebase menolak akses, Google atau FCM tidak bisa dihubungi, APNs/Web Push ditolak) |
+| error | `configured=true` dan ada error (kunci salah atau dicabut, Firebase menolak akses, Google atau FCM tidak bisa dihubungi, APNs/Web Push ditolak, token dari project lain) |
 
-Gangguan sistemik ditangani begini: token ditolak Google, 401 berulang, 403/404 dari FCM, atau jaringan/timeout ke FCM. Sisa batch dilepas (`release`, percobaan tidak dihitung), heartbeat error langsung dikirim, dan claim dijeda 15 detik. Jeda berlipat ganda sampai maksimal 5 menit. Error hilang setelah ada pengiriman atau pengambilan token yang berhasil.
+Web CS membandingkan `credentials_revision` di heartbeat dengan revisi kunci terbaru untuk menampilkan "sedang memuat kunci".
+
+Gangguan sistemik ditangani begini: token ditolak Google, 401 berulang, 403/404 dari FCM, atau jaringan/timeout ke FCM. Sisa batch dilepas (`release`, percobaan tidak dihitung), heartbeat error langsung dikirim, dan claim dijeda 15 detik. Jeda berlipat ganda sampai maksimal 5 menit. Setelah jeda habis, notifier memeriksa ulang kunci dengan pesan `validate_only` walaupun antrean kosong, jadi status kembali aktif tanpa menunggu ada push. Error juga hilang setelah ada pengiriman yang berhasil. Peringatan yang tidak bisa diperiksa dengan cara itu (APNs/Web Push, token dari project lain) baru hilang setelah satu batch terkirim tanpa masalah.
 
 Pemetaan hasil FCM per pesan:
 
 | Hasil | Kondisi |
 |---|---|
 | `sent` | 2xx |
-| `invalid` | `UNREGISTERED`, `SENDER_ID_MISMATCH`, `INVALID_ARGUMENT` tentang registration token. Database menghapus perangkatnya |
-| `failed` | `INVALID_ARGUMENT` lain (payload salah), `THIRD_PARTY_AUTH_ERROR` (juga memasang error status) |
+| `invalid` | `UNREGISTERED`, `INVALID_ARGUMENT` tentang registration token. Database menghapus perangkatnya |
+| `failed` | `INVALID_ARGUMENT` lain (payload salah), `THIRD_PARTY_AUTH_ERROR` dan `SENDER_ID_MISMATCH` (keduanya juga memasang error status; perangkat tidak dihapus karena penyebabnya biasanya kunci dari project yang salah) |
 | `retry` | `QUOTA_EXCEEDED`/429, `UNAVAILABLE`/503, `INTERNAL`/500, 5xx lain. Header `Retry-After` dipatuhi |
 | `release` | Gangguan sistemik, shutdown, atau `LEASE` hampir habis |
 
@@ -76,7 +74,7 @@ Pemetaan hasil FCM per pesan:
 | `notifier_push_total{outcome}` | counter | `sent`, `retry`, `invalid`, `failed`, `release` |
 | `notifier_claim_batches_total` | counter | Claim yang menghasilkan minimal satu pesan |
 | `notifier_queue_depth` | gauge | Panjang antrean menurut heartbeat terakhir |
-| `notifier_configured` | gauge | 1 jika ada file kredensial |
+| `notifier_configured` | gauge | 1 jika kunci Firebase sudah diunggah |
 | `notifier_healthy` | gauge | 1 jika terkonfigurasi dan tanpa error |
 
 Saat SIGTERM, notifier berhenti claim dan menyelesaikan batch yang sedang jalan dalam batas `SHUTDOWN_TIMEOUT`, melaporkan hasilnya, lalu keluar dengan kode 0. Atur `stop_grace_period` container agar lebih panjang dari `SHUTDOWN_TIMEOUT` (misalnya 30s).

@@ -9,11 +9,23 @@ export type PushInstance = {
   error: string | null
   started_at: string
   seen_at: string
+  credentials_revision: number | null
   live: boolean
+}
+
+export type PushCredentials = {
+  revision: number
+  project_id: string
+  client_email: string
+  key_id: string | null
+  updated_at: string
+  updated_by: string | null
 }
 
 export type PushStatus = {
   state: PushState
+  credentials: PushCredentials | null
+  credentials_revision: number
   instances: PushInstance[]
   devices: { total: number; users: number; android: number; ios: number; web: number; active_30d: number }
   queue: { queued: number; oldest_at: string | null }

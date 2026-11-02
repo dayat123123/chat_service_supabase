@@ -12,7 +12,7 @@ import (
 
 var keys = []string{
 	"PORT", "LOG_LEVEL", "JWT_SECRET", "JWT_SECRET_FILE", "JWT_ISSUER", "POSTGREST_URL", "INSTANCE_ID",
-	"FIREBASE_CREDENTIALS", "FCM_BASE_URL", "ANDROID_CHANNEL_ID", "BATCH_SIZE", "CONCURRENCY", "LEASE",
+	"OAUTH_TOKEN_URL", "FCM_BASE_URL", "ANDROID_CHANNEL_ID", "BATCH_SIZE", "CONCURRENCY", "LEASE",
 	"POLL_INTERVAL", "HEARTBEAT_INTERVAL", "SEND_TIMEOUT", "CREDENTIALS_RELOAD", "SHUTDOWN_TIMEOUT",
 }
 
@@ -33,22 +33,22 @@ func TestLoadUsesDefaults(t *testing.T) {
 	}
 	host, _ := os.Hostname()
 	want := Config{
-		Port:                8080,
-		LogLevel:            slog.LevelInfo,
-		JWTSecret:           []byte(strings.Repeat("s", 40)),
-		JWTIssuer:           "supabase",
-		PostgRESTURL:        "http://rest:3000",
-		InstanceID:          host,
-		FirebaseCredentials: "/run/firebase",
-		FCMBaseURL:          "https://fcm.googleapis.com",
-		BatchSize:           100,
-		Concurrency:         20,
-		Lease:               time.Minute,
-		PollInterval:        time.Second,
-		HeartbeatInterval:   30 * time.Second,
-		SendTimeout:         10 * time.Second,
-		CredentialsReload:   30 * time.Second,
-		ShutdownTimeout:     20 * time.Second,
+		Port:              8080,
+		LogLevel:          slog.LevelInfo,
+		JWTSecret:         []byte(strings.Repeat("s", 40)),
+		JWTIssuer:         "supabase",
+		PostgRESTURL:      "http://rest:3000",
+		InstanceID:        host,
+		OAuthTokenURL:     "https://oauth2.googleapis.com/token",
+		FCMBaseURL:        "https://fcm.googleapis.com",
+		BatchSize:         100,
+		Concurrency:       20,
+		Lease:             time.Minute,
+		PollInterval:      time.Second,
+		HeartbeatInterval: 30 * time.Second,
+		SendTimeout:       10 * time.Second,
+		CredentialsReload: 5 * time.Second,
+		ShutdownTimeout:   20 * time.Second,
 	}
 	if !reflect.DeepEqual(cfg, want) {
 		t.Fatalf("cfg = %+v\nwant %+v", cfg, want)
@@ -61,7 +61,7 @@ func TestLoadReadsOverridesAndSecretFiles(t *testing.T) {
 	_ = os.WriteFile(secret, []byte(strings.Repeat("s", 40)+"\n"), 0o600)
 	t.Setenv("JWT_SECRET_FILE", secret)
 	t.Setenv("INSTANCE_ID", "notifier-2")
-	t.Setenv("FIREBASE_CREDENTIALS", "/secrets/firebase.json")
+	t.Setenv("OAUTH_TOKEN_URL", "http://google.local:9000/token")
 	t.Setenv("FCM_BASE_URL", "http://fcm.local:9000/")
 	t.Setenv("ANDROID_CHANNEL_ID", "chat")
 	t.Setenv("BATCH_SIZE", "500")
@@ -75,7 +75,7 @@ func TestLoadReadsOverridesAndSecretFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(cfg.JWTSecret) != 40 || cfg.InstanceID != "notifier-2" || cfg.FirebaseCredentials != "/secrets/firebase.json" ||
+	if len(cfg.JWTSecret) != 40 || cfg.InstanceID != "notifier-2" || cfg.OAuthTokenURL != "http://google.local:9000/token" ||
 		cfg.FCMBaseURL != "http://fcm.local:9000" || cfg.AndroidChannelID != "chat" || cfg.BatchSize != 500 ||
 		cfg.Concurrency != 1 || cfg.Lease != 10*time.Minute || cfg.PollInterval != 100*time.Millisecond ||
 		cfg.HeartbeatInterval != 5*time.Second || cfg.LogLevel != slog.LevelDebug {
@@ -93,6 +93,7 @@ func TestLoadRejectsUnsafeValues(t *testing.T) {
 		{map[string]string{"PORT": "70000"}, "PORT"},
 		{map[string]string{"POSTGREST_URL": "ftp://rest"}, "POSTGREST_URL"},
 		{map[string]string{"FCM_BASE_URL": "fcm.googleapis.com"}, "FCM_BASE_URL"},
+		{map[string]string{"OAUTH_TOKEN_URL": "oauth2.googleapis.com/token"}, "OAUTH_TOKEN_URL"},
 		{map[string]string{"INSTANCE_ID": strings.Repeat("n", 101)}, "INSTANCE_ID"},
 		{map[string]string{"BATCH_SIZE": "0"}, "BATCH_SIZE"},
 		{map[string]string{"BATCH_SIZE": "501"}, "BATCH_SIZE"},

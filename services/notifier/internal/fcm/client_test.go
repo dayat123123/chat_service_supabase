@@ -3,10 +3,11 @@ package fcm
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -58,11 +59,9 @@ func reply(status int, body string) func(int, http.ResponseWriter, *http.Request
 
 func configuredClient(t *testing.T, tokenURL, fcmURL string) *Client {
 	t.Helper()
-	dir := t.TempDir()
-	write(t, filepath.Join(dir, "key.json"), accountJSON(t, map[string]any{"token_uri": tokenURL}), time.Now())
-	client := newTestClient(dir, fcmURL)
+	client := newTestClient(tokenURL, fcmURL)
 	client.channelID = "chat"
-	if status, _ := client.Reload(); !status.Configured || status.Problem != "" {
+	if status := client.Load(accountJSON(t, nil)); !status.Configured || status.Problem != "" {
 		t.Fatalf("status = %+v", status)
 	}
 	return client
@@ -199,8 +198,7 @@ func TestSendReleasesWithoutBlamingFirebaseWhenStopped(t *testing.T) {
 }
 
 func TestSendWithoutCredentialsReleasesTheJob(t *testing.T) {
-	client := newTestClient(filepath.Join(t.TempDir(), "absent"), "http://fcm.invalid")
-	client.Reload()
+	client := newTestClient("http://google.invalid/token", "http://fcm.invalid")
 
 	d := client.Send(context.Background(), androidJob)
 	if d.Systemic || d.Result.Outcome != push.Release || d.Result.Error != errorNotConfigured {
@@ -218,5 +216,89 @@ func TestSendFailsJobsForUnknownPlatforms(t *testing.T) {
 	d := client.Send(context.Background(), job)
 	if d.Result.Outcome != push.Failed || d.Systemic || len(server.seen()) != 0 {
 		t.Fatalf("delivery = %+v", d)
+	}
+}
+
+func TestVerifyChecksTheKeyWithGoogleAndFCM(t *testing.T) {
+	tokens := newTokenServer(t)
+	server := newFCMServer(t, reply(400, fcmError("INVALID_ARGUMENT", "INVALID_ARGUMENT", "The registration token is not a valid FCM registration token")))
+	client := configuredClient(t, tokens.URL+"/token", server.URL)
+
+	if err := client.Verify(context.Background()); err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	requests := server.seen()
+	if len(requests) != 1 || requests[0].auth != "Bearer tok-1" || requests[0].path != "/v1/projects/demo-project/messages:send" ||
+		requests[0].body["validate_only"] != true || requests[0].body["message"].(map[string]any)["token"] != "olt-credentials-check" {
+		t.Fatalf("requests = %+v", requests)
+	}
+}
+
+func TestVerifyExplainsWhatIsWrong(t *testing.T) {
+	rejecting := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(400)
+		_, _ = w.Write([]byte(`{"error":"invalid_grant","error_description":"Invalid JWT Signature."}`))
+	}))
+	defer rejecting.Close()
+	down := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	down.Close()
+	tokens := newTokenServer(t)
+	cases := []struct {
+		name     string
+		tokenURL string
+		respond  func(int, http.ResponseWriter, *http.Request)
+		want     string
+	}{
+		{"accepted", tokens.URL, reply(200, `{"name":"projects/demo-project/messages/fake"}`), ""},
+		{"key revoked", rejecting.URL, reply(200, `{}`), "Firebase menolak kredensial: Invalid JWT Signature."},
+		{"google unreachable", down.URL, reply(200, `{}`), "Tidak bisa menghubungi Google untuk token Firebase"},
+		{"api disabled", tokens.URL, reply(403, fcmError("PERMISSION_DENIED", "", "Firebase Cloud Messaging API has not been used in project demo-project")),
+			"Firebase menolak akses: Firebase Cloud Messaging API has not been used in project demo-project"},
+		{"access token refused twice", tokens.URL, reply(401, fcmError("UNAUTHENTICATED", "", "Request had invalid authentication credentials.")),
+			"Firebase menolak akses: Request had invalid authentication credentials."},
+		{"fcm busy", tokens.URL, reply(503, fcmError("UNAVAILABLE", "UNAVAILABLE", "The service is currently unavailable.")),
+			"Firebase sementara gagal (UNAVAILABLE): The service is currently unavailable."},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := newFCMServer(t, tc.respond)
+			client := configuredClient(t, tc.tokenURL, server.URL)
+			err := client.Verify(context.Background())
+			if got := fmt.Sprint(err); (tc.want == "" && err != nil) || (tc.want != "" && got != tc.want) {
+				t.Fatalf("err = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestVerifyReportsAnUnreachableFCM(t *testing.T) {
+	tokens := newTokenServer(t)
+	down := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	down.Close()
+	client := configuredClient(t, tokens.URL+"/token", down.URL)
+
+	if err := client.Verify(context.Background()); fmt.Sprint(err) != "Tidak bisa menghubungi Firebase" {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestVerifyWithoutCredentials(t *testing.T) {
+	client := newTestClient("http://google.invalid/token", "http://fcm.invalid")
+	if err := client.Verify(context.Background()); fmt.Sprint(err) != errorNotConfigured {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestVerifyStopsQuietlyWhenCancelled(t *testing.T) {
+	tokens := newTokenServer(t)
+	server := newFCMServer(t, func(_ int, w http.ResponseWriter, r *http.Request) {
+		<-r.Context().Done()
+	})
+	client := configuredClient(t, tokens.URL+"/token", server.URL)
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(50*time.Millisecond, cancel)
+
+	if err := client.Verify(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v", err)
 	}
 }

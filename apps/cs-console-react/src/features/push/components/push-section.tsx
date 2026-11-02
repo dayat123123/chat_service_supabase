@@ -20,8 +20,9 @@ import { errorText } from '@/lib/error-text'
 import { formatNumber, minutesSince, stamp } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
-import { usePushStatus, usePushTest, usePushUsers } from '../hooks'
+import { credentialsLoading, usePushStatus, usePushTest, usePushUsers, useSyncPushReady } from '../hooks'
 import type { PushDevice, PushStatus, PushUser } from '../types'
+import { CredentialsCard } from './credentials-card'
 import { PushStateBadge } from './push-state'
 
 const QUEUE_LATE_MINUTES = 5
@@ -31,22 +32,31 @@ function StateMessage({ status }: { status: PushStatus }) {
   const live = status.instances.filter((instance) => instance.live)
   const project = live.find((instance) => instance.project_id)?.project_id
   const error = live.find((instance) => instance.error)?.error
-  const Icon =
-    status.state === 'active' ? CircleCheckIcon : status.state === 'offline' ? ServerOffIcon : CircleAlertIcon
+  const loading = status.state !== 'offline' && credentialsLoading(status)
+  const Icon = loading
+    ? LoaderCircleIcon
+    : status.state === 'active'
+      ? CircleCheckIcon
+      : status.state === 'offline'
+        ? ServerOffIcon
+        : CircleAlertIcon
   return (
     <div className="flex flex-col gap-2">
       <p
         role="status"
         className={cn(
           'flex items-start gap-2 text-row',
-          status.state === 'active' && 'text-success',
-          status.state === 'not_configured' && 'text-warning',
-          (status.state === 'error' || status.state === 'offline') && 'text-destructive',
+          loading && 'text-muted-foreground',
+          !loading && status.state === 'active' && 'text-success',
+          !loading && status.state === 'not_configured' && 'text-warning',
+          !loading && (status.state === 'error' || status.state === 'offline') && 'text-destructive',
         )}
       >
-        <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <Icon className={cn('mt-0.5 size-4 shrink-0', loading && 'animate-spin')} aria-hidden="true" />
         <span>
-          {t(`push.stateMessage.${status.state}`, { project: project ?? '-', error: error ?? '-' })}
+          {loading
+            ? t(status.credentials ? 'push.stateMessage.loading' : 'push.stateMessage.unloading')
+            : t(`push.stateMessage.${status.state}`, { project: project ?? '-', error: error ?? '-' })}
         </span>
       </p>
       {live.length > 0 ? (
@@ -112,27 +122,6 @@ function Metrics({ status }: { status: PushStatus }) {
         },
       ]}
     />
-  )
-}
-
-function SetupGuide({ open }: { open: boolean }) {
-  const { t } = useTranslation()
-  return (
-    <details open={open} className="group border-t pt-4">
-      <summary className="cursor-pointer text-panel font-semibold outline-none select-none focus-visible:ring-2 focus-visible:ring-ring/50">
-        {t('push.setupTitle')}
-      </summary>
-      <ol className="mt-3 flex list-decimal flex-col gap-2 pl-5 text-row">
-        <li>{t('push.setup.step1')}</li>
-        <li>
-          {t('push.setup.step2')}{' '}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">docker/secrets/firebase/</code>
-        </li>
-        <li>{t('push.setup.step3')}</li>
-        <li>{t('push.setup.step4')}</li>
-      </ol>
-      <p className="mt-3 text-xs text-muted-foreground">{t('push.setup.secret')}</p>
-    </details>
   )
 }
 
@@ -222,6 +211,7 @@ function TestCard({ active }: { active: boolean }) {
 export function PushSection() {
   const { t } = useTranslation()
   const status = usePushStatus()
+  useSyncPushReady(status.data?.state)
   return (
     <SectionFrame
       title={t('push.title')}
@@ -234,6 +224,7 @@ export function PushSection() {
             <SettingsCard title={t('push.serviceTitle')}>
               <StateMessage status={data} />
             </SettingsCard>
+            <CredentialsCard status={data} />
             <Metrics status={data} />
             {data.last_error ? (
               <p className="text-xs text-muted-foreground">
@@ -247,7 +238,6 @@ export function PushSection() {
             <p className="text-xs text-muted-foreground">
               {t('push.policy', { hours: data.ttl_hours, attempts: data.max_attempts })}
             </p>
-            <SetupGuide open={data.state !== 'active'} />
             <TestCard active={data.state === 'active'} />
           </div>
         )}

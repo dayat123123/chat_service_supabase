@@ -55,11 +55,22 @@ type Status struct {
 	Problem    string
 }
 
-type Heartbeat struct {
-	Instance   string
-	Version    string
+type Credentials struct {
+	Revision   int64
+	Unchanged  bool
 	Configured bool
-	ProjectID  string
-	Error      string
-	StartedAt  time.Time
+	Data       []byte
+	Problem    string
+}
+
+const UnknownRevision int64 = -1
+
+type Heartbeat struct {
+	Instance            string
+	Version             string
+	Configured          bool
+	ProjectID           string
+	Error               string
+	StartedAt           time.Time
+	CredentialsRevision int64
 }

@@ -80,7 +80,8 @@ Catatan:
 
   Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
 - **Menu Komunitas** (postingan resmi, pengumuman, notifikasi, moderasi) tidak butuh konfigurasi server. Super Admin memberi izin per staf di **Pengaturan → Akun CS** dan membuat akun resmi pertama di **Komunitas → Akun resmi** (butuh izin "Kelola akun resmi"). Foto akun resmi memakai `SUPABASE_PUBLIC_URL`, jadi isi dengan domain API publik. Rinciannya ada di [docs/community](community/README.md).
-- **Push notification ke HP**: taruh file service account Firebase (`.json`) di `docker/secrets/firebase/` (`chmod 644`). Layanan `notifier` membacanya otomatis dalam ±30 detik tanpa restart, dan status di **Pengaturan → Push notification** menjadi Aktif. Sebelum itu semua notifikasi tetap masuk ke kotak notifikasi aplikasi. Panduan lengkap (APNs, rotasi kunci, profil cluster, integrasi aplikasi): [docs/push](push/README.md).
+- **Push notification ke HP**: Super Admin mengunggah file kunci service account Firebase (`.json`) di web CS, **Pengaturan → Push notification → Kunci Firebase**. Kunci disimpan terenkripsi di Vault, notifier memuat dan memeriksanya ke Google dalam beberapa detik tanpa restart, lalu status menjadi Aktif. Sebelum itu semua notifikasi tetap masuk ke kotak notifikasi aplikasi. Panduan lengkap (APNs, rotasi kunci, restore, integrasi aplikasi): [docs/push](push/README.md).
+- **Pembersihan file storage**: layanan `janitor` menghapus file milik akun yang dihapus (avatar, lampiran postingan dan chat, dokumen CS) serta surat yang lewat masa simpan, dari antrean `private.storage_cleanup_queue`. Tidak perlu konfigurasi. Folder yang gagal dicoba ulang dengan jeda sampai 6 jam. Cek antrean: `select bucket_id, prefix, failures, error from private.storage_cleanup_queue where done_at is null;`. Detail: [services/janitor](../services/janitor/README.md).
 
 ## 3. Backup & restore
 
@@ -89,6 +90,8 @@ Catatan:
 `make backup` melakukan dua hal:
 - **Database:** `pg_dump` format custom ke `backups/olt-<UTC>.dump`. Arsip diverifikasi bisa dibaca dengan `pg_restore --list`. Dump lebih tua dari `BACKUP_KEEP_DAYS` (default 14 hari) dihapus otomatis.
 - **File storage:** avatar dan lampiran diarsipkan ke `backups/storage-<UTC>.tar.gz`.
+
+Kunci enkripsi Vault (volume `db-config`) tidak ikut dump. Setelah restore ke server baru, unggah ulang kunci Firebase di **Pengaturan → Push notification** (lihat [docs/push](push/README.md)).
 
 Jadwal harian (`crontab -e` di VPS):
 

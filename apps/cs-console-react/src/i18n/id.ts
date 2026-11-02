@@ -985,6 +985,8 @@ export const id = {
       community_sanction_revoke: 'Cabut sanksi pengguna',
       community_sessions_revoke: 'Cabut sesi pengguna',
       push_test: 'Kirim push uji',
+      push_credentials_set: 'Pasang kunci Firebase',
+      push_credentials_removed: 'Hapus kunci Firebase',
       ticket_claim: 'Ambil tiket',
       ticket_complaint_requested: 'Nasabah mengajukan pengaduan',
       ticket_fake_cs_reported: 'Nasabah melaporkan CS palsu',
@@ -1900,8 +1902,10 @@ export const id = {
     stateMessage: {
       active: 'Aktif. Push dikirim lewat Firebase project {{project}}.',
       not_configured:
-        'Layanan notifier berjalan, tetapi file kredensial Firebase belum dipasang. Notifikasi tetap masuk ke kotak notifikasi aplikasi.',
-      error: 'Firebase menolak pengiriman: {{error}}',
+        'Layanan notifier berjalan, tetapi kunci Firebase belum diunggah. Notifikasi tetap masuk ke kotak notifikasi aplikasi.',
+      error: 'Push bermasalah: {{error}}',
+      loading: 'Kunci baru tersimpan. Notifier sedang memuatnya dan memeriksanya ke Google…',
+      unloading: 'Kunci dihapus. Menunggu notifier berhenti memakai kunci lama…',
       offline:
         'Layanan notifier tidak berjalan atau tidak terhubung ke database. Jalankan ulang stack di server (make up).',
     },
@@ -1924,17 +1928,63 @@ export const id = {
     lastError: 'Kegagalan terakhir {{time}} ({{kind}}): {{error}}',
     policy:
       'Push yang belum terkirim dibatalkan setelah {{hours}} jam dan dicoba paling banyak {{attempts}} kali. Token perangkat yang tidak berlaku dihapus otomatis.',
-    setupTitle: 'Cara memasang Firebase',
-    setup: {
-      step1:
-        'Di Firebase Console, buka Project settings → Service accounts, lalu klik "Generate new private key".',
-      step2: 'Simpan file JSON tersebut (cukup satu file) di server, di folder',
-      step3:
-        'Tunggu sekitar 30 detik. Layanan notifier membaca file itu otomatis tanpa restart, lalu status di atas berubah menjadi Aktif.',
-      step4:
-        'Aplikasi OLT mendaftarkan token perangkat lewat registerPushToken dari paket rendezvous_community (panduan pengembang: docs/push/README.md).',
+    key: {
+      title: 'Kunci Firebase',
+      subtitle:
+        'Kunci akun layanan (service account) dari project Firebase aplikasi OLT. Cukup unggah file JSON-nya di sini, notifier langsung memakainya tanpa restart.',
+      project: 'Project',
+      account: 'Akun layanan',
+      keyId: 'ID kunci',
+      file: 'File',
+      uploaded: 'Diunggah',
+      uploadedBy: '{{time}} oleh {{name}}',
+      loading: 'Menunggu notifier memuat kunci ini…',
+      verified: 'Dipakai notifier dan diterima Google.',
+      steps: {
+        console: 'Di Firebase Console, buka project aplikasi OLT → Project settings → Service accounts.',
+        generate: 'Klik "Generate new private key", lalu simpan file JSON-nya.',
+        upload: 'Unggah file itu di sini. Notifier memeriksanya ke Google dalam beberapa detik.',
+      },
+      choose: 'Pilih file JSON',
+      replace: 'Ganti kunci',
+      remove: 'Hapus kunci',
+      drop: 'atau tarik file .json ke kotak ini',
+      reviewTitle: 'Periksa sebelum menyimpan',
+      save: 'Simpan kunci',
+      saveOtherProject: 'Ganti project dan simpan',
+      otherProject:
+        'Project ini berbeda dari kunci sekarang ({{project}}). Perangkat yang terdaftar lewat project lama tidak menerima push sampai aplikasi memakai project yang sama.',
+      projectChanged:
+        'Kunci Firebase baru saja diganti ke project {{project}} oleh staf lain. Pilih file lagi untuk melanjutkan.',
+      saved: 'Kunci Firebase disimpan. Notifier memuatnya dalam beberapa detik.',
+      removed: 'Kunci Firebase dihapus. Push ke HP berhenti.',
+      removeTitle: 'Hapus kunci Firebase?',
+      removeBody:
+        'Push ke HP berhenti sampai kunci baru diunggah. Notifikasi tetap masuk ke kotak notifikasi aplikasi, dan push yang sedang antre dibatalkan setelah {{hours}} jam.',
       secret:
-        'File ini berisi kunci rahasia. Jangan dikirim lewat chat atau email dan jangan dimasukkan ke repository.',
+        'Kunci disimpan terenkripsi di database dan tidak bisa diunduh lagi dari web ini. Setelah diunggah, hapus file JSON dari komputer Anda.',
+      apns: 'Untuk iPhone: unggah juga APNs Authentication Key di Firebase Console → Project settings → Cloud Messaging.',
+      app: 'Aplikasi OLT mendaftarkan token perangkat lewat registerPushToken dari paket rendezvous_community (panduan pengembang: docs/push/README.md).',
+      problems: {
+        too_large:
+          'File terlalu besar untuk kunci akun layanan. Pilih file JSON dari "Generate new private key".',
+        not_json: 'File ini bukan JSON. Pilih file .json dari "Generate new private key".',
+        google_services:
+          'Ini file google-services.json (konfigurasi aplikasi Android), bukan kunci akun layanan. Ambil kunci di Project settings → Service accounts → Generate new private key.',
+        not_service_account:
+          'Ini bukan kunci akun layanan (type harus "service_account"). Ambil kunci di Project settings → Service accounts.',
+        project_id: 'ID project di file ini tidak valid.',
+        client_email: 'Email akun layanan di file ini tidak valid.',
+        private_key_id: 'ID kunci di file ini tidak valid.',
+        private_key:
+          'Kunci privat di file ini tidak lengkap atau rusak. Buat kunci baru di Firebase Console.',
+        key_unusable: 'Kunci privat di file ini tidak bisa dibaca. Buat kunci baru di Firebase Console.',
+      },
+    },
+    errorCodes: {
+      invalid_push_credentials: 'File kunci Firebase tidak valid.',
+      push_project_changed: 'Kunci Firebase sekarang memakai project lain.',
+      push_credentials_missing: 'Belum ada kunci Firebase.',
     },
     testTitle: 'Kirim push uji',
     testHint: 'Kirim push ke perangkat pengguna tertentu untuk memastikan push benar-benar sampai.',

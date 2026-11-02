@@ -153,16 +153,17 @@ func TestHeartbeatSendsStateAndReturnsQueueDepth(t *testing.T) {
 	}{
 		{
 			name: "not configured",
-			beat: push.Heartbeat{Instance: "n1", Version: "0.1.0", StartedAt: time.Date(2026, 11, 2, 3, 4, 5, 0, time.FixedZone("WIB", 7*3600))},
+			beat: push.Heartbeat{Instance: "n1", Version: "0.1.0", StartedAt: time.Date(2026, 11, 2, 3, 4, 5, 0, time.FixedZone("WIB", 7*3600)),
+				CredentialsRevision: push.UnknownRevision},
 			want: map[string]any{"p_instance": "n1", "p_version": "0.1.0", "p_configured": false, "p_project_id": nil,
 				"p_error": nil, "p_started_at": "2026-11-01T20:04:05Z"},
 		},
 		{
 			name: "configured with an error",
 			beat: push.Heartbeat{Instance: "n1", Version: "0.1.0", Configured: true, ProjectID: "demo",
-				Error: "Firebase menolak akses: denied", StartedAt: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC)},
+				Error: "Firebase menolak akses: denied", StartedAt: time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), CredentialsRevision: 3},
 			want: map[string]any{"p_instance": "n1", "p_version": "0.1.0", "p_configured": true, "p_project_id": "demo",
-				"p_error": "Firebase menolak akses: denied", "p_started_at": "2026-11-02T00:00:00Z"},
+				"p_error": "Firebase menolak akses: denied", "p_started_at": "2026-11-02T00:00:00Z", "p_credentials_revision": float64(3)},
 		},
 	}
 	for _, tc := range cases {
@@ -175,6 +176,42 @@ func TestHeartbeatSendsStateAndReturnsQueueDepth(t *testing.T) {
 			}
 			if seen.path != "/rpc/push_heartbeat" || !reflect.DeepEqual(seen.args, tc.want) {
 				t.Fatalf("path = %s args = %#v", seen.path, seen.args)
+			}
+		})
+	}
+}
+
+func TestCredentialsAsksWithTheKnownRevision(t *testing.T) {
+	key := `{"type":"service_account","project_id":"demo","client_email":"n@demo.iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----"}`
+	cases := []struct {
+		name  string
+		known int64
+		reply string
+		args  map[string]any
+		want  push.Credentials
+	}{
+		{"first load", push.UnknownRevision, `{"revision": 4, "configured": true, "credentials": ` + key + `}`,
+			map[string]any{"p_revision": nil}, push.Credentials{Revision: 4, Configured: true, Data: []byte(key)}},
+		{"unchanged", 4, `{"revision": 4, "unchanged": true}`,
+			map[string]any{"p_revision": float64(4)}, push.Credentials{Revision: 4, Unchanged: true}},
+		{"removed", 4, `{"revision": 5, "configured": false}`,
+			map[string]any{"p_revision": float64(4)}, push.Credentials{Revision: 5}},
+		{"stored key unreadable", 0, `{"revision": 6, "configured": true, "error": " Kredensial Firebase tersimpan tidak bisa dibuka "}`,
+			map[string]any{"p_revision": float64(0)}, push.Credentials{Revision: 6, Configured: true, Problem: "Kredensial Firebase tersimpan tidak bisa dibuka"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var seen captured
+			server := recordingServer(t, tc.reply, &seen)
+			got, err := newStore(server.URL).Credentials(context.Background(), tc.known)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if seen.path != "/rpc/push_credentials" || seen.claims["role"] != "service_role" || !reflect.DeepEqual(seen.args, tc.args) {
+				t.Fatalf("path = %s claims = %v args = %#v", seen.path, seen.claims, seen.args)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("credentials = %+v, want %+v", got, tc.want)
 			}
 		})
 	}

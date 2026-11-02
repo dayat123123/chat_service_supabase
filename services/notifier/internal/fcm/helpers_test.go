@@ -9,7 +9,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
-	"log/slog"
 	"strings"
 	"sync"
 	"testing"
@@ -42,7 +41,6 @@ func accountJSON(t *testing.T, overrides map[string]any) []byte {
 		"private_key":    pkcs8PEM(t, testKey()),
 		"client_email":   "notifier@demo-project.iam.gserviceaccount.com",
 		"client_id":      "1234567890",
-		"token_uri":      "https://oauth2.googleapis.com/token",
 	}
 	for k, v := range overrides {
 		if v == nil {
@@ -58,8 +56,8 @@ func accountJSON(t *testing.T, overrides map[string]any) []byte {
 	return data
 }
 
-func newTestClient(path, baseURL string) *Client {
-	return New(Options{Path: path, BaseURL: baseURL, SendTimeout: 2 * time.Second, Log: slog.New(slog.DiscardHandler)})
+func newTestClient(tokenURL, baseURL string) *Client {
+	return New(Options{BaseURL: baseURL, TokenURL: tokenURL, SendTimeout: 2 * time.Second})
 }
 
 type decodedJWT struct {

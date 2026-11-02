@@ -61,6 +61,8 @@ export const auditActions = [
   'holiday.delete',
   'holiday.save',
   'message.secret_request_blocked',
+  'push.credentials_removed',
+  'push.credentials_set',
   'push.test',
   'quick_reply.save',
   'report.customer_trail',

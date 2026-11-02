@@ -989,6 +989,8 @@ export const en: Translation = {
       community_sanction_revoke: 'User sanction revoked',
       community_sessions_revoke: 'User sessions revoked',
       push_test: 'Test push sent',
+      push_credentials_set: 'Firebase key installed',
+      push_credentials_removed: 'Firebase key removed',
       ticket_claim: 'Ticket claimed',
       ticket_complaint_requested: 'Customer filed a complaint',
       ticket_fake_cs_reported: 'Customer reported a fake agent',
@@ -1897,8 +1899,10 @@ export const en: Translation = {
     stateMessage: {
       active: 'Active. Push is sent through Firebase project {{project}}.',
       not_configured:
-        'The notifier service is running, but the Firebase credentials file is not installed. Notifications still land in the app notification inbox.',
-      error: 'Firebase rejected sending: {{error}}',
+        'The notifier service is running, but no Firebase key has been uploaded. Notifications still land in the app notification inbox.',
+      error: 'Push has a problem: {{error}}',
+      loading: 'New key saved. The notifier is loading it and checking it with Google…',
+      unloading: 'Key removed. Waiting for the notifier to stop using the old key…',
       offline:
         'The notifier service is not running or cannot reach the database. Restart the stack on the server (make up).',
     },
@@ -1921,17 +1925,64 @@ export const en: Translation = {
     lastError: 'Last failure {{time}} ({{kind}}): {{error}}',
     policy:
       'Undelivered push is dropped after {{hours}} hours and tried at most {{attempts}} times. Device tokens that stop working are removed automatically.',
-    setupTitle: 'How to set up Firebase',
-    setup: {
-      step1:
-        'In the Firebase Console, open Project settings → Service accounts and click "Generate new private key".',
-      step2: 'Save that JSON file (just one) on the server, in the folder',
-      step3:
-        'Wait about 30 seconds. The notifier service picks the file up automatically without a restart, and the status above turns Active.',
-      step4:
-        'The OLT app registers device tokens with registerPushToken from the rendezvous_community package (developer guide: docs/push/README.md).',
+    key: {
+      title: 'Firebase key',
+      subtitle:
+        'The service account key from the Firebase project of the OLT app. Upload its JSON file here and the notifier starts using it without a restart.',
+      project: 'Project',
+      account: 'Service account',
+      keyId: 'Key ID',
+      file: 'File',
+      uploaded: 'Uploaded',
+      uploadedBy: '{{time}} by {{name}}',
+      loading: 'Waiting for the notifier to load this key…',
+      verified: 'In use by the notifier and accepted by Google.',
+      steps: {
+        console: 'In the Firebase Console, open the OLT app project → Project settings → Service accounts.',
+        generate: 'Click "Generate new private key" and save the JSON file.',
+        upload: 'Upload that file here. The notifier checks it with Google within a few seconds.',
+      },
+      choose: 'Choose JSON file',
+      replace: 'Replace key',
+      remove: 'Remove key',
+      drop: 'or drop a .json file on this box',
+      reviewTitle: 'Check before saving',
+      save: 'Save key',
+      saveOtherProject: 'Switch project and save',
+      otherProject:
+        'This project differs from the current key ({{project}}). Devices registered through the old project get no push until the app uses the same project.',
+      projectChanged:
+        'Another staff member just switched the Firebase key to project {{project}}. Choose the file again to continue.',
+      saved: 'Firebase key saved. The notifier loads it within a few seconds.',
+      removed: 'Firebase key removed. Phone push has stopped.',
+      removeTitle: 'Remove the Firebase key?',
+      removeBody:
+        'Phone push stops until a new key is uploaded. Notifications still reach the in-app inbox, and queued pushes are cancelled after {{hours}} hours.',
       secret:
-        'This file contains a private key. Do not send it over chat or email and never commit it to the repository.',
+        'The key is stored encrypted in the database and cannot be downloaded from this console. Delete the JSON file from your computer after uploading.',
+      apns: 'For iPhone: also upload an APNs Authentication Key in Firebase Console → Project settings → Cloud Messaging.',
+      app: 'The OLT app registers device tokens with registerPushToken from the rendezvous_community package (developer guide: docs/push/README.md).',
+      problems: {
+        too_large:
+          'The file is too large for a service account key. Choose the JSON file from "Generate new private key".',
+        not_json: 'This file is not JSON. Choose the .json file from "Generate new private key".',
+        google_services:
+          'This is google-services.json (the Android app config), not a service account key. Get the key from Project settings → Service accounts → Generate new private key.',
+        not_service_account:
+          'This is not a service account key (type must be "service_account"). Get the key from Project settings → Service accounts.',
+        project_id: 'The project ID in this file is not valid.',
+        client_email: 'The service account email in this file is not valid.',
+        private_key_id: 'The key ID in this file is not valid.',
+        private_key:
+          'The private key in this file is incomplete or damaged. Create a new key in the Firebase Console.',
+        key_unusable:
+          'The private key in this file cannot be read. Create a new key in the Firebase Console.',
+      },
+    },
+    errorCodes: {
+      invalid_push_credentials: 'The Firebase key file is not valid.',
+      push_project_changed: 'The Firebase key now uses another project.',
+      push_credentials_missing: 'There is no Firebase key yet.',
     },
     testTitle: 'Send a test push',
     testHint: "Send a push to a specific user's devices to confirm push really arrives.",

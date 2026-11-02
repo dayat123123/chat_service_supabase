@@ -115,7 +115,7 @@ Dasar audit:
 - **F1.**
   - `admin_api` diekspos lewat PostgREST (`PGRST_DB_SCHEMAS`) + filter header di Traefik.
   - Panel admin.
-  - Worker `storage_cleanup_queue` (file akun yang dihapus).
+  - ✅ Worker `storage_cleanup_queue` (file akun yang dihapus): layanan `services/janitor`, migrasi `0060_storage_cleanup`.
   - Notifikasi untuk konten `held` (`held` disetel service `moderation`).
 - **Tahap 4–5.** Flutter:
   - `create_post` / `create_comment` dengan `client_id`;

@@ -127,10 +127,40 @@ func (p *PostgREST) Heartbeat(ctx context.Context, beat push.Heartbeat) (int, er
 		"p_error":      nullable(beat.Error),
 		"p_started_at": beat.StartedAt.UTC().Format(time.RFC3339),
 	}
+	if beat.CredentialsRevision != push.UnknownRevision {
+		args["p_credentials_revision"] = beat.CredentialsRevision
+	}
 	if err := p.rpc(ctx, "push_heartbeat", args, &reply); err != nil {
 		return 0, err
 	}
 	return reply.Queued, nil
+}
+
+func (p *PostgREST) Credentials(ctx context.Context, known int64) (push.Credentials, error) {
+	var reply struct {
+		Revision    int64           `json:"revision"`
+		Unchanged   bool            `json:"unchanged"`
+		Configured  bool            `json:"configured"`
+		Credentials json.RawMessage `json:"credentials"`
+		Error       string          `json:"error"`
+	}
+	args := map[string]any{"p_revision": nil}
+	if known != push.UnknownRevision {
+		args["p_revision"] = known
+	}
+	if err := p.rpc(ctx, "push_credentials", args, &reply); err != nil {
+		return push.Credentials{}, err
+	}
+	creds := push.Credentials{
+		Revision:   reply.Revision,
+		Unchanged:  reply.Unchanged,
+		Configured: reply.Configured,
+		Problem:    strings.TrimSpace(reply.Error),
+	}
+	if len(reply.Credentials) > 0 && string(reply.Credentials) != "null" {
+		creds.Data = []byte(reply.Credentials)
+	}
+	return creds, nil
 }
 
 func (p *PostgREST) Ping(ctx context.Context) error {
