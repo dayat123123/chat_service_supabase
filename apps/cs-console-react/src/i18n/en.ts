@@ -546,6 +546,43 @@ export const en: Translation = {
     superAdminAlerts: 'Super Admin alerts',
     alertUnclaimed: 'Ticket unclaimed for more than (minutes)',
     alertP1: 'P1 ticket unclaimed for more than (minutes)',
+    integration: 'csAdmin integration',
+    integrationDescription:
+      'Connects the Customer accounts menu to csAdmin. The gateway picks up changes within 15 seconds of saving, without a restart.',
+    csadminTitle: 'Address and client id',
+    csadminUrl: 'csAdmin address',
+    csadminUrlHint:
+      'Include the port and path prefix if any, e.g. http://192.168.10.10:8080 or http://host:9001/csAdmin.',
+    csadminUrlInvalid: 'The address must start with http:// or https:// and have no spaces, login, or query',
+    csadminClientId: 'Client id',
+    csadminClientIdHint: 'Must match client_id in csAdminEL.cfg. Leave empty to use {{value}}.',
+    csadminClientIdInvalid: 'Client id: 1–50 letters, digits, dots, _, or -',
+    csadminInUse: 'In use: {{url}} ({{source}})',
+    csadminFromSettings: 'from this page',
+    csadminFromServer: 'from docker/.env on the server',
+    csadminNone: 'No csAdmin address yet, so the Customer accounts menu is off.',
+    testConnection: 'Test connection',
+    testResult: {
+      ok: 'Connected. csAdmin issued an integration token ({{ms}} ms).',
+      refused:
+        'csAdmin refused the integration key. Make sure client_id and public_key in csAdminEL.cfg match the block below, then restart csAdmin.',
+      ip_not_allowed:
+        'csAdmin refused this server IP. Add the web CS server IP to allowed_ips in csAdminEL.cfg.',
+      disabled:
+        'The integration is off in csAdmin: the integration block is missing, or csAdmin is an older version.',
+      unexpected: 'csAdmin gave an unexpected answer (HTTP {{status}}). Check the address and path prefix.',
+      unreachable: 'The server cannot reach csAdmin. Check the address, port, and firewall.',
+      not_configured: 'Enter the csAdmin address first.',
+      no_key:
+        'The integration key is missing on the server. Run make gen-secrets, then restart nasabah-gateway.',
+    },
+    integrationKey: 'Key for csAdmin',
+    integrationKeyHint:
+      'Paste this block into csAdminEL.cfg on the csAdmin server, then restart csAdmin. The public key is not a secret.',
+    integrationKeyMissing:
+      'The integration key is missing on the web CS server. Run make gen-secrets on the server, then restart nasabah-gateway.',
+    integrationAllowedIps: 'For extra safety, also set allowed_ips = <web CS server IP> in the same block.',
+    integrationUnavailable: 'The Customer accounts gateway status could not be read.',
   },
   compliance: {
     overview: {
@@ -1171,7 +1208,11 @@ export const en: Translation = {
     errors: {
       no_access: 'This account has no customer access.',
       permission_denied: 'This account lacks permission for this action.',
-      not_configured: 'The customer menu is not configured: the csAdmin address or account is empty.',
+      not_configured:
+        'The customer menu is not connected to csAdmin yet. A Super Admin can set the address in Settings → csAdmin integration.',
+      invalid_csadmin_url:
+        'The csAdmin address must start with http:// or https:// and have no spaces, login, or query.',
+      invalid_csadmin_client_id: 'Client id: 1–50 letters, digits, dots, _, or -.',
       integration_refused:
         'csAdmin refused the gateway integration key. Check public_key in the integration block of the csAdmin config.',
       upstream_unavailable: 'csAdmin cannot be reached.',

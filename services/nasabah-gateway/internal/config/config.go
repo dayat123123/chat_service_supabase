@@ -7,15 +7,12 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"olt-social/nasabah-gateway/internal/csadmin"
 )
-
-var clientIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,50}$`)
 
 type Config struct {
 	Port              int
@@ -37,7 +34,7 @@ func Load() (Config, error) {
 		JWTIssuer:       stringEnv("JWT_ISSUER", "supabase"),
 		PostgRESTURL:    urlEnv("POSTGREST_URL", "http://rest:3000", &errs),
 		CSAdminURL:      urlEnv("CSADMIN_URL", "", &errs),
-		CSAdminClientID: stringEnv("CSADMIN_CLIENT_ID", "web-cs"),
+		CSAdminClientID: stringEnv("CSADMIN_CLIENT_ID", csadmin.DefaultClientID),
 		CSAdminTimeout:  durationEnv("CSADMIN_TIMEOUT", 15*time.Second, &errs),
 		AccessCacheTTL:  durationEnv("ACCESS_CACHE_TTL", 30*time.Second, &errs),
 		JWTSecret:       []byte(secretEnv("JWT_SECRET", &errs)),
@@ -55,7 +52,7 @@ func Load() (Config, error) {
 	if len(cfg.JWTSecret) < 32 {
 		errs = append(errs, errors.New("JWT_SECRET must be at least 32 characters"))
 	}
-	if !clientIDPattern.MatchString(cfg.CSAdminClientID) {
+	if !csadmin.ClientIDPattern.MatchString(cfg.CSAdminClientID) {
 		errs = append(errs, errors.New("CSADMIN_CLIENT_ID must be 1-50 letters, digits, dots, dashes or underscores"))
 	}
 	if cfg.CSAdminTimeout < time.Second || cfg.CSAdminTimeout > time.Minute {

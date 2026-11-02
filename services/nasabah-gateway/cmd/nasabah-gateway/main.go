@@ -40,16 +40,18 @@ func run(cfg config.Config, log *slog.Logger) error {
 
 	store := access.NewPostgREST(cfg.PostgRESTURL, cfg.JWTSecret, cfg.JWTIssuer)
 	client := &http.Client{Timeout: cfg.CSAdminTimeout}
-	upstream := csadmin.NewSession(cfg.CSAdminURL, cfg.CSAdminClientID, cfg.CSAdminSigningKey, client)
-	if upstream.Configured() {
-		log.Info("Customer admin integration configured", "client_id", cfg.CSAdminClientID,
-			"public_key", csadmin.PublicKeyLine(cfg.CSAdminSigningKey))
-	} else {
-		log.Warn("Customer admin service is not configured; customer requests will be refused")
-	}
+	upstream := csadmin.NewProvider(csadmin.ProviderOptions{
+		Source: store,
+		Server: csadmin.Settings{URL: cfg.CSAdminURL, ClientID: cfg.CSAdminClientID},
+		Key:    cfg.CSAdminSigningKey,
+		Client: client,
+		Log:    log,
+	})
+	upstream.Session(ctx)
 	gw := gateway.New(gateway.Options{
 		Routes:    routes.Online,
 		Grants:    access.NewCache(store, cfg.AccessCacheTTL),
+		Admins:    store,
 		JWTSecret: cfg.JWTSecret,
 		Upstream:  upstream,
 		Client:    client,

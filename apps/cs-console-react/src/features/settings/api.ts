@@ -1,4 +1,5 @@
 import { ApiError, fromFunctionError } from '@/lib/errors'
+import { gatewayRequest } from '@/lib/gateway'
 import { rpc, supabase } from '@/lib/supabase'
 import type { Json } from '@/types/database'
 
@@ -7,6 +8,8 @@ import type {
   AdminOptions,
   CreatedAccount,
   Holiday,
+  IntegrationCheck,
+  IntegrationStatus,
   QuickReplyConfig,
   SavedSetting,
   SettingEntry,
@@ -86,4 +89,7 @@ export const settingsApi = {
   saveHoliday: (holiday: Holiday) =>
     rpc<Holiday[]>('admin_save_holiday', { p_day: holiday.day, p_name: holiday.name, p_kind: holiday.kind }),
   deleteHoliday: (day: string) => rpc<Holiday[]>('admin_delete_holiday', { p_day: day }),
+  integration: () => gatewayRequest<IntegrationStatus>('GET', '/integration'),
+  testIntegration: (url: string, clientId: string) =>
+    gatewayRequest<IntegrationCheck>('POST', '/integration/test', {}, { url, client_id: clientId }),
 }

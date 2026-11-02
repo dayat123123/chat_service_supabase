@@ -27,7 +27,7 @@ Menu **Akun Nasabah** (data nasabah online dari csAdmin lewat `nasabah-gateway`,
 
 ## Login dan password
 
-- Login cukup email + password, tanpa TOTP. Web CS hanya bisa diakses lewat VPN. Faktor TOTP lama yang masih terdaftar di akun diabaikan.
+- Login cukup email + password, tanpa TOTP. Web CS hanya bisa diakses dari IP yang diizinkan (LAN kantor atau VPN). Faktor TOTP lama yang masih terdaftar di akun diabaikan.
 - Akun dengan password sementara (akun baru atau setelah reset) wajib mengganti password sebelum masuk ruang kerja.
 - Super Admin mereset password lupa lewat Pengaturan → Akun CS → "Reset password". Setelah konfirmasi, Edge Function `cs-admin` (`POST /functions/v1/cs-admin/agents/{id}/reset-password`) membuat password sementara baru yang hanya ditampilkan sekali dengan tombol salin, dan password lama langsung tidak berlaku. Tombol ini tidak ada untuk akun nonaktif (aktifkan dulu) dan untuk akun sendiri.
 
@@ -103,7 +103,7 @@ src/
 
 - Header nginx: CSP ketat (`script-src 'self'`, `connect-src` hanya origin API), HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, COOP/CORP, `X-Robots-Tag: noindex`. Hanya GET/HEAD.
 - Container non-root (uid 101), filesystem read-only + tmpfs, `cap_drop: ALL`, batas CPU/memori/pids, healthcheck `/healthz`.
-- Login email + password tanpa TOTP, jadi akses dibatasi jaringan (VPN). Password sementara wajib diganti saat login pertama dan setelah reset. Sesi GoTrue per tab (`sessionStorage` dengan kunci per tab), jadi login, logout, dan refresh token di satu tab tidak menyentuh akun lain di tab lain. Logout otomatis setelah 30 menit tidak aktif, cache/draf/data yang ditampilkan dibersihkan saat keluar.
+- Login email + password tanpa TOTP, jadi akses dibatasi jaringan (LAN kantor atau VPN). Password sementara wajib diganti saat login pertama dan setelah reset. Sesi GoTrue per tab (`sessionStorage` dengan kunci per tab), jadi login, logout, dan refresh token di satu tab tidak menyentuh akun lain di tab lain. Logout otomatis setelah 30 menit tidak aktif, cache/draf/data yang ditampilkan dibersihkan saat keluar.
 - Isi pesan selalu plain text; tautan `rel="noopener noreferrer"` dan konfirmasi bila di luar situs bantuan; lampiran lewat signed URL 120 detik dengan watermark nama CS.
 - Log produksi tanpa token dan tanpa isi pesan. Zod berjalan `jitless` sehingga tidak ada `eval`.
 
@@ -120,11 +120,11 @@ CI: [.github/workflows/cs-console-react.yml](../../.github/workflows/cs-console-
 ## Produksi
 
 ```bash
-# docker/.env: CS_CONSOLE_DOMAIN=cs.domain-anda, VPN_SOURCE_RANGES=10.8.0.0/24
+# docker/.env: CS_CONSOLE_DOMAIN=cs.domain-anda, VPN_SOURCE_RANGES=192.168.1.0/24 (LAN kantor atau VPN)
 make up PROFILE=single CS=1      # Windows: .\make.ps1 up -Profile single -Cs
 ```
 
-Web CS dan API agen berada di satu domain (tanpa CORS) yang hanya menerima IP VPN (`docker/compose.cs.yml`, `docker/volumes/traefik/cs.yml`). Profil cluster memakai image `${REGISTRY}/olt-social/cs-console:0.1.0`. Lihat [docs/PRODUCTION.md](../../docs/PRODUCTION.md).
+Web CS dan API agen berada di satu domain (tanpa CORS) yang hanya menerima IP di `VPN_SOURCE_RANGES` (`docker/compose.cs.yml`, `docker/volumes/traefik/cs.yml`). Profil cluster memakai image `${REGISTRY}/olt-social/cs-console:0.1.0`. Lihat [docs/PRODUCTION.md](../../docs/PRODUCTION.md).
 
 ## Catatan
 

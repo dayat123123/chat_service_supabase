@@ -66,9 +66,18 @@ Catatan:
 - **Customer service lewat chat.** Chat CS nasabah memakai schema `cs_api` lewat `/rest/v1` dan Realtime (sudah ada di `PGRST_DB_SCHEMAS` default), jadi tidak butuh service tambahan. Server tidak mengambil data nasabah dari OLT; agen membuka back-office OLT bila butuh data akun ([olt-integration.md](olt-integration.md)). Detail: [docs/cs-chat](cs-chat/README.md).
 - **Web CS React** ([`apps/cs-console-react`](../apps/cs-console-react/README.md)) mati secara default di profil single. Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`), yang memakai overlay `docker/compose.cs.yml`. Isi di `docker/.env`:
   1. `CS_CONSOLE_DOMAIN`: domain khusus web CS. Web CS dan API agen (`/auth/v1`, `/functions/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`) disajikan di domain ini, jadi tidak perlu CORS.
-  2. `VPN_SOURCE_RANGES`: rentang IP klien VPN, dipisah koma. Semua router domain ini (`docker/volumes/traefik/cs.yml`) memakai `ipAllowList`; IP lain mendapat 403.
+  2. `VPN_SOURCE_RANGES`: rentang IP yang boleh membuka web CS, dipisah koma. Semua router domain ini (`docker/volumes/traefik/cs.yml`) memakai `ipAllowList`; IP lain mendapat 403. VPN **tidak wajib**: isi dengan jaringan kantor, tanpa mengubah kode.
+     - Server di jaringan kantor: isi rentang LAN, mis. `192.168.1.0/24`. Arahkan domain CS ke IP LAN server lewat DNS internal (atau file hosts). Bila PC staf membuka IP publik server dari dalam kantor (hairpin NAT), yang terlihat adalah IP router, jadi tambahkan IP itu.
+     - Server di cloud: isi IP publik kantor, mis. `203.0.113.10/32`.
+     - Firewall saja tidak cukup. API nasabah (`PROXY_DOMAIN`) dan web CS sama-sama di port 443, dan firewall tidak bisa membedakan domain. Pembatasan per domain dilakukan `ipAllowList` ini. Firewall cukup membuka 22/80/443, dengan SSH hanya dari kantor.
 
-  Sertifikat memakai Let's Encrypt HTTP-01 seperti `PROXY_DOMAIN`, jadi DNS publik domain ini harus mengarah ke server. Klien VPN me-resolve domain yang sama ke IP server di jaringan VPN. Header keamanan dan CSP diatur nginx container `cs-console` berdasarkan `SUPABASE_URL`.
+  Sertifikat memakai Let's Encrypt HTTP-01 seperti `PROXY_DOMAIN`, jadi DNS publik domain ini harus mengarah ke server. IP di luar daftar tetap mendapat 403. Header keamanan dan CSP diatur nginx container `cs-console` berdasarkan `SUPABASE_URL`.
+- **Menu Akun Nasabah (csAdmin)** diatur dari web, bukan dari `docker/.env`:
+  1. `make gen-secrets` sudah membuat kunci integrasi (`docker/secrets/csadmin_signing_key`).
+  2. Login sebagai Super Admin, lalu buka **Pengaturan → Integrasi csAdmin**. Isi alamat csAdmin (dan client id bila bukan `web-cs`), klik **Tes koneksi**, lalu **Simpan**. Gateway memakainya paling lambat 15 detik kemudian, tanpa restart.
+  3. Salin blok `integration { … }` dari halaman yang sama ke `csAdminEL.cfg` di server csAdmin, lalu restart csAdmin. Sebaiknya tambahkan `allowed_ips = <IP server web CS>`. Tes koneksi harus menampilkan "Terhubung".
+
+  `CSADMIN_URL` dan `CSADMIN_CLIENT_ID` di `docker/.env` hanya dipakai bila pengaturan web kosong. Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
 
 ## 3. Backup & restore
 
@@ -230,10 +239,10 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 - [ ] Revisi CS-2 (R1–R4) selesai. `make test-db`, `make cs-race`, dan `make smoke-cs` lulus di staging. `make cs-race` mencakup tes rebutan lewat beberapa replika API.
 - [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
 - [ ] Kalender libur tahun berjalan dan tahun depan sudah diperiksa kepatuhan (`cs.holidays.verified = true`), termasuk libur bursa dari pengumuman BEI.
-- [ ] API agen (`cs_api.agent_*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses lewat VPN: uji dari luar VPN harus mendapat 403. Staf CS login dengan email + password (tanpa TOTP, jadi akses VPN dan password kuat minimal 12 karakter adalah lapisan utamanya), dan pendaftaran publik GoTrue tetap mati.
+- [ ] API agen (`cs_api.agent_*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses dari IP di `VPN_SOURCE_RANGES` (LAN kantor atau VPN): uji dari jaringan lain harus mendapat 403. Staf CS login dengan email + password (tanpa TOTP, jadi pembatasan jaringan dan password kuat minimal 12 karakter adalah lapisan utamanya), dan pendaftaran publik GoTrue tetap mati.
 - [ ] `make test-cs-console` lulus dan E2E web CS (`make e2e-cs-console`) lulus di staging.
-- [ ] Endpoint login GoTrue (`/auth/v1/token`, `/auth/v1/factors`, `/auth/v1/user`) hanya dari VPN. Nasabah tidak memakainya karena JWT nasabah diterbitkan auth-bridge.
-- [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari VPN. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.
+- [ ] Endpoint login GoTrue (`/auth/v1/token`, `/auth/v1/factors`, `/auth/v1/user`) hanya dari jaringan yang diizinkan. Nasabah tidak memakainya karena JWT nasabah diterbitkan auth-bridge.
+- [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari jaringan yang diizinkan. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.
 - [ ] Super admin pertama dibuat sekali dari server:
 
   ```bash
@@ -241,7 +250,7 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
   # Windows: .\make.ps1 cs-bootstrap-admin -Profile single -Email nama@perusahaan.co.id -Name "Nama Lengkap"
   ```
 
-  Perintah ini membuat akun login GoTrue dan akun `cs_super_admin`, mencatatnya di audit log, lalu mencetak password sementara **sekali**. Serahkan password itu lewat jalur aman; saat login pertama di web CS (lewat VPN), super admin wajib menggantinya. Bila sudah ada super admin aktif, perintah menolak kecuali diberi `FORCE=1` (Windows: `-Force`).
+  Perintah ini membuat akun login GoTrue dan akun `cs_super_admin`, mencatatnya di audit log, lalu mencetak password sementara **sekali**. Serahkan password itu lewat jalur aman; saat login pertama di web CS (dari jaringan yang diizinkan), super admin wajib menggantinya. Bila sudah ada super admin aktif, perintah menolak kecuali diberi `FORCE=1` (Windows: `-Force`).
 
   Akun CS berikutnya dibuat super admin dari menu Pengaturan → Akun CS, termasuk reset password bila CS lupa. `scripts/cs-staff-setup.sh` hanya untuk dev.
 - [ ] Halaman demo `scripts/cs-demo` tidak ikut di-deploy. Halaman ini hanya disajikan `make cs-demo` di profil dev.

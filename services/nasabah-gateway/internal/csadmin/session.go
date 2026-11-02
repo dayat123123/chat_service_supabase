@@ -28,6 +28,16 @@ const (
 
 var ErrRefused = errors.New("customer admin refused the integration assertion")
 
+type RefusedError struct {
+	Status int
+}
+
+func (e *RefusedError) Error() string {
+	return fmt.Sprintf("%v: status %d", ErrRefused, e.Status)
+}
+
+func (e *RefusedError) Is(target error) bool { return target == ErrRefused }
+
 type Session struct {
 	baseURL  string
 	clientID string
@@ -122,7 +132,7 @@ func (s *Session) exchange(ctx context.Context) (string, time.Time, error) {
 	}
 	_ = json.Unmarshal(raw, &envelope)
 	if resp.StatusCode != http.StatusOK || envelope.Data.Token == "" {
-		return "", time.Time{}, fmt.Errorf("%w: status %d", ErrRefused, resp.StatusCode)
+		return "", time.Time{}, &RefusedError{Status: resp.StatusCode}
 	}
 	return envelope.Data.Token, s.refreshAt(envelope.Data.Token), nil
 }

@@ -41,3 +41,25 @@ export function hoursValue(days: Record<number, DayHours>): Record<string, [stri
 export function placeholders(texts: string[]) {
   return [...new Set(texts.flatMap((text) => text.match(/\{[a-z_]+\}/g) ?? []))]
 }
+
+const csadminUrlPattern =
+  /^https?:\/\/[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:\d{1,5})?(\/[A-Za-z0-9._~-]+)*\/?$/
+const clientIdPattern = /^[A-Za-z0-9._-]{1,50}$/
+
+export const validCsadminUrl = (url: string) => url.length <= 200 && csadminUrlPattern.test(url)
+
+export const validClientId = (clientId: string) => clientIdPattern.test(clientId)
+
+export const textSetting = (value: unknown) => (typeof value === 'string' ? value : '')
+
+export function csadminConfigBlock(clientId: string, publicKey: string) {
+  return [
+    '#INTEGRATION (web CS gateway)',
+    'integration {',
+    `        client_id       = ${clientId}`,
+    `        public_key      = ${publicKey}`,
+    '        #DURATION IN MINUTES (1-60)',
+    '        duration_token_minutes = 15',
+    '}',
+  ].join('\n')
+}

@@ -23,6 +23,7 @@ export const settingsKeys = {
   quickReplies: ['admin', 'quick-replies'] as const,
   settings: ['admin', 'settings'] as const,
   holidays: (year: number) => ['admin', 'holidays', year] as const,
+  integration: ['admin', 'integration'] as const,
 }
 
 function putAccount(client: QueryClient, agent: StaffAccount) {
@@ -155,6 +156,17 @@ export function useSaveSettings() {
       toast.error(errorText(error))
       void client.invalidateQueries({ queryKey: settingsKeys.settings })
     },
+  })
+}
+
+export function useIntegrationStatus() {
+  return useQuery({ queryKey: settingsKeys.integration, queryFn: settingsApi.integration, retry: false })
+}
+
+export function useTestIntegration() {
+  return useMutation({
+    mutationFn: ({ url, clientId }: { url: string; clientId: string }) =>
+      settingsApi.testIntegration(url, clientId),
   })
 }
 

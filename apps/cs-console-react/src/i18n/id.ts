@@ -545,6 +545,43 @@ export const id = {
     superAdminAlerts: 'Alert Super Admin',
     alertUnclaimed: 'Tiket belum diambil lebih dari (menit)',
     alertP1: 'Tiket P1 belum diambil lebih dari (menit)',
+    integration: 'Integrasi csAdmin',
+    integrationDescription:
+      'Sambungan menu Akun Nasabah ke csAdmin. Perubahan dipakai gateway paling lambat 15 detik setelah disimpan, tanpa restart.',
+    csadminTitle: 'Alamat dan client id',
+    csadminUrl: 'Alamat csAdmin',
+    csadminUrlHint:
+      'Termasuk port dan prefix path bila ada, mis. http://192.168.10.10:8080 atau http://host:9001/csAdmin.',
+    csadminUrlInvalid: 'Alamat harus diawali http:// atau https://, tanpa spasi, login, atau query',
+    csadminClientId: 'Client id',
+    csadminClientIdHint: 'Harus sama dengan client_id di csAdminEL.cfg. Kosongkan untuk memakai {{value}}.',
+    csadminClientIdInvalid: 'Client id 1–50 karakter: huruf, angka, titik, _, atau -',
+    csadminInUse: 'Dipakai sekarang: {{url}} ({{source}})',
+    csadminFromSettings: 'dari pengaturan ini',
+    csadminFromServer: 'dari docker/.env di server',
+    csadminNone: 'Belum ada alamat csAdmin, jadi menu Akun Nasabah belum aktif.',
+    testConnection: 'Tes koneksi',
+    testResult: {
+      ok: 'Terhubung. csAdmin menerbitkan token integrasi ({{ms}} ms).',
+      refused:
+        'csAdmin menolak kunci integrasi. Pastikan client_id dan public_key di csAdminEL.cfg sama dengan blok di bawah, lalu restart csAdmin.',
+      ip_not_allowed:
+        'csAdmin menolak IP server ini. Tambahkan IP server web CS ke allowed_ips di csAdminEL.cfg.',
+      disabled:
+        'Integrasi belum aktif di csAdmin: blok integration belum diisi, atau csAdmin masih versi lama.',
+      unexpected: 'csAdmin menjawab tidak terduga (HTTP {{status}}). Periksa alamat dan prefix path.',
+      unreachable: 'csAdmin tidak bisa dihubungi dari server. Periksa alamat, port, dan firewall.',
+      not_configured: 'Isi alamat csAdmin dulu.',
+      no_key: 'Kunci integrasi belum ada di server. Jalankan make gen-secrets, lalu restart nasabah-gateway.',
+    },
+    integrationKey: 'Kunci untuk csAdmin',
+    integrationKeyHint:
+      'Tempel blok ini ke csAdminEL.cfg di server csAdmin, lalu restart csAdmin. Kunci publik bukan rahasia.',
+    integrationKeyMissing:
+      'Kunci integrasi belum ada di server web CS. Jalankan make gen-secrets di server, lalu restart nasabah-gateway.',
+    integrationAllowedIps:
+      'Untuk keamanan tambahan, isi juga allowed_ips = <IP server web CS> di blok yang sama.',
+    integrationUnavailable: 'Status gateway Akun Nasabah tidak bisa dibaca.',
   },
   compliance: {
     overview: {
@@ -1171,7 +1208,11 @@ export const id = {
     errors: {
       no_access: 'Akun ini belum punya akses Nasabah.',
       permission_denied: 'Akun ini tidak punya permission untuk aksi ini.',
-      not_configured: 'Menu Nasabah belum dikonfigurasi: alamat atau akun csAdmin masih kosong.',
+      not_configured:
+        'Menu Nasabah belum terhubung ke csAdmin. Super Admin bisa mengisi alamatnya di Pengaturan → Integrasi csAdmin.',
+      invalid_csadmin_url:
+        'Alamat csAdmin harus diawali http:// atau https://, tanpa spasi, login, atau query.',
+      invalid_csadmin_client_id: 'Client id 1–50 karakter: huruf, angka, titik, _, atau -.',
       integration_refused:
         'csAdmin menolak kunci integrasi gateway. Periksa public_key di blok integration config csAdmin.',
       upstream_unavailable: 'csAdmin tidak bisa dihubungi.',
