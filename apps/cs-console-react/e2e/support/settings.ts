@@ -7,7 +7,7 @@ export const claimMode = /^Ambil tiket/
 
 async function openAssignmentSettings(page: Page) {
   await page.getByRole('link', { name: 'Pengaturan' }).click()
-  await page.getByRole('button', { name: 'Penugasan & alert' }).click()
+  await page.getByRole('button', { name: 'Penugasan, tiket & alert' }).click()
 }
 
 export async function currentAssignmentMode(page: Page) {

@@ -272,7 +272,7 @@ export const en: Translation = {
     blocked: 'Message held',
   },
   composer: {
-    hint: 'Enter to send · Shift+Enter for a new line',
+    hint: 'Enter to send · Shift+Enter for a new line · Ctrl+V to paste an image',
     insertQuickReply: 'Insert quick reply',
     reply: 'Reply',
     note: 'Internal note',
@@ -285,6 +285,8 @@ export const en: Translation = {
     attach: 'Attach image or PDF',
     dropHere: 'Drop images or PDFs here to attach',
     removeAttachment: 'Remove {{name}}',
+    previewImage: 'View {{name}}',
+    previewTitle: 'Attachment preview',
     tooMany: 'At most 4 attachments per message.',
     tooLarge: '{{name}} is larger than {{max}}.',
     badType:

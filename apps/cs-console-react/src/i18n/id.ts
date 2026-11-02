@@ -268,7 +268,7 @@ export const id = {
     blocked: 'Pesan ditahan',
   },
   composer: {
-    hint: 'Enter kirim · Shift+Enter baris baru',
+    hint: 'Enter kirim · Shift+Enter baris baru · Ctrl+V tempel gambar',
     insertQuickReply: 'Sisipkan balasan cepat',
     reply: 'Balas',
     note: 'Catatan internal',
@@ -281,6 +281,8 @@ export const id = {
     attach: 'Lampirkan gambar atau PDF',
     dropHere: 'Lepas gambar atau PDF di sini untuk dilampirkan',
     removeAttachment: 'Hapus {{name}}',
+    previewImage: 'Lihat {{name}}',
+    previewTitle: 'Pratinjau lampiran',
     tooMany: 'Maksimal 4 lampiran per pesan.',
     tooLarge: '{{name}} lebih dari {{max}}.',
     badType:

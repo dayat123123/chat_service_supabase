@@ -45,7 +45,7 @@ test('balas, tanda dibaca, lampiran, pesan nasabah realtime, dan panel info nasa
     await page
       .locator('input[type="file"]')
       .setInputFiles({ name: 'bukti.png', mimeType: 'image/png', buffer: png })
-    await expect(page.getByRole('img', { name: 'bukti.png' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Lihat bukti.png' })).toBeVisible()
     const caption = `Ini tangkapan layarnya ${tag()}`
     await box.fill(caption)
     await box.press('Enter')

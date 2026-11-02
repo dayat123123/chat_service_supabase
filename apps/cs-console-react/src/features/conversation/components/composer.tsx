@@ -3,7 +3,6 @@ import {
   EllipsisIcon,
   LinkIcon,
   ListChecksIcon,
-  FileTextIcon,
   LoaderCircleIcon,
   PaperclipIcon,
   ShieldAlertIcon,
@@ -36,6 +35,7 @@ import { toApiError } from '@/lib/errors'
 import { cn, uuid } from '@/lib/utils'
 
 import { conversationApi } from '../api'
+import { clipboardImages, fitImage, pasteBelongsElsewhere } from '../clipboard'
 import { useDraft, useQuickReplies, type SendRequest } from '../hooks'
 import {
   applyQuickReply,
@@ -49,12 +49,14 @@ import { requestsSecret } from '../secret'
 import {
   IMAGE_TYPES,
   MAX_BODY,
+  MAX_FILE_BYTES,
   MAX_FILES,
   type ChatMessage,
   type ComposerMode,
   type LocalAttachment,
   type SendResult,
 } from '../types'
+import { PendingAttachments } from './pending-attachments'
 import { SpecialMessageDialog, type SpecialKind, type SpecialMessage } from './special-dialogs'
 
 const MAX_INPUT_HEIGHT = 182
@@ -135,9 +137,14 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
   )
 
   const addFiles = useCallback(
-    (incoming: File[]) => {
+    async (incoming: File[]) => {
+      const prepared = await Promise.all(
+        incoming.map((file) =>
+          IMAGE_TYPES.includes(file.type) ? fitImage(file, MAX_FILE_BYTES) : Promise.resolve(file),
+        ),
+      )
       const images: LocalAttachment[] = []
-      for (const file of incoming) {
+      for (const file of prepared) {
         const problem = mediaProblem(file)
         if (problem === 'badType') {
           toast.error(t('composer.badType', { name: file.name }))
@@ -158,6 +165,20 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
     },
     [t],
   )
+
+  useEffect(() => {
+    if (note || locked) return
+    const onPaste = (event: ClipboardEvent) => {
+      if (event.defaultPrevented || pasteBelongsElsewhere(event.target)) return
+      const images = clipboardImages(event.clipboardData)
+      if (images.length === 0) return
+      event.preventDefault()
+      void addFiles(images)
+      textarea.current?.focus()
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [note, locked, addFiles])
 
   const focus = useCallback((next: ComposerMode) => {
     setMode(next)
@@ -345,7 +366,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         if (note || locked) return
         event.preventDefault()
         setDragging(false)
-        addFiles([...event.dataTransfer.files])
+        void addFiles([...event.dataTransfer.files])
       }}
     >
       {dragging ? (
@@ -412,40 +433,13 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
           <span>{blocked ?? t('composer.secretBlocked')}</span>
         </p>
       ) : null}
-      {files.length > 0 ? (
-        <div className="mb-2 flex flex-wrap gap-2">
-          {files.map((file) => (
-            <div key={file.id} className="relative">
-              {isDocumentFile(file.file) ? (
-                <div className="flex h-14 w-44 items-center gap-2 rounded-md border px-2.5">
-                  <FileTextIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-xs font-medium">{file.file.name}</span>
-                    <span className="block text-xs text-muted-foreground">{fileSize(file.file.size)}</span>
-                  </span>
-                </div>
-              ) : (
-                <img
-                  src={file.preview}
-                  alt={file.file.name}
-                  className="size-14 rounded-md border object-cover"
-                />
-              )}
-              <button
-                type="button"
-                aria-label={t('composer.removeAttachment', { name: file.file.name })}
-                onClick={() => {
-                  URL.revokeObjectURL(file.preview)
-                  setFiles((current) => current.filter((item) => item.id !== file.id))
-                }}
-                className="absolute -top-1.5 -right-1.5 inline-flex size-5 items-center justify-center rounded-full border bg-background text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-              >
-                <XIcon className="size-3" />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      <PendingAttachments
+        files={files}
+        onRemove={(file) => {
+          URL.revokeObjectURL(file.preview)
+          setFiles((current) => current.filter((item) => item.id !== file.id))
+        }}
+      />
       <div className="relative">
         {matches.length > 0 && token ? (
           <ul
@@ -501,13 +495,10 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
             onBlur={() => window.setTimeout(() => setToken(null), 150)}
             onPaste={(event) => {
               if (note) return
-              const images = [...event.clipboardData.items]
-                .filter((item) => item.kind === 'file' && IMAGE_TYPES.includes(item.type))
-                .map((item) => item.getAsFile())
-                .filter((file): file is File => file !== null)
+              const images = clipboardImages(event.clipboardData)
               if (images.length > 0) {
                 event.preventDefault()
-                addFiles(images)
+                void addFiles(images)
               }
             }}
             className="block max-h-[182px] min-h-[42px] w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal outline-none disabled:cursor-not-allowed disabled:text-muted-foreground"
@@ -581,7 +572,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         multiple
         hidden
         onChange={(event) => {
-          addFiles([...(event.target.files ?? [])])
+          void addFiles([...(event.target.files ?? [])])
           event.target.value = ''
         }}
       />
