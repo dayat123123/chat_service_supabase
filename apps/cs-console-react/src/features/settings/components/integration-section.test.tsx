@@ -59,7 +59,7 @@ describe('IntegrationSection', () => {
     expect(
       await screen.findByText('Dipakai sekarang: http://csadmin:8080 (dari docker/.env di server)'),
     ).toBeVisible()
-    const block = await screen.findByLabelText('Kunci untuk csAdmin')
+    const block = await screen.findByLabelText('Kunci integrasi')
     expect(block.textContent).toContain('        client_id       = web-cs\n')
     expect(block.textContent).toContain('        public_key      = MCowBQYDK2VwAyEAkey\n')
 
@@ -78,7 +78,7 @@ describe('IntegrationSection', () => {
     })
     renderWithProviders(<IntegrationSection />, monitorFixture)
 
-    const address = await screen.findByLabelText('Alamat csAdmin')
+    const address = await screen.findByLabelText('Alamat API Nasabah')
     await user.type(address, 'http://admin:rahasia@10.0.0.5')
     await user.click(screen.getByRole('button', { name: 'Simpan' }))
     expect(
@@ -103,12 +103,12 @@ describe('IntegrationSection', () => {
     })
     renderWithProviders(<IntegrationSection />, monitorFixture)
 
-    await user.type(await screen.findByLabelText('Alamat csAdmin'), 'http://10.0.0.5:8080')
+    await user.type(await screen.findByLabelText('Alamat API Nasabah'), 'http://10.0.0.5:8080')
     await user.type(screen.getByLabelText('Client id'), 'web-cs.prod')
     await user.click(screen.getByRole('button', { name: 'Tes koneksi' }))
 
     expect(settingsApi.testIntegration).toHaveBeenCalledWith('http://10.0.0.5:8080', 'web-cs.prod')
-    expect(await screen.findByRole('status')).toHaveTextContent('csAdmin menolak kunci integrasi')
+    expect(await screen.findByRole('status')).toHaveTextContent('API Nasabah menolak kunci integrasi')
     await user.type(screen.getByLabelText('Client id'), 'x')
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
@@ -125,9 +125,9 @@ describe('IntegrationSection', () => {
     renderWithProviders(<IntegrationSection />, monitorFixture)
 
     expect(
-      await screen.findByText('Belum ada alamat csAdmin, jadi menu Akun Nasabah belum aktif.'),
+      await screen.findByText('Belum ada alamat API Nasabah, jadi menu Akun Nasabah belum aktif.'),
     ).toBeVisible()
     expect(screen.getByText(/Jalankan make gen-secrets di server/)).toBeVisible()
-    expect(screen.queryByLabelText('Kunci untuk csAdmin')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Kunci integrasi')).not.toBeInTheDocument()
   })
 })

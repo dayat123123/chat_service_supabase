@@ -407,7 +407,7 @@ export const en: Translation = {
   settings: {
     nasabahAccess: 'Customer account access',
     nasabahHint:
-      'Permissions for the Customer accounts menu (csAdmin data), CS-role accounts only. Empty means the menu is hidden.',
+      'Permissions for the Customer accounts menu (data from the Customer API), CS-role accounts only. Empty means the menu is hidden.',
     title: 'Settings',
     accounts: 'CS accounts',
     topics: 'Topics',
@@ -546,11 +546,11 @@ export const en: Translation = {
     superAdminAlerts: 'Super Admin alerts',
     alertUnclaimed: 'Ticket unclaimed for more than (minutes)',
     alertP1: 'P1 ticket unclaimed for more than (minutes)',
-    integration: 'csAdmin integration',
+    integration: 'Customer API integration',
     integrationDescription:
-      'Connects the Customer accounts menu to csAdmin. The gateway picks up changes within 15 seconds of saving, without a restart.',
+      'Connects the Customer accounts menu to the Customer API. The gateway picks up changes within 15 seconds of saving, without a restart.',
     csadminTitle: 'Address and client id',
-    csadminUrl: 'csAdmin address',
+    csadminUrl: 'Customer API address',
     csadminUrlHint:
       'Include the port and path prefix if any, e.g. http://192.168.10.10:8080 or http://host:9001/csAdmin.',
     csadminUrlInvalid: 'The address must start with http:// or https:// and have no spaces, login, or query',
@@ -560,25 +560,26 @@ export const en: Translation = {
     csadminInUse: 'In use: {{url}} ({{source}})',
     csadminFromSettings: 'from this page',
     csadminFromServer: 'from docker/.env on the server',
-    csadminNone: 'No csAdmin address yet, so the Customer accounts menu is off.',
+    csadminNone: 'No Customer API address yet, so the Customer accounts menu is off.',
     testConnection: 'Test connection',
     testResult: {
-      ok: 'Connected. csAdmin issued an integration token ({{ms}} ms).',
+      ok: 'Connected. The Customer API issued an integration token ({{ms}} ms).',
       refused:
-        'csAdmin refused the integration key. Make sure client_id and public_key in csAdminEL.cfg match the block below, then restart csAdmin.',
+        'The Customer API refused the integration key. Make sure client_id and public_key in csAdminEL.cfg match the block below, then restart the service.',
       ip_not_allowed:
-        'csAdmin refused this server IP. Add the web CS server IP to allowed_ips in csAdminEL.cfg.',
+        'The Customer API refused this server IP. Add the web CS server IP to allowed_ips in csAdminEL.cfg.',
       disabled:
-        'The integration is off in csAdmin: the integration block is missing, or csAdmin is an older version.',
-      unexpected: 'csAdmin gave an unexpected answer (HTTP {{status}}). Check the address and path prefix.',
-      unreachable: 'The server cannot reach csAdmin. Check the address, port, and firewall.',
-      not_configured: 'Enter the csAdmin address first.',
+        'The integration is off in the Customer API: the integration block is missing, or the service is an older version.',
+      unexpected:
+        'The Customer API gave an unexpected answer (HTTP {{status}}). Check the address and path prefix.',
+      unreachable: 'The server cannot reach the Customer API. Check the address, port, and firewall.',
+      not_configured: 'Enter the Customer API address first.',
       no_key:
         'The integration key is missing on the server. Run make gen-secrets, then restart nasabah-gateway.',
     },
-    integrationKey: 'Key for csAdmin',
+    integrationKey: 'Integration key',
     integrationKeyHint:
-      'Paste this block into csAdminEL.cfg on the csAdmin server, then restart csAdmin. The public key is not a secret.',
+      'Paste this block into csAdminEL.cfg on the Customer API server, then restart the service. The public key is not a secret.',
     integrationKeyMissing:
       'The integration key is missing on the web CS server. Run make gen-secrets on the server, then restart nasabah-gateway.',
     integrationAllowedIps: 'For extra safety, also set allowed_ips = <web CS server IP> in the same block.',
@@ -1209,15 +1210,15 @@ export const en: Translation = {
       no_access: 'This account has no customer access.',
       permission_denied: 'This account lacks permission for this action.',
       not_configured:
-        'The customer menu is not connected to csAdmin yet. A Super Admin can set the address in Settings → csAdmin integration.',
+        'The customer menu is not connected to the Customer API yet. A Super Admin can set the address in Settings → Customer API integration.',
       invalid_csadmin_url:
-        'The csAdmin address must start with http:// or https:// and have no spaces, login, or query.',
+        'The Customer API address must start with http:// or https:// and have no spaces, login, or query.',
       invalid_csadmin_client_id: 'Client id: 1–50 letters, digits, dots, _, or -.',
       integration_refused:
-        'csAdmin refused the gateway integration key. Check public_key in the integration block of the csAdmin config.',
-      upstream_unavailable: 'csAdmin cannot be reached.',
-      upstream_error: 'csAdmin is having problems. Try again later.',
-      upstream_outdated: 'The csAdmin server has not been updated for this feature yet.',
+        'The Customer API refused the integration key. A Super Admin can check it in Settings → Customer API integration.',
+      upstream_unavailable: 'The Customer API cannot be reached.',
+      upstream_error: 'The Customer API is having problems. Try again later.',
+      upstream_outdated: 'The Customer API server has not been updated for this feature yet.',
       demo_only: 'Your account may only manage demo logins.',
       self_approval: 'A submission cannot be decided by its own submitter.',
       approval_not_found: 'The submission was already decided or no longer exists. Reload the list.',
