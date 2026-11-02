@@ -31,6 +31,7 @@ function account(raw: StaffAccount): StaffAccount {
     roles: raw.roles ?? [],
     status: raw.status ?? 'offline',
     nasabah_permissions: raw.nasabah_permissions ?? [],
+    community_permissions: raw.community_permissions ?? [],
   }
 }
 
@@ -53,6 +54,13 @@ export const settingsApi = {
   setNasabahPermissions: async (id: string, permissions: string[]) =>
     account(
       await rpc<StaffAccount>('admin_set_nasabah_permissions', {
+        p_agent_id: id,
+        p_permissions: permissions,
+      }),
+    ),
+  setCommunityPermissions: async (id: string, permissions: string[]) =>
+    account(
+      await rpc<StaffAccount>('admin_set_community_permissions', {
         p_agent_id: id,
         p_permissions: permissions,
       }),

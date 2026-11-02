@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/logging/community_logger.dart';
 import 'package:rendezvous_community/src/core/text/social_text_parser.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/pinned_post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -17,6 +18,7 @@ abstract class FeedState with _$FeedState {
   const factory FeedState({
     @Default(LoadStatus.initial) LoadStatus status,
     @Default(<Post>[]) List<Post> posts,
+    @Default(<PinnedPost>[]) List<PinnedPost> pinned,
     String? nextCursor,
     @Default(false) bool loadingMore,
     @Default(0) int newPosts,
@@ -39,9 +41,17 @@ class FeedCubit extends Cubit<FeedState> {
   Future<void> load() async {
     emit(state.copyWith(status: LoadStatus.loading, error: null));
     try {
-      final page = await _feed.getFeed(scope, limit: pageSize);
+      final (page, pinned) = await (_feed.getFeed(scope, limit: pageSize), _pinned()).wait;
       if (isClosed) return;
-      emit(state.copyWith(status: LoadStatus.ready, posts: page.items, nextCursor: page.nextCursor, newPosts: 0));
+      emit(
+        state.copyWith(
+          status: LoadStatus.ready,
+          posts: page.items,
+          nextCursor: page.nextCursor,
+          pinned: pinned,
+          newPosts: 0,
+        ),
+      );
       _listen();
     } catch (e) {
       final mapped = mapError(e);
@@ -58,9 +68,20 @@ class FeedCubit extends Cubit<FeedState> {
     if (state.status != LoadStatus.ready) return load();
     try {
       final page = await _feed.getFeed(scope, limit: pageSize);
-      if (!isClosed) emit(state.copyWith(posts: page.items, nextCursor: page.nextCursor, newPosts: 0));
+      final pinned = await _pinned();
+      if (!isClosed) {
+        emit(state.copyWith(posts: page.items, nextCursor: page.nextCursor, pinned: pinned, newPosts: 0));
+      }
     } catch (e) {
       _actionError(e);
+    }
+  }
+
+  Future<List<PinnedPost>> _pinned() async {
+    try {
+      return await _feed.getPinned(scope);
+    } catch (_) {
+      return state.pinned;
     }
   }
 
@@ -87,7 +108,10 @@ class FeedCubit extends Cubit<FeedState> {
   }
 
   Future<void> toggleLike(Post post) async {
-    final current = state.posts.firstWhere((p) => p.id == post.id, orElse: () => post);
+    final current = state.posts.firstWhere(
+      (p) => p.id == post.id,
+      orElse: () => state.pinned.map((pin) => pin.post).firstWhere((p) => p.id == post.id, orElse: () => post),
+    );
     final liked = !current.likedByMe;
     _replace(current.copyWith(likedByMe: liked, likeCount: current.likeCount + (liked ? 1 : -1)));
     try {
@@ -172,7 +196,12 @@ class FeedCubit extends Cubit<FeedState> {
 
   void _replace(Post post) {
     if (isClosed) return;
-    emit(state.copyWith(posts: [for (final p in state.posts) p.id == post.id ? post : p]));
+    emit(
+      state.copyWith(
+        posts: [for (final p in state.posts) p.id == post.id ? post : p],
+        pinned: [for (final pin in state.pinned) pin.post.id == post.id ? pin.copyWith(post: post) : pin],
+      ),
+    );
   }
 
   void _actionError(Object error) {

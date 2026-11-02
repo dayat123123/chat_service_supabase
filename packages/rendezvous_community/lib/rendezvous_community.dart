@@ -3,6 +3,7 @@ library;
 export 'package:logging/logging.dart' show Level, LogRecord;
 
 export 'src/app/community_dependencies.dart';
+export 'src/app/community_official_scope.dart';
 export 'src/app/community_scope.dart';
 export 'src/app/community_support_scope.dart';
 export 'src/app/rendezvous_community.dart';
@@ -38,6 +39,7 @@ export 'src/features/chat/presentation/widgets/receipt_icon.dart';
 export 'src/features/chat/presentation/widgets/room_visuals.dart' show CommunityRoomAvatar;
 export 'src/features/compose/presentation/widgets/community_compose_post.dart'
     show CommunityComposePost, showCommunityComposer;
+export 'src/features/feed/domain/entities/pinned_post.dart';
 export 'src/features/feed/domain/entities/post.dart';
 export 'src/features/feed/domain/repositories/feed_repository.dart';
 export 'src/features/feed/presentation/widgets/community_feed_list.dart' show CommunityFeedList;
@@ -74,6 +76,7 @@ export 'src/features/support/presentation/widgets/support_message_actions.dart';
 export 'src/features/support/presentation/widgets/support_message_parts.dart' show OfficialBadge;
 export 'src/shared/domain/entities/attachment.dart';
 export 'src/shared/domain/entities/user.dart';
+export 'src/shared/domain/official_accounts.dart';
 export 'src/shared/presentation/l10n/l10n.dart' show CommunityErrorText, CommunityL10nContext, CommunityLocalizations;
 export 'src/shared/presentation/load_status.dart';
 export 'src/shared/presentation/theme/community_theme.dart';

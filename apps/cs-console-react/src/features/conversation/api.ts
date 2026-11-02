@@ -19,7 +19,7 @@ const extension: Record<string, string> = {
   'image/gif': 'gif',
 }
 
-async function imageSize(file: File) {
+export async function imageSize(file: File) {
   try {
     const bitmap = await createImageBitmap(file)
     const size = { width: bitmap.width, height: bitmap.height }

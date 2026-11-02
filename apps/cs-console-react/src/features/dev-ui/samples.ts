@@ -20,6 +20,7 @@ export const sampleAgent: AgentProfile = {
   active_tickets: 2,
   skills: {},
   nasabah_permissions: [],
+  community_permissions: [],
   settings: defaultSettings,
 }
 

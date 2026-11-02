@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$FeedState {
 
- LoadStatus get status; List<Post> get posts; String? get nextCursor; bool get loadingMore; int get newPosts; Object? get error; Object? get actionError; int get actionErrorId;
+ LoadStatus get status; List<Post> get posts; List<PinnedPost> get pinned; String? get nextCursor; bool get loadingMore; int get newPosts; Object? get error; Object? get actionError; int get actionErrorId;
 /// Create a copy of FeedState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $FeedStateCopyWith<FeedState> get copyWith => _$FeedStateCopyWithImpl<FeedState>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.posts, posts)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.loadingMore, loadingMore) || other.loadingMore == loadingMore)&&(identical(other.newPosts, newPosts) || other.newPosts == newPosts)&&const DeepCollectionEquality().equals(other.error, error)&&const DeepCollectionEquality().equals(other.actionError, actionError)&&(identical(other.actionErrorId, actionErrorId) || other.actionErrorId == actionErrorId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other.posts, posts)&&const DeepCollectionEquality().equals(other.pinned, pinned)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.loadingMore, loadingMore) || other.loadingMore == loadingMore)&&(identical(other.newPosts, newPosts) || other.newPosts == newPosts)&&const DeepCollectionEquality().equals(other.error, error)&&const DeepCollectionEquality().equals(other.actionError, actionError)&&(identical(other.actionErrorId, actionErrorId) || other.actionErrorId == actionErrorId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(posts),nextCursor,loadingMore,newPosts,const DeepCollectionEquality().hash(error),const DeepCollectionEquality().hash(actionError),actionErrorId);
+int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(posts),const DeepCollectionEquality().hash(pinned),nextCursor,loadingMore,newPosts,const DeepCollectionEquality().hash(error),const DeepCollectionEquality().hash(actionError),actionErrorId);
 
 @override
 String toString() {
-  return 'FeedState(status: $status, posts: $posts, nextCursor: $nextCursor, loadingMore: $loadingMore, newPosts: $newPosts, error: $error, actionError: $actionError, actionErrorId: $actionErrorId)';
+  return 'FeedState(status: $status, posts: $posts, pinned: $pinned, nextCursor: $nextCursor, loadingMore: $loadingMore, newPosts: $newPosts, error: $error, actionError: $actionError, actionErrorId: $actionErrorId)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $FeedStateCopyWith<$Res>  {
   factory $FeedStateCopyWith(FeedState value, $Res Function(FeedState) _then) = _$FeedStateCopyWithImpl;
 @useResult
 $Res call({
- LoadStatus status, List<Post> posts, String? nextCursor, bool loadingMore, int newPosts, Object? error, Object? actionError, int actionErrorId
+ LoadStatus status, List<Post> posts, List<PinnedPost> pinned, String? nextCursor, bool loadingMore, int newPosts, Object? error, Object? actionError, int actionErrorId
 });
 
 
@@ -62,11 +62,12 @@ class _$FeedStateCopyWithImpl<$Res>
 
 /// Create a copy of FeedState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? posts = null,Object? nextCursor = freezed,Object? loadingMore = null,Object? newPosts = null,Object? error = freezed,Object? actionError = freezed,Object? actionErrorId = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? posts = null,Object? pinned = null,Object? nextCursor = freezed,Object? loadingMore = null,Object? newPosts = null,Object? error = freezed,Object? actionError = freezed,Object? actionErrorId = null,}) {
   return _then(_self.copyWith(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as LoadStatus,posts: null == posts ? _self.posts : posts // ignore: cast_nullable_to_non_nullable
-as List<Post>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
+as List<Post>,pinned: null == pinned ? _self.pinned : pinned // ignore: cast_nullable_to_non_nullable
+as List<PinnedPost>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
 as String?,loadingMore: null == loadingMore ? _self.loadingMore : loadingMore // ignore: cast_nullable_to_non_nullable
 as bool,newPosts: null == newPosts ? _self.newPosts : newPosts // ignore: cast_nullable_to_non_nullable
 as int,error: freezed == error ? _self.error : error ,actionError: freezed == actionError ? _self.actionError : actionError ,actionErrorId: null == actionErrorId ? _self.actionErrorId : actionErrorId // ignore: cast_nullable_to_non_nullable
@@ -155,10 +156,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( LoadStatus status,  List<Post> posts,  String? nextCursor,  bool loadingMore,  int newPosts,  Object? error,  Object? actionError,  int actionErrorId)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( LoadStatus status,  List<Post> posts,  List<PinnedPost> pinned,  String? nextCursor,  bool loadingMore,  int newPosts,  Object? error,  Object? actionError,  int actionErrorId)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _FeedState() when $default != null:
-return $default(_that.status,_that.posts,_that.nextCursor,_that.loadingMore,_that.newPosts,_that.error,_that.actionError,_that.actionErrorId);case _:
+return $default(_that.status,_that.posts,_that.pinned,_that.nextCursor,_that.loadingMore,_that.newPosts,_that.error,_that.actionError,_that.actionErrorId);case _:
   return orElse();
 
 }
@@ -176,10 +177,10 @@ return $default(_that.status,_that.posts,_that.nextCursor,_that.loadingMore,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( LoadStatus status,  List<Post> posts,  String? nextCursor,  bool loadingMore,  int newPosts,  Object? error,  Object? actionError,  int actionErrorId)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( LoadStatus status,  List<Post> posts,  List<PinnedPost> pinned,  String? nextCursor,  bool loadingMore,  int newPosts,  Object? error,  Object? actionError,  int actionErrorId)  $default,) {final _that = this;
 switch (_that) {
 case _FeedState():
-return $default(_that.status,_that.posts,_that.nextCursor,_that.loadingMore,_that.newPosts,_that.error,_that.actionError,_that.actionErrorId);case _:
+return $default(_that.status,_that.posts,_that.pinned,_that.nextCursor,_that.loadingMore,_that.newPosts,_that.error,_that.actionError,_that.actionErrorId);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -196,10 +197,10 @@ return $default(_that.status,_that.posts,_that.nextCursor,_that.loadingMore,_tha
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( LoadStatus status,  List<Post> posts,  String? nextCursor,  bool loadingMore,  int newPosts,  Object? error,  Object? actionError,  int actionErrorId)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( LoadStatus status,  List<Post> posts,  List<PinnedPost> pinned,  String? nextCursor,  bool loadingMore,  int newPosts,  Object? error,  Object? actionError,  int actionErrorId)?  $default,) {final _that = this;
 switch (_that) {
 case _FeedState() when $default != null:
-return $default(_that.status,_that.posts,_that.nextCursor,_that.loadingMore,_that.newPosts,_that.error,_that.actionError,_that.actionErrorId);case _:
+return $default(_that.status,_that.posts,_that.pinned,_that.nextCursor,_that.loadingMore,_that.newPosts,_that.error,_that.actionError,_that.actionErrorId);case _:
   return null;
 
 }
@@ -211,7 +212,7 @@ return $default(_that.status,_that.posts,_that.nextCursor,_that.loadingMore,_tha
 
 
 class _FeedState implements FeedState {
-  const _FeedState({this.status = LoadStatus.initial, final  List<Post> posts = const <Post>[], this.nextCursor, this.loadingMore = false, this.newPosts = 0, this.error, this.actionError, this.actionErrorId = 0}): _posts = posts;
+  const _FeedState({this.status = LoadStatus.initial, final  List<Post> posts = const <Post>[], final  List<PinnedPost> pinned = const <PinnedPost>[], this.nextCursor, this.loadingMore = false, this.newPosts = 0, this.error, this.actionError, this.actionErrorId = 0}): _posts = posts,_pinned = pinned;
   
 
 @override@JsonKey() final  LoadStatus status;
@@ -220,6 +221,13 @@ class _FeedState implements FeedState {
   if (_posts is EqualUnmodifiableListView) return _posts;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_posts);
+}
+
+ final  List<PinnedPost> _pinned;
+@override@JsonKey() List<PinnedPost> get pinned {
+  if (_pinned is EqualUnmodifiableListView) return _pinned;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_pinned);
 }
 
 @override final  String? nextCursor;
@@ -239,16 +247,16 @@ _$FeedStateCopyWith<_FeedState> get copyWith => __$FeedStateCopyWithImpl<_FeedSt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeedState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._posts, _posts)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.loadingMore, loadingMore) || other.loadingMore == loadingMore)&&(identical(other.newPosts, newPosts) || other.newPosts == newPosts)&&const DeepCollectionEquality().equals(other.error, error)&&const DeepCollectionEquality().equals(other.actionError, actionError)&&(identical(other.actionErrorId, actionErrorId) || other.actionErrorId == actionErrorId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeedState&&(identical(other.status, status) || other.status == status)&&const DeepCollectionEquality().equals(other._posts, _posts)&&const DeepCollectionEquality().equals(other._pinned, _pinned)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.loadingMore, loadingMore) || other.loadingMore == loadingMore)&&(identical(other.newPosts, newPosts) || other.newPosts == newPosts)&&const DeepCollectionEquality().equals(other.error, error)&&const DeepCollectionEquality().equals(other.actionError, actionError)&&(identical(other.actionErrorId, actionErrorId) || other.actionErrorId == actionErrorId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(_posts),nextCursor,loadingMore,newPosts,const DeepCollectionEquality().hash(error),const DeepCollectionEquality().hash(actionError),actionErrorId);
+int get hashCode => Object.hash(runtimeType,status,const DeepCollectionEquality().hash(_posts),const DeepCollectionEquality().hash(_pinned),nextCursor,loadingMore,newPosts,const DeepCollectionEquality().hash(error),const DeepCollectionEquality().hash(actionError),actionErrorId);
 
 @override
 String toString() {
-  return 'FeedState(status: $status, posts: $posts, nextCursor: $nextCursor, loadingMore: $loadingMore, newPosts: $newPosts, error: $error, actionError: $actionError, actionErrorId: $actionErrorId)';
+  return 'FeedState(status: $status, posts: $posts, pinned: $pinned, nextCursor: $nextCursor, loadingMore: $loadingMore, newPosts: $newPosts, error: $error, actionError: $actionError, actionErrorId: $actionErrorId)';
 }
 
 
@@ -259,7 +267,7 @@ abstract mixin class _$FeedStateCopyWith<$Res> implements $FeedStateCopyWith<$Re
   factory _$FeedStateCopyWith(_FeedState value, $Res Function(_FeedState) _then) = __$FeedStateCopyWithImpl;
 @override @useResult
 $Res call({
- LoadStatus status, List<Post> posts, String? nextCursor, bool loadingMore, int newPosts, Object? error, Object? actionError, int actionErrorId
+ LoadStatus status, List<Post> posts, List<PinnedPost> pinned, String? nextCursor, bool loadingMore, int newPosts, Object? error, Object? actionError, int actionErrorId
 });
 
 
@@ -276,11 +284,12 @@ class __$FeedStateCopyWithImpl<$Res>
 
 /// Create a copy of FeedState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? posts = null,Object? nextCursor = freezed,Object? loadingMore = null,Object? newPosts = null,Object? error = freezed,Object? actionError = freezed,Object? actionErrorId = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? posts = null,Object? pinned = null,Object? nextCursor = freezed,Object? loadingMore = null,Object? newPosts = null,Object? error = freezed,Object? actionError = freezed,Object? actionErrorId = null,}) {
   return _then(_FeedState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as LoadStatus,posts: null == posts ? _self._posts : posts // ignore: cast_nullable_to_non_nullable
-as List<Post>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
+as List<Post>,pinned: null == pinned ? _self._pinned : pinned // ignore: cast_nullable_to_non_nullable
+as List<PinnedPost>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
 as String?,loadingMore: null == loadingMore ? _self.loadingMore : loadingMore // ignore: cast_nullable_to_non_nullable
 as bool,newPosts: null == newPosts ? _self.newPosts : newPosts // ignore: cast_nullable_to_non_nullable
 as int,error: freezed == error ? _self.error : error ,actionError: freezed == actionError ? _self.actionError : actionError ,actionErrorId: null == actionErrorId ? _self.actionErrorId : actionErrorId // ignore: cast_nullable_to_non_nullable

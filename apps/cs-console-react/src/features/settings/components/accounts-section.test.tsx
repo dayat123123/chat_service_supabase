@@ -13,7 +13,16 @@ import { AccountsSection } from './accounts-section'
 
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof ApiModule>()
-  return { ...actual, settingsApi: { ...actual.settingsApi, accounts: vi.fn(), resetPassword: vi.fn() } }
+  return {
+    ...actual,
+    settingsApi: {
+      ...actual.settingsApi,
+      accounts: vi.fn(),
+      resetPassword: vi.fn(),
+      updateAccount: vi.fn(),
+      setCommunityPermissions: vi.fn(),
+    },
+  }
 })
 
 function staff(overrides: Partial<StaffAccount>): StaffAccount {
@@ -29,6 +38,7 @@ function staff(overrides: Partial<StaffAccount>): StaffAccount {
     status: 'online',
     active_tickets: 1,
     nasabah_permissions: [],
+    community_permissions: [],
     created_at: '2026-10-01T02:00:00.000Z',
     ...overrides,
   }
@@ -112,6 +122,31 @@ describe('AccountsSection', () => {
     await user.click(within(screen.getByRole('row', { name: /Sinta/ })).getByRole('button', { name: 'Ubah' }))
     const adminForm = await screen.findByRole('dialog', { name: 'Ubah akun Sinta' })
     expect(within(adminForm).queryByRole('group', { name: 'Akses Akun Nasabah' })).not.toBeInTheDocument()
+  })
+
+  it('grants community permissions to any staff account', async () => {
+    const user = userEvent.setup()
+    vi.mocked(settingsApi.updateAccount).mockResolvedValue(sinta)
+    vi.mocked(settingsApi.setCommunityPermissions).mockResolvedValue({
+      ...sinta,
+      community_permissions: ['community.accounts'],
+    })
+    renderWithProviders(<AccountsSection />, monitorFixture)
+
+    await user.click(
+      within(await screen.findByRole('row', { name: /Sinta/ })).getByRole('button', { name: 'Ubah' }),
+    )
+    const form = await screen.findByRole('dialog', { name: 'Ubah akun Sinta' })
+    const group = within(form).getByRole('group', { name: 'Izin Komunitas' })
+    expect(within(group).getAllByRole('checkbox')).toHaveLength(5)
+    await user.click(within(group).getByRole('checkbox', { name: /Kelola akun resmi/ }))
+    await user.click(within(form).getByRole('button', { name: 'Simpan' }))
+
+    await waitFor(() =>
+      expect(settingsApi.setCommunityPermissions).toHaveBeenCalledWith(monitorFixture.id, [
+        'community.accounts',
+      ]),
+    )
   })
 
   it.each([

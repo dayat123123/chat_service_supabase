@@ -19,4 +19,6 @@ abstract interface class ProfileRepository {
   Future<void> unblock(String userId);
 
   Future<List<UserSummary>> searchUsers(String query, {int limit = 8});
+
+  Future<Set<String>> officialAccountIds();
 }

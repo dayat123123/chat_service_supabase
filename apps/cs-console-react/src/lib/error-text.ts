@@ -47,6 +47,22 @@ type BannedWordCode = (typeof bannedWordCodes)[number]
 const isBannedWordCode = (code: string): code is BannedWordCode =>
   (bannedWordCodes as readonly string[]).includes(code)
 
+const communityCodes = [
+  'community_forbidden',
+  'four_eyes',
+  'stale_version',
+  'invalid_status',
+  'username_taken',
+  'official_inactive',
+  'protected_account',
+  'content_blocked',
+] as const
+
+type CommunityCode = (typeof communityCodes)[number]
+
+const isCommunityCode = (code: string): code is CommunityCode =>
+  (communityCodes as readonly string[]).includes(code)
+
 const isNasabahCode = (code: string): code is NasabahCode =>
   (nasabahCodes as readonly string[]).includes(code)
 
@@ -55,6 +71,7 @@ export function errorText(error: unknown): string {
   const t = i18n.t.bind(i18n)
   if (isNasabahCode(e.code)) return t(`nasabah.errors.${e.code}`)
   if (isBannedWordCode(e.code)) return t(`compliance.words.errors.${e.code}`)
+  if (isCommunityCode(e.code)) return t(`community.errorCodes.${e.code}`)
   switch (e.code) {
     case 'invalid_credentials':
       return t('errors.invalidLogin')

@@ -728,6 +728,20 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
   String get supportClosed => 'Chat ended.';
 
   @override
+  String get officialAccountBadge => 'Official';
+
+  @override
+  String get pinnedLabel => 'Pinned';
+
+  @override
+  String get announcementLabel => 'Announcement';
+
+  @override
+  String notifAnnouncement(String name) {
+    return '$name posted an announcement';
+  }
+
+  @override
   String supportTicketClosedNotice(String ticket) {
     return 'Ticket #$ticket is closed and can no longer be answered.';
   }
