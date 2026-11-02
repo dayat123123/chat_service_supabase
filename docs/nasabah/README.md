@@ -63,7 +63,7 @@ integration {
 }
 ```
 
-- **`public_key`**: base64 SubjectPublicKeyInfo Ed25519, satu baris, tanpa `=`. Cara termudah: salin blok siap tempel dari web CS, **Pengaturan → Integrasi csAdmin**. Bisa juga dari output `gen-secrets`, dari log start gateway (`public_key` di baris "Customer admin integration configured"), atau dari perintah ini:
+- **`public_key`**: base64 SubjectPublicKeyInfo Ed25519, satu baris, tanpa `=`. Cara termudah: salin blok siap tempel dari web CS, **Pengaturan → Integrasi API Nasabah**. Bisa juga dari output `gen-secrets`, dari log start gateway (`public_key` di baris "Customer admin integration configured"), atau dari perintah ini:
   ```bash
   openssl pkey -in docker/secrets/csadmin_signing_key -pubout -outform DER | openssl base64 -A | tr -d '='
   ```
@@ -92,7 +92,7 @@ Nasabah tiket adalah profil aplikasi sosial yang dibuat dari token OLT. Username
 
 ## Konfigurasi gateway
 
-Super Admin mengatur sambungan ke csAdmin dari web CS, di **Pengaturan → Integrasi csAdmin**. Server cukup menjalankan `make up`; alamat csAdmin tidak perlu ditulis di `docker/.env`.
+Super Admin mengatur sambungan ke csAdmin dari web CS, di **Pengaturan → Integrasi API Nasabah**. Server cukup menjalankan `make up`; alamat csAdmin tidak perlu ditulis di `docker/.env`.
 
 - **Alamat csAdmin** dan **client id** disimpan di `cs.cs_settings` (`nasabah.csadmin_url`, `nasabah.csadmin_client_id`, migrasi `0050`). Setiap perubahan masuk riwayat pengaturan dan audit log.
 - **Gateway membaca nilainya** lewat `cs_api.nasabah_integration()` (service_role) paling lama setiap 15 detik, jadi tidak perlu restart. Bila alamat atau client id berubah, token csAdmin lama dibuang. Bila database sedang tidak terbaca, gateway tetap memakai nilai terakhir.

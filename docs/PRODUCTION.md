@@ -74,7 +74,7 @@ Catatan:
   Sertifikat memakai Let's Encrypt HTTP-01 seperti `PROXY_DOMAIN`, jadi DNS publik domain ini harus mengarah ke server. IP di luar daftar tetap mendapat 403. Header keamanan dan CSP diatur nginx container `cs-console` berdasarkan `SUPABASE_URL`.
 - **Menu Akun Nasabah (csAdmin)** diatur dari web, bukan dari `docker/.env`:
   1. `make gen-secrets` sudah membuat kunci integrasi (`docker/secrets/csadmin_signing_key`).
-  2. Login sebagai Super Admin, lalu buka **Pengaturan → Integrasi csAdmin**. Isi alamat csAdmin (dan client id bila bukan `web-cs`), klik **Tes koneksi**, lalu **Simpan**. Gateway memakainya paling lambat 15 detik kemudian, tanpa restart.
+  2. Login sebagai Super Admin, lalu buka **Pengaturan → Integrasi API Nasabah**. Isi alamat csAdmin (dan client id bila bukan `web-cs`), klik **Tes koneksi**, lalu **Simpan**. Gateway memakainya paling lambat 15 detik kemudian, tanpa restart.
   3. Salin blok `integration { … }` dari halaman yang sama ke `csAdminEL.cfg` di server csAdmin, lalu restart csAdmin. Sebaiknya tambahkan `allowed_ips = <IP server web CS>`. Tes koneksi harus menampilkan "Terhubung".
 
   `CSADMIN_URL` dan `CSADMIN_CLIENT_ID` di `docker/.env` hanya dipakai bila pengaturan web kosong. Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
