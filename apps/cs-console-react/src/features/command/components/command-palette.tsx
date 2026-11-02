@@ -1,6 +1,7 @@
 import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowRightLeftIcon,
+  BanIcon,
   BarChart3Icon,
   ClockIcon,
   FolderSearchIcon,
@@ -108,6 +109,7 @@ type SectionTarget =
   | '/compliance/cases'
   | '/compliance/audit'
   | '/compliance/policy'
+  | '/compliance/words'
   | '/nasabah'
 
 function PaletteBody({
@@ -175,6 +177,7 @@ function PaletteBody({
           { label: t('nav.cases'), icon: FolderSearchIcon, to: '/compliance/cases' as const },
           { label: t('nav.audit'), icon: ScrollTextIcon, to: '/compliance/audit' as const },
           { label: t('nav.policy'), icon: ShieldCheckIcon, to: '/compliance/policy' as const },
+          { label: t('nav.words'), icon: BanIcon, to: '/compliance/words' as const },
         ]
       : []),
   ]

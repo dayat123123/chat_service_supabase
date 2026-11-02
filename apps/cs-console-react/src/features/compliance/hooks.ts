@@ -4,6 +4,8 @@ import { complianceApi } from './api'
 import {
   AUDIT_PAGE_SIZE,
   type AuditFilter,
+  type BannedAction,
+  type BannedWordList,
   type CaseFilter,
   type PolicyBook,
   type PolicyKey,
@@ -28,6 +30,7 @@ export const complianceKeys = {
   audit: (filter: AuditFilter) =>
     ['compliance', 'audit', filter.range.from, filter.range.to, filter.action, filter.query] as const,
   policies: ['compliance', 'policies'] as const,
+  bannedWords: ['compliance', 'banned-words'] as const,
 }
 
 export function useComplianceOverview(enabled: boolean) {
@@ -131,3 +134,38 @@ export function useConfirmPolicy() {
     },
   })
 }
+
+export function useBannedWords() {
+  return useQuery({ queryKey: complianceKeys.bannedWords, queryFn: complianceApi.bannedWords })
+}
+
+function useBannedWordMutation<T, R extends BannedWordList>(run: (input: T) => Promise<R>) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: run,
+    onSuccess: (list) =>
+      client.setQueryData<BannedWordList>(complianceKeys.bannedWords, {
+        limit: list.limit,
+        words: list.words,
+      }),
+    onError: () => void client.invalidateQueries({ queryKey: complianceKeys.bannedWords }),
+  })
+}
+
+export const useAddBannedWord = () =>
+  useBannedWordMutation(({ word, action }: { word: string; action: BannedAction }) =>
+    complianceApi.addBannedWord(word, action),
+  )
+
+export const useSetBannedWordAction = () =>
+  useBannedWordMutation(({ word, action }: { word: string; action: BannedAction }) =>
+    complianceApi.setBannedWordAction(word, action),
+  )
+
+export const useDeleteBannedWord = () =>
+  useBannedWordMutation((word: string) => complianceApi.deleteBannedWord(word))
+
+export const useImportBannedWords = () =>
+  useBannedWordMutation((rows: { word: string; action: BannedAction }[]) =>
+    complianceApi.importBannedWords(rows),
+  )

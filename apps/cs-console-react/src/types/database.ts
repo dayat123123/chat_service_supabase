@@ -96,6 +96,10 @@ export type Database = {
       check_sensitive: { Args: { p_text: string }; Returns: Json }
       claim_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       close_ticket: { Args: { p_ticket_id: string }; Returns: Json }
+      compliance_add_banned_word: {
+        Args: { p_action: string; p_word: string }
+        Returns: Json
+      }
       compliance_audit: {
         Args: {
           p_action?: string
@@ -106,6 +110,10 @@ export type Database = {
           p_query?: string
           p_to: string
         }
+        Returns: Json
+      }
+      compliance_banned_words: {
+        Args: Record<PropertyKey, never>
         Returns: Json
       }
       compliance_case: { Args: { p_ticket_id: string }; Returns: Json }
@@ -123,14 +131,20 @@ export type Database = {
         Args: { p_key: string; p_note?: string; p_value: Json }
         Returns: Json
       }
+      compliance_delete_banned_word: { Args: { p_word: string }; Returns: Json }
       compliance_extend_deadline: {
         Args: { p_reason: string; p_ticket_id: string; p_version?: number }
         Returns: Json
       }
+      compliance_import_banned_words: { Args: { p_rows: Json }; Returns: Json }
       compliance_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       compliance_policies: { Args: Record<PropertyKey, never>; Returns: Json }
       compliance_review: {
         Args: { p_note: string; p_ticket_id: string; p_verdict: string }
+        Returns: Json
+      }
+      compliance_set_banned_word_action: {
+        Args: { p_action: string; p_word: string }
         Returns: Json
       }
       compliance_transcript_exported: {
@@ -164,6 +178,8 @@ export type Database = {
         Args: { p_action: string; p_details: Json; p_user_id: string }
         Returns: undefined
       }
+      nasabah_integration: { Args: Record<PropertyKey, never>; Returns: Json }
+      nasabah_is_super_admin: { Args: { p_user_id: string }; Returns: boolean }
       notes: { Args: { p_customer_id: string }; Returns: Json }
       online_agents: { Args: Record<PropertyKey, never>; Returns: Json }
       open_ticket: {
