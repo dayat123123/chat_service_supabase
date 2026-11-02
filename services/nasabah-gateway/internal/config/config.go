@@ -20,8 +20,6 @@ type Config struct {
 	JWTSecret         []byte
 	JWTIssuer         string
 	PostgRESTURL      string
-	CSAdminURL        string
-	CSAdminClientID   string
 	CSAdminSigningKey ed25519.PrivateKey
 	CSAdminTimeout    time.Duration
 	AccessCacheTTL    time.Duration
@@ -30,14 +28,12 @@ type Config struct {
 func Load() (Config, error) {
 	var errs []error
 	cfg := Config{
-		Port:            intEnv("PORT", 8080, &errs),
-		JWTIssuer:       stringEnv("JWT_ISSUER", "supabase"),
-		PostgRESTURL:    urlEnv("POSTGREST_URL", "http://rest:3000", &errs),
-		CSAdminURL:      urlEnv("CSADMIN_URL", "", &errs),
-		CSAdminClientID: stringEnv("CSADMIN_CLIENT_ID", csadmin.DefaultClientID),
-		CSAdminTimeout:  durationEnv("CSADMIN_TIMEOUT", 15*time.Second, &errs),
-		AccessCacheTTL:  durationEnv("ACCESS_CACHE_TTL", 30*time.Second, &errs),
-		JWTSecret:       []byte(secretEnv("JWT_SECRET", &errs)),
+		Port:           intEnv("PORT", 8080, &errs),
+		JWTIssuer:      stringEnv("JWT_ISSUER", "supabase"),
+		PostgRESTURL:   urlEnv("POSTGREST_URL", "http://rest:3000", &errs),
+		CSAdminTimeout: durationEnv("CSADMIN_TIMEOUT", 15*time.Second, &errs),
+		AccessCacheTTL: durationEnv("ACCESS_CACHE_TTL", 30*time.Second, &errs),
+		JWTSecret:      []byte(secretEnv("JWT_SECRET", &errs)),
 	}
 	if pem := secretEnv("CSADMIN_SIGNING_KEY", &errs); pem != "" {
 		key, err := csadmin.ParsePrivateKey([]byte(pem))
@@ -51,9 +47,6 @@ func Load() (Config, error) {
 	}
 	if len(cfg.JWTSecret) < 32 {
 		errs = append(errs, errors.New("JWT_SECRET must be at least 32 characters"))
-	}
-	if !csadmin.ClientIDPattern.MatchString(cfg.CSAdminClientID) {
-		errs = append(errs, errors.New("CSADMIN_CLIENT_ID must be 1-50 letters, digits, dots, dashes or underscores"))
 	}
 	if cfg.CSAdminTimeout < time.Second || cfg.CSAdminTimeout > time.Minute {
 		errs = append(errs, errors.New("CSADMIN_TIMEOUT must be between 1s and 1m"))

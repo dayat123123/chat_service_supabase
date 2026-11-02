@@ -5,7 +5,6 @@ import {
   hoursValue,
   placeholders,
   readHours,
-  textSetting,
   validClientId,
   validCsadminUrl,
   validDay,
@@ -81,13 +80,7 @@ describe('csAdmin integration', () => {
     expect(validClientId('a'.repeat(51))).toBe(false)
   })
 
-  it('reads text settings and ignores other value types', () => {
-    expect(textSetting('http://host')).toBe('http://host')
-    expect(textSetting(8080)).toBe('')
-    expect(textSetting(undefined)).toBe('')
-  })
-
-  it('builds the integration block for csAdminEL.cfg', () => {
+  it('builds the integration block for the CS Admin service config', () => {
     expect(csadminConfigBlock('web-cs', 'MCowBQYDK2VwAyEA')).toBe(
       [
         '#INTEGRATION (web CS gateway)',

@@ -35,6 +35,8 @@ type auditEntry struct {
 type fakeStore struct {
 	grants map[string]*access.Grant
 	admins map[string]bool
+	record csadmin.Record
+	saved  []csadmin.Settings
 	mu     sync.Mutex
 	audits []auditEntry
 }
@@ -45,6 +47,21 @@ func (s *fakeStore) Grant(_ context.Context, userID string) (*access.Grant, erro
 
 func (s *fakeStore) IsSuperAdmin(_ context.Context, userID string) (bool, error) {
 	return s.admins[userID], nil
+}
+
+func (s *fakeStore) Integration(context.Context) (csadmin.Record, error) {
+	return s.record, nil
+}
+
+func (s *fakeStore) SaveIntegration(_ context.Context, userID string, settings csadmin.Settings) (csadmin.Record, error) {
+	s.saved = append(s.saved, settings)
+	s.record = csadmin.Record{URL: settings.URL, ClientID: settings.ClientID, Configured: true, ConnectedBy: &userID}
+	return s.record, nil
+}
+
+func (s *fakeStore) ClearIntegration(context.Context, string) (csadmin.Record, error) {
+	s.record = csadmin.Record{}
+	return s.record, nil
 }
 
 func (s *fakeStore) Audit(_ context.Context, userID, action string, details map[string]any) error {
@@ -67,6 +84,7 @@ type upstream struct {
 	reply     string
 	reject    int
 	public    ed25519.PublicKey
+	key       ed25519.PrivateKey
 }
 
 func (u *upstream) validAssertion(assertion string) bool {
@@ -113,7 +131,7 @@ func (u *upstream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func setup(t *testing.T, status int, reply string) (*Gateway, *fakeStore, *upstream) {
 	t.Helper()
 	public, key, _ := ed25519.GenerateKey(rand.Reader)
-	up := &upstream{status: status, reply: reply, public: public}
+	up := &upstream{status: status, reply: reply, public: public, key: key}
 	server := httptest.NewServer(up)
 	t.Cleanup(server.Close)
 	store := &fakeStore{grants: map[string]*access.Grant{
@@ -126,17 +144,22 @@ func setup(t *testing.T, status int, reply string) (*Gateway, *fakeStore, *upstr
 			{Method: http.MethodPost, Path: "/online/create-approval-login", Action: "create", Permissions: []string{"online_user.create"},
 				ActorFields: []string{"CreatedBy"}, SubjectFields: []string{"LoginId"}, Audit: true},
 		},
-		Grants:    store,
-		Admins:    store,
-		JWTSecret: jwtSecret,
-		Upstream:  provider(server.URL+"/csAdmin/", key),
-		Now:       func() time.Time { return now },
+		Grants:       store,
+		Integrations: store,
+		JWTSecret:    jwtSecret,
+		Upstream:     provider(server.URL+"/csAdmin/", key),
+		Now:          func() time.Time { return now },
 	})
 	return g, store, up
 }
 
+type staticSource struct{ record csadmin.Record }
+
+func (s staticSource) Integration(context.Context) (csadmin.Record, error) { return s.record, nil }
+
 func provider(url string, key ed25519.PrivateKey) *csadmin.Provider {
-	return csadmin.NewProvider(csadmin.ProviderOptions{Server: csadmin.Settings{URL: url, ClientID: "web-cs"}, Key: key})
+	record := csadmin.Record{URL: url, ClientID: "web-cs", Configured: url != ""}
+	return csadmin.NewProvider(csadmin.ProviderOptions{Source: staticSource{record}, Key: key})
 }
 
 func session(t *testing.T, sub string, mutate func(map[string]any)) string {

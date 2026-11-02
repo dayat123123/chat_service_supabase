@@ -49,7 +49,7 @@ Respons csAdmin:
 | 403 | IP di luar `allowed_ips` |
 | 404 | `public_key` kosong atau tidak valid, sehingga fitur mati |
 
-### Config csAdmin (`csAdminEL.cfg`)
+### Config CS Admin service
 
 Tambahkan blok baru dengan format yang sama seperti blok `server`, `database`, dan `zmq`. Blok lain tidak perlu diubah:
 
@@ -92,39 +92,41 @@ Nasabah tiket adalah profil aplikasi sosial yang dibuat dari token OLT. Username
 
 ## Konfigurasi gateway
 
-Super Admin mengatur sambungan ke csAdmin dari web CS, di **Pengaturan → Integrasi API Nasabah**. Server cukup menjalankan `make up`; alamat csAdmin tidak perlu ditulis di `docker/.env`.
+Super Admin mengatur sambungan ke CS Admin service dari web CS, di **Pengaturan → Integrasi API Nasabah**. Server cukup menjalankan `make up`; tidak ada alamat atau client id bawaan.
 
-- **Alamat csAdmin** dan **client id** disimpan di `cs.cs_settings` (`nasabah.csadmin_url`, `nasabah.csadmin_client_id`, migrasi `0050`). Setiap perubahan masuk riwayat pengaturan dan audit log.
-- **Gateway membaca nilainya** lewat `cs_api.nasabah_integration()` (service_role) paling lama setiap 15 detik, jadi tidak perlu restart. Bila alamat atau client id berubah, token csAdmin lama dibuang. Bila database sedang tidak terbaca, gateway tetap memakai nilai terakhir.
-- **Bila pengaturan web kosong**, gateway memakai `CSADMIN_URL` dan `CSADMIN_CLIENT_ID` di `docker/.env`.
-- **Isi halaman:** alamat yang sedang dipakai beserta sumbernya, blok `integration { … }` siap tempel untuk `csAdminEL.cfg`, dan tombol **Tes koneksi**.
+- **Aktif hanya setelah tes berhasil.** **Simpan & aktifkan** mengirim alamat dan client id ke gateway. Gateway meminta token ke CS Admin service dengan nilai itu, dan hanya bila berhasil menyimpannya lewat `cs_api.nasabah_save_integration` (service_role, migrasi `0055`). Penyimpanan langsung lewat `admin_set_setting` ditolak (`setting_locked`).
+- **Menu Akun Nasabah** (menu atas, panel tiket, palet perintah) hanya tampil bila integrasi aktif: `agent_me` mengosongkan `nasabah_permissions` dan memberi `settings.nasabah_ready = false` selama belum aktif. Web CS memeriksa ulang setiap 60 detik, jadi tidak perlu login ulang.
+- **Badge "Belum diatur"** tampil di menu samping Pengaturan dan di judul halaman sampai integrasi aktif. **Putuskan** menonaktifkan integrasi dan langsung menyembunyikan menu.
+- **Gateway membaca nilainya** lewat `cs_api.nasabah_integration()` paling lama setiap 15 detik, dan langsung setelah simpan atau putus. Bila database sedang tidak terbaca, gateway tetap memakai nilai terakhir.
+- **Audit:** `setting.nasabah_integration` dan `setting.nasabah_integration_cleared` atas nama Super Admin.
 
 Endpoint gateway khusus Super Admin aktif (dicek lewat `cs_api.nasabah_is_super_admin`):
 
 | Rute | Isi |
 |---|---|
-| `GET /api-nasabah/integration` | Alamat dan client id yang dipakai beserta sumbernya (`settings`, `server`, atau `none`), kunci publik, dan `configured` |
-| `POST /api-nasabah/integration/test` | Body opsional `{url, client_id}`; yang kosong memakai nilai yang sedang dipakai. Gateway meminta token ke csAdmin dan menjawab `result` (tabel di bawah) |
+| `GET /api-nasabah/integration` | Alamat, client id, `configured`, `connected_at`, `connected_by`, dan kunci publik |
+| `PUT /api-nasabah/integration` | Body `{url, client_id}` (wajib). Tes koneksi dulu; menjawab `{saved, check, status}`. `saved = false` berarti tes gagal dan tidak ada yang disimpan |
+| `DELETE /api-nasabah/integration` | Putus integrasi; menu Akun Nasabah tersembunyi lagi |
+| `POST /api-nasabah/integration/test` | Body `{url, client_id}` (wajib). Hanya tes, tidak menyimpan. Menjawab `result` (tabel di bawah) |
 
 | `result` | Arti |
 |---|---|
 | `ok` | csAdmin menerbitkan token |
-| `refused` | csAdmin menjawab 401: `public_key` atau `client_id` di `csAdminEL.cfg` tidak cocok, atau jam server berbeda jauh |
+| `refused` | csAdmin menjawab 401: `public_key` atau `client_id` di config CS Admin service tidak cocok, atau jam server berbeda jauh |
 | `ip_not_allowed` | csAdmin menjawab 403: IP server web CS tidak ada di `allowed_ips` |
 | `disabled` | csAdmin menjawab 404: blok `integration` belum diisi, atau csAdmin masih versi lama |
 | `unexpected` | Status HTTP lain, biasanya prefix path salah |
 | `unreachable` | Alamat, port, atau firewall menghalangi |
-| `not_configured` / `no_key` | Alamat kosong / kunci integrasi belum ada di server |
+| `not_configured` / `no_key` | Alamat atau client id kosong / kunci integrasi belum ada di server |
 
 Yang tetap di server:
 
 | Tempat | Kunci | Isi |
 |---|---|---|
 | `docker/secrets/csadmin_signing_key` | | Kunci privat Ed25519 (PEM PKCS#8), dibuat `gen-secrets`. Kosong = menu belum aktif |
-| `docker/.env` | `CSADMIN_URL`, `CSADMIN_CLIENT_ID` | Cadangan bila pengaturan web kosong |
 | `docker/.env` | `CSADMIN_TIMEOUT` | Batas waktu panggilan ke csAdmin (default `15s`) |
 
-Perubahan di `docker/.env` atau kunci baru baru dipakai setelah gateway dijalankan ulang:
+Perubahan `CSADMIN_TIMEOUT` atau kunci baru baru dipakai setelah gateway dijalankan ulang:
 
 ```bash
 docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs up -d nasabah-gateway

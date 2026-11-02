@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { useAgent } from '@/features/auth/hooks'
+import { nasabahKeys } from '@/features/nasabah/hooks'
 import { errorText } from '@/lib/error-text'
 import type { Json } from '@/types/database'
 
@@ -167,6 +168,29 @@ export function useTestIntegration() {
   return useMutation({
     mutationFn: ({ url, clientId }: { url: string; clientId: string }) =>
       settingsApi.testIntegration(url, clientId),
+  })
+}
+
+export function useSaveIntegration() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: ({ url, clientId }: { url: string; clientId: string }) =>
+      settingsApi.saveIntegration(url, clientId),
+    onSuccess: (result) => {
+      client.setQueryData(settingsKeys.integration, result.status)
+      if (result.saved) void client.invalidateQueries({ queryKey: nasabahKeys.me })
+    },
+  })
+}
+
+export function useClearIntegration() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => settingsApi.clearIntegration(),
+    onSuccess: (status) => {
+      client.setQueryData(settingsKeys.integration, status)
+      void client.invalidateQueries({ queryKey: nasabahKeys.me })
+    },
   })
 }
 

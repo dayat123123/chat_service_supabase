@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -7,8 +7,9 @@ import { renderWithProviders } from '@/test/render'
 
 import type * as ApiModule from '../api'
 import { settingsApi } from '../api'
-import type { IntegrationStatus, SettingEntry } from '../types'
+import type { IntegrationStatus } from '../types'
 import { IntegrationSection } from './integration-section'
+import { SettingsPage } from './settings-page'
 
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof ApiModule>()
@@ -16,91 +17,114 @@ vi.mock('../api', async (importOriginal) => {
     ...actual,
     settingsApi: {
       ...actual.settingsApi,
-      settings: vi.fn(),
-      setSetting: vi.fn(),
+      accounts: vi.fn(() => Promise.resolve([])),
+      options: vi.fn(() => Promise.resolve({ teams: [], skills: [] })),
       integration: vi.fn(),
       testIntegration: vi.fn(),
+      saveIntegration: vi.fn(),
+      clearIntegration: vi.fn(),
     },
   }
 })
 
-const entry = (key: string, value: string): SettingEntry => ({
-  key,
-  value,
-  description: null,
-  version: 1,
-  updated_at: null,
-  updated_by: null,
-})
-
-const serverStatus: IntegrationStatus = {
-  url: 'http://csadmin:8080',
-  url_source: 'server',
-  client_id: 'web-cs',
-  client_id_source: 'server',
+const notSet: IntegrationStatus = {
+  url: '',
+  client_id: '',
+  configured: false,
+  connected_at: null,
+  connected_by: null,
   public_key: 'MCowBQYDK2VwAyEAkey',
   key_configured: true,
+}
+
+const active: IntegrationStatus = {
+  ...notSet,
+  url: 'http://10.0.0.5:9001/csAdmin',
+  client_id: 'web-cs',
   configured: true,
+  connected_at: '2026-11-02T03:00:00.000Z',
+  connected_by: 'Adi',
 }
 
 beforeEach(() => {
-  vi.mocked(settingsApi.settings).mockResolvedValue([
-    entry('nasabah.csadmin_url', ''),
-    entry('nasabah.csadmin_client_id', ''),
-  ])
-  vi.mocked(settingsApi.integration).mockResolvedValue(serverStatus)
+  vi.clearAllMocks()
+  vi.mocked(settingsApi.integration).mockResolvedValue(notSet)
 })
 
 describe('IntegrationSection', () => {
-  it('shows the address in use and the block to paste into csAdminEL.cfg', async () => {
+  it('starts empty with a not-set-up badge and no broker-specific config name', async () => {
+    renderWithProviders(<IntegrationSection />, monitorFixture)
+
+    expect(await screen.findByText('Belum diatur')).toBeVisible()
+    expect(screen.getByLabelText('Alamat API Nasabah')).toHaveValue('')
+    expect(screen.getByLabelText('Client id')).toHaveValue('')
+    expect(screen.getByText(/Menu Akun Nasabah belum tampil untuk CS/)).toBeVisible()
+    expect(screen.getByLabelText('Kunci integrasi').textContent).toContain('client_id       = <client id>')
+    expect(document.body.textContent).not.toMatch(/csAdminEL|docker\/\.env/)
+  })
+
+  it('requires both fields before testing or saving', async () => {
     const user = userEvent.setup()
     renderWithProviders(<IntegrationSection />, monitorFixture)
 
-    expect(
-      await screen.findByText('Dipakai sekarang: http://csadmin:8080 (dari docker/.env di server)'),
-    ).toBeVisible()
-    const block = await screen.findByLabelText('Kunci integrasi')
-    expect(block.textContent).toContain('        client_id       = web-cs\n')
-    expect(block.textContent).toContain('        public_key      = MCowBQYDK2VwAyEAkey\n')
-
-    await user.click(screen.getByRole('button', { name: 'Salin' }))
-    expect(await navigator.clipboard.readText()).toContain('integration {')
-    expect(screen.getByRole('button', { name: 'Disalin' })).toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: 'Simpan & aktifkan' }))
+    expect(screen.getByText('Alamat API Nasabah wajib diisi')).toBeVisible()
+    expect(screen.getByText('Client id wajib diisi')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Tes koneksi' }))
+    expect(settingsApi.saveIntegration).not.toHaveBeenCalled()
+    expect(settingsApi.testIntegration).not.toHaveBeenCalled()
   })
 
-  it('rejects unsafe addresses and saves only what changed', async () => {
+  it('keeps the integration off when the connection test fails', async () => {
     const user = userEvent.setup()
-    vi.mocked(settingsApi.setSetting).mockResolvedValue({
-      key: 'nasabah.csadmin_url',
-      value: 'http://10.0.0.5:9001/csAdmin',
-      version: 2,
-      updated_at: '2026-11-02T02:00:00.000Z',
+    vi.mocked(settingsApi.saveIntegration).mockResolvedValue({
+      saved: false,
+      check: { result: 'refused', status: 401, duration_ms: 12 },
+      status: notSet,
     })
     renderWithProviders(<IntegrationSection />, monitorFixture)
 
-    const address = await screen.findByLabelText('Alamat API Nasabah')
-    await user.type(address, 'http://admin:rahasia@10.0.0.5')
-    await user.click(screen.getByRole('button', { name: 'Simpan' }))
-    expect(
-      screen.getByText('Alamat harus diawali http:// atau https://, tanpa spasi, login, atau query'),
-    ).toBeVisible()
-    expect(settingsApi.setSetting).not.toHaveBeenCalled()
+    await user.type(await screen.findByLabelText('Alamat API Nasabah'), 'http://10.0.0.5:9001/csAdmin/')
+    await user.type(screen.getByLabelText('Client id'), 'web-cs')
+    expect(screen.getByLabelText('Kunci integrasi').textContent).toContain('client_id       = web-cs')
+    await user.click(screen.getByRole('button', { name: 'Simpan & aktifkan' }))
 
-    await user.clear(address)
-    await user.type(address, ' http://10.0.0.5:9001/csAdmin ')
-    await user.click(screen.getByRole('button', { name: 'Simpan' }))
-    await waitFor(() => expect(settingsApi.setSetting).toHaveBeenCalledTimes(1))
-    expect(settingsApi.setSetting).toHaveBeenCalledWith('nasabah.csadmin_url', 'http://10.0.0.5:9001/csAdmin')
-    await waitFor(() => expect(settingsApi.integration).toHaveBeenCalledTimes(2))
+    expect(settingsApi.saveIntegration).toHaveBeenCalledWith('http://10.0.0.5:9001/csAdmin', 'web-cs')
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Belum disimpan. API Nasabah menolak kunci integrasi. Pastikan client_id dan public_key di config CS Admin service',
+    )
+    expect(screen.getByText('Belum diatur')).toBeVisible()
   })
 
-  it('tests the typed address and explains a refused key', async () => {
+  it('activates after a successful test and can be disconnected', async () => {
     const user = userEvent.setup()
-    vi.mocked(settingsApi.testIntegration).mockResolvedValue({
-      result: 'refused',
-      status: 401,
-      duration_ms: 12,
+    vi.mocked(settingsApi.saveIntegration).mockResolvedValue({
+      saved: true,
+      check: { result: 'ok', status: 200, duration_ms: 30 },
+      status: active,
     })
+    vi.mocked(settingsApi.clearIntegration).mockResolvedValue(notSet)
+    renderWithProviders(<IntegrationSection />, monitorFixture)
+
+    await user.type(await screen.findByLabelText('Alamat API Nasabah'), 'http://10.0.0.5:9001/csAdmin')
+    await user.type(screen.getByLabelText('Client id'), 'web-cs')
+    await user.click(screen.getByRole('button', { name: 'Simpan & aktifkan' }))
+
+    expect(await screen.findByText('Aktif')).toBeVisible()
+    expect(screen.getByText(/^Aktif sejak .*, diatur oleh Adi\.$/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Simpan & aktifkan' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: 'Putuskan' }))
+    const confirm = screen.getByRole('alertdialog', { name: 'Putuskan integrasi API Nasabah?' })
+    await user.click(within(confirm).getByRole('button', { name: 'Putuskan' }))
+    await waitFor(() => expect(settingsApi.clearIntegration).toHaveBeenCalledTimes(1))
+    expect(await screen.findByText('Belum diatur')).toBeVisible()
+    expect(screen.getByLabelText('Alamat API Nasabah')).toHaveValue('')
+  })
+
+  it('tests the typed values without saving', async () => {
+    const user = userEvent.setup()
+    vi.mocked(settingsApi.testIntegration).mockResolvedValue({ result: 'ok', status: 200, duration_ms: 25 })
     renderWithProviders(<IntegrationSection />, monitorFixture)
 
     await user.type(await screen.findByLabelText('Alamat API Nasabah'), 'http://10.0.0.5:8080')
@@ -108,26 +132,23 @@ describe('IntegrationSection', () => {
     await user.click(screen.getByRole('button', { name: 'Tes koneksi' }))
 
     expect(settingsApi.testIntegration).toHaveBeenCalledWith('http://10.0.0.5:8080', 'web-cs.prod')
-    expect(await screen.findByRole('status')).toHaveTextContent('API Nasabah menolak kunci integrasi')
-    await user.type(screen.getByLabelText('Client id'), 'x')
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Terhubung. API Nasabah menerbitkan token integrasi',
+    )
+    expect(settingsApi.saveIntegration).not.toHaveBeenCalled()
   })
+})
 
-  it('tells the Super Admin to generate the key when the server has none', async () => {
-    vi.mocked(settingsApi.integration).mockResolvedValue({
-      ...serverStatus,
-      url: '',
-      url_source: 'none',
-      public_key: '',
-      key_configured: false,
-      configured: false,
+describe('SettingsPage', () => {
+  it('flags the integration in the menu until it is active', async () => {
+    const { unmount } = renderWithProviders(<SettingsPage />, monitorFixture)
+    expect(await screen.findByRole('button', { name: 'Integrasi API Nasabah Belum diatur' })).toBeVisible()
+    unmount()
+
+    renderWithProviders(<SettingsPage />, {
+      ...monitorFixture,
+      settings: { ...monitorFixture.settings, nasabah_ready: true },
     })
-    renderWithProviders(<IntegrationSection />, monitorFixture)
-
-    expect(
-      await screen.findByText('Belum ada alamat API Nasabah, jadi menu Akun Nasabah belum aktif.'),
-    ).toBeVisible()
-    expect(screen.getByText(/Jalankan make gen-secrets di server/)).toBeVisible()
-    expect(screen.queryByLabelText('Kunci integrasi')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Integrasi API Nasabah' })).toBeVisible()
   })
 })

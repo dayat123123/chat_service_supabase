@@ -799,8 +799,9 @@ services:
   # Gateway menu Akun Nasabah di web CS (services/nasabah-gateway, docs/nasabah/README.md).
   # Hanya meneruskan rute staf /online/* ke csAdmin dengan token integrasi: gateway menandatangani
   # assertion Ed25519 (docker/secrets/csadmin_signing_key), csAdmin memverifikasinya dengan kunci
-  # publik di blok integration csAdminEL.cfg. Memeriksa permission per akun CS dan mencatat aksi di
-  # cs_audit_log. CSADMIN_URL kosong atau kunci kosong: gateway menjawab 503 not_configured.
+  # publik di blok integration config CS Admin service. Alamat dan client id diatur Super Admin di web CS
+  # (Pengaturan -> Integrasi API Nasabah); sebelum disimpan dengan tes koneksi berhasil, gateway menjawab
+  # 503 not_configured. Memeriksa permission per akun CS dan mencatat aksi di cs_audit_log.
   nasabah-gateway:
     <<: *base
     profiles: [cs]
@@ -819,8 +820,6 @@ services:
       LOG_LEVEL: ${NASABAH_GATEWAY_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
-      CSADMIN_URL: ${CSADMIN_URL:-}
-      CSADMIN_CLIENT_ID: ${CSADMIN_CLIENT_ID:-web-cs}
       CSADMIN_SIGNING_KEY_FILE: /run/secrets/csadmin_signing_key
       CSADMIN_TIMEOUT: ${CSADMIN_TIMEOUT:-15s}
     healthcheck:

@@ -11,13 +11,14 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionBoundary } from '@/components/states'
+import { useAgent } from '@/features/auth/hooks'
 import { cn } from '@/lib/utils'
 
 import type { SettingsSection } from '../types'
 import { AccountsSection } from './accounts-section'
 import { AssignmentSection } from './assignment-section'
 import { HoursSection } from './hours-section'
-import { IntegrationSection } from './integration-section'
+import { IntegrationBadge, IntegrationSection } from './integration-section'
 import { MessagesSection } from './messages-section'
 import { QuickRepliesSection } from './quick-replies-section'
 import { TopicsSection } from './topics-section'
@@ -45,6 +46,7 @@ const content: Record<SettingsSection, () => React.ReactNode> = {
 export function SettingsPage() {
   const { t } = useTranslation()
   const [section, setSection] = useState<SettingsSection>('accounts')
+  const ready = useAgent().settings.nasabah_ready
   return (
     <div className="flex h-full flex-col md:flex-row">
       <nav
@@ -59,12 +61,18 @@ export function SettingsPage() {
             aria-current={section === item.id ? 'page' : undefined}
             onClick={() => setSection(item.id)}
             className={cn(
-              'inline-flex h-8 shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-row whitespace-nowrap text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
+              'inline-flex min-h-8 shrink-0 items-center gap-2.5 rounded-md px-2.5 py-1 text-left text-row whitespace-nowrap text-muted-foreground transition-colors outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
               section === item.id && 'bg-selected font-medium text-foreground',
             )}
           >
-            <item.icon className="size-4" />
-            {t(`settings.${item.id}`)}
+            <item.icon className="size-4 shrink-0" />
+            {item.id === 'integration' && !ready ? (
+              <span className="flex flex-col items-start gap-1 md:py-0.5">
+                {t(`settings.${item.id}`)} <IntegrationBadge configured={false} />
+              </span>
+            ) : (
+              t(`settings.${item.id}`)
+            )}
           </button>
         ))}
       </nav>

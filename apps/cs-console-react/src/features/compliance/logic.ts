@@ -45,6 +45,8 @@ export const auditActions = [
   'session.flag',
   'session.reject',
   'session.transfer',
+  'setting.nasabah_integration',
+  'setting.nasabah_integration_cleared',
   'setting.update',
   'ticket.claim',
   'ticket.complaint_requested',

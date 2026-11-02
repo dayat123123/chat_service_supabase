@@ -14,12 +14,6 @@ import (
 )
 
 const (
-	DefaultClientID = "web-cs"
-
-	SourceSettings = "settings"
-	SourceServer   = "server"
-	SourceNone     = "none"
-
 	CheckOK            = "ok"
 	CheckRefused       = "refused"
 	CheckIPNotAllowed  = "ip_not_allowed"
@@ -41,15 +35,18 @@ type Settings struct {
 	ClientID string
 }
 
-type Source interface {
-	Integration(ctx context.Context) (Settings, error)
+type Record struct {
+	URL         string  `json:"url"`
+	ClientID    string  `json:"client_id"`
+	Configured  bool    `json:"configured"`
+	ConnectedAt *string `json:"connected_at"`
+	ConnectedBy *string `json:"connected_by"`
 }
 
-type Effective struct {
-	URL            string `json:"url"`
-	URLSource      string `json:"url_source"`
-	ClientID       string `json:"client_id"`
-	ClientIDSource string `json:"client_id_source"`
+func (r Record) Settings() Settings { return Settings{URL: r.URL, ClientID: r.ClientID} }
+
+type Source interface {
+	Integration(ctx context.Context) (Record, error)
 }
 
 type CheckResult struct {
@@ -60,7 +57,6 @@ type CheckResult struct {
 
 type ProviderOptions struct {
 	Source Source
-	Server Settings
 	Key    ed25519.PrivateKey
 	Client *http.Client
 	TTL    time.Duration
@@ -73,7 +69,7 @@ type Provider struct {
 
 	mu      sync.Mutex
 	session *Session
-	current Effective
+	current Settings
 	checked time.Time
 }
 
@@ -101,20 +97,23 @@ func ValidURL(raw string) bool {
 	return hostPattern.MatchString(u.Host) && pathPattern.MatchString(u.EscapedPath())
 }
 
+func Usable(s Settings) bool {
+	return ValidURL(s.URL) && ClientIDPattern.MatchString(s.ClientID)
+}
+
 func (p *Provider) Session(ctx context.Context) *Session {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	if p.session == nil || (p.opts.Source != nil && !p.now().Before(p.checked.Add(p.opts.TTL))) {
+	if p.session == nil || !p.now().Before(p.checked.Add(p.opts.TTL)) {
 		p.reload(ctx)
 	}
 	return p.session
 }
 
-func (p *Provider) Effective(ctx context.Context) Effective {
+func (p *Provider) Refresh(ctx context.Context) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.reload(ctx)
-	return p.current
 }
 
 func (p *Provider) PublicKey() string {
@@ -128,11 +127,8 @@ func (p *Provider) Check(ctx context.Context, s Settings) CheckResult {
 	if p.PublicKey() == "" {
 		return CheckResult{Result: CheckNoKey}
 	}
-	if s.URL == "" {
+	if s.URL == "" || s.ClientID == "" {
 		return CheckResult{Result: CheckNotConfigured}
-	}
-	if s.ClientID == "" {
-		s.ClientID = DefaultClientID
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -163,51 +159,32 @@ func (p *Provider) Check(ctx context.Context, s Settings) CheckResult {
 
 func (p *Provider) reload(ctx context.Context) {
 	p.checked = p.now()
-	var stored Settings
+	var next Settings
 	if p.opts.Source != nil {
 		ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
-		loaded, err := p.opts.Source.Integration(ctx)
+		record, err := p.opts.Source.Integration(ctx)
 		if err != nil {
 			p.opts.Log.Warn("Customer admin settings could not be read", "error", err)
 			if p.session != nil {
 				return
 			}
 		}
-		stored = loaded
+		if record.Configured && Usable(record.Settings()) {
+			next = record.Settings()
+		}
 	}
-	if stored.URL != "" && !ValidURL(stored.URL) {
-		p.opts.Log.Warn("Ignoring an invalid customer admin address from the console settings")
-	}
-	next := resolve(stored, p.opts.Server)
+	next.URL = strings.TrimSuffix(next.URL, "/")
 	if p.session != nil && next == p.current {
 		return
 	}
 	p.current = next
 	p.session = NewSession(next.URL, next.ClientID, p.opts.Key, p.opts.Client)
 	if p.session.Configured() {
-		p.opts.Log.Info("Customer admin integration configured", "url", next.URL, "url_source", next.URLSource,
-			"client_id", next.ClientID, "public_key", PublicKeyLine(p.opts.Key))
+		p.opts.Log.Info("Customer admin integration configured", "url", next.URL, "client_id", next.ClientID,
+			"public_key", PublicKeyLine(p.opts.Key))
 	} else {
-		p.opts.Log.Warn("Customer admin service is not configured; customer requests will be refused",
-			"url_source", next.URLSource, "key_configured", p.PublicKey() != "")
+		p.opts.Log.Warn("Customer admin integration is not set up; customer requests will be refused",
+			"key_configured", p.PublicKey() != "")
 	}
-}
-
-func resolve(stored, server Settings) Effective {
-	e := Effective{URLSource: SourceNone, ClientID: DefaultClientID, ClientIDSource: SourceServer}
-	switch {
-	case ValidURL(stored.URL):
-		e.URL, e.URLSource = stored.URL, SourceSettings
-	case server.URL != "":
-		e.URL, e.URLSource = server.URL, SourceServer
-	}
-	switch {
-	case ClientIDPattern.MatchString(stored.ClientID):
-		e.ClientID, e.ClientIDSource = stored.ClientID, SourceSettings
-	case server.ClientID != "":
-		e.ClientID = server.ClientID
-	}
-	e.URL = strings.TrimSuffix(e.URL, "/")
-	return e
 }

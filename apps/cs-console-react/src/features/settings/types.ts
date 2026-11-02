@@ -81,16 +81,14 @@ export const settingsSections = [
 ] as const
 export type SettingsSection = (typeof settingsSections)[number]
 
-export type IntegrationSource = 'settings' | 'server' | 'none'
-
 export type IntegrationStatus = {
   url: string
-  url_source: IntegrationSource
   client_id: string
-  client_id_source: IntegrationSource
+  configured: boolean
+  connected_at: string | null
+  connected_by: string | null
   public_key: string
   key_configured: boolean
-  configured: boolean
 }
 
 export type IntegrationResult =
@@ -104,6 +102,8 @@ export type IntegrationResult =
   | 'no_key'
 
 export type IntegrationCheck = { result: IntegrationResult; status?: number; duration_ms: number }
+
+export type IntegrationSave = { saved: boolean; check: IntegrationCheck; status: IntegrationStatus }
 
 export const isStaffRole = (role: string): role is StaffRole =>
   (staffRoles as readonly string[]).includes(role)

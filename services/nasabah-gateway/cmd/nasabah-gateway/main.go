@@ -42,20 +42,19 @@ func run(cfg config.Config, log *slog.Logger) error {
 	client := &http.Client{Timeout: cfg.CSAdminTimeout}
 	upstream := csadmin.NewProvider(csadmin.ProviderOptions{
 		Source: store,
-		Server: csadmin.Settings{URL: cfg.CSAdminURL, ClientID: cfg.CSAdminClientID},
 		Key:    cfg.CSAdminSigningKey,
 		Client: client,
 		Log:    log,
 	})
 	upstream.Session(ctx)
 	gw := gateway.New(gateway.Options{
-		Routes:    routes.Online,
-		Grants:    access.NewCache(store, cfg.AccessCacheTTL),
-		Admins:    store,
-		JWTSecret: cfg.JWTSecret,
-		Upstream:  upstream,
-		Client:    client,
-		Log:       log,
+		Routes:       routes.Online,
+		Grants:       access.NewCache(store, cfg.AccessCacheTTL),
+		Integrations: store,
+		JWTSecret:    cfg.JWTSecret,
+		Upstream:     upstream,
+		Client:       client,
+		Log:          log,
 	})
 
 	mux := http.NewServeMux()

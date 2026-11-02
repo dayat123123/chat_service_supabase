@@ -71,15 +71,26 @@ func (p *PostgREST) Audit(ctx context.Context, userID, action string, details ma
 	return p.rpc(ctx, "nasabah_audit", map[string]any{"p_user_id": userID, "p_action": action, "p_details": details}, &ignored)
 }
 
-func (p *PostgREST) Integration(ctx context.Context) (csadmin.Settings, error) {
-	var stored struct {
-		URL      string `json:"url"`
-		ClientID string `json:"client_id"`
+func (p *PostgREST) Integration(ctx context.Context) (csadmin.Record, error) {
+	return p.record(ctx, "nasabah_integration", map[string]any{})
+}
+
+func (p *PostgREST) SaveIntegration(ctx context.Context, userID string, s csadmin.Settings) (csadmin.Record, error) {
+	return p.record(ctx, "nasabah_save_integration", map[string]any{"p_user_id": userID, "p_url": s.URL, "p_client_id": s.ClientID})
+}
+
+func (p *PostgREST) ClearIntegration(ctx context.Context, userID string) (csadmin.Record, error) {
+	return p.record(ctx, "nasabah_clear_integration", map[string]any{"p_user_id": userID})
+}
+
+func (p *PostgREST) record(ctx context.Context, fn string, args map[string]any) (csadmin.Record, error) {
+	var record csadmin.Record
+	if err := p.rpc(ctx, fn, args, &record); err != nil {
+		return csadmin.Record{}, err
 	}
-	if err := p.rpc(ctx, "nasabah_integration", map[string]any{}, &stored); err != nil {
-		return csadmin.Settings{}, err
-	}
-	return csadmin.Settings{URL: strings.TrimSpace(stored.URL), ClientID: strings.TrimSpace(stored.ClientID)}, nil
+	record.URL = strings.TrimSpace(record.URL)
+	record.ClientID = strings.TrimSpace(record.ClientID)
+	return record, nil
 }
 
 func (p *PostgREST) IsSuperAdmin(ctx context.Context, userID string) (bool, error) {

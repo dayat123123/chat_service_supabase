@@ -3,6 +3,7 @@ package access
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"olt-social/nasabah-gateway/internal/csadmin"
 	"olt-social/nasabah-gateway/internal/jwt"
 )
 
@@ -55,15 +57,17 @@ func TestPostgRESTGrantTreatsNullOrEmptyPermissionsAsNoAccess(t *testing.T) {
 	}
 }
 
-func TestPostgRESTReadsIntegrationSettingsAndSuperAdmins(t *testing.T) {
-	var paths []string
+func TestPostgRESTReadsSavesAndClearsTheIntegration(t *testing.T) {
+	var calls []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		paths = append(paths, r.URL.Path)
 		var args map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&args)
+		calls = append(calls, fmt.Sprintf("%s %v %v %v", r.URL.Path, args["p_user_id"], args["p_url"], args["p_client_id"]))
 		switch r.URL.Path {
-		case "/rpc/nasabah_integration":
-			_, _ = w.Write([]byte(`{"url":" http://10.0.0.5:9001/csAdmin ","client_id":"web-cs.prod"}`))
+		case "/rpc/nasabah_integration", "/rpc/nasabah_clear_integration":
+			_, _ = w.Write([]byte(`{"url":"","client_id":"","configured":false,"connected_at":null,"connected_by":null}`))
+		case "/rpc/nasabah_save_integration":
+			_, _ = w.Write([]byte(`{"url":" http://10.0.0.5:9001/csAdmin ","client_id":"web-cs.prod","configured":true,"connected_at":"2026-11-02T03:00:00Z","connected_by":"Sinta"}`))
 		case "/rpc/nasabah_is_super_admin":
 			_, _ = w.Write([]byte(map[bool]string{true: "true", false: "false"}[args["p_user_id"] == "sinta"]))
 		}
@@ -71,17 +75,32 @@ func TestPostgRESTReadsIntegrationSettingsAndSuperAdmins(t *testing.T) {
 	defer server.Close()
 	store := NewPostgREST(server.URL, []byte("secret"), "supabase")
 
-	settings, err := store.Integration(context.Background())
-	if err != nil || settings.URL != "http://10.0.0.5:9001/csAdmin" || settings.ClientID != "web-cs.prod" {
-		t.Fatalf("settings = %+v, err = %v", settings, err)
+	empty, err := store.Integration(context.Background())
+	if err != nil || empty.Configured || empty.URL != "" || empty.ConnectedBy != nil {
+		t.Fatalf("record = %+v, err = %v", empty, err)
+	}
+	saved, err := store.SaveIntegration(context.Background(), "sinta",
+		csadmin.Settings{URL: "http://10.0.0.5:9001/csAdmin", ClientID: "web-cs.prod"})
+	if err != nil || !saved.Configured || saved.URL != "http://10.0.0.5:9001/csAdmin" || *saved.ConnectedBy != "Sinta" {
+		t.Fatalf("saved = %+v, err = %v", saved, err)
+	}
+	if cleared, err := store.ClearIntegration(context.Background(), "sinta"); err != nil || cleared.Configured {
+		t.Fatalf("cleared = %+v, err = %v", cleared, err)
 	}
 	sinta, _ := store.IsSuperAdmin(context.Background(), "sinta")
 	nadia, _ := store.IsSuperAdmin(context.Background(), "nadia")
 	if !sinta || nadia {
 		t.Fatalf("super admin check: sinta %v nadia %v", sinta, nadia)
 	}
-	if strings.Join(paths, ",") != "/rpc/nasabah_integration,/rpc/nasabah_is_super_admin,/rpc/nasabah_is_super_admin" {
-		t.Fatalf("paths = %v", paths)
+	want := []string{
+		"/rpc/nasabah_integration <nil> <nil> <nil>",
+		"/rpc/nasabah_save_integration sinta http://10.0.0.5:9001/csAdmin web-cs.prod",
+		"/rpc/nasabah_clear_integration sinta <nil> <nil>",
+		"/rpc/nasabah_is_super_admin sinta <nil> <nil>",
+		"/rpc/nasabah_is_super_admin nadia <nil> <nil>",
+	}
+	if strings.Join(calls, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("calls = %v", calls)
 	}
 }
 

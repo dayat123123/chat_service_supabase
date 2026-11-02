@@ -553,41 +553,53 @@ export const id = {
     alertP1: 'Tiket P1 belum diambil lebih dari (menit)',
     integration: 'Integrasi API Nasabah',
     integrationDescription:
-      'Sambungan menu Akun Nasabah ke API Nasabah. Perubahan dipakai gateway paling lambat 15 detik setelah disimpan, tanpa restart.',
+      'Sambungan menu Akun Nasabah ke CS Admin service. Menu baru tampil untuk CS setelah alamat dan client id disimpan dengan tes koneksi berhasil.',
+    integrationActive: 'Aktif',
+    integrationNotSet: 'Belum diatur',
+    integrationSince: 'Aktif sejak {{time}}, diatur oleh {{name}}.',
+    integrationNotSetHint:
+      'Menu Akun Nasabah belum tampil untuk CS. Isi alamat dan client id, lalu pilih Simpan & aktifkan: koneksi dites dulu dan hanya disimpan bila berhasil.',
     csadminTitle: 'Alamat dan client id',
     csadminUrl: 'Alamat API Nasabah',
     csadminUrlHint:
       'Termasuk port dan prefix path bila ada, mis. http://192.168.10.10:8080 atau http://host:9001/csAdmin.',
+    csadminUrlRequired: 'Alamat API Nasabah wajib diisi',
     csadminUrlInvalid: 'Alamat harus diawali http:// atau https://, tanpa spasi, login, atau query',
     csadminClientId: 'Client id',
-    csadminClientIdHint: 'Harus sama dengan client_id di csAdminEL.cfg. Kosongkan untuk memakai {{value}}.',
+    clientIdPlaceholder: 'mis. web-cs',
+    clientIdUnknown: '<client id>',
+    csadminClientIdHint: 'Harus sama dengan client_id di config CS Admin service.',
+    csadminClientIdRequired: 'Client id wajib diisi',
     csadminClientIdInvalid: 'Client id 1–50 karakter: huruf, angka, titik, _, atau -',
-    csadminInUse: 'Dipakai sekarang: {{url}} ({{source}})',
-    csadminFromSettings: 'dari pengaturan ini',
-    csadminFromServer: 'dari docker/.env di server',
-    csadminNone: 'Belum ada alamat API Nasabah, jadi menu Akun Nasabah belum aktif.',
     testConnection: 'Tes koneksi',
+    saveActivate: 'Simpan & aktifkan',
+    notSaved: 'Belum disimpan.',
+    integrationSaved: 'Integrasi API Nasabah aktif. Menu Akun Nasabah tampil untuk CS yang punya izin.',
+    disconnect: 'Putuskan',
+    disconnectTitle: 'Putuskan integrasi API Nasabah?',
+    disconnectBody:
+      'Menu Akun Nasabah langsung tersembunyi untuk semua CS sampai integrasi disimpan dan dites lagi.',
+    disconnected: 'Integrasi API Nasabah diputus.',
     testResult: {
       ok: 'Terhubung. API Nasabah menerbitkan token integrasi ({{ms}} ms).',
       refused:
-        'API Nasabah menolak kunci integrasi. Pastikan client_id dan public_key di csAdminEL.cfg sama dengan blok di bawah, lalu restart service-nya.',
+        'API Nasabah menolak kunci integrasi. Pastikan client_id dan public_key di config CS Admin service sama dengan blok di bawah, lalu restart service-nya.',
       ip_not_allowed:
-        'API Nasabah menolak IP server ini. Tambahkan IP server web CS ke allowed_ips di csAdminEL.cfg.',
+        'API Nasabah menolak IP server ini. Tambahkan IP server web CS ke allowed_ips di config CS Admin service.',
       disabled:
-        'Integrasi belum aktif di API Nasabah: blok integration belum diisi, atau versinya masih lama.',
+        'Integrasi belum aktif di API Nasabah: blok integration belum ada di config CS Admin service, atau versinya masih lama.',
       unexpected: 'API Nasabah menjawab tidak terduga (HTTP {{status}}). Periksa alamat dan prefix path.',
       unreachable: 'API Nasabah tidak bisa dihubungi dari server. Periksa alamat, port, dan firewall.',
-      not_configured: 'Isi alamat API Nasabah dulu.',
+      not_configured: 'Isi alamat dan client id dulu.',
       no_key: 'Kunci integrasi belum ada di server. Jalankan make gen-secrets, lalu restart nasabah-gateway.',
     },
     integrationKey: 'Kunci integrasi',
     integrationKeyHint:
-      'Tempel blok ini ke csAdminEL.cfg di server API Nasabah, lalu restart service-nya. Kunci publik bukan rahasia.',
+      'Tempel blok ini ke config CS Admin service di server API Nasabah, lalu restart service-nya. Kunci publik bukan rahasia.',
     integrationKeyMissing:
       'Kunci integrasi belum ada di server web CS. Jalankan make gen-secrets di server, lalu restart nasabah-gateway.',
     integrationAllowedIps:
       'Untuk keamanan tambahan, isi juga allowed_ips = <IP server web CS> di blok yang sama.',
-    integrationUnavailable: 'Status gateway Akun Nasabah tidak bisa dibaca.',
   },
   compliance: {
     overview: {
@@ -891,6 +903,8 @@ export const id = {
       session_flag: 'Tandai sesi (lama)',
       session_reject: 'Tolak sesi (lama)',
       session_transfer: 'Transfer sesi (lama)',
+      setting_nasabah_integration: 'Aktifkan integrasi API Nasabah',
+      setting_nasabah_integration_cleared: 'Putuskan integrasi API Nasabah',
       setting_update: 'Ubah pengaturan',
       ticket_claim: 'Ambil tiket',
       ticket_complaint_requested: 'Nasabah mengajukan pengaduan',

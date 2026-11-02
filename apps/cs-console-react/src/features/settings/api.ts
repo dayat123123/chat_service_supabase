@@ -9,6 +9,7 @@ import type {
   CreatedAccount,
   Holiday,
   IntegrationCheck,
+  IntegrationSave,
   IntegrationStatus,
   QuickReplyConfig,
   SavedSetting,
@@ -92,4 +93,7 @@ export const settingsApi = {
   integration: () => gatewayRequest<IntegrationStatus>('GET', '/integration'),
   testIntegration: (url: string, clientId: string) =>
     gatewayRequest<IntegrationCheck>('POST', '/integration/test', {}, { url, client_id: clientId }),
+  saveIntegration: (url: string, clientId: string) =>
+    gatewayRequest<IntegrationSave>('PUT', '/integration', {}, { url, client_id: clientId }),
+  clearIntegration: () => gatewayRequest<IntegrationStatus>('DELETE', '/integration'),
 }
