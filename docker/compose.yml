@@ -763,6 +763,46 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
+  # Push notification ke HP (services/notifier, docs/push/README.md). Mengambil antrean push dari
+  # Postgres lewat PostgREST (RPC khusus service_role) dan mengirimnya lewat Firebase Cloud Messaging.
+  # Kredensial: taruh file service account Firebase (.json) di docker/secrets/firebase/; notifier
+  # membacanya otomatis tanpa restart. Tanpa file, notifier berjalan dalam status "belum dipasang"
+  # dan notifikasi tetap masuk ke kotak notifikasi aplikasi. Satu-satunya egress: Google (FCM + OAuth).
+  notifier:
+    <<: *base
+    build:
+      context: ../services/notifier
+    image: olt-social/notifier:0.1.0
+    networks: [app, egress]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+    stop_grace_period: 30s
+    secrets: [jwt_secret]
+    volumes:
+      - ./secrets/firebase:/run/firebase:ro
+    environment:
+      PORT: 8080
+      LOG_LEVEL: ${NOTIFIER_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      FIREBASE_CREDENTIALS: /run/firebase
+      ANDROID_CHANNEL_ID: ${NOTIFIER_ANDROID_CHANNEL_ID:-}
+      BATCH_SIZE: ${NOTIFIER_BATCH_SIZE:-100}
+      CONCURRENCY: ${NOTIFIER_CONCURRENCY:-20}
+    healthcheck:
+      # Image distroless: binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/notifier", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 128M, pids: 64}
+
   # --- Customer service lewat chat (docs/cs-chat) -------------------------------
   # Profil compose `cs`: selalu aktif di dev; produksi menyalakannya dengan
   # CS=1 (Windows: -Cs).

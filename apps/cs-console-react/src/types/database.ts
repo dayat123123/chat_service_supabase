@@ -105,6 +105,7 @@ export type Database = {
         Args: { p_audience: string; p_stock?: string }
         Returns: number
       }
+      community_campaign_push: { Args: { p_id: string }; Returns: Json }
       community_campaigns: { Args: { p_status?: string }; Returns: Json }
       community_cancel_campaign: {
         Args: { p_id: string; p_version?: number }
@@ -337,6 +338,9 @@ export type Database = {
         }
         Returns: Json
       }
+      push_find_users: { Args: { p_query: string }; Returns: Json }
+      push_status: { Args: Record<PropertyKey, never>; Returns: Json }
+      push_test: { Args: { p_user_id: string }; Returns: Json }
       quick_replies: { Args: { p_language?: string }; Returns: Json }
       rate_ticket: {
         Args: { p_comment?: string; p_rating: number; p_ticket_id: string }

@@ -47,18 +47,25 @@ export function useFreshPermissions(enabled = true) {
     if (!me.data || phase.kind !== 'ready') return
     const ready = me.data.settings.nasabah_ready
     const fourEyes = me.data.settings.community_four_eyes
+    const pushReady = me.data.settings.community_push_ready
     if (
       sameSet(phase.agent.nasabah_permissions, me.data.nasabah_permissions) &&
       sameSet(phase.agent.community_permissions, me.data.community_permissions) &&
       phase.agent.settings.nasabah_ready === ready &&
-      phase.agent.settings.community_four_eyes === fourEyes
+      phase.agent.settings.community_four_eyes === fourEyes &&
+      phase.agent.settings.community_push_ready === pushReady
     )
       return
     updateAgent({
       ...phase.agent,
       nasabah_permissions: me.data.nasabah_permissions,
       community_permissions: me.data.community_permissions,
-      settings: { ...phase.agent.settings, nasabah_ready: ready, community_four_eyes: fourEyes },
+      settings: {
+        ...phase.agent.settings,
+        nasabah_ready: ready,
+        community_four_eyes: fourEyes,
+        community_push_ready: pushReady,
+      },
     })
   }, [me.data, updateAgent])
 }

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent } from '@/components/ui/overlay'
 import { Textarea } from '@/components/ui/textarea'
 import { useAgent } from '@/features/auth/hooks'
+import { useCampaignPush } from '@/features/push/hooks'
 import { Confirm } from '@/features/nasabah/components/confirm'
 import { useDebounced } from '@/hooks/use-now'
 import { errorText } from '@/lib/error-text'
@@ -73,23 +74,26 @@ function NotificationPreview({
 }) {
   const { t } = useTranslation()
   return (
-    <div
-      className="flex items-start gap-3 rounded-xl border bg-subtle p-3"
-      aria-label={t('community.preview')}
-    >
-      {account ? (
-        <AccountAvatar account={account} />
-      ) : (
-        <BellRingIcon className="size-8 text-muted-foreground" />
-      )}
-      <div className="min-w-0">
-        <p className="truncate text-xs text-muted-foreground">
-          {account?.display_name ?? t('community.preview')}
+    <figure className="flex flex-col gap-1.5" aria-label={t('community.preview')}>
+      <figcaption className="text-xs text-muted-foreground">{t('community.previewPhone')}</figcaption>
+      <div className="rounded-xl border bg-subtle p-3">
+        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <BellRingIcon className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate font-medium">{t('community.previewApp')}</span>
+          <span aria-hidden="true">·</span>
+          <span className="shrink-0">{t('community.previewNow')}</span>
         </p>
-        <p className="truncate text-sm font-medium">{title || t('community.campaignTitle')}</p>
-        <p className="line-clamp-2 text-row text-muted-foreground">{body || t('community.campaignBody')}</p>
+        <div className="mt-1.5 flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{title || t('community.campaignTitle')}</p>
+            <p className="line-clamp-3 text-row break-words text-muted-foreground">
+              {body || t('community.campaignBody')}
+            </p>
+          </div>
+          {account ? <AccountAvatar account={account} className="size-9" /> : null}
+        </div>
       </div>
-    </div>
+    </figure>
   )
 }
 
@@ -373,6 +377,32 @@ function CampaignComposer({
   )
 }
 
+function PushDeliveryInfo({ campaignId, live }: { campaignId: string; live: boolean }) {
+  const { t } = useTranslation()
+  const push = useCampaignPush(campaignId, live)
+  const data = push.data
+  const problems = data ? data.failed + data.invalid + data.expired + data.cancelled : 0
+  const total = data ? data.sent + data.queued + problems : 0
+  return (
+    <div className="col-span-2">
+      <dt className="text-xs text-muted-foreground">{t('community.pushDelivery')}</dt>
+      <dd className="text-row">
+        {!data
+          ? '…'
+          : total === 0
+            ? data.state === 'active'
+              ? t('community.pushNoDevices')
+              : t('community.pushNotActive')
+            : t('community.pushCounts', {
+                sent: formatNumber(data.sent),
+                queued: formatNumber(data.queued),
+                failed: formatNumber(problems),
+              })}
+      </dd>
+    </div>
+  )
+}
+
 function CampaignDetail({ campaign, onEdit }: { campaign: Campaign; onEdit: () => void }) {
   const { t } = useTranslation()
   const agent = useAgent()
@@ -429,6 +459,9 @@ function CampaignDetail({ campaign, onEdit }: { campaign: Campaign; onEdit: () =
             <dt className="text-xs text-muted-foreground">{t('community.recipientsLabel')}</dt>
             <dd className="tabular text-row">{formatNumber(campaign.recipients)}</dd>
           </div>
+          {campaign.status === 'sending' || campaign.status === 'sent' ? (
+            <PushDeliveryInfo campaignId={campaign.id} live={campaign.status === 'sending'} />
+          ) : null}
         </dl>
         <div className="text-xs text-muted-foreground">
           {[
@@ -562,10 +595,10 @@ export function CampaignsTab() {
 
   return (
     <section className="flex flex-col gap-3" aria-label={t('community.tabs.notifications')}>
-      {overview.data && !overview.data.push_ready ? (
+      {overview.data && overview.data.push_state !== 'active' ? (
         <p className="flex items-start gap-2 rounded-lg border bg-subtle px-3 py-2 text-row text-muted-foreground">
           <InfoIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          {t('community.pushNotReady')}
+          {t(`community.pushBanner.${overview.data.push_state}`)}
         </p>
       ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">

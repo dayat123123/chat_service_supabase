@@ -17,7 +17,7 @@ Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per
  127.0.0.1:8000 ─┘ entrypoint admin: Studio & semua path (SSH tunnel / WireGuard)
 ```
 
-- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik dan Edge Functions yang tersambung ke network `egress`. auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
+- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik, Edge Functions, dan notifier (push ke Google FCM) yang tersambung ke network `egress`. auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
 - Semua container read-only, non-root (kecuali entrypoint Postgres), `cap_drop: ALL`, `no-new-privileges`, dan punya batas CPU/memori/pids.
 - Rahasia hanya dari Docker secrets di `docker/secrets/`.
 
@@ -79,7 +79,8 @@ Catatan:
   4. Klik **Simpan & aktifkan**. Gateway mengetes koneksi dulu dan hanya menyimpan bila berhasil. Setelah itu menu Akun Nasabah tampil untuk CS yang punya izin, paling lambat 1 menit, tanpa restart.
 
   Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
-- **Menu Komunitas** (postingan resmi, pengumuman, notifikasi, moderasi) tidak butuh konfigurasi server. Super Admin memberi izin per staf di **Pengaturan → Akun CS** dan membuat akun resmi pertama di **Komunitas → Akun resmi** (butuh izin "Kelola akun resmi"). Foto akun resmi memakai `SUPABASE_PUBLIC_URL`, jadi isi dengan domain API publik. Push ke HP baru aktif setelah Firebase dipasang; sebelum itu notifikasi masuk ke kotak notifikasi aplikasi. Rinciannya ada di [docs/community](community/README.md).
+- **Menu Komunitas** (postingan resmi, pengumuman, notifikasi, moderasi) tidak butuh konfigurasi server. Super Admin memberi izin per staf di **Pengaturan → Akun CS** dan membuat akun resmi pertama di **Komunitas → Akun resmi** (butuh izin "Kelola akun resmi"). Foto akun resmi memakai `SUPABASE_PUBLIC_URL`, jadi isi dengan domain API publik. Rinciannya ada di [docs/community](community/README.md).
+- **Push notification ke HP**: taruh file service account Firebase (`.json`) di `docker/secrets/firebase/` (`chmod 644`). Layanan `notifier` membacanya otomatis dalam ±30 detik tanpa restart, dan status di **Pengaturan → Push notification** menjadi Aktif. Sebelum itu semua notifikasi tetap masuk ke kotak notifikasi aplikasi. Panduan lengkap (APNs, rotasi kunci, profil cluster, integrasi aplikasi): [docs/push](push/README.md).
 
 ## 3. Backup & restore
 

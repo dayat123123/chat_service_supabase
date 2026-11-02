@@ -1,3 +1,22 @@
+## 1.1.0
+
+* Baru: push notification. `RendezvousCommunity.instance.registerPushToken(token,
+  platform: CommunityPushPlatform.android, locale: ..., appVersion: ...)` mendaftarkan
+  token FCM milik app ke akun yang sedang login; token otomatis pindah ke akun baru
+  bila akun berganti, dan dilepas saat `signOut()`. `unregisterPushToken()` mematikan
+  push untuk perangkat ini. `openCommunityPush(context, message.data)` membuka
+  postingan, chat, chat CS, profil, atau tautan pengumuman dari push yang diketuk dan
+  menandai notifikasinya terbaca; nilainya `false` untuk push yang bukan milik paket.
+  Paket tidak bergantung pada Firebase (panduan: `docs/push/README.md`).
+* Baru: postingan tersemat dan pengumuman resmi tampil di atas stream umum dan stream
+  saham (`FeedRepository.getPinned`, `PinnedPost`), tanpa diulang di daftar biasa.
+* Baru: badge **Resmi** untuk akun resmi perusahaan sekuritas di semua nama pengguna
+  (`OfficialAccounts`, `CommunityOfficialScope`).
+* Baru: notifikasi jenis `announcement` (judul dan isi dari kampanye; diketuk membuka
+  postingan atau tautan `https`).
+* Logger baru `RendezvousCommunity.Push`.
+* Tidak ada perubahan yang memecah API: `CommunityDependencies` tidak berubah.
+
 ## 1.0.0
 
 * Breaking: package `olt_social` berganti nama menjadi `rendezvous_community`.

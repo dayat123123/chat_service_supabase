@@ -56,6 +56,9 @@ const communityCodes = [
   'official_inactive',
   'protected_account',
   'content_blocked',
+  'no_push_devices',
+  'invalid_avatar',
+  'account_not_found',
 ] as const
 
 type CommunityCode = (typeof communityCodes)[number]

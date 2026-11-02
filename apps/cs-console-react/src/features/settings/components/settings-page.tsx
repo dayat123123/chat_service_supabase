@@ -1,4 +1,5 @@
 import {
+  BellRingIcon,
   CalendarClockIcon,
   MegaphoneIcon,
   MessageSquareTextIcon,
@@ -13,6 +14,8 @@ import { useTranslation } from 'react-i18next'
 
 import { SectionBoundary } from '@/components/states'
 import { useAgent } from '@/features/auth/hooks'
+import { PushSection } from '@/features/push/components/push-section'
+import { PushInactiveBadge } from '@/features/push/components/push-state'
 import { cn } from '@/lib/utils'
 
 import type { SettingsSection } from '../types'
@@ -33,6 +36,7 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
   { id: 'messages', icon: MessagesSquareIcon },
   { id: 'assignment', icon: SlidersHorizontalIcon },
   { id: 'community', icon: MegaphoneIcon },
+  { id: 'push', icon: BellRingIcon },
   { id: 'integration', icon: PlugZapIcon },
 ]
 
@@ -44,13 +48,18 @@ const content: Record<SettingsSection, () => React.ReactNode> = {
   messages: () => <MessagesSection />,
   assignment: () => <AssignmentSection />,
   community: () => <CommunitySection />,
+  push: () => <PushSection />,
   integration: () => <IntegrationSection />,
 }
 
 export function SettingsPage() {
   const { t } = useTranslation()
   const [section, setSection] = useState<SettingsSection>('accounts')
-  const ready = useAgent().settings.nasabah_ready
+  const settings = useAgent().settings
+  const badges: Partial<Record<SettingsSection, React.ReactNode>> = {
+    integration: settings.nasabah_ready ? null : <IntegrationBadge configured={false} />,
+    push: settings.community_push_ready ? null : <PushInactiveBadge />,
+  }
   return (
     <div className="flex h-full flex-col md:flex-row">
       <nav
@@ -70,9 +79,9 @@ export function SettingsPage() {
             )}
           >
             <item.icon className="size-4 shrink-0" />
-            {item.id === 'integration' && !ready ? (
+            {badges[item.id] ? (
               <span className="flex flex-col items-start gap-1 md:py-0.5">
-                {t(`settings.${item.id}`)} <IntegrationBadge configured={false} />
+                {t(`settings.${item.id}`)} {badges[item.id]}
               </span>
             ) : (
               t(`settings.${item.id}`)

@@ -117,6 +117,21 @@ describe('compliance logic', () => {
     ).toBe('key: assignment.mode · tags: ["a"] · count: 2')
   })
 
+  it('shows field changes in audit details as old and new values', () => {
+    expect(
+      detailsText({
+        username: 'olt_research',
+        changes: {
+          display_name: { from: 'OLT Research', to: 'OLT Riset' },
+          bio: { from: null, to: 'Riset' },
+          avatar: 'added',
+        },
+      }),
+    ).toBe(
+      'username: olt_research · changes: display_name OLT Research → OLT Riset, bio – → Riset, avatar added',
+    )
+  })
+
   it('exports the complaint register with translated values and late days', () => {
     const csv = casesCsv(
       [row(), row({ id: 't2', deadline: { state: 'met', business_days: 0 }, review: null })],

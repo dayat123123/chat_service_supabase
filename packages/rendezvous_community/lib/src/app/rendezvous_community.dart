@@ -29,6 +29,9 @@ import 'package:rendezvous_community/src/features/post/data/repositories/comment
 import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
 import 'package:rendezvous_community/src/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:rendezvous_community/src/features/profile/domain/repositories/profile_repository.dart';
+import 'package:rendezvous_community/src/features/push/data/repositories/push_repository_impl.dart';
+import 'package:rendezvous_community/src/features/push/domain/entities/community_push_message.dart';
+import 'package:rendezvous_community/src/features/push/domain/services/push_registrar.dart';
 import 'package:rendezvous_community/src/features/stocks/data/repositories/stock_repository_impl.dart';
 import 'package:rendezvous_community/src/features/stocks/domain/repositories/stock_repository.dart';
 import 'package:rendezvous_community/src/features/support/data/repositories/support_chat_repository.dart';
@@ -54,6 +57,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     required this.media,
     required this.support,
     required this.supportChat,
+    required this._push,
     required bool trackDelivery,
   }) {
     if (trackDelivery) {
@@ -174,6 +178,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
           ];
         },
       ),
+      push: PushRegistrar(PushRepositoryImpl(api), currentUserId: () => tokens.currentSession?.user.id),
       trackDelivery: trackDelivery,
     );
 
@@ -182,6 +187,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
         unawaited(social._delivery?.stop());
         return;
       }
+      social._push.onUserChanged(session.user.id);
       unawaited(client.realtime.setAuth(session.accessToken));
       social._delivery?.start();
     });
@@ -191,6 +197,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
   final SupabaseClient client;
   final TokenManager _tokens;
   final ChatRepositoryImpl _chatImpl;
+  final PushRegistrar _push;
   DeliveryTracker? _delivery;
   StreamSubscription<SocialSession?>? _sessionSub;
 
@@ -236,7 +243,33 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     }
   }
 
+  CommunityPushRegistration? get pushRegistration => _push.registration;
+
+  Future<void> registerPushToken(
+    String token, {
+    required CommunityPushPlatform platform,
+    String? locale,
+    String? appVersion,
+  }) async {
+    try {
+      await _push.register(
+        CommunityPushRegistration(token: token, platform: platform, locale: locale, appVersion: appVersion),
+      );
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  Future<void> unregisterPushToken() async {
+    try {
+      await _push.forget();
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
   Future<void> signOut() async {
+    await _push.detach();
     await _delivery?.stop();
     _tokens.clear();
     await client.removeAllChannels();

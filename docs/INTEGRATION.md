@@ -13,7 +13,7 @@ dependencies:
     git:
       url: <url repo internal>
       path: packages/rendezvous_community
-      ref: v1.0.0            # pin tag/commit
+      ref: v1.1.0            # pin tag/commit
   flutter_localizations:
     sdk: flutter
 ```
@@ -159,7 +159,7 @@ Menu "⋯" berisi:
 
 Pesan yang gagal karena offline otomatis dikirim ulang saat koneksi kembali. Pengiriman ulang ini aman karena memakai `client_id` yang idempoten.
 
-**Notifikasi saat CS mengambil, membalas, atau menyelesaikan tiket.** `RendezvousCommunity.instance.support.notices()` mengalirkan `SupportNotice` (judul = nama CS, isi = cuplikan pesan) selama aplikasi berjalan. Tampilkan sebagai notifikasi lokal bila room CS sedang tidak terbuka. Contohnya ada di `example/lib/support_notifications.dart` (`flutter_local_notifications`, BSD-3: Windows toast dan Android). Push saat aplikasi tertutup membutuhkan service notifier + FCM (tahap F1 produksi).
+**Notifikasi saat CS mengambil, membalas, atau menyelesaikan tiket.** `RendezvousCommunity.instance.support.notices()` mengalirkan `SupportNotice` (judul = nama CS, isi = cuplikan pesan) selama aplikasi berjalan. Tampilkan sebagai notifikasi lokal bila room CS sedang tidak terbuka. Contohnya ada di `example/lib/support_notifications.dart` (`flutter_local_notifications`, BSD-3: Windows toast dan Android). Push saat aplikasi tertutup dikirim layanan notifier lewat FCM: daftarkan token dengan `RendezvousCommunity.instance.registerPushToken(...)` dan buka push yang diketuk dengan `openCommunityPush(context, message.data)`. Langkahnya ada di [docs/push](push/README.md#aplikasi-olt-pengembang).
 
 ## 6. Penanganan error
 

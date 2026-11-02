@@ -1,8 +1,6 @@
 import { useTranslation } from 'react-i18next'
 
-import { Dot } from '@/components/badges'
 import { Switch } from '@/components/ui/controls'
-import { useAgent } from '@/features/auth/hooks'
 
 import { findSetting, useSaveSettings, useSettingEntries } from '../hooks'
 import type { SettingEntry } from '../types'
@@ -29,32 +27,12 @@ function FourEyesCard({ items }: { items: SettingEntry[] }) {
   )
 }
 
-function PushCard() {
-  const { t } = useTranslation()
-  const ready = useAgent().settings.community_push_ready
-  return (
-    <SettingsCard title={t('settings.pushChannel')}>
-      <p className="flex items-start gap-2 text-row">
-        <Dot tone={ready ? 'ok' : 'warn'} className="mt-1.5" />
-        {ready ? t('settings.pushReady') : t('settings.pushNotReady')}
-      </p>
-    </SettingsCard>
-  )
-}
-
 export function CommunitySection() {
   const { t } = useTranslation()
   const settings = useSettingEntries()
   return (
     <SectionFrame title={t('settings.community')} description={t('settings.communityDescription')}>
-      <QueryContent query={settings}>
-        {(items) => (
-          <div className="flex flex-col gap-4">
-            <FourEyesCard items={items} />
-            <PushCard />
-          </div>
-        )}
-      </QueryContent>
+      <QueryContent query={settings}>{(items) => <FourEyesCard items={items} />}</QueryContent>
     </SectionFrame>
   )
 }
