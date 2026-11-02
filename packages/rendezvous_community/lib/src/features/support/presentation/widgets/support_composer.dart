@@ -50,7 +50,7 @@ class SupportComposer extends StatelessWidget {
               ],
             ),
           ),
-        MessageComposer(onChanged: cubit.checkText),
+        MessageComposer(onChanged: cubit.checkText, allowDocuments: true),
       ],
     );
   }

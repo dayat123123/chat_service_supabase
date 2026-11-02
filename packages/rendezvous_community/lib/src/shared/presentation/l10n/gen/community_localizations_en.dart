@@ -124,6 +124,27 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
   String get composeAddImage => 'Add image';
 
   @override
+  String get composeAddImageOrPdf => 'Attach image or PDF';
+
+  @override
+  String get documentTooLarge => 'PDFs can be at most 10 MB.';
+
+  @override
+  String get documentOpenFailed => 'The document could not be opened. Try again.';
+
+  @override
+  String get documentFallbackName => 'Document.pdf';
+
+  @override
+  String openDocument(String name) {
+    return 'Open $name';
+  }
+
+  @override
+  String get errorAttachmentNotAllowed =>
+      'This attachment is not supported. Support chat accepts images and PDFs; other chats accept images only.';
+
+  @override
   String get composeRemoveImage => 'Remove image';
 
   @override

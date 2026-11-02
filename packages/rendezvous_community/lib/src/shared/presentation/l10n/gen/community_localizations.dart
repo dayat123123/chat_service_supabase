@@ -296,6 +296,42 @@ abstract class CommunityLocalizations {
   /// **'Tambah gambar'**
   String get composeAddImage;
 
+  /// No description provided for @composeAddImageOrPdf.
+  ///
+  /// In id, this message translates to:
+  /// **'Lampirkan gambar atau PDF'**
+  String get composeAddImageOrPdf;
+
+  /// No description provided for @documentTooLarge.
+  ///
+  /// In id, this message translates to:
+  /// **'PDF maksimal 10 MB.'**
+  String get documentTooLarge;
+
+  /// No description provided for @documentOpenFailed.
+  ///
+  /// In id, this message translates to:
+  /// **'Dokumen tidak bisa dibuka. Coba lagi.'**
+  String get documentOpenFailed;
+
+  /// No description provided for @documentFallbackName.
+  ///
+  /// In id, this message translates to:
+  /// **'Dokumen.pdf'**
+  String get documentFallbackName;
+
+  /// No description provided for @openDocument.
+  ///
+  /// In id, this message translates to:
+  /// **'Buka {name}'**
+  String openDocument(String name);
+
+  /// No description provided for @errorAttachmentNotAllowed.
+  ///
+  /// In id, this message translates to:
+  /// **'Lampiran ini tidak didukung. Chat CS menerima gambar dan PDF; chat lain hanya gambar.'**
+  String get errorAttachmentNotAllowed;
+
   /// No description provided for @composeRemoveImage.
   ///
   /// In id, this message translates to:

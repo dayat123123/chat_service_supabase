@@ -1,4 +1,12 @@
-export type Attachment = { path: string; mime?: string | null; width?: number | null; height?: number | null }
+export type Attachment = {
+  path: string
+  bucket?: string | null
+  mime?: string | null
+  name?: string | null
+  size?: number | null
+  width?: number | null
+  height?: number | null
+}
 
 export type SenderRole = 'customer' | 'agent' | 'supervisor' | 'system'
 

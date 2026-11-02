@@ -23,7 +23,9 @@ import type { AgentNote } from '@/features/customer/types'
 import { clock } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
+import { isDocument, isDocumentFile } from '../media'
 import type { ChatMessage, PendingMessage } from '../types'
+import { AttachmentFile, DocumentLabel } from './attachment-file'
 import { AttachmentImage } from './attachment-image'
 
 export const SystemMessage = memo(function SystemMessage({ message }: { message: ChatMessage }) {
@@ -136,6 +138,8 @@ export const MessageBubble = memo(function MessageBubble({
   const url =
     message.kind === 'help_link' && typeof message.payload.url === 'string' ? message.payload.url : null
   const status = read ? t('conversation.read') : t('conversation.sent')
+  const images = message.attachments.filter((attachment) => !isDocument(attachment))
+  const documents = message.attachments.filter(isDocument)
 
   return (
     <div
@@ -165,19 +169,21 @@ export const MessageBubble = memo(function MessageBubble({
                 <div className="line-clamp-2">{message.reply_to_body}</div>
               </div>
             ) : null}
-            {message.attachments.length > 0 ? (
-              <div
-                className={cn(
-                  'mb-1 grid gap-1',
-                  message.attachments.length > 1 ? 'grid-cols-2' : 'grid-cols-1',
-                )}
-              >
-                {message.attachments.map((attachment) => (
+            {images.length > 0 ? (
+              <div className={cn('mb-1 grid gap-1', images.length > 1 ? 'grid-cols-2' : 'grid-cols-1')}>
+                {images.map((attachment) => (
                   <AttachmentImage
                     key={attachment.path}
                     attachment={attachment}
-                    compact={message.attachments.length > 1}
+                    compact={images.length > 1}
                   />
+                ))}
+              </div>
+            ) : null}
+            {documents.length > 0 ? (
+              <div className="mb-1 flex flex-col gap-1">
+                {documents.map((attachment) => (
+                  <AttachmentFile key={attachment.path} attachment={attachment} />
                 ))}
               </div>
             ) : null}
@@ -255,14 +261,23 @@ export function PendingBubble({
         >
           {pending.files.length > 0 ? (
             <div className="mb-1 grid grid-cols-2 gap-1">
-              {pending.files.map((file) => (
-                <img
-                  key={file.id}
-                  src={file.preview}
-                  alt={file.file.name}
-                  className="h-20 w-28 rounded-md object-cover"
-                />
-              ))}
+              {pending.files.map((file) =>
+                isDocumentFile(file.file) ? (
+                  <div
+                    key={file.id}
+                    className="col-span-2 flex items-center gap-2.5 rounded-lg border border-current/20 px-2.5 py-2"
+                  >
+                    <DocumentLabel name={file.file.name} size={file.file.size} />
+                  </div>
+                ) : (
+                  <img
+                    key={file.id}
+                    src={file.preview}
+                    alt={file.file.name}
+                    className="h-20 w-28 rounded-md object-cover"
+                  />
+                ),
+              )}
             </div>
           ) : null}
           {pending.body ? <p className="break-words whitespace-pre-wrap">{pending.body}</p> : null}

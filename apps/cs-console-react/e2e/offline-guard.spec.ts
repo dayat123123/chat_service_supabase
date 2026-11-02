@@ -47,7 +47,7 @@ test('CS Offline diminta Online dulu saat mengambil tiket atau membalas nasabah'
     await expect(reply).toBeDisabled()
     await expect(reply).toHaveValue(replyText)
     await expect(bima.getByRole('button', { name: 'Kirim', exact: true })).toBeDisabled()
-    await expect(bima.getByRole('button', { name: 'Lampirkan gambar' })).toBeDisabled()
+    await expect(bima.getByRole('button', { name: 'Lampirkan gambar atau PDF' })).toBeDisabled()
     const bodies = (await customer.messages()).map((message) => message.body)
     expect(bodies).not.toContain(replyText)
 

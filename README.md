@@ -114,7 +114,8 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 **Storage.**
 - `avatars`: publik, maksimal 2 MB.
 - `attachments`: privat, maksimal 5 MB. Lampiran chat hanya bisa dibaca anggota room.
-- Kedua bucket hanya menerima gambar.
+- Kedua bucket hanya menerima gambar (lampiran: JPEG, PNG, WebP, GIF). Chat global (DM, grup, room saham) hanya menerima gambar, dan database menolak jenis lain (`attachment_not_allowed`).
+- `cs-documents`: privat, PDF maksimal 10 MB, khusus room layanan nasabah. Hanya nasabah pemilik room dan CS yang menangani tiketnya yang bisa mengunggah dan membaca.
 
 ## Prasyarat
 
