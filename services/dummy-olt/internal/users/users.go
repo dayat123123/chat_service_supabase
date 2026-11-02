@@ -56,6 +56,8 @@ func Default() *Directory {
 		user(1006, "olt_official", "official@olt.test", "Rendezvous OLT"),
 		user(1007, "joko_prasetyo", "joko@olt.test", "Joko Prasetyo"),
 		user(1008, "rudi.setiawan", "rudi@olt.test", "Rudi Setiawan"),
+		user(1011, "hidayat", "hidayatullah10070@gmail.com", "Hidayat"),
+		user(1012, "hidayat2", "hidayatullah100702@gmail.com", "Hidayat 2"),
 		suspended,
 		slow,
 	}}

@@ -6,6 +6,7 @@ import { PriorityText } from '@/components/badges'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { useActionGuard } from '@/features/presence/hooks'
 import { clock } from '@/lib/time'
 
 import { ticketsApi } from '../api'
@@ -22,6 +23,7 @@ export function TransferInbox({
   const { t } = useTranslation()
   const [rejecting, setRejecting] = useState<TransferRequest | null>(null)
   const [reason, setReason] = useState('')
+  const guard = useActionGuard()
   const respond = useTicketAction(
     ({ request, accept, why }: { request: TransferRequest; accept: boolean; why?: string }) =>
       ticketsApi.respondTransfer(request.id, accept, why),
@@ -54,7 +56,8 @@ export function TransferInbox({
             <Button
               size="xs"
               disabled={respond.isPending}
-              onClick={() =>
+              onClick={() => {
+                if (!guard('acceptTransfer')) return
                 respond.mutate(
                   { request, accept: true },
                   {
@@ -65,7 +68,7 @@ export function TransferInbox({
                     },
                   },
                 )
-              }
+              }}
             >
               {t('tickets.accept')}
             </Button>

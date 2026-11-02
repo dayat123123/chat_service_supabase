@@ -33,7 +33,7 @@ Dasar audit:
 - Dashboard analitik memakai Perses atau panel admin, bukan Grafana (AGPL).
 - Integrasi OLT memakai satu protokol: [olt-integration.md](olt-integration.md).
 
-**Penyesuaian 31 Okt 2026: satu dependensi keluar.** Server hanya memvalidasi token login ke OLT ([olt-integration.md](olt-integration.md)). Akibatnya:
+**Penyesuaian 31 Okt 2026: satu dependensi keluar.** Server hanya memverifikasi token login dari OLT ([olt-integration.md](olt-integration.md)). Sejak 31 Okt sore verifikasinya lokal (token sosial bertanda tangan, auth-bridge mode `jwt`), jadi tidak ada panggilan keluar sama sekali. Akibatnya:
 - Bagian data pasar dan portofolio di [PROMPT-FEATURES.md](PROMPT-FEATURES.md) dibatalkan: `market-adapter`, harga saat posting, sinkron daftar saham, dan badge holder.
 - `customer-adapter` (data nasabah dan aksi akun untuk CS) serta kartu order di chat CS dihapus (migrasi `0037_client_owned_business_data`).
 - Web CS Flutter (`apps/cs-console`) dihapus; web CS kini hanya versi React.
@@ -190,11 +190,11 @@ Dasar audit:
     - counter lewat trigger, rate limit `poll_vote`;
     - hasil tersembunyi sampai memilih, polling selesai, atau bagi pembuat;
     - ekspor data memuat polling dan suara.
-- **Flutter** (`olt_social`):
+- **Flutter** (`rendezvous_community`):
   - Struktur per fitur (`app` / `core` / `shared` / `features/<fitur>/{domain,data,presentation}`) dan cubit dipisah dari widget.
   - `RoomChannelHub`: satu channel per room dengan ref-count, dibagi oleh daftar chat dan room.
   - Presence dipindah dari channel global `online` ke channel room, sehingga tidak ada lagi siaran daftar semua user online ke semua klien.
-  - `DeliveryTracker` di tingkat aplikasi; composer memakai `create_post` + `client_id` per draf; editor polling dan `OltPollView`.
+  - `DeliveryTracker` di tingkat aplikasi; composer memakai `create_post` + `client_id` per draf; editor polling dan `CommunityPollView`.
   - Pemetaan error per kode stabil, misalnya `poll_closed` dan `duplicate_content`.
 - **Kode tanpa komentar:**
   - Semua Dart dan Go dibersihkan memakai scanner resmi (`package:analyzer`, `go/scanner`), sehingga string dan directive (`// ignore:`, `//go:`) aman.
@@ -222,7 +222,7 @@ Dasar audit:
 - **Catatan perilaku:** ✓ tetap satu bila penerima tidak sedang membuka aplikasi. Itu benar seperti WhatsApp; ✓✓ abu-abu muncul begitu aplikasi penerima terbuka.
 - **Badge tab chat** (migrasi `0020_chat_unread_badge`):
   - RPC `get_unread_chat_count`: jumlah chat DM/grup yang tidak dibisukan dan punya pesan belum dibaca dari orang lain. Pesan terhapus dan room saham tidak dihitung.
-  - Widget `OltChatBadge` memuat ulang saat ada notifikasi baru untuk user (yang dibuat server hanya untuk DM/grup yang tidak dibisukan, sehingga room saham ramai tidak memicu permintaan) dan saat room dibaca, dibisukan, atau ditinggalkan di perangkat ini.
+  - Widget `CommunityChatBadge` memuat ulang saat ada notifikasi baru untuk user (yang dibuat server hanya untuk DM/grup yang tidak dibisukan, sehingga room saham ramai tidak memicu permintaan) dan saat room dibaca, dibisukan, atau ditinggalkan di perangkat ini.
 - **Verifikasi:**
   - pgTAP 314 (+12 badge);
   - Flutter: analyze bersih, 101 unit/widget (+14), integration 9 (+1 badge ke backend nyata).
@@ -253,7 +253,7 @@ Dasar audit:
 - Rate limit DB berbasis tabel (bisa diubah tanpa deploy) dan filter kata.
 - Pesan chat idempoten lewat `client_id`.
 - JWT 15 menit dengan refresh otomatis. auth-bridge tidak menerima password, tidak mencatat token, dan berhenti dengan graceful saat SIGTERM.
-- Signup GoTrue mati, disclaimer tampil, dan `OltSocial.initialize()` tidak memblokir app host.
+- Signup GoTrue mati, disclaimer tampil, dan `RendezvousCommunity.initialize()` tidak memblokir app host.
 - Tes yang sudah ada: 141 pgTAP, smoke 21 + 16 skenario, unit/widget/integration Flutter, E2E Windows.
 
 ### Yang harus diganti (bukan sekadar ditambah)

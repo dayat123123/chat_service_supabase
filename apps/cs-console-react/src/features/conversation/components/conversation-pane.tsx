@@ -1,5 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { LoaderCircleIcon } from 'lucide-react'
+import { EyeIcon, LoaderCircleIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
@@ -9,73 +8,111 @@ import { Skeleton } from '@/components/ui/primitives'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
 import { useNotes } from '@/features/customer/hooks'
-import { atCapacity, isSupervisor } from '@/features/presence/types'
+import { GoOnlineButton } from '@/features/presence/components/go-online-button'
+import { useActionGuard, useClaimGate } from '@/features/presence/hooks'
+import { isSuperAdmin, worksTickets } from '@/features/presence/types'
 import { ticketsApi } from '@/features/tickets/api'
-import { useClaimTicket, useTicketAction, useTicketDetail, useTopics } from '@/features/tickets/hooks'
-import type { Ticket } from '@/features/tickets/types'
+import {
+  useClaimTicket,
+  useTicketAction,
+  useTicketDetail,
+  useTicketLists,
+  useTicketUi,
+  useTopics,
+} from '@/features/tickets/hooks'
+import { newerActiveTicket } from '@/features/tickets/logic'
+import { emptyLists, type Ticket } from '@/features/tickets/types'
 
 import { latestCustomerMessage } from '../cache'
-import {
-  conversationKeys,
-  useMarkRead,
-  useMembers,
-  useMessages,
-  usePending,
-  useRoom,
-  useSendMessage,
-} from '../hooks'
+import { useMarkRead, useMembers, useMessages, usePending, useRoom, useSendMessage } from '../hooks'
 import type { ChatMessage, PendingMessage } from '../types'
 import { ActionDialog, type TicketAction } from './action-dialogs'
 import { Composer } from './composer'
 import { ConversationHeader } from './conversation-header'
 import { MessageList } from './message-list'
 
-function ReadOnlyBar({
-  ticket,
-  canJoin,
-  joining,
-  onJoin,
-}: {
-  ticket: Ticket
-  canJoin: boolean
-  joining: boolean
-  onJoin: () => void
-}) {
+const barClass = 'flex min-h-12 shrink-0 items-center gap-3 border-t bg-subtle px-(--pane-px) py-2'
+
+function StatusNote({ ticket }: { ticket: Ticket }) {
   const { t } = useTranslation()
-  const agent = useAgent()
-  const claim = useClaimTicket()
-  const canClaim = agent.status === 'online' && !atCapacity(agent)
-  const owned = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
+  if (ticket.status === 'resolved') return t('conversation.resolvedNote')
+  if (ticket.status === 'closed') return t('conversation.closedNote')
   return (
-    <div
-      className="flex min-h-12 shrink-0 items-center gap-3 border-t bg-subtle px-(--pane-px) py-2"
-      role="status"
-    >
+    <Trans
+      i18nKey="conversation.handledByOther"
+      values={{ name: ticket.owner?.display_name ?? '' }}
+      components={{ strong: <strong className="font-medium text-foreground" /> }}
+    />
+  )
+}
+
+function NewerTicketBar({ ticket, newer }: { ticket: Ticket; newer: Ticket }) {
+  const { t } = useTranslation()
+  return (
+    <div className={barClass} role="status">
+      <p className="min-w-0 flex-1 text-row text-muted-foreground">
+        {t(
+          ticket.status === 'resolved' ? 'conversation.newerAfterResolved' : 'conversation.newerAfterClosed',
+          {
+            number: newer.ticket_number,
+          },
+        )}
+      </p>
+      <Button size="sm" variant="outline" onClick={() => useTicketUi.getState().select(newer.id)}>
+        {t('conversation.openActiveTicket')}
+      </Button>
+    </div>
+  )
+}
+
+export function ReadOnlyBar({ ticket }: { ticket: Ticket }) {
+  const { t } = useTranslation()
+  const gate = useClaimGate()
+  const guard = useActionGuard()
+  const claim = useClaimTicket()
+  const lists = useTicketLists()
+  const newer = newerActiveTicket(lists.data ?? emptyLists, ticket)
+  if (newer) return <NewerTicketBar ticket={ticket} newer={newer} />
+  return (
+    <div className={barClass} role="status">
       <p className="min-w-0 flex-1 text-row text-muted-foreground">
         {ticket.status === 'open' ? (
-          t('conversation.readOnlyPreview')
-        ) : ticket.status === 'resolved' ? (
-          t('conversation.resolvedNote')
-        ) : ticket.status === 'closed' ? (
-          t('conversation.closedNote')
+          (gate.reason ?? t('conversation.readOnlyPreview'))
         ) : (
-          <Trans
-            i18nKey="conversation.handledByOther"
-            values={{ name: ticket.owner?.display_name ?? '' }}
-            components={{ strong: <strong className="font-medium text-foreground" /> }}
-          />
+          <StatusNote ticket={ticket} />
         )}
       </p>
       {ticket.status === 'open' ? (
-        <Button size="sm" disabled={!canClaim || claim.isPending} onClick={() => claim.mutate(ticket.id)}>
-          {claim.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
-          {t('tickets.claimTicket')}
-        </Button>
-      ) : owned && canJoin ? (
-        <Button size="sm" variant="outline" disabled={joining} onClick={onJoin}>
-          {t('conversation.join')}
-        </Button>
+        <>
+          {gate.needsOnline ? <GoOnlineButton /> : null}
+          <Button
+            size="sm"
+            disabled={claim.isPending}
+            data-blocked={!gate.canClaim || undefined}
+            className="data-[blocked=true]:opacity-60"
+            onClick={() => {
+              if (guard('claim')) claim.mutate(ticket.id)
+            }}
+          >
+            {claim.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
+            {t('tickets.claimTicket')}
+          </Button>
+        </>
       ) : null}
+    </div>
+  )
+}
+
+export function MonitorBar({ ticket }: { ticket: Ticket }) {
+  const { t } = useTranslation()
+  return (
+    <div className={barClass} role="status">
+      <EyeIcon className="size-4 shrink-0 text-muted-foreground" />
+      <p className="min-w-0 flex-1 text-row text-muted-foreground">
+        <span className="font-medium text-foreground">{t('presence.monitorMode')}</span>
+        {' · '}
+        {ticket.status === 'open' ? t('conversation.monitorUnclaimed') : <StatusNote ticket={ticket} />}
+      </p>
     </div>
   )
 }
@@ -92,9 +129,9 @@ function Conversation({
   onBack?: () => void
 }) {
   const { t } = useTranslation()
-  const client = useQueryClient()
   const agent = useAgent()
-  const supervisor = isSupervisor(agent)
+  const worker = worksTickets(agent)
+  const superAdmin = isSuperAdmin(agent)
   const me = useMemo(
     () => ({ id: agent.id, username: agent.agent_code, displayName: agent.display_name }),
     [agent.id, agent.agent_code, agent.display_name],
@@ -118,9 +155,7 @@ function Conversation({
   const [action, setAction] = useState<TicketAction | null>(null)
 
   const active = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
-  const owner = active && ticket.owner?.id === agent.id
-  const joined = (members.data ?? []).some((member) => member.user_id === agent.id)
-  const canReply = owner || (supervisor && active && joined)
+  const owner = worker && active && ticket.owner?.id === agent.id
   const customer = (members.data ?? []).find((member) => member.user_id === ticket.customer?.id)
   const latest = latestCustomerMessage(messages.messages)
   useMarkRead(ticket.room_id, owner, latest?.created_at)
@@ -161,19 +196,12 @@ function Conversation({
     ticketId,
     success: (value) => t('conversation.priorityChanged', { priority: value }),
   })
-  const join = useTicketAction(() => ticketsApi.join(ticket.id), {
-    ticketId,
-    success: t('conversation.joined'),
-    onSuccess: () => void client.invalidateQueries({ queryKey: conversationKeys.members(ticket.room_id) }),
-  })
   const reassign = useTicketAction(
     ({ agentId, reason }: { agentId: string; name: string; reason: string }) =>
       ticketsApi.reassign(ticket.id, agentId, reason),
     { ticketId, success: ({ name }) => t('conversation.reassigned', { name }) },
   )
-  const busy = [wait, release, transfer, resolve, priority, join, reassign].some(
-    (mutation) => mutation.isPending,
-  )
+  const busy = [wait, release, transfer, resolve, priority, reassign].some((mutation) => mutation.isPending)
 
   useCommandHandler(
     'resolve',
@@ -203,7 +231,7 @@ function Conversation({
         ticket={ticket}
         meId={agent.id}
         owner={owner}
-        supervisor={supervisor}
+        superAdmin={superAdmin}
         customerOnline={room.customerOnline}
         infoOpen={infoOpen}
         busy={busy}
@@ -232,7 +260,7 @@ function Conversation({
           loadingOlder={messages.isFetchingNextPage}
           onLoadOlder={() => void messages.fetchNextPage()}
           trustedHost={trustedHost}
-          onReply={canReply ? setReplyTo : undefined}
+          onReply={owner ? setReplyTo : undefined}
           onResend={(item) => void resend(item).catch(() => undefined)}
           onDiscard={discard}
         />
@@ -240,7 +268,7 @@ function Conversation({
       <div className="min-h-5 px-(--pane-px) pb-1 text-xs text-muted-foreground" aria-live="polite">
         {room.typing ? t('conversation.typing', { name: room.typing }) : null}
       </div>
-      {canReply ? (
+      {owner ? (
         <Composer
           ticket={ticket}
           agent={agent}
@@ -250,13 +278,10 @@ function Conversation({
           onTyping={room.sendTyping}
           onStopTyping={room.stopTyping}
         />
+      ) : worker ? (
+        <ReadOnlyBar ticket={ticket} />
       ) : (
-        <ReadOnlyBar
-          ticket={ticket}
-          canJoin={supervisor && !joined}
-          joining={join.isPending}
-          onJoin={() => join.mutate(undefined)}
-        />
+        <MonitorBar ticket={ticket} />
       )}
       <ActionDialog
         action={action}

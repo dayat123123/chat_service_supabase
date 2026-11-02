@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"olt-social/dummy-olt/internal/social"
 	"olt-social/dummy-olt/internal/tokens"
 	"olt-social/dummy-olt/internal/users"
 )
@@ -29,6 +31,8 @@ const (
 
 type Config struct {
 	TokenTTL          time.Duration
+	SocialTTL         time.Duration
+	SocialAudience    string
 	AcceptMockTokens  bool
 	SlowDelay         time.Duration
 	HeartbeatInterval time.Duration
@@ -37,15 +41,17 @@ type Config struct {
 type Server struct {
 	users    *users.Directory
 	tokens   *tokens.Issuer
+	social   *social.Signer
 	cfg      Config
 	log      *slog.Logger
 	upgrader websocket.Upgrader
 }
 
-func New(dir *users.Directory, issuer *tokens.Issuer, cfg Config, log *slog.Logger) *Server {
+func New(dir *users.Directory, issuer *tokens.Issuer, signer *social.Signer, cfg Config, log *slog.Logger) *Server {
 	return &Server{
 		users:  dir,
 		tokens: issuer,
+		social: signer,
 		cfg:    cfg,
 		log:    log,
 		upgrader: websocket.Upgrader{
@@ -62,6 +68,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /ws", s.handleWebSocket)
 	mux.HandleFunc("POST /api/login", s.handleHTTPLogin)
 	mux.HandleFunc("POST /api/logout", s.handleHTTPLogout)
+	mux.HandleFunc("POST /api/social-token", s.handleHTTPSocialToken)
 	mux.HandleFunc("POST /api/dev/token", s.handleDevToken)
 	mux.HandleFunc("GET /api/users", s.handleUsers)
 	return mux
@@ -89,8 +96,16 @@ type userJSON struct {
 }
 
 type loginData struct {
+	Token                string   `json:"token"`
+	ExpiresAt            string   `json:"expires_at,omitempty"`
+	SocialToken          string   `json:"social_token,omitempty"`
+	SocialTokenExpiresAt string   `json:"social_token_expires_at,omitempty"`
+	User                 userJSON `json:"user"`
+}
+
+type socialTokenData struct {
 	Token     string   `json:"token"`
-	ExpiresAt string   `json:"expires_at,omitempty"`
+	ExpiresAt string   `json:"expires_at"`
 	User      userJSON `json:"user"`
 }
 
@@ -124,6 +139,33 @@ func toUserJSON(u *users.User) userJSON {
 	return userJSON{ID: u.ID, Username: u.Username, Email: u.Email, FullName: u.FullName}
 }
 
+func socialIdentity(u userJSON) social.Identity {
+	return social.Identity{ID: fmt.Sprint(u.ID), Username: u.Username, Name: u.FullName, Email: u.Email}
+}
+
+func (s *Server) withSocialToken(login *loginData) (*loginData, *apiError) {
+	token, exp, err := s.social.Sign(socialIdentity(login.User), s.cfg.SocialTTL)
+	if err != nil {
+		return nil, &apiError{CodeBadRequest, "gagal membuat token sosial"}
+	}
+	login.SocialToken = token
+	login.SocialTokenExpiresAt = exp.UTC().Format(time.RFC3339)
+	return login, nil
+}
+
+func (s *Server) socialToken(sessionToken string) (*socialTokenData, *apiError) {
+	login, e := s.sessionUser(sessionToken)
+	if e != nil {
+		return nil, e
+	}
+	token, exp, err := s.social.Sign(socialIdentity(login.User), s.cfg.SocialTTL)
+	if err != nil {
+		return nil, &apiError{CodeBadRequest, "gagal membuat token sosial"}
+	}
+	s.log.Info("token sosial diterbitkan", "user_id", login.User.ID)
+	return &socialTokenData{Token: token, ExpiresAt: exp.UTC().Format(time.RFC3339), User: login.User}, nil
+}
+
 func (s *Server) passwordLogin(c credentials) (*loginData, *apiError) {
 	identifier := c.Username
 	if identifier == "" {
@@ -146,14 +188,29 @@ func (s *Server) passwordLogin(c credentials) (*loginData, *apiError) {
 		return nil, &apiError{CodeBadRequest, "gagal membuat token"}
 	}
 	s.log.Info("login password berhasil", "user_id", u.ID)
-	return &loginData{Token: token, ExpiresAt: exp.UTC().Format(time.RFC3339), User: toUserJSON(u)}, nil
+	return s.withSocialToken(&loginData{Token: token, ExpiresAt: exp.UTC().Format(time.RFC3339), User: toUserJSON(u)})
 }
 
 func (s *Server) tokenLogin(ctx context.Context, token string) (*loginData, *apiError) {
+	login, e := s.sessionUser(token)
+	if e != nil {
+		return nil, e
+	}
+	if u, ok := s.users.Find(fmt.Sprint(login.User.ID)); ok && u.SlowLogin {
+		select {
+		case <-time.After(s.cfg.SlowDelay):
+		case <-ctx.Done():
+			return nil, &apiError{CodeBadRequest, "koneksi ditutup"}
+		}
+	}
+	s.log.Info("login token berhasil", "user_id", login.User.ID)
+	return s.withSocialToken(login)
+}
+
+func (s *Server) sessionUser(token string) (*loginData, *apiError) {
 	if token == "" {
 		return nil, &apiError{CodeBadRequest, "token wajib diisi"}
 	}
-
 	if strings.HasPrefix(token, "mock:") {
 		return s.mockTokenLogin(token)
 	}
@@ -175,14 +232,6 @@ func (s *Server) tokenLogin(ctx context.Context, token string) (*loginData, *api
 	if u.Status == users.StatusSuspended {
 		return nil, s.reject(CodeAccountSuspended, "Akun ditangguhkan")
 	}
-	if u.SlowLogin {
-		select {
-		case <-time.After(s.cfg.SlowDelay):
-		case <-ctx.Done():
-			return nil, &apiError{CodeBadRequest, "koneksi ditutup"}
-		}
-	}
-	s.log.Info("login token berhasil", "user_id", u.ID)
 	return &loginData{
 		Token:     token,
 		ExpiresAt: time.Unix(claims.ExpiresAt, 0).UTC().Format(time.RFC3339),
@@ -284,6 +333,13 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 					send(result("login_result", req.RequestID, login, e))
 				}
 			}(req, creds)
+		case "social_token":
+			data, e := s.socialToken(creds.Token)
+			if e != nil {
+				send(message{Type: "social_token_result", RequestID: req.RequestID, Status: "FAILED", Error: e})
+			} else {
+				send(message{Type: "social_token_result", RequestID: req.RequestID, Status: "OK", Data: data})
+			}
 		case "logout":
 			if err := s.tokens.Revoke(creds.Token); err != nil {
 				send(result("logout_result", req.RequestID, nil, &apiError{CodeInvalidToken, "Token tidak valid"}))
@@ -323,6 +379,20 @@ func (s *Server) handleHTTPLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, data)
 }
 
+func (s *Server) handleHTTPSocialToken(w http.ResponseWriter, r *http.Request) {
+	var c credentials
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&c); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body harus JSON"}})
+		return
+	}
+	data, e := s.socialToken(c.Token)
+	if e != nil {
+		writeJSON(w, statusFor(e.Code), map[string]any{"error": e})
+		return
+	}
+	writeJSON(w, http.StatusOK, data)
+}
+
 func (s *Server) handleHTTPLogout(w http.ResponseWriter, r *http.Request) {
 	var c credentials
 	_ = json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&c)
@@ -335,8 +405,10 @@ func (s *Server) handleHTTPLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		User string `json:"user"`
-		TTL  string `json:"ttl"`
+		User     string `json:"user"`
+		TTL      string `json:"ttl"`
+		Kind     string `json:"kind"`
+		Audience string `json:"audience"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body harus JSON"}})
@@ -348,6 +420,9 @@ func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ttl := s.cfg.TokenTTL
+	if body.Kind == "social" {
+		ttl = s.cfg.SocialTTL
+	}
 	if body.TTL != "" {
 		parsed, err := time.ParseDuration(body.TTL)
 		if err != nil {
@@ -355,6 +430,19 @@ func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		ttl = parsed
+	}
+	if body.Kind == "social" {
+		audience := body.Audience
+		if audience == "" {
+			audience = s.cfg.SocialAudience
+		}
+		token, exp, err := s.social.SignFor(socialIdentity(toUserJSON(u)), ttl, audience)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": apiError{CodeBadRequest, err.Error()}})
+			return
+		}
+		writeJSON(w, http.StatusOK, socialTokenData{Token: token, ExpiresAt: exp.UTC().Format(time.RFC3339), User: toUserJSON(u)})
+		return
 	}
 	token, exp, err := s.tokens.Issue(strconv.FormatInt(u.ID, 10), ttl)
 	if err != nil {

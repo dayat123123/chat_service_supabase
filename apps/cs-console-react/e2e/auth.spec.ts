@@ -2,9 +2,8 @@ import { expect, test } from '@playwright/test'
 
 import { member } from './support/env'
 import { goOnline, signOut } from './support/staff'
-import { freshTotp } from './support/totp'
 
-test('login email + password lalu TOTP, salah kode ditolak, lalu keluar', async ({ page }) => {
+test('login email + password tanpa TOTP, password salah ditolak, lalu keluar', async ({ page }) => {
   const nadia = member('Nadia')
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
@@ -16,16 +15,6 @@ test('login email + password lalu TOTP, salah kode ditolak, lalu keluar', async 
 
   await page.getByLabel('Password', { exact: true }).fill(nadia.password)
   await page.getByRole('button', { name: 'Masuk', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Verifikasi dua langkah' })).toBeVisible()
-
-  const code = await freshTotp(nadia.totp_secret)
-  const wrong = String((Number(code) + 500_000) % 1_000_000).padStart(6, '0')
-  await page.getByLabel('Kode 6 digit').fill(wrong)
-  await page.getByRole('button', { name: 'Verifikasi' }).click()
-  await expect(page.getByText('Kode tidak valid atau sudah kedaluwarsa.')).toBeVisible()
-
-  await page.getByLabel('Kode 6 digit').fill(await freshTotp(nadia.totp_secret))
-  await page.getByRole('button', { name: 'Verifikasi' }).click()
   await page.getByRole('button', { name: 'Akun', exact: true }).click()
   await expect(page.getByRole('menu')).toContainText('Nadia')
   await page.keyboard.press('Escape')

@@ -2,10 +2,13 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import type { AppEnv } from '@/config/env'
 import { fromPostgrest } from '@/lib/errors'
+import { uuid } from '@/lib/utils'
 import type { Database } from '@/types/database'
 
 export type Client = SupabaseClient<Database, 'cs_api'>
 export type Functions = Database['cs_api']['Functions']
+
+const TAB_KEY = 'cs-console.tab'
 
 let current: { client: Client; env: AppEnv } | undefined
 let cachedToken: string | null = null
@@ -15,12 +18,21 @@ export function reconnectDelay(tries: number) {
   return Math.round(base * (0.5 + Math.random() * 0.5))
 }
 
+export function authStorageKey(storage: Storage) {
+  let tab = storage.getItem(TAB_KEY)
+  if (!tab) {
+    tab = uuid()
+    storage.setItem(TAB_KEY, tab)
+  }
+  return `cs-console.auth.${tab}`
+}
+
 export function initSupabase(env: AppEnv, storage: Storage = window.sessionStorage): Client {
   const client = createClient<Database, 'cs_api'>(env.supabaseUrl, env.anonKey, {
     db: { schema: 'cs_api' },
     auth: {
       storage,
-      storageKey: 'cs-console.auth',
+      storageKey: authStorageKey(storage),
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: false,

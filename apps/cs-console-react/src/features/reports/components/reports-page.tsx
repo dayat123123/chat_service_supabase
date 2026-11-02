@@ -1,31 +1,26 @@
-import { subDays } from 'date-fns'
-import { CalendarRangeIcon, DownloadIcon } from 'lucide-react'
+import { DownloadIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { DateRangePicker } from '@/components/date-range-picker'
 import { MetricStrip } from '@/components/metric-strip'
 import { ErrorState } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/controls'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
 } from '@/components/ui/menu'
 import { Skeleton } from '@/components/ui/primitives'
 import { downloadText } from '@/lib/download'
-import { formatDay, formatNumber, formatRating, isoDay, minutesLabel, todayInJakarta } from '@/lib/time'
+import { formatDay, formatNumber, formatRating, minutesLabel } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
 import { reportCsv, reportFileName } from '../csv'
 import { useReport } from '../hooks'
-import { presetRange, rangeLabel, rangeProblem, type RangeProblem } from '../range'
+import { presetRange, rangeLabel } from '../range'
 import { reportColumns } from '../table'
 import {
   MAX_REPORT_DAYS,
@@ -41,105 +36,6 @@ import { DailyChart } from './daily-chart'
 import { SortableTable } from './sortable-table'
 
 type TopicRow = TopicCount & { share: number | undefined }
-
-const problemKey: Record<
-  RangeProblem,
-  'reports.rangeInvalid' | 'reports.rangeOrder' | 'reports.rangeFuture' | 'reports.rangeTooLong'
-> = {
-  invalid: 'reports.rangeInvalid',
-  order: 'reports.rangeOrder',
-  future: 'reports.rangeFuture',
-  tooLong: 'reports.rangeTooLong',
-}
-
-function CustomRange({
-  range,
-  active,
-  onApply,
-}: {
-  range: DateRange
-  active: boolean
-  onApply: (range: DateRange) => void
-}) {
-  const { t } = useTranslation()
-  const [open, setOpen] = useState(false)
-  const [draft, setDraft] = useState(range)
-  const [problem, setProblem] = useState<RangeProblem | null>(null)
-  const today = todayInJakarta()
-  const max = isoDay(today)
-  const min = isoDay(subDays(today, 730))
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next)
-        if (next) {
-          setDraft(range)
-          setProblem(null)
-        }
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className={cn(active && 'border-strong bg-muted')}>
-          <CalendarRangeIcon />
-          {t('reports.custom')}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-72">
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            const issue = rangeProblem(draft)
-            setProblem(issue)
-            if (issue) return
-            onApply(draft)
-            setOpen(false)
-          }}
-        >
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="report-from">{t('reports.from')}</Label>
-              <Input
-                id="report-from"
-                type="date"
-                min={min}
-                max={max}
-                required
-                value={draft.from}
-                onChange={(event) => setDraft((current) => ({ ...current, from: event.target.value }))}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="report-to">{t('reports.to')}</Label>
-              <Input
-                id="report-to"
-                type="date"
-                min={min}
-                max={max}
-                required
-                value={draft.to}
-                onChange={(event) => setDraft((current) => ({ ...current, to: event.target.value }))}
-              />
-            </div>
-          </div>
-          {problem ? (
-            <p role="alert" className="text-xs text-destructive">
-              {t(problemKey[problem], { days: MAX_REPORT_DAYS })}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {t('reports.rangeTooLong', { days: MAX_REPORT_DAYS })}
-            </p>
-          )}
-          <Button type="submit" size="sm" className="self-end">
-            {t('reports.apply')}
-          </Button>
-        </form>
-      </PopoverContent>
-    </Popover>
-  )
-}
 
 function ExportMenu({ report }: { report: ReportSummary | undefined }) {
   const { t } = useTranslation()
@@ -402,9 +298,10 @@ export function ReportsPage() {
               <ToggleGroupItem value="week">{t('reports.week')}</ToggleGroupItem>
               <ToggleGroupItem value="month">{t('reports.month')}</ToggleGroupItem>
             </ToggleGroup>
-            <CustomRange
+            <DateRangePicker
               range={range}
               active={preset === 'custom'}
+              maxDays={MAX_REPORT_DAYS}
               onApply={(next) => {
                 setPreset('custom')
                 setRange(next)

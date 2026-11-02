@@ -84,6 +84,7 @@ export function useSignedUrl(path: string) {
 export function useRoom(ticket: Ticket, me: { id: string; username: string; displayName: string }) {
   const client = useQueryClient()
   const roomId = ticket.room_id
+  const owner = ticket.is_mine
   const [typing, setTyping] = useState<string | null>(null)
   const [online, setOnline] = useState<string[]>([])
   const handle = useRef<ReturnType<typeof realtime.room> | null>(null)
@@ -116,28 +117,33 @@ export function useRoom(ticket: Ticket, me: { id: string; username: string; disp
       window.clearTimeout(debounce)
       debounce = window.setTimeout(() => void syncAfter().catch(() => undefined), 120)
     }
-    handle.current = realtime.room(roomId, me, {
-      onMessage: schedule,
-      onTyping: (user, isTyping) => {
-        window.clearTimeout(typingTimer.current)
-        setTyping(isTyping ? user.name : null)
-        if (isTyping) typingTimer.current = window.setTimeout(() => setTyping(null), 6_000)
-      },
-      onReceipt: (receipt) =>
-        client.setQueryData<RoomMember[]>(conversationKeys.members(roomId), (members) =>
-          members?.map((member) =>
-            member.user_id === receipt.userId
-              ? { ...member, last_read_at: receipt.lastReadAt, last_delivered_at: receipt.lastDeliveredAt }
-              : member,
+    handle.current = realtime.room(
+      roomId,
+      me,
+      {
+        onMessage: schedule,
+        onTyping: (user, isTyping) => {
+          window.clearTimeout(typingTimer.current)
+          setTyping(isTyping ? user.name : null)
+          if (isTyping) typingTimer.current = window.setTimeout(() => setTyping(null), 6_000)
+        },
+        onReceipt: (receipt) =>
+          client.setQueryData<RoomMember[]>(conversationKeys.members(roomId), (members) =>
+            members?.map((member) =>
+              member.user_id === receipt.userId
+                ? { ...member, last_read_at: receipt.lastReadAt, last_delivered_at: receipt.lastDeliveredAt }
+                : member,
+            ),
           ),
-        ),
-      onPresence: setOnline,
-      onTicket: () => {
-        void client.invalidateQueries({ queryKey: ticketKeys.detail(ticket.id) })
-        void client.invalidateQueries({ queryKey: ticketKeys.lists })
+        onPresence: setOnline,
+        onTicket: () => {
+          void client.invalidateQueries({ queryKey: ticketKeys.detail(ticket.id) })
+          void client.invalidateQueries({ queryKey: ticketKeys.lists })
+        },
+        onMessagesJoined: schedule,
       },
-      onMessagesJoined: schedule,
-    })
+      { signals: owner },
+    )
     const stopResync = realtime.onResync(schedule)
     const stopQueue = realtime.subscribe((event) => {
       if (event.type === 'message' && event.roomId === roomId) schedule()
@@ -150,7 +156,7 @@ export function useRoom(ticket: Ticket, me: { id: string; username: string; disp
       handle.current?.close()
       handle.current = null
     }
-  }, [client, roomId, ticket.id, me, syncAfter])
+  }, [client, roomId, ticket.id, owner, me, syncAfter])
 
   const lastTyping = useRef(0)
   const stopTimer = useRef<number | undefined>(undefined)

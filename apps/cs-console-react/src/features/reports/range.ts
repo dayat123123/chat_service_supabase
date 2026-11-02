@@ -19,13 +19,17 @@ export function rangeDays(range: DateRange) {
   return differenceInCalendarDays(parseISO(range.to), parseISO(range.from)) + 1
 }
 
-export function rangeProblem(range: DateRange, today: Date = todayInJakarta()): RangeProblem | null {
+export function rangeProblem(
+  range: DateRange,
+  today: Date = todayInJakarta(),
+  maxDays: number = MAX_REPORT_DAYS,
+): RangeProblem | null {
   if (!isoPattern.test(range.from) || !isoPattern.test(range.to)) return 'invalid'
   if (Number.isNaN(parseISO(range.from).getTime()) || Number.isNaN(parseISO(range.to).getTime()))
     return 'invalid'
   if (range.to < range.from) return 'order'
   if (range.to > isoDay(today)) return 'future'
-  if (rangeDays(range) > MAX_REPORT_DAYS) return 'tooLong'
+  if (rangeDays(range) > maxDays) return 'tooLong'
   return null
 }
 

@@ -23,7 +23,7 @@ export const ticketKeys = {
 }
 
 type TicketUi = {
-  tab: TicketTab
+  tab: TicketTab | null
   filter: TicketFilter
   query: string
   selectedId: string | null
@@ -38,7 +38,7 @@ type TicketUi = {
 }
 
 export const useTicketUi = create<TicketUi>((set) => ({
-  tab: 'open',
+  tab: null,
   filter: noFilter,
   query: '',
   selectedId: null,
@@ -54,7 +54,7 @@ export const useTicketUi = create<TicketUi>((set) => ({
       delete leaving[ticketId]
       return { leaving }
     }),
-  reset: () => set({ tab: 'open', filter: noFilter, query: '', selectedId: null, leaving: {} }),
+  reset: () => set({ tab: null, filter: noFilter, query: '', selectedId: null, leaving: {} }),
 }))
 
 export function useOpenTicket() {
@@ -161,7 +161,7 @@ export function useTicketAction<TArgs>(
   })
 }
 
-export function useTicketRealtime(meId: string, enabled: boolean, supervisor: boolean) {
+export function useTicketRealtime(meId: string, enabled: boolean, superAdmin: boolean) {
   const client = useQueryClient()
   useEffect(() => {
     if (!enabled) return
@@ -172,7 +172,7 @@ export function useTicketRealtime(meId: string, enabled: boolean, supervisor: bo
       const taken = claimedByOther(event, meId)
       if (taken) {
         const { markLeaving, clearLeaving, selectedId } = useTicketUi.getState()
-        const viewing = !supervisor && selectedId === taken.ticketId
+        const viewing = !superAdmin && selectedId === taken.ticketId
         if (viewing) toast.info(i18n.t('tickets.takenByOther', { name: taken.name }))
         markLeaving(taken.ticketId, taken.name)
         const removal = window.setTimeout(() => {
@@ -186,7 +186,7 @@ export function useTicketRealtime(meId: string, enabled: boolean, supervisor: bo
         }, 1_600)
         removals.add(removal)
       }
-      if (!taken || supervisor) void client.invalidateQueries({ queryKey: ticketKeys.detail(event.ticketId) })
+      if (!taken || superAdmin) void client.invalidateQueries({ queryKey: ticketKeys.detail(event.ticketId) })
       window.clearTimeout(timer)
       timer = window.setTimeout(
         () => {
@@ -200,5 +200,5 @@ export function useTicketRealtime(meId: string, enabled: boolean, supervisor: bo
       window.clearTimeout(timer)
       removals.forEach((removal) => window.clearTimeout(removal))
     }
-  }, [client, meId, enabled, supervisor])
+  }, [client, meId, enabled, superAdmin])
 }

@@ -20,7 +20,7 @@ type Props = {
   meId: string
   showOwner: boolean
   leavingName?: string
-  claim?: { disabled: boolean; pending: boolean; onClaim: () => void }
+  claim?: { blocked: boolean; pending: boolean; onClaim: () => void }
   onSelect: () => void
 }
 
@@ -114,8 +114,10 @@ export const TicketRow = memo(function TicketRow({
           className={cn(
             'pointer-events-auto absolute top-[calc(var(--row-py)-0.25rem)] right-3 z-10 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100',
             selected && 'opacity-100',
+            'data-[blocked=true]:text-muted-foreground',
           )}
-          disabled={claim.disabled || claim.pending}
+          disabled={claim.pending}
+          data-blocked={claim.blocked || undefined}
           onClick={claim.onClaim}
           aria-label={`${t('tickets.claim')} ${ticket.ticket_number}`}
         >

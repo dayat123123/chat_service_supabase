@@ -103,7 +103,7 @@ RETURNING *;
 
 ## 3. Integrasi di Aplikasi Nasabah (OLT Flutter)
 
-Pasang ke aplikasi OLT yang sebenarnya (bukan halaman demo), memakai package `olt_social` / modul chat yang sudah ada. Buat modul `support` di dalamnya, atau package `olt_support` bila lebih rapi. **Ikuti konvensi kode OLT** (state management, routing, tema).
+Pasang ke aplikasi OLT yang sebenarnya (bukan halaman demo), memakai package `rendezvous_community` / modul chat yang sudah ada. Buat modul `support` di dalamnya, atau package `olt_support` bila lebih rapi. **Ikuti konvensi kode OLT** (state management, routing, tema).
 
 ### 3.1 Titik masuk
 - Menu **"Bantuan / Chat CS"** di navigasi utama, dengan badge jumlah balasan CS yang belum dibaca.

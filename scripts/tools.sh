@@ -18,12 +18,12 @@ case "$cmd" in
   cs-demo-config) bash "$SCRIPTS/cs-demo-setup.sh" "$@" ;;
   cs-race)  bash "$SCRIPTS/cs-claim-race.sh" "$@" ;;
   cs-staff) bash "$SCRIPTS/cs-staff-setup.sh" "$@" ;;
-  cs-totp)  bash "$SCRIPTS/cs-totp.sh" "$@" ;;
+  cs-bootstrap-admin) bash "$SCRIPTS/cs-bootstrap-admin.sh" "$@" ;;
   backup)   bash "$SCRIPTS/backup.sh" "$@" ;;
   restore)  bash "$SCRIPTS/restore.sh" "$@" ;;
   psql)     exec psql -U postgres "$@" ;;
   *)
-    echo "Perintah: migrate | seed | test-db | smoke | smoke-dummy | smoke-cs | cs-race [url-replika...] | cs-staff | cs-totp | cs-demo-config | backup | restore <file> | gen-secrets [--force] | psql" >&2
+    echo "Perintah: migrate | seed | test-db | smoke | smoke-dummy | smoke-cs | cs-race [url-replika...] | cs-staff | cs-bootstrap-admin <email> <nama> [--force] | cs-demo-config | backup | restore <file> | gen-secrets [--force] | psql" >&2
     exit 2
     ;;
 esac

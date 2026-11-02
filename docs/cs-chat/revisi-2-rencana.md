@@ -49,8 +49,8 @@
 
 | Bagian | Isi |
 |---|---|
-| **Web CS** `apps/cs-console` | Flutter web (Bloc, struktur per fitur seperti `olt_social`). Login + TOTP, tata letak 3 kolom, tab tiket, ambil/pratinjau, chat + catatan internal + quick reply `/`, info nasabah, notifikasi browser + suara, idle logout 30 menit. Widget chat diambil dari modul `support` di `olt_social` (widget yang sama dengan aplikasi nasabah). Dev: `http://localhost:8084`. Produksi: hanya lewat VPN |
-| **Modul `support` di `olt_social`** | Entri "Bantuan / Chat CS" + badge, room CS disematkan di daftar chat, pilih topik, kartu order, header tiket, aksi (akhiri, pengaduan, laporkan CS palsu, lampirkan order), rating di chat, "Tiket saya", antrean pesan offline, peringatan data sensitif. Windows: panel samping. Android: layar penuh |
+| **Web CS** `apps/cs-console` | Flutter web (Bloc, struktur per fitur seperti `rendezvous_community`). Login + TOTP, tata letak 3 kolom, tab tiket, ambil/pratinjau, chat + catatan internal + quick reply `/`, info nasabah, notifikasi browser + suara, idle logout 30 menit. Widget chat diambil dari modul `support` di `rendezvous_community` (widget yang sama dengan aplikasi nasabah). Dev: `http://localhost:8084`. Produksi: hanya lewat VPN |
+| **Modul `support` di `rendezvous_community`** | Entri "Bantuan / Chat CS" + badge, room CS disematkan di daftar chat, pilih topik, kartu order, header tiket, aksi (akhiri, pengaduan, laporkan CS palsu, lampirkan order), rating di chat, "Tiket saya", antrean pesan offline, peringatan data sensitif. Windows: panel samping. Android: layar penuh |
 | **Notifikasi** | Notifikasi lokal (Windows toast & Android) saat CS mengambil, membalas, atau menyelesaikan tiket, selama aplikasi berjalan. Push saat aplikasi tertutup butuh service notifier + FCM (tahap F1 produksi) |
 | **Edge Function `cs-admin`** | Membuat akun CS (GoTrue + profil agen) dari panel admin. `service_role` hanya ada di server |
 | **Tes 2.3** | pgTAP untuk aturan & alur, plus `scripts/cs-claim-race.sh`: 50 CS berebut 1 tiket, dan 200 tiket × 30 CS. Dijalankan langsung ke database **dan** lewat API dengan beberapa replika PostgREST |

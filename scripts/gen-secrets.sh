@@ -23,6 +23,7 @@ force=false
 
 gen_hex()    { openssl rand -hex "$1"; }
 gen_base64() { openssl rand -base64 "$1" | tr -d '\n'; }
+gen_ed25519() { openssl genpkey -algorithm ed25519 2>/dev/null; }
 b64url()     { openssl enc -base64 -A | tr '+/' '-_' | tr -d '='; }
 
 sign_jwt() { # sign_jwt <secret> <payload>
@@ -120,6 +121,31 @@ resolve pg_meta_crypto_key            gen_base64 24
 resolve s3_protocol_access_key_id     gen_hex 16
 resolve s3_protocol_access_key_secret gen_hex 32
 resolve valkey_password               gen_hex 24
+# Kunci penanda tangan token sosial OLT dummy (hanya dev; dipakai services/dummy-olt).
+resolve olt_dev_signing_key           gen_ed25519
+
+# Kunci publik OLT (JWKS) untuk auth-bridge mode jwt. Dibuat dari kunci dev hanya bila belum ada,
+# atau bila masih JWKS dev dan kuncinya baru dibuat. Produksi: isi dengan JWKS dari tim OLT;
+# JWKS produksi tidak pernah ditimpa.
+dev_jwks() {
+  local x
+  x="$(secret_get olt_dev_signing_key | openssl pkey -pubout -outform DER | tail -c 32 | b64url)"
+  printf '{"keys":[{"kty":"OKP","crv":"Ed25519","kid":"dev-olt-1","alg":"EdDSA","use":"sig","x":"%s"}]}' "$x"
+}
+if [ -z "$(secret_get olt_jwks)" ]; then
+  secret_put olt_jwks "$(dev_jwks)"
+  source_of[olt_jwks]="dibuat (kunci dev)"
+elif [ "${source_of[olt_dev_signing_key]}" = dibuat ] && grep -q '"kid":"dev-olt-1"' "$SECRETS_DIR/olt_jwks"; then
+  secret_put olt_jwks "$(dev_jwks)"
+  source_of[olt_jwks]="diperbarui (kunci dev baru)"
+else
+  source_of[olt_jwks]=dipertahankan
+fi
+
+# Kunci penanda tangan token integrasi csAdmin untuk nasabah-gateway (docs/nasabah/README.md).
+# Kunci publiknya diisi di blok integration { public_key } pada csAdminEL.cfg.
+resolve csadmin_signing_key           gen_ed25519
+csadmin_public_key="$(secret_get csadmin_signing_key | openssl pkey -pubout -outform DER | openssl enc -base64 -A | tr -d '=')"
 
 # Turunan: URI koneksi PostgREST (image tanpa shell membaca file ini lewat @file).
 pooler_host="$(env_get DB_POOLER_HOST)"; pooler_port="$(env_get DB_POOLER_PORT)"; db_name="$(env_get POSTGRES_DB)"
@@ -157,3 +183,4 @@ if [ "$force" = true ]; then
   echo "gen-secrets: PERINGATAN --force: secret baru tidak cocok dengan volume DB lama. Jalankan 'make reset'."
 fi
 echo "gen-secrets: ANON_KEY untuk client Flutter ada di docker/secrets/anon_key (make anon-key)."
+echo "gen-secrets: isi public_key di blok integration csAdminEL.cfg dengan: $csadmin_public_key"

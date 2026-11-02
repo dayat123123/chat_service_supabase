@@ -13,11 +13,11 @@ Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per
                  ▼
                Kong ──▶ PostgREST, Storage, Edge Functions ──▶ PgBouncer ──▶ Postgres 17
                  │      Realtime ─────────────────────────────────────────▶ Postgres
-                 │      auth-bridge ──▶ WebSocket OLT        Valkey (rate limit, cache)
+                 │      auth-bridge (verifikasi token sosial OLT lokal, JWKS)   Valkey (rate limit, cache)
  127.0.0.1:8000 ─┘ entrypoint admin: Studio & semua path (SSH tunnel / WireGuard)
 ```
 
-- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik, auth-bridge, dan Edge Functions yang tersambung ke network `egress`.
+- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik dan Edge Functions yang tersambung ke network `egress`. auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
 - Semua container read-only, non-root (kecuali entrypoint Postgres), `cap_drop: ALL`, `no-new-privileges`, dan punya batas CPU/memori/pids.
 - Rahasia hanya dari Docker secrets di `docker/secrets/`.
 
@@ -41,9 +41,8 @@ PROXY_DOMAIN=social-api.domain.com
 ACME_EMAIL=ops@domain.com
 SUPABASE_PUBLIC_URL=https://social-api.domain.com
 API_EXTERNAL_URL=https://social-api.domain.com/auth/v1
-OLT_WS_URL=wss://<server-olt>/<path>
-# OLT_WS_* lain: kosongkan bila OLT memakai Protokol v1 (docs/olt-integration.md);
-# isi hanya bila formatnya berbeda (services/auth-bridge/README.md)
+# auth-bridge mode jwt (default): tidak ada alamat OLT yang perlu diisi.
+# OLT_JWT_ISSUER / OLT_JWT_AUDIENCE hanya diubah bila OLT memakai nilai lain (docs/olt-integration.md).
 ```
 
 ```bash
@@ -55,7 +54,8 @@ make anon-key              # ANON_KEY untuk build app OLT
 
 Catatan:
 - **Uji sertifikat dulu.** Uji dengan `ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory` agar tidak kena rate limit Let's Encrypt. Setelah berhasil, hapus baris itu, lalu hapus volume `olt-social_traefik-acme`.
-- **Mode mock tidak bisa dipakai.** Profil single selalu menjalankan auth-bridge dengan `APP_ENV=production`, dan auth-bridge menolak start bila `AUTH_BRIDGE_OLT_MODE=mock`. Default profil single adalah `websocket`.
+- **Mode mock tidak bisa dipakai.** Profil single selalu menjalankan auth-bridge dengan `APP_ENV=production`, dan auth-bridge menolak start bila `AUTH_BRIDGE_OLT_MODE=mock`. Default profil single adalah `jwt`.
+- **Ganti kunci publik OLT.** Sebelum `make up`, timpa `docker/secrets/olt_jwks` dengan JWKS dari tim OLT (bagian 2 [olt-integration.md](olt-integration.md)). `make gen-secrets` tidak pernah menimpa JWKS produksi. Kunci dev (`kid` berawalan `dev-`) ditolak di produksi, jadi auth-bridge tidak mau start bila file ini lupa diganti.
 - **Rahasia ada di `docker/secrets/`.** Folder ini harus `chmod 700` dan dimiliki deployer. Isinya tidak pernah masuk `.env`, image, atau `docker inspect`.
 - **Membuka Studio** (default mati):
   1. Nyalakan Studio: `make admin-up PROFILE=single`.
@@ -211,7 +211,7 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 **Keamanan**
 - [ ] `docker/secrets/` berisi rahasia hasil `make gen-secrets`, tidak di-commit, dan folder hanya bisa dibuka deployer (`chmod 700`).
 - [ ] `docker/.env` tidak berisi rahasia; `PROXY_DOMAIN` dan `ACME_EMAIL` terisi.
-- [ ] `OLT_WS_URL` mengarah ke server OLT asli, sudah diuji dengan token OLT asli.
+- [ ] `docker/secrets/olt_jwks` berisi JWKS dari OLT (bukan kunci dev), dan exchange sudah diuji dengan token sosial yang diterbitkan OLT asli.
 - [ ] OLT dummy tidak berjalan (`docker ps` tidak menampilkan `dummy-olt`).
 - [ ] `https://domain/` dan `https://domain/auth/v1/health` mengembalikan 404. `http://domain/` di-redirect ke HTTPS.
 - [ ] Studio mati (`make admin-down PROFILE=single`), dan port admin hanya terikat ke `127.0.0.1`.
@@ -230,16 +230,20 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 - [ ] Revisi CS-2 (R1–R4) selesai. `make test-db`, `make cs-race`, dan `make smoke-cs` lulus di staging. `make cs-race` mencakup tes rebutan lewat beberapa replika API.
 - [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
 - [ ] Kalender libur tahun berjalan dan tahun depan sudah diperiksa kepatuhan (`cs.holidays.verified = true`), termasuk libur bursa dari pengumuman BEI.
-- [ ] API agen (`cs_api.agent_*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses lewat VPN: uji dari luar VPN harus mendapat 403. Agen login dengan email + TOTP, dan pendaftaran publik GoTrue tetap mati.
+- [ ] API agen (`cs_api.agent_*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses lewat VPN: uji dari luar VPN harus mendapat 403. Staf CS login dengan email + password (tanpa TOTP, jadi akses VPN dan password kuat minimal 12 karakter adalah lapisan utamanya), dan pendaftaran publik GoTrue tetap mati.
 - [ ] `make test-cs-console` lulus dan E2E web CS (`make e2e-cs-console`) lulus di staging.
 - [ ] Endpoint login GoTrue (`/auth/v1/token`, `/auth/v1/factors`, `/auth/v1/user`) hanya dari VPN. Nasabah tidak memakainya karena JWT nasabah diterbitkan auth-bridge.
 - [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari VPN. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.
-- [ ] Admin CS pertama dibuat sekali dari host admin:
-  1. buat user lewat API admin GoTrue;
-  2. jalankan `select cs.create_agent('<uuid user>', '<nama>', '{cs_admin}')`;
-  3. admin login dan mendaftarkan TOTP.
+- [ ] Super admin pertama dibuat sekali dari server:
 
-  Akun CS berikutnya dibuat dari menu Pengaturan. `scripts/cs-staff-setup.sh` hanya untuk dev.
+  ```bash
+  make cs-bootstrap-admin PROFILE=single EMAIL=nama@perusahaan.co.id NAME="Nama Lengkap"
+  # Windows: .\make.ps1 cs-bootstrap-admin -Profile single -Email nama@perusahaan.co.id -Name "Nama Lengkap"
+  ```
+
+  Perintah ini membuat akun login GoTrue dan akun `cs_super_admin`, mencatatnya di audit log, lalu mencetak password sementara **sekali**. Serahkan password itu lewat jalur aman; saat login pertama di web CS (lewat VPN), super admin wajib menggantinya. Bila sudah ada super admin aktif, perintah menolak kecuali diberi `FORCE=1` (Windows: `-Force`).
+
+  Akun CS berikutnya dibuat super admin dari menu Pengaturan → Akun CS, termasuk reset password bila CS lupa. `scripts/cs-staff-setup.sh` hanya untuk dev.
 - [ ] Halaman demo `scripts/cs-demo` tidak ikut di-deploy. Halaman ini hanya disajikan `make cs-demo` di profil dev.
 - [ ] Web CS disajikan dengan header keamanan (`Content-Security-Policy` yang membatasi `connect-src` ke API internal, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`) dan tanpa cache untuk `index.html`.
 - [ ] Partisi `cs.*_default` kosong, dan job `cs-partitions` tercatat sukses di `cron.job_run_details`.

@@ -37,7 +37,6 @@
   --chart-neutral: #8a8a93;
   --media-bg: #0a0a0a;
   --media-fg: #ffffff;
-  --qr-bg: #ffffff;
   --scrim: rgb(0 0 0 / 0.32);
   --selection: rgb(24 24 27 / 0.14);
   --float-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.14), 0 2px 6px -2px rgb(0 0 0 / 0.06);
@@ -74,7 +73,6 @@
   --chart-neutral: #737373;
   --media-bg: #0a0a0a;
   --media-fg: #ffffff;
-  --qr-bg: #ffffff;
   --scrim: rgb(0 0 0 / 0.6);
   --selection: rgb(237 237 237 / 0.2);
   --float-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.7), 0 2px 6px -2px rgb(0 0 0 / 0.5);
@@ -143,7 +141,6 @@
   --color-scrim: var(--scrim);
   --color-media: var(--media-bg);
   --color-media-foreground: var(--media-fg);
-  --color-qr: var(--qr-bg);
 
   --text-label: 0.6875rem;
   --text-label--line-height: 1rem;

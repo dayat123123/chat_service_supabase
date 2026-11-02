@@ -12,15 +12,15 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 |---|---|
 | [`docker/`](docker/) | Supabase self-hosted + auth-bridge + Traefik, PgBouncer, Valkey. Profil `dev` / `single` / `cluster`, image di-pin tag + digest |
 | [`supabase/`](supabase/) | Migrasi SQL bernomor, seed development, tes pgTAP |
-| [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token login OLT menjadi JWT Supabase (tanpa login dua kali) |
-| [`services/dummy-olt/`](services/dummy-olt/) | Go: server WebSocket OLT **tiruan** (token sendiri) untuk menguji auth-bridge mode websocket. Hanya development/testing |
-| [`packages/olt_social/`](packages/olt_social/) | Package Flutter (Bloc, freezed) + app [`example/`](packages/olt_social/example/) Windows, Android & web |
-| [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS khusus CS, supervisor, dan admin CS (login + TOTP, ambil tiket, chat, catatan internal, riwayat tiket nasabah, dashboard supervisor, laporan + CSV, pengaturan admin, palet Ctrl+K, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
-| [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `olt_social` ke aplikasi OLT |
+| [`services/auth-bridge/`](services/auth-bridge/) | Go: tukar token sosial OLT (JWT bertanda tangan) menjadi JWT Supabase; verifikasi lokal, tanpa memanggil OLT |
+| [`services/dummy-olt/`](services/dummy-olt/) | Go: OLT **tiruan** (login + penerbit token sosial dengan kunci dev) untuk menguji auth-bridge mode jwt. Hanya development/testing |
+| [`packages/rendezvous_community/`](packages/rendezvous_community/) | Package Flutter (Bloc, freezed), sebelumnya bernama `olt_social`, + app [`example/`](packages/rendezvous_community/example/) Windows, Android & web. Dokumentasi: [`docs/rendezvous-community/`](docs/rendezvous-community/README.md) |
+| [`apps/cs-console-react/`](apps/cs-console-react/README.md) | React + TypeScript: web CS untuk CS dan super admin (login email + password, ambil tiket, chat, catatan internal, riwayat tiket nasabah; super admin memantau dashboard, laporan + CSV, mengelola akun CS dan pengaturan, palet Ctrl+K, kinerja 1000 tiket + 5000 pesan). SPA statis di nginx non-root; produksi: satu domain khusus VPN (`CS=1`) |
+| [`docs/INTEGRATION.md`](docs/INTEGRATION.md) | Cara memasang `rendezvous_community` ke aplikasi OLT |
 | [`docs/PRODUCTION.md`](docs/PRODUCTION.md) | Deploy VPS (profil `single`), secrets, backup/restore, update versi, moderasi, checklist produksi |
 | [`docs/scaling.md`](docs/scaling.md) | Profil deploy dan langkah migrasi single → cluster |
 | [`docs/production-audit.md`](docs/production-audit.md) | Audit terhadap addendum produksi + status per tahap |
-| [`docs/olt-integration.md`](docs/olt-integration.md) | Batas integrasi dengan OLT: server hanya memvalidasi token login (Protokol v1 `login`); order, daftar saham, harga, dan data nasabah tetap di app OLT |
+| [`docs/olt-integration.md`](docs/olt-integration.md) | Kontrak token sosial untuk tim OLT dan batas integrasi: server hanya memverifikasi token sosial bertanda tangan; order, daftar saham, harga, dan data nasabah tetap di app OLT |
 | [`docs/cs-chat/`](docs/cs-chat/README.md) | Customer service lewat chat + matching engine: status tahap, keputusan, model data, akses, API `cs_api`, kebutuhan data OLT, pertanyaan kepatuhan |
 | [`docs/archive/`](docs/archive/customer-care/README.md) | Arsip pendekatan ticketing yang dibatalkan (dokumen saja; kodenya sudah dihapus lewat migrasi `0026_care_cancel`) |
 | [`docs/PROMPT.md`](docs/PROMPT.md), [`PROMPT-PRODUCTION.md`](docs/PROMPT-PRODUCTION.md), [`PROMPT-FEATURES.md`](docs/PROMPT-FEATURES.md), [`PROMPT-CS-CHAT.md`](docs/PROMPT-CS-CHAT.md) | Spesifikasi proyek: dasar, produksi, fitur lanjutan, dan customer service lewat chat. Versi ticketing yang dibatalkan ada di [`docs/archive/`](docs/archive/PROMPT-CUSTOMER-CARE.md) |
@@ -28,20 +28,22 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 ## Arsitektur
 
 ```
- App OLT (Flutter, Windows/Android)                 Server OLT (WebSocket)
-  ├─ login OLT (username/email+password / token) ──▶       ▲
-  └─ olt_social ── token OLT ──┐                           │ login metode token
-                               ▼                           │ (verifikasi, timeout 5 dtk)
- ┌──────────────── docker compose (profil dev / single) ──┼──────────────────────────┐
- │ Traefik ─▶ Kong ─┬─ /bridge/v1    ─▶ auth-bridge (Go) ─┘   (Valkey: rate limit/cache) │
- │ (edge: TLS,      │                    └─ RPC upsert profil                             │
- │  rate limit,     ├─ /rest/v1       ─▶ PostgREST ─┐                                     │
- │  header)         ├─ /storage/v1    ─▶ Storage ───┼─▶ PgBouncer ─▶ Postgres 17          │
- │ dev  :8000       ├─ /functions/v1  ─▶ Edge Runtime│                RLS semua tabel     │
- │ single :443      ├─ /realtime/v1   ─▶ Realtime ── langsung (replikasi logis) ─▶ Postgres│
- │                  ├─ /auth/v1 (dev) ─▶ GoTrue ────┘                                     │
- │                  └─ /  (dev)       ─▶ Studio                                          │
- │ migrate (one-shot): menjalankan supabase/migrations setiap stack naik                 │
+ App OLT (Flutter, Windows/Android)                 Backend OLT
+  ├─ login OLT (username/email+password / token) ──▶ menerbitkan token sosial
+  │                                                  (JWT EdDSA/ES256, ≤ 15 mnt,
+  └─ rendezvous_community ── token sosial ──┐                  ditandatangani kunci privat OLT)
+                                  ▼                  Server sosial TIDAK memanggil OLT.
+ ┌──────────────── docker compose (profil dev / single) ────────────────────────────────┐
+ │ Traefik ─▶ Kong ─┬─ /bridge/v1    ─▶ auth-bridge (Go)    (Valkey: rate limit/cache)  │
+ │ (edge: TLS,      │                    ├─ cek tanda tangan dengan JWKS OLT (lokal)    │
+ │  rate limit,     │                    └─ RPC upsert profil                           │
+ │  header)         ├─ /rest/v1       ─▶ PostgREST ─┐                                   │
+ │                  ├─ /storage/v1    ─▶ Storage ───┼─▶ PgBouncer ─▶ Postgres 17        │
+ │ dev  :8000       ├─ /functions/v1  ─▶ Edge Runtime│                RLS semua tabel   │
+ │ single :443      ├─ /realtime/v1   ─▶ Realtime ── replikasi logis ─▶ Postgres        │
+ │                  ├─ /auth/v1 (dev) ─▶ GoTrue ────┘                                   │
+ │                  └─ /  (dev)       ─▶ Studio                                         │
+ │ migrate (one-shot): menjalankan supabase/migrations setiap stack naik                │
  └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -61,8 +63,8 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 **Rahasia.** Semua rahasia ada di `docker/secrets/` (Docker secrets, dibuat `make gen-secrets`), tidak ada di `.env` maupun `docker inspect`. Env berisi placeholder `{{secret:nama}}` yang diisi saat container start oleh [`with-secrets.sh`](docker/volumes/olt/with-secrets.sh).
 
 **Satu login.**
-- App mengirim token OLT ke `POST /bridge/v1/exchange`.
-- auth-bridge memverifikasinya ke WebSocket OLT, melakukan upsert `profiles`, lalu mengembalikan JWT Supabase (`role authenticated`, 15 menit).
+- Saat login, OLT menerbitkan **token sosial** (JWT bertanda tangan, ≤ 15 menit). App mengirimnya ke `POST /bridge/v1/exchange`.
+- auth-bridge memeriksa tanda tangannya dengan kunci publik OLT (`docker/secrets/olt_jwks`) **tanpa memanggil OLT**, melakukan upsert `profiles`, lalu mengembalikan JWT Supabase (`role authenticated`, 15 menit). Kontraknya ada di [docs/olt-integration.md](docs/olt-integration.md).
 - ID user = `UUIDv5(olt_user_id)`, stabil.
 - Client memperbarui JWT secara otomatis, termasuk untuk koneksi realtime. Password user tidak pernah melewati auth-bridge.
 
@@ -140,10 +142,10 @@ make anon-key        # ANON_KEY untuk app Flutter
 | HP fisik di LAN | Set `EDGE_HTTP_BIND=0.0.0.0`, lalu pakai `http://<IP-PC>:8000` |
 | App contoh versi web (`make web-example`) | `http://localhost:8081` |
 
-Jalankan app contoh: lihat [packages/olt_social/example/README.md](packages/olt_social/example/README.md).
+Jalankan app contoh: lihat [packages/rendezvous_community/example/README.md](packages/rendezvous_community/example/README.md).
 
 ```bash
-cd packages/olt_social/example
+cd packages/rendezvous_community/example
 flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>
 ```
 
@@ -151,23 +153,23 @@ Untuk testing beberapa user sekaligus, jalankan juga versi web: `make web-exampl
 
 Login dev memakai **token mock**. Contohnya `mock:1001:budi_santoso`, yang sama dengan user seed Budi. User lain: `1002 sari_invest`, `1003 andi_trader`, `1004 rina_saham`, `1005 dewi_cuan`, dan `1006 olt_official`.
 
-### Testing dengan OLT dummy (token sendiri)
+### Testing dengan OLT dummy
 
-Selama format login OLT asli belum tersedia, [`services/dummy-olt`](services/dummy-olt/) berperan sebagai server WebSocket OLT tiruan. Ia menerbitkan token sesinya sendiri, dan auth-bridge memverifikasinya lewat **mode `websocket`**, jalur yang sama dengan produksi.
+Selama OLT asli belum menerbitkan token sosial, [`services/dummy-olt`](services/dummy-olt/) berperan sebagai backend OLT tiruan: melayani login dan menerbitkan token sosial yang ditandatangani kunci dev. auth-bridge memverifikasinya lewat **mode `jwt`** dengan kunci publik dummy di `docker/secrets/olt_jwks`, jalur yang sama dengan produksi.
 
-- **Tidak ada kode yang diubah.** Auth-bridge, package Flutter, dan database tetap sama; yang berbeda hanya `OLT_MODE` dan `OLT_WS_URL` di [`docker/compose.dummy-olt.yml`](docker/compose.dummy-olt.yml). Dummy berbicara Protokol v1, sama dengan default auth-bridge.
-- **Token mock lama tetap diterima** dalam mode ini, sehingga semua tes lama juga berjalan lewat jalur websocket.
+- **Tidak ada kode yang diubah.** Auth-bridge, package Flutter, dan database tetap sama; yang berbeda hanya `OLT_MODE` di [`docker/compose.dummy-olt.yml`](docker/compose.dummy-olt.yml).
+- **Tombol token mock di app contoh tetap jalan**: token mock ditukar dulu menjadi token sosial lewat OLT dummy.
 
 ```bash
 make up DUMMY_OLT=1                 # Windows: .\make.ps1 up -DummyOlt
-make smoke-dummy                    # 16 skenario (login, exchange, token ditolak, timeout OLT, ...)
-make dummy-token U=sari_invest      # cetak token OLT dummy;  Windows: .\make.ps1 dummy-token -User sari_invest
+make smoke-dummy                    # 22 skenario (login, token sosial, perpanjangan, token diubah/kedaluwarsa, suspend, ...)
+make dummy-token U=sari_invest      # cetak token sosial OLT dummy;  Windows: .\make.ps1 dummy-token -User sari_invest
 make down DUMMY_OLT=1 && make up    # kembali ke mode mock
 ```
 
 Semua akun dummy memakai password `olt12345`. Akun 1001–1006 sama dengan user seed; daftar lengkapnya (termasuk akun ditangguhkan dan simulasi OLT lambat) ada di [services/dummy-olt/README.md](services/dummy-olt/README.md).
 
-Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + password → token OLT dummy → fitur sosial.
+Di app contoh tersedia form **"Login OLT dummy"**: username/email + password → token sosial dari OLT dummy → fitur sosial.
 
 ## Target Makefile / make.ps1
 
@@ -198,8 +200,8 @@ Di app contoh tersedia form **"Login OLT dummy (WebSocket)"**: username/email + 
 | `e2e-windows-dummy` | E2E app contoh: form login OLT dummy |
 | `smoke-cs` | 40 skenario CS chat end-to-end: buka tiket, ambil & rebutan, balas, penyamaran, catatan internal, adapter + OLT dummy, amankan akun, transfer, selesai, rating (butuh `DUMMY_OLT=1`) |
 | `cs-race` | Tes rebutan ambil tiket: 50 CS × 1 tiket dan 200 tiket × 30 CS, langsung ke database dan lewat 3 replika PostgREST |
-| `cs-console-react` | Web CS React (container nginx) di `http://localhost:8085` + akun staf dev dengan TOTP. Butuh `DUMMY_OLT=1`. Tes: `test-cs-console` (lint, typecheck, unit, build, lisensi), `e2e-cs-console` (Playwright) |
-| `cs-totp` | Kode TOTP saat ini untuk akun staf dev |
+| `cs-bootstrap-admin` | Super admin web CS pertama (semua profil): `EMAIL=... NAME="..."` (Windows: `-Email ... -Name "..."`). Password sementara dicetak sekali |
+| `cs-console-react` | Web CS React (container nginx) di `http://localhost:8085` + akun staf dev. Butuh `DUMMY_OLT=1`. Tes: `test-cs-console` (lint, typecheck, unit, build, lisensi), `e2e-cs-console` (Playwright) |
 | `cs-demo` | Halaman demo CS (dev) di `http://localhost:8082`: nasabah dan panel CS berdampingan lewat API asli. Stop: `docker rm -f olt-cs-demo` (butuh `DUMMY_OLT=1`) |
 | `up PROFILE=single CS=1` / `-Profile single -Cs` | Nyalakan web CS di produksi (di dev selalu aktif), lihat [docs/cs-chat](docs/cs-chat/README.md) |
 

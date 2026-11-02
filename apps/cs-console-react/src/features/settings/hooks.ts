@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -25,6 +25,14 @@ export const settingsKeys = {
   holidays: (year: number) => ['admin', 'holidays', year] as const,
 }
 
+function putAccount(client: QueryClient, agent: StaffAccount) {
+  client.setQueryData<StaffAccount[]>(settingsKeys.accounts, (items = []) =>
+    items.some((item) => item.id === agent.id)
+      ? items.map((item) => (item.id === agent.id ? agent : item))
+      : [...items, agent],
+  )
+}
+
 export function useAccounts() {
   return useQuery({ queryKey: settingsKeys.accounts, queryFn: settingsApi.accounts })
 }
@@ -49,20 +57,37 @@ export function useHolidays(year: number) {
   return useQuery({ queryKey: settingsKeys.holidays(year), queryFn: () => settingsApi.holidays(year) })
 }
 
+const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((item) => b.includes(item))
+
 export function useSaveAccount() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: async ({ id, draft }: { id: string | null; draft: AccountDraft }) =>
-      id === null
-        ? settingsApi.createAccount(draft)
-        : { agent: await settingsApi.updateAccount(id, draft), temporary_password: null },
-    onSuccess: ({ agent }) => {
-      client.setQueryData<StaffAccount[]>(settingsKeys.accounts, (items = []) =>
-        items.some((item) => item.id === agent.id)
-          ? items.map((item) => (item.id === agent.id ? agent : item))
-          : [...items, agent],
-      )
+    mutationFn: async ({
+      id,
+      draft,
+      nasabah,
+    }: {
+      id: string | null
+      draft: AccountDraft
+      nasabah?: string[]
+    }) => {
+      const saved =
+        id === null
+          ? await settingsApi.createAccount(draft)
+          : { agent: await settingsApi.updateAccount(id, draft), temporary_password: null }
+      if (!nasabah || sameSet(nasabah, saved.agent.nasabah_permissions)) return saved
+      return { ...saved, agent: await settingsApi.setNasabahPermissions(saved.agent.id, nasabah) }
     },
+    onSuccess: ({ agent }) => putAccount(client, agent),
+  })
+}
+
+export function useResetPassword() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => settingsApi.resetPassword(id),
+    onSuccess: ({ agent }) => putAccount(client, agent),
+    onError: () => void client.invalidateQueries({ queryKey: settingsKeys.accounts }),
   })
 }
 

@@ -1,0 +1,8 @@
+arb-dir: lib/src/shared/presentation/l10n/arb
+template-arb-file: community_id.arb
+output-dir: lib/src/shared/presentation/l10n/gen
+output-localization-file: community_localizations.dart
+output-class: CommunityLocalizations
+preferred-supported-locales:
+  - id
+nullable-getter: true

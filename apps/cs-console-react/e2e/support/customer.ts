@@ -31,7 +31,7 @@ export class Customer {
   ) {}
 
   static async login(username: string) {
-    const olt = await json<{ token?: string }>(
+    const olt = await json<{ social_token?: string }>(
       await fetch(`${oltUrl}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,12 +39,12 @@ export class Customer {
       }),
       `login OLT dummy ${username}`,
     )
-    if (!olt.token) throw new Error(`OLT dummy tidak memberi token untuk ${username}`)
+    if (!olt.social_token) throw new Error(`OLT dummy tidak memberi token sosial untuk ${username}`)
     const session = await json<{ access_token: string; user: { id: string } }>(
       await fetch(`${apiUrl}/bridge/v1/exchange`, {
         method: 'POST',
         headers: { apikey: anonKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: olt.token }),
+        body: JSON.stringify({ token: olt.social_token }),
       }),
       `exchange auth-bridge ${username}`,
     )

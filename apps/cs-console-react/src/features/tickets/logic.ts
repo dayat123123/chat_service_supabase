@@ -1,8 +1,19 @@
+import { isSuperAdmin, worksTickets, type AgentProfile } from '@/features/presence/types'
 import type { QueueEvent } from '@/lib/realtime'
 
 import type { Ticket, TicketFilter, TicketLists, TicketTab } from './types'
 
 export const noFilter: TicketFilter = { topic: null, priority: null, flag: null }
+
+export function ticketTabs(agent: Pick<AgentProfile, 'roles'>): TicketTab[] {
+  if (!worksTickets(agent)) return isSuperAdmin(agent) ? ['all_active', 'open'] : []
+  const tabs: TicketTab[] = ['open', 'mine', 'resolved_today']
+  return isSuperAdmin(agent) ? [...tabs, 'all_active'] : tabs
+}
+
+export function currentTab(tabs: TicketTab[], chosen: TicketTab | null): TicketTab {
+  return chosen !== null && tabs.includes(chosen) ? chosen : (tabs[0] ?? 'open')
+}
 
 export function isFiltered(filter: TicketFilter) {
   return filter.topic !== null || filter.priority !== null || filter.flag !== null
@@ -49,6 +60,22 @@ export function findTicket(lists: TicketLists, ticketId: string): Ticket | undef
   return lists.transfers_in.find((request) => request.ticket.id === ticketId)?.ticket
 }
 
+const finishedStatuses = new Set(['resolved', 'closed'])
+const activeStatuses = new Set(['open', 'claimed', 'waiting_customer'])
+
+export function newerActiveTicket(
+  lists: TicketLists,
+  ticket: Pick<Ticket, 'id' | 'room_id' | 'status'>,
+): Ticket | undefined {
+  if (!finishedStatuses.has(ticket.status)) return undefined
+  return [...lists.mine, ...lists.open, ...lists.all_active].find(
+    (candidate) =>
+      candidate.id !== ticket.id &&
+      candidate.room_id === ticket.room_id &&
+      activeStatuses.has(candidate.status),
+  )
+}
+
 export function withoutTicket(lists: TicketLists, ticketId: string): TicketLists {
   return { ...lists, open: lists.open.filter((ticket) => ticket.id !== ticketId) }
 }
@@ -57,6 +84,17 @@ export function claimedByOther(event: QueueEvent, meId: string): { ticketId: str
   if (event.type !== 'ticket' || event.event !== 'ticket_claimed') return null
   if (!event.ownerId || event.ownerId === meId) return null
   return { ticketId: event.ticketId, name: event.ownerName ?? '' }
+}
+
+export function assignmentAlerts(meId: string) {
+  const seen = new Set<string>()
+  return (event: QueueEvent): { ticketId: string; ticketNumber: string } | null => {
+    if (event.type !== 'ticket' || event.event !== 'ticket_assigned' || event.ownerId !== meId) return null
+    const key = `${event.ticketId}:${event.version ?? ''}`
+    if (seen.has(key)) return null
+    seen.add(key)
+    return { ticketId: event.ticketId, ticketNumber: event.ticketNumber ?? '' }
+  }
 }
 
 export function unreadMine(lists: TicketLists) {

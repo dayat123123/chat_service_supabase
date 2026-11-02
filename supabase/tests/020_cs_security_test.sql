@@ -13,9 +13,9 @@ select tests.create_user('sec_sari') as sari \gset
 select tests.create_user('sec_tono') as tono \gset
 select tests.create_agent('Rina', '{cs_agent}', '{"general": 2, "account": 2}') as rina \gset
 select tests.create_agent('Dimas', '{cs_agent}', '{"general": 1}') as dimas \gset
-select tests.create_agent('Sinta', '{cs_supervisor}', '{"general": 3}') as sinta \gset
+select tests.create_agent('Sinta', '{cs_super_admin}', '{"general": 3}') as sinta \gset
 select tests.create_agent('Kirana', '{compliance}', '{}') as kirana \gset
-select tests.create_agent('Adi', '{cs_admin}', '{}') as adi \gset
+select tests.create_agent('Adi', '{cs_super_admin}', '{}') as adi \gset
 
 select tests.authenticate_as(:'budi');
 select cs_api.open_ticket('account') as j \gset
@@ -118,18 +118,18 @@ select throws_ok($$select private.check_request()$$, 'PT403', 'cs_staff_social_f
 select set_config('request.headers', '{"content-profile": "cs_api"}', true) as h \gset
 select lives_ok($$select private.check_request()$$, 'Akun CS memakai API CS');
 select tests.authenticate_agent(:'rina', 'aal1');
-select throws_ok($$select cs_api.ticket_lists()$$, 'PT403', 'agent_required', 'Akun CS tanpa 2FA ditolak');
+select lives_ok($$select cs_api.ticket_lists()$$, 'Akun CS cukup login email + password, tanpa 2FA');
 
 reset role;
 
 select tests.authenticate_agent(:'sinta');
 select ok((select count(*) > 0 from public.messages where room_id = :'room')
-          and (select count(*) > 0 from public.messages where session_id = :'t0'), 'Supervisor bisa memantau semua room CS');
-select is(jsonb_array_length(cs_api.notes(:'budi')), 2, 'Supervisor melihat catatan internal');
-select ok(private.can_access_topic('cs:queue'), 'Supervisor join channel antrean');
-select is((select count(*)::integer from cs.cs_audit_log), 0, 'Audit log hanya untuk admin CS dan kepatuhan');
-select throws_ok(format($$select cs_api.agent_send_message(%L, 'halo')$$, :'t1'), 'PT403', 'not_ticket_owner',
-  'Supervisor yang belum bergabung tidak bisa membalas');
+          and (select count(*) > 0 from public.messages where session_id = :'t0'), 'Super admin memantau semua room CS');
+select is(jsonb_array_length(cs_api.notes(:'budi')), 2, 'Super admin melihat catatan internal');
+select ok(private.can_access_topic('cs:queue'), 'Super admin join channel antrean');
+select ok((select count(*) > 0 from cs.cs_audit_log), 'Super admin membaca audit log');
+select throws_ok(format($$select cs_api.agent_send_message(%L, 'halo')$$, :'t1'), 'PT403', 'role_forbidden',
+  'Super admin hanya memantau, tidak bisa membalas');
 
 select tests.authenticate_agent(:'kirana');
 select is((select count(*)::integer from public.messages where room_id = :'room'), 0,
@@ -143,8 +143,8 @@ select ok((select count(*) > 0 from public.messages where session_id = :'t2')
 select ok((select count(*) > 0 from cs.cs_audit_log), 'Kepatuhan membaca audit log');
 
 select tests.authenticate_agent(:'adi');
-select ok((select count(*) > 0 from cs.cs_audit_log) and (select count(*) = 0 from cs.tickets),
-  'Admin CS membaca audit log, bukan isi chat');
+select ok((select count(*) > 0 from cs.cs_audit_log) and (select count(*) > 0 from cs.tickets),
+  'Super admin membaca audit log dan memantau semua tiket');
 
 select tests.authenticate_agent(:'rina');
 select cs_api.request_transfer(:'t1', :'dimas', 'Mohon dilanjutkan') ->> 'id' as x1 \gset

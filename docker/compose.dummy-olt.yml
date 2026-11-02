@@ -1,7 +1,6 @@
-# Tambahan profil dev: auth-bridge memverifikasi token ke OLT DUMMY
-# (services/dummy-olt) lewat jalur WebSocket yang sama dengan produksi.
-# Yang berubah hanya KONFIGURASI auth-bridge (OLT_MODE + OLT_WS_URL), bukan kodenya:
-# dummy berbicara Protokol v1, sama dengan default auth-bridge, persis seperti produksi.
+# Tambahan profil dev: OLT DUMMY (services/dummy-olt) menerbitkan token sosial bertanda
+# tangan, dan auth-bridge memverifikasinya dengan kunci publik (mode jwt), persis seperti
+# produksi. Yang berubah hanya KONFIGURASI auth-bridge, bukan kodenya.
 #
 #   make up DUMMY_OLT=1          Windows: .\make.ps1 up -DummyOlt
 #   make down DUMMY_OLT=1        (ikut menghentikan dummy-olt)
@@ -12,7 +11,7 @@ services:
   dummy-olt:
     build:
       context: ../services/dummy-olt
-    image: olt-social/dummy-olt:0.2.0
+    image: olt-social/dummy-olt:0.3.0
     restart: unless-stopped
     read_only: true
     cap_drop: [ALL]
@@ -22,8 +21,9 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    # app: dijangkau auth-bridge. egress: port host untuk app contoh / curl.
+    # app: dijangkau smoke test (container tools). egress: port host untuk app contoh / curl.
     networks: [app, egress]
+    secrets: [olt_dev_signing_key]
     ports:
       - ${EDGE_HTTP_BIND:-127.0.0.1}:${DUMMY_OLT_PORT:-8090}:8090/tcp
     environment:
@@ -32,6 +32,9 @@ services:
       DUMMY_OLT_TOKEN_TTL: ${DUMMY_OLT_TOKEN_TTL:-24h}
       DUMMY_OLT_ACCEPT_MOCK_TOKENS: ${DUMMY_OLT_ACCEPT_MOCK_TOKENS:-true}
       DUMMY_OLT_SLOW_DELAY: ${DUMMY_OLT_SLOW_DELAY:-8s}
+      DUMMY_OLT_SIGNING_KEY_FILE: /run/secrets/olt_dev_signing_key
+      DUMMY_OLT_SIGNING_KID: dev-olt-1
+      DUMMY_OLT_SOCIAL_TTL: ${DUMMY_OLT_SOCIAL_TTL:-10m}
     healthcheck:
       # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/dummy-olt", "healthcheck"]
@@ -43,11 +46,12 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 64M, pids: 64}
 
-  # Cukup URL: format pesan memakai default Protokol v1 (OLT_WS_* kosong).
+  # Mode jwt, persis produksi: auth-bridge memverifikasi token sosial dummy dengan kunci publik
+  # di docker/secrets/olt_jwks, tanpa menghubungi dummy-olt.
   auth-bridge:
-    depends_on:
-      dummy-olt:
-        condition: service_healthy
     environment:
-      OLT_MODE: websocket
-      OLT_WS_URL: ws://dummy-olt:8090/ws
+      OLT_MODE: jwt
+
+secrets:
+  olt_dev_signing_key:
+    file: ./secrets/olt_dev_signing_key

@@ -8,8 +8,8 @@
   .\make.ps1 up -Profile single            (produksi 1 server; butuh PROXY_DOMAIN & ACME_EMAIL)
   .\make.ps1 logs -Service auth-bridge
   .\make.ps1 restore -File olt-20261029-020000.dump -Yes
-  .\make.ps1 up -DummyOlt                  (OLT dummy + auth-bridge mode websocket)
-  .\make.ps1 dummy-token -User sari_invest -Ttl 1h
+  .\make.ps1 up -DummyOlt                  (OLT dummy penerbit token sosial + auth-bridge mode jwt)
+  .\make.ps1 dummy-token -User sari_invest -Ttl 5m
   .\make.ps1 up -Profile single -Cs        (produksi dengan customer service lewat chat)
 #>
 [CmdletBinding()]
@@ -19,9 +19,9 @@ param(
                  'test', 'test-db', 'test-bridge', 'test-flutter', 'test-flutter-it',
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
-                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'smoke-cs', 'cs-race', 'cs-demo', 'cs-totp',
-                 'cs-staff', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
+                 'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-flutter-it-dummy', 'e2e-windows-dummy',
+                 'smoke-cs', 'cs-race', 'cs-demo',
+                 'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
@@ -31,11 +31,13 @@ param(
     [string]$File = '',
     [switch]$Force,
     [switch]$Yes,
-    # OLT dummy + auth-bridge mode websocket (hanya profil dev).
+    # OLT dummy penerbit token sosial + auth-bridge mode jwt (hanya profil dev).
     [switch]$DummyOlt,
     # Customer service lewat chat di profil single (di profil dev selalu aktif).
     [switch]$Cs,
     [string]$User = 'budi_santoso',
+    [string]$Email = '',
+    [string]$Name = '',
     [string]$Ttl = ''
 )
 
@@ -46,7 +48,8 @@ $EnvFile = 'docker/.env'
 $SecretsDir = 'docker/secrets'
 $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
                  'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
-                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri')
+                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri',
+                 'olt_jwks')
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
 $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
 $ToolsImage = 'olt-social/tools:0.1.0'
@@ -127,6 +130,10 @@ function Assert-Config {
             throw "Secret $name belum ada. Jalankan: .\make.ps1 gen-secrets"
         }
     }
+    $csadminSigningKey = Join-Path $SecretsDir 'csadmin_signing_key'
+    if (-not (Test-Path -LiteralPath $csadminSigningKey)) {
+        [System.IO.File]::WriteAllText((Join-Path $PSScriptRoot $csadminSigningKey), '')
+    }
     $placeholders = Select-String -LiteralPath $EnvFile -Pattern '=CHANGE_ME' -SimpleMatch
     if ($placeholders) {
         $placeholders | ForEach-Object { Write-Host $_.Line }
@@ -169,9 +176,10 @@ switch ($Target) {
   psql          Buka psql ke DB sebagai postgres
 
   OLT dummy (development/testing), jalankan stack dengan: .\make.ps1 up -DummyOlt
-  dummy-token   Token sesi OLT dummy: -User budi_santoso [-Ttl 1h]
-  smoke-dummy   Smoke test auth-bridge mode websocket vs OLT dummy
+  dummy-token   Token sosial (JWT) OLT dummy untuk exchange: -User budi_santoso [-Ttl 5m]
+  smoke-dummy   Smoke test auth-bridge mode jwt vs token sosial OLT dummy
   test-dummy-olt  Unit test OLT dummy (Go, di container)
+  test-nasabah-gateway  Unit test gateway menu Nasabah (Go, di container)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
@@ -179,8 +187,8 @@ switch ($Target) {
   smoke-cs      Smoke test CS chat end-to-end lewat API asli (butuh up -DummyOlt)
   cs-race       Tes rebutan klaim tiket CS: DB langsung + 3 replika PostgREST khusus tes
   cs-demo       Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up -DummyOlt)
-  cs-totp       Kode TOTP saat ini untuk akun staf dev
-  cs-staff      Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
+  cs-staff      Akun staf dev (CS, super admin, kepatuhan) di scripts/cs-demo/runtime/staff.json
+  cs-bootstrap-admin  Super admin web CS pertama: -Email nama@domain -Name "Nama" [-Force] [-Profile single]
   cs-console-react  Web CS React (container nginx) di http://localhost:8085 (butuh up -DummyOlt)
   test-cs-console   Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
   e2e-cs-console    E2E Playwright web CS React vs stack dev (butuh up -DummyOlt, Node 24 + Chromium Playwright)
@@ -221,7 +229,7 @@ switch ($Target) {
         & $PSCommandPath test-dummy-olt
     }
     'test-flutter' {
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         try {
             Invoke-Native 'flutter' @('analyze')
             Invoke-Native 'flutter' @('test')
@@ -229,7 +237,7 @@ switch ($Target) {
     }
     'test-flutter-it' {
         Assert-Config
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         $env:OLT_SOCIAL_IT = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration') }
         finally { Remove-Item Env:OLT_SOCIAL_IT; Pop-Location }
@@ -237,14 +245,14 @@ switch ($Target) {
     'e2e-windows' {
         Assert-Config
         $anon = Get-AnonKey
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social/example')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
         try { Invoke-Native 'flutter' @('test', 'integration_test/app_test.dart', '-d', 'windows', "--dart-define=OLT_SOCIAL_ANON_KEY=$anon") }
         finally { Pop-Location }
     }
     'web-example' {
         Assert-Config
         $anon = Get-AnonKey
-        $example = Join-Path $PSScriptRoot 'packages/olt_social/example'
+        $example = Join-Path $PSScriptRoot 'packages/rendezvous_community/example'
         Push-Location $example
         try {
             Invoke-Native 'flutter' @('build', 'web', '--release', '--no-web-resources-cdn', '--pwa-strategy=none',
@@ -258,7 +266,7 @@ switch ($Target) {
         Write-Host 'App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)'
     }
     'license-audit' {
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         try { Invoke-Native 'dart' @('run', 'tool/license_audit.dart') } finally { Pop-Location }
     }
     'smoke' { Assert-Config; Invoke-Tools @('smoke') }
@@ -293,7 +301,7 @@ switch ($Target) {
     # --- OLT dummy -----------------------------------------------------------------
     'dummy-token' {
         Assert-Config
-        $tokenArgs = @('run', '--rm', '--no-deps', '-T', 'dummy-olt', 'token', $User)
+        $tokenArgs = @('run', '--rm', '--no-deps', '-T', 'dummy-olt', 'token', $User, '-social')
         if ($Ttl) { $tokenArgs += @('-ttl', $Ttl) }
         Invoke-Docker ($DummyCompose + $tokenArgs)
     }
@@ -323,11 +331,17 @@ switch ($Target) {
         Write-Host 'Demo CS: http://localhost:8082  (stop: docker rm -f olt-cs-demo)'
     }
     'cs-staff' { Assert-Config; Update-StaffAccounts }
+    'cs-bootstrap-admin' {
+        Assert-Config
+        $arguments = @('cs-bootstrap-admin', $Email, $Name)
+        if ($Force) { $arguments += '--force' }
+        Invoke-Tools $arguments
+    }
     'cs-console-react' {
         Assert-Config
         Update-StaffAccounts
         Invoke-Compose @('up', '-d', '--build', '--wait', 'traefik', 'cs-console')
-        Write-Host 'Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: .\make.ps1 cs-totp)'
+        Write-Host 'Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json)'
     }
     'test-cs-console' {
         $src = Join-Path $PSScriptRoot 'apps/cs-console-react'
@@ -341,19 +355,17 @@ switch ($Target) {
         try { Invoke-Native 'npx' @('playwright', 'test') }
         finally { Remove-Item Env:E2E_BASE_URL; Pop-Location }
     }
-    'cs-totp' {
-        Assert-Config
-        $staffFile = Join-Path $PSScriptRoot 'scripts/cs-demo/runtime/staff.json'
-        if (-not (Test-Path -LiteralPath $staffFile)) { throw 'Akun staf dev belum ada. Jalankan: .\make.ps1 cs-staff' }
-        Get-Content -LiteralPath $staffFile -Raw | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-totp'))
-    }
     'test-dummy-olt' {
         $src = Join-Path $PSScriptRoot 'services/dummy-olt'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
+    'test-nasabah-gateway' {
+        $src = Join-Path $PSScriptRoot 'services/nasabah-gateway'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
     'test-flutter-it-dummy' {
         Assert-Config
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         $env:OLT_SOCIAL_IT_DUMMY = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration/dummy_olt_integration_test.dart') }
         finally { Remove-Item Env:OLT_SOCIAL_IT_DUMMY; Pop-Location }
@@ -361,7 +373,7 @@ switch ($Target) {
     'e2e-windows-dummy' {
         Assert-Config
         $anon = Get-AnonKey
-        Push-Location (Join-Path $PSScriptRoot 'packages/olt_social/example')
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
         try {
             Invoke-Native 'flutter' @('test', 'integration_test/dummy_olt_login_test.dart', '-d', 'windows',
                                       '--dart-define=OLT_DUMMY_E2E=true', "--dart-define=OLT_SOCIAL_ANON_KEY=$anon")

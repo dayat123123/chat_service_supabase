@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { useAgent, useAuth } from '@/features/auth/hooks'
@@ -10,7 +11,7 @@ import { appEnv, cachedAccessToken } from '@/lib/supabase'
 import { tabs } from '@/lib/tabs'
 
 import { presenceApi } from './api'
-import type { AgentStatus } from './types'
+import { actionBlock, type ActionBlock, type AgentStatus, type GuardedAction } from './types'
 
 const HEARTBEAT_MS = 20_000
 const OFFLINE_CHECK_MS = 60_000
@@ -24,6 +25,49 @@ export function useSetStatus() {
     onSuccess: (agent) => updateAgent(agent),
     onError: (error) => toast.error(errorText(error)),
   })
+}
+
+export function useClaimGate() {
+  const agent = useAgent()
+  const { t } = useTranslation()
+  const block = actionBlock(agent, 'claim')
+  const reason =
+    block === 'needOnline'
+      ? t('tickets.needOnline', { status: t(`presence.${agent.status}`) })
+      : block === 'capacity'
+        ? t('tickets.atCapacity')
+        : null
+  return { canClaim: block === null, needsOnline: block === 'needOnline', reason }
+}
+
+const blockedMessageKeys = {
+  claim: 'presence.blockedClaim',
+  acceptTransfer: 'presence.blockedTransfer',
+  reply: 'presence.blockedReply',
+} as const satisfies Record<GuardedAction, string>
+
+const blockedMessageKey = (action: GuardedAction, block: ActionBlock) =>
+  block === 'capacity' ? 'presence.blockedCapacity' : blockedMessageKeys[action]
+
+export function useActionGuard() {
+  const agent = useAgent()
+  const { t } = useTranslation()
+  const { mutate: setStatus } = useSetStatus()
+  return useCallback(
+    (action: GuardedAction) => {
+      const block = actionBlock(agent, action)
+      if (block === null) return true
+      toast.warning(t(blockedMessageKey(action, block), { status: t(`presence.${agent.status}`) }), {
+        id: `action-blocked-${action}`,
+        action:
+          block === 'capacity'
+            ? undefined
+            : { label: t('presence.goOnline'), onClick: () => setStatus({ status: 'online' }) },
+      })
+      return false
+    },
+    [agent, t, setStatus],
+  )
 }
 
 export function useOnlineAgents(enabled: boolean) {
@@ -70,9 +114,10 @@ export function useHeartbeat() {
   }, [agent.status, signOut, updateAgent])
 }
 
-export function useStatusOnClose() {
+export function useStatusOnClose(enabled: boolean) {
   const agent = useAgent()
   useEffect(() => {
+    if (!enabled) return
     const onHide = (event: PageTransitionEvent) => {
       if (event.persisted || tabs.otherTabs() > 0) return
       const current = useAuth.getState().phase
@@ -96,15 +141,15 @@ export function useStatusOnClose() {
     }
     window.addEventListener('pagehide', onHide)
     return () => window.removeEventListener('pagehide', onHide)
-  }, [agent.id])
+  }, [agent.id, enabled])
 }
 
-export function useResumeStatus() {
+export function useResumeStatus(enabled: boolean) {
   const { mutate } = useSetStatus()
   const status = useAgent().status
   const checked = useRef(false)
   useEffect(() => {
-    if (checked.current) return
+    if (!enabled || checked.current) return
     checked.current = true
     const saved = readJson<{ status: AgentStatus; at: number } | null>(RESUME_KEY, null)
     writeLocal(RESUME_KEY, null)
@@ -112,5 +157,5 @@ export function useResumeStatus() {
       PerformanceNavigationTiming | undefined
     if (!saved || navigation?.type !== 'reload' || Date.now() - saved.at > 60_000) return
     if (status === 'offline' && saved.status !== 'offline') mutate({ status: saved.status })
-  }, [mutate, status])
+  }, [enabled, mutate, status])
 }

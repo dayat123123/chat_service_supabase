@@ -14,10 +14,21 @@ export const agentFixture: AgentProfile = {
   reason: null,
   active_tickets: 1,
   skills: {},
+  nasabah_permissions: [],
   settings: {
     ...defaultSettings,
     outcomes: { answered: { id: 'Terjawab', en: 'Answered' } },
   },
+}
+
+export const monitorFixture: AgentProfile = {
+  ...agentFixture,
+  id: '66666666-6666-4666-8666-666666666666',
+  agent_code: 'SA01',
+  display_name: 'Sinta',
+  roles: ['cs_super_admin'],
+  status: 'offline',
+  active_tickets: 0,
 }
 
 export function ticketFixture(overrides: Partial<Ticket> = {}): Ticket {

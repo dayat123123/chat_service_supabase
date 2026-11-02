@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Menyiapkan halaman demo CS (development): agen demo dengan ID tetap, lalu mencetak isi
-# runtime/config.js (URL API, anon key, dan token agen uji aal2 berlaku 8 jam) ke stdout.
+# runtime/config.js (URL API, anon key, dan token agen uji berlaku 8 jam) ke stdout.
 # Dipanggil `make cs-demo`; file hasilnya di-gitignore dan hanya disajikan ke localhost.
 set -euo pipefail
 source "$(dirname "$0")/cs-lib.sh"

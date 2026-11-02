@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 import { Customer } from './support/customer'
+import { claimMode, pinAssignmentMode } from './support/settings'
 import { staffPage, ticketCard } from './support/staff'
 import { tag } from './support/text'
+
+pinAssignmentMode(claimMode)
 
 test('dua CS mengambil tiket yang sama: hanya satu yang berhasil', async ({ browser }) => {
   const customer = await Customer.login('joko_prasetyo')

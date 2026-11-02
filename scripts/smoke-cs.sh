@@ -33,7 +33,7 @@ check() {
 login() {
   local olt_token
   olt_token=$(curl -sS -X POST "$OLT/api/login" -H 'Content-Type: application/json' \
-    -d "{\"username\":\"$1\",\"password\":\"olt12345\"}" | jq -r '.token // empty')
+    -d "{\"username\":\"$1\",\"password\":\"olt12345\"}" | jq -r '.social_token // empty')
   code=$(curl -sS -o "$BODY" -w '%{http_code}' -X POST "$BASE/bridge/v1/exchange" -H "apikey: $ANON_KEY" \
     -H 'Content-Type: application/json' -d "{\"token\":\"$olt_token\"}")
   LOGIN_JWT=$(json '.access_token // empty')
@@ -54,9 +54,15 @@ if ! curl -sf "$OLT/health" > /dev/null; then
   exit 1
 fi
 
+# Skenario ini menguji mode ambil tiket; mode penugasan semula dipulihkan saat selesai.
+ASSIGNMENT_MODE=$(sql "select cs.setting('assignment.mode')")
+restore_mode() { sql "select cs.set_setting('assignment.mode', '$ASSIGNMENT_MODE', null)" > /dev/null; }
+trap restore_mode EXIT
+sql "select cs.set_setting('assignment.mode', '\"claim\"', null)" > /dev/null
+
 ensure_agent "$AGENT" "Smoke Agen" "{cs_agent}" general '{"general": 2, "account": 2}'
 ensure_agent "$AGENT2" "Smoke Agen Dua" "{cs_agent}" general '{"general": 2, "account": 2}'
-ensure_agent "$SUPERVISOR" "Smoke Supervisor" "{cs_supervisor}" general '{"general": 2, "account": 2}'
+ensure_agent "$SUPERVISOR" "Smoke Supervisor" "{cs_super_admin}" general '{"general": 2, "account": 2}'
 AGENT_JWT=$(agent_jwt "$AGENT")
 AGENT2_JWT=$(agent_jwt "$AGENT2")
 SUP_JWT=$(agent_jwt "$SUPERVISOR")

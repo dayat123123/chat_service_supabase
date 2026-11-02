@@ -17,30 +17,11 @@ export const authApi = {
   },
 
   nextStep: async (): Promise<AuthStep> => {
-    const auth = supabase().auth
-    const { session } = await unwrap(auth.getSession())
+    const { session } = await unwrap(supabase().auth.getSession())
     if (!session) return { kind: 'signedOut' }
-    const mustChangePassword = session.user.user_metadata?.must_change_password === true
-    const level = await unwrap(auth.mfa.getAuthenticatorAssuranceLevel())
-    if (level.currentLevel === 'aal2') return mustChangePassword ? { kind: 'password' } : { kind: 'verified' }
-    const factors = await unwrap(auth.mfa.listFactors())
-    const verified = factors.totp[0]
-    if (verified) return { kind: 'totp', factorId: verified.id }
-    if (mustChangePassword) return { kind: 'password' }
-    for (const factor of factors.all.filter((f) => f.status !== 'verified')) {
-      await unwrap(auth.mfa.unenroll({ factorId: factor.id }))
-    }
-    const enrolled = await unwrap(
-      auth.mfa.enroll({ factorType: 'totp', issuer: 'OLT CS Console', friendlyName: 'CS Console' }),
-    )
-    return { kind: 'enroll', factorId: enrolled.id, secret: enrolled.totp.secret, qr: enrolled.totp.qr_code }
-  },
-
-  verify: async (factorId: string, code: string) => {
-    const auth = supabase().auth
-    await unwrap(auth.mfa.challengeAndVerify({ factorId, code }))
-    const { session } = await unwrap(auth.getSession())
-    await supabase().realtime.setAuth(session?.access_token ?? null)
+    return session.user.user_metadata?.must_change_password === true
+      ? { kind: 'password' }
+      : { kind: 'verified' }
   },
 
   changePassword: async (password: string) => {

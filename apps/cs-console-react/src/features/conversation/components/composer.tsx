@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { Dot } from '@/components/badges'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -24,6 +25,9 @@ import {
 } from '@/components/ui/menu'
 import { useCommandHandler } from '@/features/command/bus'
 import { customerKeys } from '@/features/customer/hooks'
+import { GoOnlineButton } from '@/features/presence/components/go-online-button'
+import { useAgent } from '@/features/auth/hooks'
+import { useActionGuard } from '@/features/presence/hooks'
 import type { AgentProfile } from '@/features/presence/types'
 import { customerName, type Ticket } from '@/features/tickets/types'
 import { errorText } from '@/lib/error-text'
@@ -57,15 +61,17 @@ const MAX_INPUT_HEIGHT = 182
 function ToolButton({
   label,
   onClick,
+  disabled,
   children,
 }: {
   label: string
   onClick?: () => void
+  disabled?: boolean
   children: React.ReactNode
 }) {
   return (
     <Tooltip content={label}>
-      <Button variant="ghost" size="icon-xs" aria-label={label} onClick={onClick}>
+      <Button variant="ghost" size="icon-xs" aria-label={label} onClick={onClick} disabled={disabled}>
         {children}
       </Button>
     </Tooltip>
@@ -98,6 +104,8 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
   const listId = `quick-replies-${ticket.id}`
   const fileInput = useRef<HTMLInputElement>(null)
   const quickReplies = useQuickReplies()
+  const guard = useActionGuard()
+  const offline = useAgent().status === 'offline'
 
   const matches = useMemo(
     () => (token && mode === 'reply' ? filterQuickReplies(quickReplies.data ?? [], token.query) : []),
@@ -105,6 +113,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
   )
   const secret = mode === 'reply' && requestsSecret(value)
   const note = mode === 'note'
+  const locked = offline && !note
 
   useEffect(() => {
     const element = textarea.current
@@ -185,6 +194,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
       setBlocked(t('composer.secretBlocked'))
       return
     }
+    if (!guard('reply')) return
     const attachments = files
     setBusy(true)
     setBlocked(null)
@@ -222,6 +232,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
     send,
     replyTo,
     setValue,
+    guard,
   ])
 
   useCommandHandler(
@@ -230,6 +241,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
   )
 
   const sendSpecial = async (message: SpecialMessage) => {
+    if (!guard('reply')) return
     setSpecial(null)
     try {
       const result = await send({ body: message.body, kind: message.kind, payload: message.payload })
@@ -322,13 +334,13 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         note ? 'bg-note' : 'bg-background',
       )}
       onDragOver={(event) => {
-        if (note || !event.dataTransfer.types.includes('Files')) return
+        if (note || locked || !event.dataTransfer.types.includes('Files')) return
         event.preventDefault()
         setDragging(true)
       }}
       onDragLeave={() => setDragging(false)}
       onDrop={(event) => {
-        if (note) return
+        if (note || locked) return
         event.preventDefault()
         setDragging(false)
         addFiles([...event.dataTransfer.files])
@@ -382,6 +394,16 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
           </span>
         ) : null}
       </div>
+      {locked ? (
+        <div
+          role="status"
+          className="mb-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground"
+        >
+          <Dot tone="warn" />
+          <span className="min-w-0 flex-1">{t('presence.offlineReplyHint')}</span>
+          <GoOnlineButton size="xs" />
+        </div>
+      ) : null}
       {blocked || secret ? (
         <p role="alert" className="mb-2 flex items-start gap-1.5 text-xs text-destructive">
           <ShieldAlertIcon className="mt-px size-3.5 shrink-0" />
@@ -448,7 +470,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         <div
           className={cn(
             'rounded-lg border transition-[border-color,box-shadow] focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/10',
-            note ? 'border-note-border' : 'bg-background',
+            note ? 'border-note-border' : locked ? 'bg-muted' : 'bg-background',
           )}
         >
           <textarea
@@ -456,6 +478,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
             rows={1}
             value={value}
             maxLength={MAX_BODY}
+            disabled={locked}
             aria-label={note ? t('composer.note') : t('composer.reply')}
             aria-autocomplete="list"
             aria-controls={matches.length > 0 && token ? listId : undefined}
@@ -475,20 +498,28 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
                 addFiles(images)
               }
             }}
-            className="block max-h-[182px] min-h-[42px] w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal outline-none"
+            className="block max-h-[182px] min-h-[42px] w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-sm leading-normal outline-none disabled:cursor-not-allowed disabled:text-muted-foreground"
           />
           <div className="flex items-center gap-0.5 px-1.5 pb-1.5">
             {!note ? (
               <>
-                <ToolButton label={t('composer.attach')} onClick={() => fileInput.current?.click()}>
+                <ToolButton
+                  label={t('composer.attach')}
+                  disabled={locked}
+                  onClick={() => fileInput.current?.click()}
+                >
                   <PaperclipIcon />
                 </ToolButton>
-                <ToolButton label={t('composer.insertQuickReply')} onClick={startQuickReply}>
+                <ToolButton
+                  label={t('composer.insertQuickReply')}
+                  disabled={locked}
+                  onClick={startQuickReply}
+                >
                   <SlashIcon />
                 </ToolButton>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon-xs" aria-label={t('composer.more')}>
+                    <Button variant="ghost" size="icon-xs" aria-label={t('composer.more')} disabled={locked}>
                       <EllipsisIcon />
                     </Button>
                   </DropdownMenuTrigger>
@@ -506,9 +537,11 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
               </>
             ) : null}
             <div className="ml-auto flex min-w-0 items-center gap-3 pl-2">
-              <span className="hidden truncate text-xs text-muted-foreground lg:inline">
-                {t('composer.hint')}
-              </span>
+              {locked ? null : (
+                <span className="hidden truncate text-xs text-muted-foreground lg:inline">
+                  {t('composer.hint')}
+                </span>
+              )}
               <span
                 className={cn(
                   'tabular text-xs text-muted-foreground',
@@ -519,7 +552,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
               </span>
               <Button
                 size="sm"
-                disabled={busy || (!value.trim() && files.length === 0) || secret}
+                disabled={busy || locked || (!value.trim() && files.length === 0) || secret}
                 onClick={() => void submit()}
               >
                 {busy ? <LoaderCircleIcon className="animate-spin" /> : null}

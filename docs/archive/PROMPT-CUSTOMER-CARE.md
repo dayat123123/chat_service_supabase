@@ -123,10 +123,10 @@ Semua kanal masuk ke **satu inbox** di CS Console dengan label kanal.
 
 ## 3. Pengalaman Nasabah (Aplikasi OLT)
 
-Dibangun sebagai package Flutter terpisah **`olt_care`** (pola sama seperti `olt_social`), dengan API sederhana:
+Dibangun sebagai package Flutter terpisah **`olt_care`** (pola sama seperti `rendezvous_community`), dengan API sederhana:
 
 ```dart
-await OltCare.initialize(...);   // berbagi auth dengan olt_social
+await OltCare.initialize(...);   // berbagi auth dengan rendezvous_community
 OltHelpCenter();                  // pusat bantuan
 OltSupportHome();                 // beranda bantuan: chat, tiket saya, status layanan
 OltTicketDetail(ticketId: '...');

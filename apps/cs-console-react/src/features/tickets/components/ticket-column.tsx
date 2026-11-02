@@ -19,7 +19,9 @@ import {
 } from '@/components/ui/menu'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
-import { atCapacity, isSupervisor } from '@/features/presence/types'
+import { GoOnlineButton } from '@/features/presence/components/go-online-button'
+import { useActionGuard, useClaimGate } from '@/features/presence/hooks'
+import { worksTickets } from '@/features/presence/types'
 import { useDebounced, useNow } from '@/hooks/use-now'
 import { usePreferences } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
@@ -32,8 +34,8 @@ import {
   useTopicName,
   useTopics,
 } from '../hooks'
-import { isFiltered, noFilter, visibleTickets } from '../logic'
-import { emptyLists, ticketFlags, ticketPriorities, type TicketFilter, type TicketTab } from '../types'
+import { currentTab, isFiltered, noFilter, ticketTabs, visibleTickets } from '../logic'
+import { emptyLists, tabLabelKeys, ticketFlags, ticketPriorities, type TicketFilter } from '../types'
 import { TicketRow } from './ticket-row'
 import { TransferInbox } from './transfer-inbox'
 
@@ -141,10 +143,20 @@ function FilterChips({
 export function TicketColumn() {
   const { t } = useTranslation()
   const agent = useAgent()
-  const supervisor = isSupervisor(agent)
+  const worker = worksTickets(agent)
   const now = useNow()
   const density = usePreferences((state) => state.density)
-  const { tab, filter, query, selectedId, leaving, setTab, setFilter, setQuery, select } = useTicketUi()
+  const {
+    tab: chosen,
+    filter,
+    query,
+    selectedId,
+    leaving,
+    setTab,
+    setFilter,
+    setQuery,
+    select,
+  } = useTicketUi()
   const lists = useTicketLists()
   const topics = useTopics()
   const topicName = useTopicName()
@@ -153,20 +165,17 @@ export function TicketColumn() {
   const claim = useClaimTicket()
   const data = lists.data ?? emptyLists
   const searching = search.length >= 2
+  const available = ticketTabs(agent)
+  const tab = currentTab(available, chosen)
   const tickets = useMemo(
     () => visibleTickets(data, tab, filter, searching ? (results.data ?? []) : null),
     [data, tab, filter, searching, results.data],
   )
-  const canClaim = agent.status === 'online' && !atCapacity(agent)
+  const gate = useClaimGate()
+  const canClaim = gate.canClaim
+  const guard = useActionGuard()
 
-  const tabs: { value: TicketTab; label: string; count: number }[] = [
-    { value: 'open', label: t('tickets.open'), count: data.open.length },
-    { value: 'mine', label: t('tickets.mine'), count: data.mine.length },
-    { value: 'resolved_today', label: t('tickets.resolvedToday'), count: data.resolved_today.length },
-    ...(supervisor
-      ? [{ value: 'all_active' as const, label: t('tickets.allActive'), count: data.all_active.length }]
-      : []),
-  ]
+  const tabs = available.map((value) => ({ value, label: t(tabLabelKeys[value]), count: data[value].length }))
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const virtualizer = useVirtualizer({
@@ -190,8 +199,9 @@ export function TicketColumn() {
   )
   const claimSelected = useCallback(() => {
     const ticket = tickets.find((item) => item.id === selectedId)
-    if (ticket?.status === 'open' && canClaim && !claim.isPending) claim.mutate(ticket.id)
-  }, [tickets, selectedId, canClaim, claim])
+    if (ticket?.status !== 'open' || claim.isPending) return
+    if (guard('claim')) claim.mutate(ticket.id)
+  }, [tickets, selectedId, guard, claim])
   useCommandHandler(
     'next',
     useCallback(() => move(1), [move]),
@@ -200,7 +210,7 @@ export function TicketColumn() {
     'previous',
     useCallback(() => move(-1), [move]),
   )
-  useCommandHandler('claim', claimSelected)
+  useCommandHandler('claim', worker ? claimSelected : null)
 
   const empty = searching
     ? t('tickets.emptyFiltered')
@@ -300,11 +310,15 @@ export function TicketColumn() {
           onChange={updateFilter}
           onClear={() => setFilter(noFilter)}
         />
-        {tab === 'open' && !searching && !canClaim ? (
-          <p role="status" className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {worker && tab === 'open' && !searching && gate.reason ? (
+          <div
+            role="status"
+            className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground"
+          >
             <Dot tone="warn" />
-            {agent.status !== 'online' ? t('tickets.needOnline') : t('tickets.atCapacity')}
-          </p>
+            <span className="min-w-0 flex-1">{gate.reason}</span>
+            {gate.needsOnline ? <GoOnlineButton size="xs" /> : null}
+          </div>
         ) : null}
         {searching ? (
           <p className="text-xs text-muted-foreground" aria-live="polite">
@@ -346,11 +360,13 @@ export function TicketColumn() {
                     showOwner={tab === 'all_active' || searching}
                     leavingName={leaving[ticket.id]}
                     claim={
-                      ticket.status === 'open'
+                      worker && ticket.status === 'open'
                         ? {
-                            disabled: !canClaim,
+                            blocked: !canClaim,
                             pending: claim.isPending && claim.variables === ticket.id,
-                            onClaim: () => claim.mutate(ticket.id),
+                            onClaim: () => {
+                              if (guard('claim')) claim.mutate(ticket.id)
+                            },
                           }
                         : undefined
                     }

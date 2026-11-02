@@ -192,7 +192,7 @@ services:
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
       # User OLT tidak signup lewat GoTrue; JWT diterbitkan auth-bridge.
-      # Login email + password hanya untuk akun staf (CS/admin) yang dibuat admin, wajib TOTP (aal2).
+      # Login email + password hanya untuk akun staf. Web CS tidak memakai TOTP; admin moderasi tetap wajib TOTP (aal2).
       GOTRUE_DISABLE_SIGNUP: "true"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_PASSWORD_MIN_LENGTH: "12"
@@ -713,9 +713,10 @@ services:
     <<: *base
     build:
       context: ../services/auth-bridge
-    image: olt-social/auth-bridge:0.3.1
-    # egress: koneksi WebSocket ke server OLT. data: Valkey.
-    networks: [app, data, egress]
+    image: olt-social/auth-bridge:0.4.0
+    # Tanpa egress: token OLT diverifikasi lokal dengan kunci publik OLT (mode jwt),
+    # jadi auth-bridge tidak memanggil sistem OLT. data: Valkey.
+    networks: [app, data]
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -724,7 +725,7 @@ services:
       valkey:
         condition: service_healthy
     stop_grace_period: 20s
-    secrets: [jwt_secret, valkey_password]
+    secrets: [jwt_secret, valkey_password, olt_jwks]
     environment:
       PORT: 8080
       # Port internal /metrics, /livez, /readyz (tidak dipublikasikan, tidak lewat Kong).
@@ -745,21 +746,12 @@ services:
       RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-10}
       BREAKER_FAILURE_THRESHOLD: ${AUTH_BRIDGE_BREAKER_FAILURE_THRESHOLD:-5}
       BREAKER_COOLDOWN: ${AUTH_BRIDGE_BREAKER_COOLDOWN:-30}
-      OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-websocket}
-      # Kosong = default Protokol v1 (docs/olt-integration.md).
-      OLT_WS_URL: ${OLT_WS_URL:-}
-      OLT_WS_TIMEOUT: ${OLT_WS_TIMEOUT:-5}
-      OLT_WS_ORIGIN: ${OLT_WS_ORIGIN:-}
-      OLT_WS_LOGIN_TEMPLATE: ${OLT_WS_LOGIN_TEMPLATE:-}
-      OLT_WS_RESPONSE_MATCH_PATH: ${OLT_WS_RESPONSE_MATCH_PATH:-}
-      OLT_WS_RESPONSE_MATCH_VALUE: ${OLT_WS_RESPONSE_MATCH_VALUE:-}
-      OLT_WS_SUCCESS_PATH: ${OLT_WS_SUCCESS_PATH:-}
-      OLT_WS_SUCCESS_VALUE: ${OLT_WS_SUCCESS_VALUE:-}
-      OLT_WS_ERROR_MESSAGE_PATH: ${OLT_WS_ERROR_MESSAGE_PATH:-}
-      OLT_WS_USER_ID_PATH: ${OLT_WS_USER_ID_PATH:-}
-      OLT_WS_USERNAME_PATH: ${OLT_WS_USERNAME_PATH:-}
-      OLT_WS_EMAIL_PATH: ${OLT_WS_EMAIL_PATH:-}
-      OLT_WS_DISPLAY_NAME_PATH: ${OLT_WS_DISPLAY_NAME_PATH:-}
+      # Token sosial bertanda tangan OLT, diverifikasi dengan kunci publik OLT (docs/olt-integration.md).
+      OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-jwt}
+      OLT_JWT_JWKS_FILE: /run/secrets/olt_jwks
+      OLT_JWT_ISSUER: ${OLT_JWT_ISSUER:-olt}
+      OLT_JWT_AUDIENCE: ${OLT_JWT_AUDIENCE:-olt-social}
+      OLT_JWT_MAX_TTL: ${OLT_JWT_MAX_TTL:-900}
     healthcheck:
       # Image distroless tidak punya shell/curl; binary menyediakan subcommand healthcheck.
       test: ["CMD", "/auth-bridge", "healthcheck"]
@@ -804,6 +796,44 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
+  # Gateway menu Akun Nasabah di web CS (services/nasabah-gateway, docs/nasabah/README.md).
+  # Hanya meneruskan rute staf /online/* ke csAdmin dengan token integrasi: gateway menandatangani
+  # assertion Ed25519 (docker/secrets/csadmin_signing_key), csAdmin memverifikasinya dengan kunci
+  # publik di blok integration csAdminEL.cfg. Memeriksa permission per akun CS dan mencatat aksi di
+  # cs_audit_log. CSADMIN_URL kosong atau kunci kosong: gateway menjawab 503 not_configured.
+  nasabah-gateway:
+    <<: *base
+    profiles: [cs]
+    build:
+      context: ../services/nasabah-gateway
+    image: olt-social/nasabah-gateway:0.1.0
+    # edge: dari Traefik; app: PostgREST; egress: server csAdmin di jaringan lokal.
+    networks: [edge, app, egress]
+    depends_on:
+      rest:
+        condition: service_healthy
+    stop_grace_period: 10s
+    secrets: [jwt_secret, csadmin_signing_key]
+    environment:
+      PORT: 8080
+      LOG_LEVEL: ${NASABAH_GATEWAY_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      CSADMIN_URL: ${CSADMIN_URL:-}
+      CSADMIN_CLIENT_ID: ${CSADMIN_CLIENT_ID:-web-cs}
+      CSADMIN_SIGNING_KEY_FILE: /run/secrets/csadmin_signing_key
+      CSADMIN_TIMEOUT: ${CSADMIN_TIMEOUT:-15s}
+    healthcheck:
+      # Image distroless: binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/nasabah-gateway", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 64M, pids: 64}
+
   # Service operasional (tidak ikut `up`). Dipakai Makefile/make.ps1:
   #   docker compose run --rm tools migrate|seed|test-db|smoke|backup|restore|psql
   # Semua skrip berjalan di container Linux sehingga host Windows tidak butuh bash/psql.
@@ -819,7 +849,7 @@ services:
     configs:
       - source: with-secrets
         target: /opt/olt/with-secrets.sh
-    # jwt_secret: smoke-cs menandatangani JWT agen uji (2FA) seperti GoTrue.
+    # jwt_secret: smoke-cs, akun staf dev, dan bootstrap super admin menandatangani JWT seperti GoTrue.
     secrets: [postgres_password, anon_key, jwt_secret]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "bash", "/olt/scripts/tools.sh"]
     volumes:
@@ -902,3 +932,7 @@ secrets:
     file: ./secrets/valkey_password
   postgrest_db_uri:
     file: ./secrets/postgrest_db_uri
+  olt_jwks:
+    file: ./secrets/olt_jwks
+  csadmin_signing_key:
+    file: ./secrets/csadmin_signing_key

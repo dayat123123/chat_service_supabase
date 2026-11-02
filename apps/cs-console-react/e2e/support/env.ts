@@ -9,7 +9,7 @@ export const oltUrl = process.env.E2E_OLT_URL ?? 'http://localhost:8090'
 export const anonKey =
   process.env.E2E_ANON_KEY ?? readFileSync(join(root, 'docker/secrets/anon_key'), 'utf8').trim()
 
-export type StaffName = 'Nadia' | 'Bima' | 'Laras' | 'Sinta' | 'Adi'
+export type StaffName = 'Nadia' | 'Bima' | 'Laras' | 'Sinta' | 'Adi' | 'Kirana'
 
 export type StaffMember = {
   id: string
@@ -18,7 +18,6 @@ export type StaffMember = {
   email: string
   password: string
   roles: string
-  totp_secret: string
 }
 
 const staffFile = process.env.E2E_STAFF_FILE ?? join(root, 'scripts/cs-demo/runtime/staff.json')

@@ -14,15 +14,16 @@ test('login dan ruang kerja tanpa scroll horizontal atau teks terpotong', async 
 test('dashboard dan laporan muat di semua resolusi', async ({ page }) => {
   await signIn(page, 'Sinta')
   await page.getByRole('link', { name: 'Dashboard' }).click()
-  await expect(page.getByRole('heading', { name: 'Dashboard supervisor' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
   await checkLayout(page, 'dashboard')
   await page.getByRole('link', { name: 'Laporan' }).click()
   await expect(page.getByRole('heading', { name: 'Tiket per hari' })).toBeVisible()
   await checkLayout(page, 'laporan')
 })
 
-test('pengaturan admin muat di semua resolusi', async ({ page }) => {
+test('pengaturan Super Admin muat di semua resolusi', async ({ page }) => {
   await signIn(page, 'Adi')
+  await page.getByRole('link', { name: 'Pengaturan' }).click()
   await expect(page.getByRole('heading', { name: 'Akun CS' })).toBeVisible()
   await checkLayout(page, 'pengaturan')
 })

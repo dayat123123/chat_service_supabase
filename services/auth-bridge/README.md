@@ -1,21 +1,21 @@
 # auth-bridge
 
-Service Go yang menukar **token login OLT** menjadi **JWT Supabase**, sehingga user tidak perlu login dua kali.
+Service Go yang menukar **token sosial OLT** (JWT yang ditandatangani OLT saat login) menjadi **JWT Supabase**, sehingga user tidak perlu login dua kali. Verifikasinya lokal dengan kunci publik OLT: auth-bridge **tidak memanggil sistem OLT** dan tidak punya akses jaringan keluar.
 
 ```
-App OLT ──POST /bridge/v1/exchange {"token": "<token OLT>"}──▶ Kong ──▶ auth-bridge
-                                                                         │ 1. rate limit per IP (Valkey, sliding window)
-                                                                         │ 2. cache verifikasi (Valkey, kunci = hash token, TTL singkat)
-                                                                         │ 3. verifikasi ke WebSocket OLT (Protokol v1)
-                                                                         │    lewat circuit breaker; timeout 5 dtk;
-                                                                         │    koneksi ditutup setelah respons
-                                                                         │ 4. upsert profiles (RPC service_role, retry + backoff)
-                                                                         │    user yang di-ban ditolak (403)
-                                                                         │ 5. rate limit per user OLT
-                                                                         ▼ 6. JWT HS256 (role authenticated, 15 mnt)
+App OLT ──POST /bridge/v1/exchange {"token": "<token sosial>"}──▶ Kong ──▶ auth-bridge
+                                                                            │ 1. rate limit per IP (Valkey, sliding window)
+                                                                            │ 2. cache verifikasi (Valkey, kunci = hash token, TTL singkat)
+                                                                            │ 3. verifikasi tanda tangan EdDSA/ES256 dengan JWKS OLT
+                                                                            │    (docker/secrets/olt_jwks), cek iss, aud, exp, iat;
+                                                                            │    tanpa koneksi ke OLT
+                                                                            │ 4. upsert profiles (RPC service_role, retry + backoff)
+                                                                            │    user yang di-ban ditolak (403)
+                                                                            │ 5. rate limit per user OLT
+                                                                            ▼ 6. JWT HS256 (role authenticated, 15 mnt)
 ```
 
-- auth-bridge **tidak pernah menerima atau menyimpan password**. Login dengan username/email + password tetap dilakukan app OLT langsung ke WebSocket OLT.
+- auth-bridge **tidak pernah menerima atau menyimpan password**. Login dengan username/email + password tetap dilakukan app OLT langsung ke OLT, lalu OLT menerbitkan token sosial.
 - **Token tidak pernah ditulis ke log, metrik, atau cache.** Cache Valkey memakai SHA-256 token sebagai kunci dan hanya menyimpan profil publik.
 - **ID user** dihitung dengan `UUIDv5(namespace 0b7f6c1e-5a2d-4c8e-9f3b-7d1a2e4c6f80, olt_user_id)`:
   - Hasilnya stabil selamanya dan sama dengan `supabase/seed/seed.sql`.
@@ -30,7 +30,7 @@ App OLT ──POST /bridge/v1/exchange {"token": "<token OLT>"}──▶ Kong �
 
 ```json
 // request
-{ "token": "<token login OLT>" }
+{ "token": "<token sosial OLT>" }
 
 // 200
 {
@@ -46,11 +46,11 @@ App OLT ──POST /bridge/v1/exchange {"token": "<token OLT>"}──▶ Kong �
 | Status | `error` | Arti |
 |---|---|---|
 | 400 | `invalid_request` | Body bukan `{"token": "..."}` |
-| 401 | `invalid_token` | OLT menolak token; user perlu login ulang di OLT |
+| 401 | `invalid_token` | Token sosial tidak sah (tanda tangan, `iss`/`aud`, kedaluwarsa, umur > `OLT_JWT_MAX_TTL`); app perlu meminta token sosial baru ke OLT. Alasannya ada di log (`reason`) |
 | 403 | `user_banned` | User sedang di-ban dari fitur sosial |
 | 429 | `rate_limited` | Melebihi `RATE_LIMIT_PER_MINUTE` per IP atau `RATE_LIMIT_PER_USER_PER_MINUTE` per user. Ada header `Retry-After` |
 | 502 | `exchange_failed` | Gagal upsert profil (setelah retry) |
-| 503 | `olt_unavailable` | Server OLT tidak menjawab dalam `OLT_WS_TIMEOUT`, atau circuit breaker terbuka |
+| 503 | `olt_unavailable` | Hanya mode `websocket`: server OLT tidak menjawab dalam `OLT_WS_TIMEOUT`, atau circuit breaker terbuka |
 
 **Isi JWT** sengaja minimal karena bisa dibaca siapa pun yang memegangnya: `sub` (UUID), `role: authenticated`, `aud: authenticated`, `iss: olt-auth-bridge`, `iat`/`exp`, dan `app_metadata.provider: olt`. Tidak ada email, username, atau `olt_user_id`.
 
@@ -79,26 +79,45 @@ Metrik:
 ### Ketahanan
 
 - **Valkey** menyimpan rate limit dan cache bersama untuk semua replika. Bila Valkey mati, rate limit jatuh ke limiter in-memory per instance dan cache dilewati. Layanan tetap jalan, error dicatat di metrik, dan log dibatasi sekali per menit.
-- **Circuit breaker**: setelah `BREAKER_FAILURE_THRESHOLD` kegagalan OLT berturut-turut, verifikasi baru langsung ditolak `503` selama `BREAKER_COOLDOWN` detik. Setelah itu satu request uji diizinkan. Token yang ditolak OLT dihitung sukses (OLT sehat). Request yang dibatalkan klien tidak dihitung. State breaker per instance.
+- **Circuit breaker** (hanya bermakna di mode `websocket`; mode `jwt` tidak pernah gagal karena OLT): setelah `BREAKER_FAILURE_THRESHOLD` kegagalan OLT berturut-turut, verifikasi baru langsung ditolak `503` selama `BREAKER_COOLDOWN` detik. Setelah itu satu request uji diizinkan. Token yang ditolak OLT dihitung sukses (OLT sehat). Request yang dibatalkan klien tidak dihitung. State breaker per instance.
 - **PostgREST**: error jaringan dan `5xx` di-retry maksimal 3 kali dengan backoff eksponensial + jitter (100 ms, 200 ms). `4xx` tidak di-retry.
 - **User di-ban**: exchange ditolak `403` dan tidak di-cache. Di database, `private.check_request` juga menolak setiap request user yang di-ban, jadi JWT yang terbit sebelum ban pun tidak berguna.
 
 ## Mode OLT
 
+### `jwt` (produksi, default)
+
+OLT menandatangani token sosial dengan kunci privatnya. auth-bridge memverifikasinya dengan kunci publik dari `OLT_JWT_JWKS_FILE` (compose: `docker/secrets/olt_jwks`). Kontrak lengkap untuk tim OLT ada di [docs/olt-integration.md](../../docs/olt-integration.md).
+
+- **Algoritma:** hanya `EdDSA` (Ed25519) dan `ES256` (P-256). Algoritma di header harus cocok dengan jenis kunci dari `kid`. `none`, `HS*`, dan `RS*` ditolak.
+- **Klaim wajib:** `iss` = `OLT_JWT_ISSUER`, `aud` memuat `OLT_JWT_AUDIENCE`, `sub` (string, ID user OLT), `preferred_username`, `iat`, dan `exp`. `exp - iat` ≤ `OLT_JWT_MAX_TTL`. `nbf` dihormati bila ada. Toleransi jam `OLT_JWT_LEEWAY`.
+- **Klaim opsional:** `name` (nama tampilan) dan `email`.
+- **Kunci dev:** `kid` berawalan `dev-` (kunci OLT dummy dari `make gen-secrets`) ditolak saat `APP_ENV=production`, jadi produksi tidak bisa start dengan JWKS dev.
+- **Rotasi kunci:** tambahkan kunci baru ke JWKS lalu restart auth-bridge. JWKS dibaca sekali saat start.
+
+Untuk mencoba tanpa OLT asli, jalankan `make up DUMMY_OLT=1`. [`services/dummy-olt`](../dummy-olt/) menerbitkan token sosial dengan kunci dev, dan profil itu hanya mengganti `OLT_MODE` ke `jwt`, persis seperti produksi.
+
 ### `mock` (development)
 
 Token berformat `mock:<olt_user_id>:<username>[:<nama tampilan>]`, contohnya `mock:1001:budi_santoso`. Mode ini **ditolak saat `APP_ENV=production`**.
 
-### `websocket` (produksi)
+### `websocket` (cara lama)
 
-Default adapter **sama dengan Protokol v1** ([docs/olt-integration.md](../../docs/olt-integration.md)). Bila OLT memakai protokol itu, cukup isi:
+auth-bridge bertanya ke WebSocket OLT untuk setiap token (Protokol v1: pesan `login` dengan `method: token`, balasan `login_result`). Kodenya masih ada untuk OLT yang belum bisa menerbitkan token sosial, tetapi **tidak dipasang di compose lagi**, karena mode ini membutuhkan akses jaringan keluar dan membuat login sosial bergantung pada ketersediaan OLT.
 
-```dotenv
-AUTH_BRIDGE_OLT_MODE=websocket
-OLT_WS_URL=wss://olt.example.com/social
+Bila terpaksa memakainya, buat override compose sendiri, misalnya `docker/compose.olt-websocket.yml`, lalu tambahkan ke perintah `docker compose`:
+
+```yaml
+services:
+  auth-bridge:
+    networks: [app, data, egress]
+    environment:
+      OLT_MODE: websocket
+      OLT_WS_URL: wss://olt.example.com/social
+      OLT_WS_TIMEOUT: 5
 ```
 
-Pesan yang dikirim dan dibaca auth-bridge:
+Pesan bawaan yang dikirim dan dibaca auth-bridge:
 
 ```jsonc
 // request (request_id = UUID v4 baru per login)
@@ -109,9 +128,7 @@ Pesan yang dikirim dan dibaca auth-bridge:
   "data": { "user": { "id": "1001", "username": "budi_santoso", "email": "…", "full_name": "Budi Santoso" } } }
 ```
 
-Untuk mencoba mode ini tanpa server OLT asli, jalankan `make up DUMMY_OLT=1`. Perintah ini memakai server OLT tiruan [`services/dummy-olt`](../dummy-olt/), yang juga berbicara Protokol v1. Profil itu hanya mengisi `OLT_MODE` dan `OLT_WS_URL`, persis seperti produksi.
-
-**Bila format OLT berbeda**, timpa default lewat `docker/.env` tanpa mengubah kode. Contoh: OLT membalas `{"action":"login_result","ok":true,"user":{"uid":1001,"nick":"budi"}}`:
+**Bila format OLT berbeda**, timpa default lewat environment tanpa mengubah kode. Contoh: OLT membalas `{"action":"login_result","ok":true,"user":{"uid":1001,"nick":"budi"}}`:
 
 ```dotenv
 OLT_WS_LOGIN_TEMPLATE={"action":"login","token":"{{token}}"}
@@ -123,6 +140,8 @@ OLT_WS_ERROR_MESSAGE_PATH=message
 OLT_WS_USER_ID_PATH=user.uid
 OLT_WS_USERNAME_PATH=user.nick
 ```
+
+Variabel lain: `OLT_WS_ORIGIN`, `OLT_WS_EMAIL_PATH`, `OLT_WS_DISPLAY_NAME_PATH`.
 
 Cara kerja adapter:
 - **Template login** di-parse sebagai JSON. Setiap nilai string berisi `{{token}}` atau `{{request_id}}` lalu diganti. Karena bekerja pada struktur JSON (bukan teks), token yang mengandung tanda kutip tidak bisa menyuntikkan JSON.
@@ -149,17 +168,22 @@ Cara kerja adapter:
 | `BREAKER_FAILURE_THRESHOLD` | `5` | Kegagalan OLT berturut-turut sebelum breaker terbuka |
 | `BREAKER_COOLDOWN` | `30` | Detik sebelum request uji ke OLT |
 | `TRUSTED_PROXIES` | jaringan privat | `X-Forwarded-For` hanya dipercaya dari proxy ini (Kong/Traefik). IP klien = IP paling kanan yang bukan proxy. Bila semua hop berupa IP privat (dev/service internal), dipakai hop paling kiri agar klien internal tidak berbagi satu kuota. XFF kiriman internet dibuang Traefik sebelum sampai ke sini |
-| `OLT_MODE` | `mock` | `mock` / `websocket` |
-| `OLT_WS_*` | Protokol v1 | Adapter WebSocket OLT, lihat di atas |
+| `OLT_MODE` | `mock` | `jwt` / `mock` / `websocket`. Compose: `jwt` (profil dev tanpa dummy: `mock`) |
+| `OLT_JWT_JWKS_FILE` | wajib di mode `jwt` | File JWKS kunci publik OLT. Compose: `/run/secrets/olt_jwks` |
+| `OLT_JWT_ISSUER` | `olt` | Nilai `iss` yang diterima |
+| `OLT_JWT_AUDIENCE` | `olt-social` | Nilai yang wajib ada di `aud` |
+| `OLT_JWT_MAX_TTL` | `900` | Umur maksimal token sosial (`exp - iat`), dalam detik |
+| `OLT_JWT_LEEWAY` | `30` | Toleransi selisih jam, dalam detik |
+| `OLT_WS_*` | Protokol v1 | Hanya mode `websocket`, lihat di atas |
 
 Di compose, variabel ini diisi dari `docker/.env` dengan awalan `AUTH_BRIDGE_` (mis. `AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE`).
 
 ## Development
 
 ```bash
-go test ./...                 # unit test (termasuk server WebSocket OLT tiruan & Valkey tiruan)
+go test ./...                 # unit test (verifier JWT, server WebSocket OLT tiruan, Valkey tiruan)
 go vet ./...
 make test-bridge              # dari root repo, tes di container Go
 ```
 
-Dependensi runtime: Go stdlib, `github.com/gorilla/websocket` (BSD-2-Clause), `github.com/redis/go-redis/v9` (BSD-2-Clause) beserta `cespare/xxhash` (MIT), `go.uber.org/atomic` (MIT), dan `golang.org/x/sys` (BSD-3-Clause). Khusus tes: `github.com/alicebob/miniredis/v2` (MIT).
+Dependensi runtime: Go stdlib (termasuk verifikasi JWT: `crypto/ed25519`, `crypto/ecdsa`), `github.com/gorilla/websocket` (BSD-2-Clause), `github.com/redis/go-redis/v9` (BSD-2-Clause) beserta `cespare/xxhash` (MIT), `go.uber.org/atomic` (MIT), dan `golang.org/x/sys` (BSD-3-Clause). Khusus tes: `github.com/alicebob/miniredis/v2` (MIT).

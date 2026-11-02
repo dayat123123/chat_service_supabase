@@ -1,15 +1,25 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { useAuth } from '@/features/auth/hooks'
+import type * as PresenceApiModule from '@/features/presence/api'
+import { presenceApi } from '@/features/presence/api'
+import type { AgentProfile } from '@/features/presence/types'
 import { agentFixture, messageFixture, ticketFixture } from '@/test/fixtures'
 import { renderWithProviders } from '@/test/render'
+import { dismissToasts, findToast, Toaster } from '@/test/toast'
 
 import type * as ApiModule from '../api'
 import { conversationApi } from '../api'
 import type { SendRequest } from '../hooks'
 import type { SendResult } from '../types'
 import { Composer } from './composer'
+
+vi.mock('@/features/presence/api', async (importOriginal) => {
+  const actual = await importOriginal<typeof PresenceApiModule>()
+  return { ...actual, presenceApi: { ...actual.presenceApi, setStatus: vi.fn() } }
+})
 
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof ApiModule>()
@@ -33,27 +43,37 @@ vi.mock('../api', async (importOriginal) => {
   }
 })
 
-function setup() {
+function setup(agent: AgentProfile = agentFixture) {
   const send = vi.fn<(request: SendRequest) => Promise<SendResult>>(() =>
     Promise.resolve({ status: 'sent', message: messageFixture() }),
   )
   const user = userEvent.setup()
   renderWithProviders(
-    <Composer
-      ticket={ticketFixture()}
-      agent={agentFixture}
-      replyTo={null}
-      onCancelReply={vi.fn()}
-      send={send}
-      onTyping={vi.fn()}
-      onStopTyping={vi.fn()}
-    />,
+    <>
+      <Composer
+        ticket={ticketFixture()}
+        agent={agent}
+        replyTo={null}
+        onCancelReply={vi.fn()}
+        send={send}
+        onTyping={vi.fn()}
+        onStopTyping={vi.fn()}
+      />
+      <Toaster />
+    </>,
+    agent,
   )
   return { send, user, box: screen.getByRole('textbox', { name: 'Balas' }) }
 }
 
+const offlineAgent: AgentProfile = { ...agentFixture, status: 'offline' }
+
 describe('Composer', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    window.localStorage.clear()
+  })
+  afterEach(dismissToasts)
 
   it('sends on Enter and clears the box', async () => {
     const { send, user, box } = setup()
@@ -123,6 +143,62 @@ describe('Composer', () => {
         payload: { options: ['Sudah', 'Belum'] },
       }),
     )
+  })
+
+  it('locks the reply box while Offline but keeps the draft and offers to go Online', async () => {
+    window.localStorage.setItem(
+      `cs-console.draft.${offlineAgent.id}.${ticketFixture().id}.reply`,
+      'Draf sebelum Offline',
+    )
+    const { send, user, box } = setup(offlineAgent)
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Anda sedang Offline. Ubah ke Online untuk mengetik dan mengirim balasan.',
+    )
+    expect(box).toBeDisabled()
+    expect(box).toHaveValue('Draf sebelum Offline')
+    for (const name of ['Lampirkan gambar', 'Sisipkan balasan cepat', 'Kirim lainnya', 'Kirim']) {
+      expect(screen.getByRole('button', { name })).toBeDisabled()
+    }
+
+    await user.type(box, 'tambahan')
+    expect(box).toHaveValue('Draf sebelum Offline')
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('unlocks the reply box after going Online from the hint', async () => {
+    vi.mocked(presenceApi.setStatus).mockResolvedValue({ ...agentFixture, status: 'online' })
+    const { user, box } = setup(offlineAgent)
+
+    await user.click(screen.getByRole('button', { name: 'Ubah ke Online' }))
+
+    expect(presenceApi.setStatus).toHaveBeenCalledWith('online', undefined)
+    await waitFor(() => expect(box).toBeEnabled())
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('guards special messages if the agent goes Offline while the dialog is open', async () => {
+    const { send, user } = setup()
+    await user.click(screen.getByRole('button', { name: 'Kirim lainnya' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Pilihan cepat' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Kirim pilihan cepat' })
+    await user.type(within(dialog).getByLabelText('Pertanyaan'), 'Dana sudah masuk?')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Pilihan 1' }), 'Sudah')
+    await user.type(within(dialog).getByRole('textbox', { name: 'Pilihan 2' }), 'Belum')
+    act(() => useAuth.getState().updateAgent(offlineAgent))
+    await user.click(within(dialog).getByRole('button', { name: 'Kirim' }))
+
+    await findToast('Anda sedang Offline. Ubah ke Online dulu untuk membalas nasabah.')
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  it('still saves internal notes while Offline', async () => {
+    const { user } = setup(offlineAgent)
+    await user.click(screen.getByRole('tab', { name: /Catatan internal/ }))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    await user.type(screen.getByRole('textbox', { name: 'Catatan internal' }), 'Telepon balik besok')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(conversationApi.addNote).toHaveBeenCalledTimes(1))
   })
 
   it('keeps a draft per ticket', async () => {

@@ -6,7 +6,7 @@
 #   single  produksi 1 server: Traefik HTTPS, Studio mati (make admin-up)
 #   cluster Docker Swarm (kerangka; dilengkapi Tahap 7)
 # PROD=1 adalah alias lama untuk PROFILE=single.
-# DUMMY_OLT=1 menambahkan OLT dummy + auth-bridge mode websocket (hanya profil dev).
+# DUMMY_OLT=1 menambahkan OLT dummy (penerbit token sosial) + auth-bridge mode jwt (hanya profil dev).
 # CS=1 menyalakan customer service lewat chat (web CS React) di profil single.
 
 PROFILE ?= dev
@@ -41,17 +41,18 @@ GO_IMG        := golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff
 TOOLS_IMG     := olt-social/tools:0.1.0
 ALPINE_IMG    := alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
 WEB_IMG       := caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
-PKG           := packages/olt_social
+PKG           := packages/rendezvous_community
 ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
                  s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri \
+                 olt_jwks \
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
-        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-flutter-it-dummy e2e-windows-dummy \
-        smoke-cs cs-race cs-demo cs-totp cs-staff cs-console-react test-cs-console e2e-cs-console
+        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-flutter-it-dummy e2e-windows-dummy \
+        smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -59,6 +60,7 @@ help: ## Tampilkan daftar target
 check-config:
 	@test -f $(ENV) || { echo "docker/.env belum ada. Jalankan: make gen-secrets"; exit 1; }
 	@for s in $(SECRET_NAMES); do test -s $(SECRETS)/$$s || { echo "Secret $$s belum ada. Jalankan: make gen-secrets"; exit 1; }; done
+	@test -f $(SECRETS)/csadmin_signing_key || : > $(SECRETS)/csadmin_signing_key
 	@! grep -q '=CHANGE_ME' $(ENV) || { echo "docker/.env masih berisi CHANGE_ME:"; grep '=CHANGE_ME' $(ENV); exit 1; }
 	@if [ "$(PROFILE)" != dev ]; then for k in PROXY_DOMAIN ACME_EMAIL; do \
 	  grep -qE "^$$k=.+" $(ENV) || { echo "Profil $(PROFILE): $$k wajib diisi di docker/.env"; exit 1; }; done; fi
@@ -96,7 +98,7 @@ migrate: check-config ## Jalankan migrasi baru di supabase/migrations
 seed: check-config ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt test-nasabah-gateway ## Tes backend (pgTAP + Go)
 
 test-db: check-config ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -153,15 +155,15 @@ web-example: check-config ## App example versi web di http://localhost:8081 (?us
 	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8081
 	@echo "App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)"
 
-license-audit: ## Audit lisensi dependensi runtime Flutter olt_social (tolak GPL/AGPL)
+license-audit: ## Audit lisensi dependensi runtime Flutter rendezvous_community (tolak GPL/AGPL)
 	cd $(PKG) && dart run tool/license_audit.dart
 
 # --- OLT dummy (development/testing) -------------------------------------------------
 
-dummy-token: check-config ## Token sesi OLT dummy: make dummy-token U=budi_santoso [TTL=1h]
-	@$(DUMMY_COMPOSE) run --rm --no-deps -T dummy-olt token $(or $(U),budi_santoso) $(if $(TTL),-ttl $(TTL))
+dummy-token: check-config ## Token sosial (JWT) OLT dummy untuk exchange: make dummy-token U=budi_santoso [TTL=5m]
+	@$(DUMMY_COMPOSE) run --rm --no-deps -T dummy-olt token $(or $(U),budi_santoso) -social $(if $(TTL),-ttl $(TTL))
 
-smoke-dummy: check-config ## Smoke test auth-bridge mode websocket vs OLT dummy (butuh up DUMMY_OLT=1)
+smoke-dummy: check-config ## Smoke test auth-bridge mode jwt vs token sosial OLT dummy (butuh up DUMMY_OLT=1)
 	$(DUMMY_COMPOSE) run --rm tools smoke-dummy
 
 smoke-cs: check-config ## Smoke test CS chat end-to-end lewat API asli (butuh up DUMMY_OLT=1)
@@ -172,14 +174,17 @@ cs-race: check-config ## Tes rebutan klaim tiket CS: DB langsung + 3 replika Pos
 	@for name in $(RACE_REST); do $(COMPOSE) run -d --no-deps -e PGRST_DB_POOL=3 --name $$name rest > /dev/null || exit 1; done
 	$(TOOLS) cs-race $(foreach name,$(RACE_REST),http://$(name):3000); 	  status=$$?; docker rm -f $(RACE_REST) > /dev/null; exit $$status
 
-cs-staff: check-config ## Akun staf dev (CS, supervisor, admin) dengan TOTP di scripts/cs-demo/runtime/staff.json
+cs-bootstrap-admin: check-config ## Super admin web CS pertama: make cs-bootstrap-admin EMAIL=nama@domain NAME="Nama" [FORCE=1] [PROFILE=single]
+	@$(TOOLS) cs-bootstrap-admin "$(EMAIL)" "$(NAME)" $(if $(FORCE),--force)
+
+cs-staff: check-config ## Akun staf dev (CS, super admin, kepatuhan) di scripts/cs-demo/runtime/staff.json
 	mkdir -p scripts/cs-demo/runtime
 	@(cat scripts/cs-demo/runtime/staff.json 2>/dev/null || echo '{}') | $(DUMMY_COMPOSE) run --rm -T tools cs-staff \
 	  > scripts/cs-demo/runtime/staff.json.new && mv scripts/cs-demo/runtime/staff.json.new scripts/cs-demo/runtime/staff.json
 
 cs-console-react: cs-staff ## Web CS React (container nginx) di http://localhost:8085 (butuh up DUMMY_OLT=1)
 	$(COMPOSE) up -d --build --wait traefik cs-console
-	@echo "Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json, kode TOTP: make cs-totp)"
+	@echo "Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json)"
 
 test-cs-console: ## Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
 	docker run --rm -v "$(CURDIR)/apps/cs-console-react:/app" -v /app/node_modules -v /app/dist -w /app $(NODE_IMG) \
@@ -187,9 +192,6 @@ test-cs-console: ## Lint, typecheck, unit test, build, ukuran bundle, lisensi we
 
 e2e-cs-console: cs-console-react ## E2E Playwright web CS React vs stack dev (butuh up DUMMY_OLT=1, Node 24 + Chromium Playwright)
 	cd apps/cs-console-react && E2E_BASE_URL=http://localhost:8085 npx playwright test
-
-cs-totp: check-config ## Kode TOTP saat ini untuk akun staf dev
-	@$(DUMMY_COMPOSE) run --rm -T tools cs-totp < scripts/cs-demo/runtime/staff.json
 
 cs-demo: check-config ## Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up DUMMY_OLT=1)
 	mkdir -p scripts/cs-demo/runtime
@@ -200,6 +202,9 @@ cs-demo: check-config ## Halaman demo CS (nasabah + panel agen) di http://localh
 
 test-dummy-olt: ## Unit test OLT dummy (Go, di container)
 	docker run --rm -v "$(CURDIR)/services/dummy-olt:/src" -w /src $(GO_IMG) go test ./...
+
+test-nasabah-gateway: ## Unit test gateway menu Nasabah (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/nasabah-gateway:/src" -w /src $(GO_IMG) go test ./...
 
 test-flutter-it-dummy: check-config ## Integration test Flutter: login lewat OLT dummy (butuh up DUMMY_OLT=1)
 	cd $(PKG) && OLT_SOCIAL_IT_DUMMY=1 flutter test test/integration/dummy_olt_integration_test.dart

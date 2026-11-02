@@ -1,11 +1,12 @@
 begin;
-select plan(83);
+select plan(82);
 
 update cs.tickets set status = 'closed', closed_at = now() where status <> 'closed';
 update cs.agent_status set status = 'offline';
 select cs.set_setting('service.hours',
   '{"1": ["00:00", "24:00"], "2": ["00:00", "24:00"], "3": ["00:00", "24:00"], "4": ["00:00", "24:00"], "5": ["00:00", "24:00"], "6": ["00:00", "24:00"], "7": ["00:00", "24:00"]}',
   null) as v \gset
+select cs.set_setting('assignment.mode', '"claim"', null) as claim_mode \gset
 delete from cs.holidays;
 
 select tests.create_user('tk_budi') as budi \gset
@@ -16,7 +17,7 @@ select tests.create_user('tk_ratna') as ratna \gset
 select tests.create_agent('Rina', '{cs_agent}', '{"general": 2, "account": 2}') as rina \gset
 select tests.create_agent('Dimas', '{cs_agent}', '{"trading": 3, "general": 1}', 'trading') as dimas \gset
 select tests.create_agent('Joko', '{cs_agent}', '{"complaint": 3, "general": 1}', 'complaints') as joko \gset
-select tests.create_agent('Sinta', '{cs_supervisor}', '{"general": 3}') as sinta \gset
+select tests.create_agent('Sinta', '{cs_super_admin}', '{"general": 3}') as sinta \gset
 
 select tests.authenticate_as(:'budi');
 select cs_api.open_ticket('account', 'id', 'help') as j \gset
@@ -114,11 +115,8 @@ select tests.authenticate_agent(:'rina');
 select throws_ok(format($$select cs_api.agent_send_message(%L, 'Masih saya bantu')$$, :'t1'), 'PT403', 'not_ticket_owner',
   'Pemilik lama tidak bisa membalas lagi');
 select tests.authenticate_agent(:'sinta');
-select throws_ok(format($$select cs_api.agent_send_message(%L, 'Halo')$$, :'t1'), 'PT403', 'not_ticket_owner',
-  'Supervisor harus bergabung sebelum membalas');
-select cs_api.join_ticket(:'t1') ->> 'id' as joined \gset
-select is(cs_api.agent_send_message(:'t1', 'Saya supervisor, ikut memantau') -> 'message' ->> 'sender_role', 'supervisor',
-  'Supervisor yang bergabung membalas sebagai supervisor');
+select throws_ok(format($$select cs_api.agent_send_message(%L, 'Halo')$$, :'t1'), 'PT403', 'role_forbidden',
+  'Supervisor hanya memantau, tidak membalas nasabah');
 
 select tests.authenticate_agent(:'joko');
 select throws_ok(format($$select cs_api.resolve_ticket(%L, 'answered', '')$$, :'t1'), 'PT400', 'summary_required',
@@ -255,14 +253,15 @@ reset role;
 select cs.set_setting('service.hours',
   (select jsonb_object_agg(d::text, '["08:00", "20:00"]'::jsonb) from generate_series(1, 7) d
    where d <> extract(isodow from now() at time zone 'Asia/Jakarta')), null) as v6 \gset
+update cs.agent_status set status = 'offline';
 select tests.authenticate_as(:'andi');
 select cs_api.open_ticket('technical', 'en') ->> 'room_id' as room3 \gset
 select ok((select bool_and(m.body like '%We are currently closed. An agent will reply from %')
-           from cs_api.get_messages(:'room3'::uuid) m), 'Di luar jam layanan, info jam buka digabung dalam pesan tiket dibuka');
+           from cs_api.get_messages(:'room3'::uuid) m), 'Di luar jam layanan tanpa CS Online, info jam buka digabung dalam pesan tiket dibuka');
 
 reset role;
 select ok((select array_agg(distinct type) from cs.session_events where session_id = :'t1')
-          @> '{opened,claimed,released,transfer_requested,transfer_rejected,transferred,reassigned,supervisor_joined,waiting_customer,customer_replied,resolved,reopened,closed}'::text[],
+          @> '{opened,claimed,released,transfer_requested,transfer_rejected,transferred,reassigned,waiting_customer,customer_replied,resolved,reopened,closed}'::text[],
   'Semua kejadian tiket tercatat dengan siapa dan kapan');
 select is((select count(*)::integer from cs.cs_audit_log where action = 'ticket.claim' and session_id = :'t1'), 3,
   'Setiap pengambilan tiket tercatat di audit log');

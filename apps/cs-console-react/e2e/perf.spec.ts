@@ -10,12 +10,6 @@ test.use({
 
 test('1000 tiket dan 5000 pesan tetap mulus saat digulir', async ({ page }) => {
   await signIn(page, 'Laras', { online: false })
-  await page.waitForFunction(() => {
-    const raw = sessionStorage.getItem('cs-console.auth')
-    const token = raw ? (JSON.parse(raw) as { access_token?: string }).access_token : undefined
-    const payload = token?.split('.')[1]
-    return payload ? atob(payload.replace(/-/g, '+').replace(/_/g, '/')).includes('"aal":"aal2"') : false
-  })
   await page.goto('/__perf')
   await expect(page.getByRole('heading', { name: 'Uji kinerja daftar' })).toBeVisible()
   await page.getByTestId('perf-run').click()

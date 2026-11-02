@@ -24,6 +24,7 @@ export type Database = {
       admin_holidays: { Args: { p_year: number }; Returns: Json }
       admin_options: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_quick_replies: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_reset_password: { Args: { p_agent_id: string }; Returns: Json }
       admin_save_holiday: {
         Args: { p_day: string; p_kind: string; p_name: string }
         Returns: Json
@@ -50,6 +51,10 @@ export type Database = {
           p_skill: string
           p_sort_order: number
         }
+        Returns: Json
+      }
+      admin_set_nasabah_permissions: {
+        Args: { p_agent_id: string; p_permissions: string[] }
         Returns: Json
       }
       admin_set_setting: {
@@ -91,6 +96,47 @@ export type Database = {
       check_sensitive: { Args: { p_text: string }; Returns: Json }
       claim_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       close_ticket: { Args: { p_ticket_id: string }; Returns: Json }
+      compliance_audit: {
+        Args: {
+          p_action?: string
+          p_before_at?: string
+          p_before_id?: number
+          p_from: string
+          p_limit?: number
+          p_query?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      compliance_case: { Args: { p_ticket_id: string }; Returns: Json }
+      compliance_cases: {
+        Args: {
+          p_from?: string
+          p_kind?: string
+          p_query?: string
+          p_state?: string
+          p_to?: string
+        }
+        Returns: Json
+      }
+      compliance_confirm_policy: {
+        Args: { p_key: string; p_note?: string; p_value: Json }
+        Returns: Json
+      }
+      compliance_extend_deadline: {
+        Args: { p_reason: string; p_ticket_id: string; p_version?: number }
+        Returns: Json
+      }
+      compliance_overview: { Args: Record<PropertyKey, never>; Returns: Json }
+      compliance_policies: { Args: Record<PropertyKey, never>; Returns: Json }
+      compliance_review: {
+        Args: { p_note: string; p_ticket_id: string; p_verdict: string }
+        Returns: Json
+      }
+      compliance_transcript_exported: {
+        Args: { p_messages: number; p_sha256: string; p_ticket_id: string }
+        Returns: Json
+      }
       customer_history: { Args: { p_customer_id: string }; Returns: Json }
       flag_ticket: {
         Args: { p_flag: string; p_ticket_id: string }
@@ -111,9 +157,13 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      join_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       mark_read: { Args: { p_room_id: string }; Returns: undefined }
       my_tickets: { Args: Record<PropertyKey, never>; Returns: Json }
+      nasabah_access: { Args: { p_user_id: string }; Returns: Json }
+      nasabah_audit: {
+        Args: { p_action: string; p_details: Json; p_user_id: string }
+        Returns: undefined
+      }
       notes: { Args: { p_customer_id: string }; Returns: Json }
       online_agents: { Args: Record<PropertyKey, never>; Returns: Json }
       open_ticket: {
@@ -199,6 +249,7 @@ export type Database = {
       }
       supervisor_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       support_home: { Args: Record<PropertyKey, never>; Returns: Json }
+      ticket_customer_login: { Args: { p_ticket_id: string }; Returns: Json }
       ticket_detail: { Args: { p_ticket_id: string }; Returns: Json }
       ticket_lists: { Args: Record<PropertyKey, never>; Returns: Json }
       ticket_messages: {
