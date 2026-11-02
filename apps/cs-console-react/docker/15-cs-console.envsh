@@ -16,6 +16,10 @@ cs_url=${SUPABASE_URL:-}
 cs_url=${cs_url%/}
 printf '%s' "$cs_url" | grep -Eq '^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$' \
     || cs_fail "SUPABASE_URL harus berupa origin http(s)://host[:port] tanpa path"
+cs_public=${PUBLIC_API_URL:-$cs_url}
+cs_public=${cs_public%/}
+printf '%s' "$cs_public" | grep -Eq '^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$' \
+    || cs_fail "PUBLIC_API_URL harus berupa origin http(s)://host[:port] tanpa path"
 printf '%s' "${SUPABASE_ANON_KEY:-}" | grep -Eq '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$' \
     || cs_fail "SUPABASE_ANON_KEY kosong atau bukan JWT"
 
@@ -25,12 +29,12 @@ case "$cs_env" in
     *) cs_fail "APP_ENV harus development, staging, atau production" ;;
 esac
 
-printf 'window.__CS_CONSOLE_ENV__ = Object.freeze({"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s","APP_ENV":"%s"});\n' \
-    "$cs_url" "$SUPABASE_ANON_KEY" "$cs_env" > /tmp/runtime/env.js || cs_fail "gagal menulis env.js"
+printf 'window.__CS_CONSOLE_ENV__ = Object.freeze({"SUPABASE_URL":"%s","SUPABASE_ANON_KEY":"%s","APP_ENV":"%s","PUBLIC_API_URL":"%s"});\n' \
+    "$cs_url" "$SUPABASE_ANON_KEY" "$cs_env" "$cs_public" > /tmp/runtime/env.js || cs_fail "gagal menulis env.js"
 
 CS_API_ORIGIN=$cs_url
 CS_API_WS_ORIGIN=$(printf '%s' "$cs_url" | sed 's#^http#ws#')
 export CS_API_ORIGIN CS_API_WS_ORIGIN
 
-unset SUPABASE_ANON_KEY cs_url cs_env
+unset SUPABASE_ANON_KEY cs_url cs_env cs_public
 echo "cs-console: env.js siap untuk $CS_API_ORIGIN"

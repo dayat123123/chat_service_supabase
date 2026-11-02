@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/cubit/feed_cubit.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/pinned_post_card.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -70,6 +71,11 @@ class _FeedListViewState extends State<_FeedListView> {
       listener: (context, state) => showCommunityError(context, state.actionError!),
       builder: (context, state) {
         final cubit = context.read<FeedCubit>();
+        final pinnedIds = {for (final pin in state.pinned) pin.post.id};
+        final posts = [
+          for (final post in state.posts)
+            if (!pinnedIds.contains(post.id)) post,
+        ];
         final Widget body = switch (state.status) {
           LoadStatus.initial || LoadStatus.loading => const CommunitySkeleton(),
           LoadStatus.failure => CommunityErrorView(error: state.error!, onRetry: cubit.load),
@@ -78,17 +84,23 @@ class _FeedListViewState extends State<_FeedListView> {
             child: ListView.builder(
               controller: _scroll,
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: state.posts.length + 2,
+              itemCount: posts.length + 2,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   return Column(
                     children: [
                       ?widget.header,
-                      if (state.posts.isEmpty) CommunityEmptyView(message: widget.emptyMessage),
+                      for (final pin in state.pinned)
+                        PinnedPostCard(
+                          pinned: pin,
+                          onLike: () => cubit.toggleLike(pin.post),
+                          onOpen: () => CommunityNavigator.openPost(context, pin.post.id),
+                        ),
+                      if (posts.isEmpty && state.pinned.isEmpty) CommunityEmptyView(message: widget.emptyMessage),
                     ],
                   );
                 }
-                if (index == state.posts.length + 1) {
+                if (index == posts.length + 1) {
                   return state.loadingMore
                       ? const Padding(
                           padding: EdgeInsets.all(16),
@@ -96,7 +108,7 @@ class _FeedListViewState extends State<_FeedListView> {
                         )
                       : const SizedBox(height: 32);
                 }
-                final post = state.posts[index - 1];
+                final post = posts[index - 1];
                 return Column(
                   children: [
                     PostCard(

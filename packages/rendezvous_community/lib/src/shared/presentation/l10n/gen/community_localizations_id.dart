@@ -720,6 +720,20 @@ class CommunityLocalizationsId extends CommunityLocalizations {
   String get supportClosed => 'Chat diakhiri.';
 
   @override
+  String get officialAccountBadge => 'Resmi';
+
+  @override
+  String get pinnedLabel => 'Disematkan';
+
+  @override
+  String get announcementLabel => 'Pengumuman';
+
+  @override
+  String notifAnnouncement(String name) {
+    return '$name membuat pengumuman';
+  }
+
+  @override
   String supportTicketClosedNotice(String ticket) {
     return 'Tiket #$ticket sudah ditutup dan tidak bisa dibalas lagi.';
   }

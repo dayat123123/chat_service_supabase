@@ -17,6 +17,22 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   }
 })
 
+vi.mock('@/features/community/api', () => ({
+  communityApi: {
+    overview: vi.fn(() =>
+      Promise.resolve({
+        pending_posts: 2,
+        scheduled_posts: 0,
+        pending_campaigns: 1,
+        open_reports: 4,
+        accounts: 1,
+        four_eyes: true,
+        push_ready: false,
+      }),
+    ),
+  },
+}))
+
 function navLinks() {
   return within(screen.getByRole('navigation', { name: 'Menu' }))
     .getAllByRole('link')
@@ -49,6 +65,16 @@ describe('TopBar', () => {
       nasabah_permissions: ['online_user.view'],
     })
     expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Akun Nasabah', 'Pengaturan'])
+  })
+
+  it('shows only Komunitas to community staff, with the items they can act on', async () => {
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, {
+      ...agentFixture,
+      roles: ['community'],
+      community_permissions: ['community.publish'],
+    })
+    expect(navLinks()).toEqual(['Komunitas'])
+    expect(await screen.findByLabelText('3 perlu tindakan di Komunitas')).toBeInTheDocument()
   })
 
   it('shows Akun Nasabah after Layanan Nasabah to plain CS accounts with customer access', () => {

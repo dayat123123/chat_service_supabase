@@ -27,8 +27,10 @@ import {
   MonitorIndicator,
   StatusMenu,
 } from '@/features/presence/components/status-menu'
+import { useCommunityBadge } from '@/features/community/hooks'
 import {
   canViewTickets,
+  hasCommunityAccess,
   hasNasabah,
   isCompliance,
   isMonitor,
@@ -50,6 +52,7 @@ type NavTarget =
   | '/compliance/policy'
   | '/compliance/words'
   | '/nasabah'
+  | '/community'
 
 function NavLink({
   to,
@@ -196,6 +199,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
   const monitor = isMonitor(agent)
   const superAdmin = isSuperAdmin(agent)
   const compliance = isCompliance(agent)
+  const communityCount = useCommunityBadge()
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3 lg:px-4">
       <Logo className="mr-2 hidden sm:flex" />
@@ -208,6 +212,14 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
           </>
         ) : null}
         {hasNasabah(agent) ? <NavLink to="/nasabah" label={t('nav.nasabah')} /> : null}
+        {hasCommunityAccess(agent) ? (
+          <NavLink
+            to="/community"
+            label={t('nav.community')}
+            count={communityCount || undefined}
+            countLabel={t('nav.communityAttention', { count: communityCount })}
+          />
+        ) : null}
         {superAdmin ? <NavLink to="/settings" label={t('nav.settings')} /> : null}
         {compliance ? (
           <>

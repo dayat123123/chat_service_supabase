@@ -68,17 +68,24 @@ export function useSaveAccount() {
       id,
       draft,
       nasabah,
+      community,
     }: {
       id: string | null
       draft: AccountDraft
       nasabah?: string[]
+      community?: string[]
     }) => {
-      const saved =
+      let saved =
         id === null
           ? await settingsApi.createAccount(draft)
           : { agent: await settingsApi.updateAccount(id, draft), temporary_password: null }
-      if (!nasabah || sameSet(nasabah, saved.agent.nasabah_permissions)) return saved
-      return { ...saved, agent: await settingsApi.setNasabahPermissions(saved.agent.id, nasabah) }
+      if (nasabah && !sameSet(nasabah, saved.agent.nasabah_permissions)) {
+        saved = { ...saved, agent: await settingsApi.setNasabahPermissions(saved.agent.id, nasabah) }
+      }
+      if (community && !sameSet(community, saved.agent.community_permissions)) {
+        saved = { ...saved, agent: await settingsApi.setCommunityPermissions(saved.agent.id, community) }
+      }
+      return saved
     },
     onSuccess: ({ agent }) => putAccount(client, agent),
   })

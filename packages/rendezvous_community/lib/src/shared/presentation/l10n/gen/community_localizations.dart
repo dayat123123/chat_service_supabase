@@ -1322,6 +1322,30 @@ abstract class CommunityLocalizations {
   /// **'Chat diakhiri.'**
   String get supportClosed;
 
+  /// No description provided for @officialAccountBadge.
+  ///
+  /// In id, this message translates to:
+  /// **'Resmi'**
+  String get officialAccountBadge;
+
+  /// No description provided for @pinnedLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Disematkan'**
+  String get pinnedLabel;
+
+  /// No description provided for @announcementLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengumuman'**
+  String get announcementLabel;
+
+  /// No description provided for @notifAnnouncement.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} membuat pengumuman'**
+  String notifAnnouncement(String name);
+
   /// No description provided for @supportTicketClosedNotice.
   ///
   /// In id, this message translates to:

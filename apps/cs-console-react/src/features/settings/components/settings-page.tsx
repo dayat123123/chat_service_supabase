@@ -1,5 +1,6 @@
 import {
   CalendarClockIcon,
+  MegaphoneIcon,
   MessageSquareTextIcon,
   MessagesSquareIcon,
   PlugZapIcon,
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils'
 import type { SettingsSection } from '../types'
 import { AccountsSection } from './accounts-section'
 import { AssignmentSection } from './assignment-section'
+import { CommunitySection } from './community-section'
 import { HoursSection } from './hours-section'
 import { IntegrationBadge, IntegrationSection } from './integration-section'
 import { MessagesSection } from './messages-section'
@@ -30,6 +32,7 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
   { id: 'hours', icon: CalendarClockIcon },
   { id: 'messages', icon: MessagesSquareIcon },
   { id: 'assignment', icon: SlidersHorizontalIcon },
+  { id: 'community', icon: MegaphoneIcon },
   { id: 'integration', icon: PlugZapIcon },
 ]
 
@@ -40,6 +43,7 @@ const content: Record<SettingsSection, () => React.ReactNode> = {
   hours: () => <HoursSection />,
   messages: () => <MessagesSection />,
   assignment: () => <AssignmentSection />,
+  community: () => <CommunitySection />,
   integration: () => <IntegrationSection />,
 }
 

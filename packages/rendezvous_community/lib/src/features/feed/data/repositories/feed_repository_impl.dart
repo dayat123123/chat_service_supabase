@@ -3,6 +3,7 @@ import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
 import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
 import 'package:rendezvous_community/src/core/paging/paged.dart';
 import 'package:rendezvous_community/src/features/feed/data/models/feed_post_model.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/pinned_post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
 import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
@@ -41,6 +42,27 @@ class FeedRepositoryImpl implements FeedRepository {
   Future<Post?> getPost(String postId) async {
     final rows = await _api.rpcRows('get_post', {'p_post_id': postId});
     return rows.isEmpty ? null : FeedPostModel.fromJson(rows.first).toEntity();
+  }
+
+  @override
+  Future<List<PinnedPost>> getPinned(FeedScope scope) async {
+    final params = switch (scope) {
+      GlobalFeedScope() => <String, Object?>{'p_scope': 'global'},
+      StockFeedScope(:final code) => <String, Object?>{'p_scope': 'stock', 'p_stock_code': code},
+      _ => null,
+    };
+    if (params == null) return const [];
+    final rows = await _api.rpcRows('get_pinned_posts', params);
+    return [
+      for (final row in rows)
+        if (row['post'] is Map<String, dynamic>)
+          PinnedPost(
+            post: FeedPostModel.fromJson(row['post'] as Map<String, dynamic>).toEntity(),
+            announcement: row['kind'] == 'announcement',
+            title: row['title'] as String?,
+            pinnedUntil: DateTime.tryParse(row['pinned_until'] as String? ?? ''),
+          ),
+    ];
   }
 
   @override

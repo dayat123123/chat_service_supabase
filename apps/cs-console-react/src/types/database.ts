@@ -53,6 +53,10 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_community_permissions: {
+        Args: { p_agent_id: string; p_permissions: string[] }
+        Returns: Json
+      }
       admin_set_nasabah_permissions: {
         Args: { p_agent_id: string; p_permissions: string[] }
         Returns: Json
@@ -96,6 +100,143 @@ export type Database = {
       check_sensitive: { Args: { p_text: string }; Returns: Json }
       claim_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       close_ticket: { Args: { p_ticket_id: string }; Returns: Json }
+      community_accounts: { Args: Record<PropertyKey, never>; Returns: Json }
+      community_audience_size: {
+        Args: { p_audience: string; p_stock?: string }
+        Returns: number
+      }
+      community_campaigns: { Args: { p_status?: string }; Returns: Json }
+      community_cancel_campaign: {
+        Args: { p_id: string; p_version?: number }
+        Returns: Json
+      }
+      community_cancel_post: {
+        Args: { p_id: string; p_version?: number }
+        Returns: Json
+      }
+      community_delete_post: {
+        Args: { p_id: string; p_reason: string }
+        Returns: Json
+      }
+      community_find_users: { Args: { p_query: string }; Returns: Json }
+      community_overview: { Args: Record<PropertyKey, never>; Returns: Json }
+      community_pin_post: {
+        Args: {
+          p_id: string
+          p_scope: string
+          p_stock?: string
+          p_until?: string
+        }
+        Returns: Json
+      }
+      community_posts: { Args: { p_status?: string }; Returns: Json }
+      community_reports: {
+        Args: { p_limit?: number; p_status?: string }
+        Returns: Json
+      }
+      community_resolve_report: {
+        Args: {
+          p_action: string
+          p_reason: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: Json
+      }
+      community_review_campaign: {
+        Args: {
+          p_approve: boolean
+          p_id: string
+          p_note?: string
+          p_version?: number
+        }
+        Returns: Json
+      }
+      community_review_post: {
+        Args: {
+          p_approve: boolean
+          p_id: string
+          p_note?: string
+          p_version?: number
+        }
+        Returns: Json
+      }
+      community_revoke_sanction: {
+        Args: { p_reason: string; p_sanction_id: string }
+        Returns: Json
+      }
+      community_revoke_sessions: {
+        Args: { p_reason: string; p_user_id: string }
+        Returns: Json
+      }
+      community_sanction_user: {
+        Args: {
+          p_duration_hours?: number
+          p_kind?: string
+          p_reason: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      community_save_account: {
+        Args: {
+          p_avatar_url?: string
+          p_bio?: string
+          p_display_name: string
+          p_id: string
+          p_username: string
+        }
+        Returns: Json
+      }
+      community_save_campaign: {
+        Args: {
+          p_account_id: string
+          p_audience?: string
+          p_audience_stock?: string
+          p_body: string
+          p_id: string
+          p_link_post_id?: string
+          p_link_url?: string
+          p_send_at?: string
+          p_title: string
+          p_version?: number
+        }
+        Returns: Json
+      }
+      community_save_post: {
+        Args: {
+          p_account_id: string
+          p_attachments?: Json
+          p_body: string
+          p_id: string
+          p_kind: string
+          p_notify?: boolean
+          p_pin_scope?: string
+          p_pin_stock?: string
+          p_pin_until?: string
+          p_publish_at?: string
+          p_title: string
+          p_version?: number
+        }
+        Returns: Json
+      }
+      community_set_account_disabled: {
+        Args: { p_disabled: boolean; p_id: string }
+        Returns: Json
+      }
+      community_set_verified: {
+        Args: { p_reason: string; p_user_id: string; p_verified: boolean }
+        Returns: Json
+      }
+      community_submit_campaign: {
+        Args: { p_id: string; p_version?: number }
+        Returns: Json
+      }
+      community_submit_post: {
+        Args: { p_id: string; p_version?: number }
+        Returns: Json
+      }
+      community_user: { Args: { p_user_id: string }; Returns: Json }
       compliance_add_banned_word: {
         Args: { p_action: string; p_word: string }
         Returns: Json

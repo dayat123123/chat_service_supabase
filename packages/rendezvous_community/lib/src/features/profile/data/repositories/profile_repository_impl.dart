@@ -28,6 +28,12 @@ class ProfileRepositoryImpl implements ProfileRepository {
   }
 
   @override
+  Future<Set<String>> officialAccountIds() async {
+    final rows = await _api.rpcRows('get_official_accounts');
+    return {for (final row in rows) row['id'] as String};
+  }
+
+  @override
   Future<String> uploadAvatar(Uint8List bytes, {required String mimeType}) async {
     final me = await _api.requireUserId();
     final path = '$me/avatar-${DateTime.now().millisecondsSinceEpoch}.${imageExtension(mimeType)}';

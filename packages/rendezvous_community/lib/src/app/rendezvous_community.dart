@@ -35,6 +35,7 @@ import 'package:rendezvous_community/src/features/support/data/repositories/supp
 import 'package:rendezvous_community/src/features/support/data/repositories/support_repository_impl.dart';
 import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/domain/official_accounts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RendezvousCommunity implements CommunityDependencies, CommunitySupportDependencies {
@@ -217,6 +218,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
   final SupportRepository support;
   @override
   final ChatRepository supportChat;
+  late final OfficialAccounts officialAccounts = OfficialAccounts(profiles.officialAccountIds);
 
   @override
   UserSummary? get currentUser => _tokens.currentSession?.user;

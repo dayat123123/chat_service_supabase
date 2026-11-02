@@ -46,15 +46,19 @@ export function useFreshPermissions(enabled = true) {
     const phase = useAuth.getState().phase
     if (!me.data || phase.kind !== 'ready') return
     const ready = me.data.settings.nasabah_ready
+    const fourEyes = me.data.settings.community_four_eyes
     if (
       sameSet(phase.agent.nasabah_permissions, me.data.nasabah_permissions) &&
-      phase.agent.settings.nasabah_ready === ready
+      sameSet(phase.agent.community_permissions, me.data.community_permissions) &&
+      phase.agent.settings.nasabah_ready === ready &&
+      phase.agent.settings.community_four_eyes === fourEyes
     )
       return
     updateAgent({
       ...phase.agent,
       nasabah_permissions: me.data.nasabah_permissions,
-      settings: { ...phase.agent.settings, nasabah_ready: ready },
+      community_permissions: me.data.community_permissions,
+      settings: { ...phase.agent.settings, nasabah_ready: ready, community_four_eyes: fourEyes },
     })
   }, [me.data, updateAgent])
 }

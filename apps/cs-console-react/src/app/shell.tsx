@@ -51,7 +51,7 @@ export function Shell() {
   )
 
   useTicketRealtime(agent.id, tickets, superAdmin)
-  useFreshPermissions(worker || superAdmin)
+  useFreshPermissions()
   useHeartbeat()
   useStatusOnClose(worker)
   useResumeStatus(worker)

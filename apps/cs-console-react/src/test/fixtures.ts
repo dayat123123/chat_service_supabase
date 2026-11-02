@@ -15,6 +15,7 @@ export const agentFixture: AgentProfile = {
   active_tickets: 1,
   skills: {},
   nasabah_permissions: [],
+  community_permissions: [],
   settings: {
     ...defaultSettings,
     outcomes: { answered: { id: 'Terjawab', en: 'Answered' } },

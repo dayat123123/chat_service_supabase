@@ -10,6 +10,8 @@ export type AgentSettings = {
   assignment_mode: string
   outcomes: Record<string, Localized>
   nasabah_ready: boolean
+  community_four_eyes: boolean
+  community_push_ready: boolean
 }
 
 export type AgentProfile = {
@@ -25,6 +27,7 @@ export type AgentProfile = {
   active_tickets: number
   skills: Record<string, number>
   nasabah_permissions: string[]
+  community_permissions: string[]
   settings: AgentSettings
 }
 
@@ -46,6 +49,8 @@ export const defaultSettings: AgentSettings = {
   assignment_mode: 'claim',
   outcomes: {},
   nasabah_ready: false,
+  community_four_eyes: true,
+  community_push_ready: false,
 }
 
 export function normalizeAgent(raw: AgentProfile): AgentProfile {
@@ -54,6 +59,7 @@ export function normalizeAgent(raw: AgentProfile): AgentProfile {
     status: agentStatuses.includes(raw.status) ? raw.status : 'offline',
     roles: raw.roles ?? [],
     nasabah_permissions: raw.nasabah_permissions ?? [],
+    community_permissions: raw.community_permissions ?? [],
     settings: { ...defaultSettings, ...raw.settings },
   }
 }
@@ -64,6 +70,8 @@ export const hasNasabah = (agent: Pick<AgentProfile, 'nasabah_permissions'>) =>
   agent.nasabah_permissions.length > 0
 export const isCompliance = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.includes('compliance')
 export const isMonitor = (agent: Pick<AgentProfile, 'roles'>) => isSuperAdmin(agent) && !worksTickets(agent)
+export const hasCommunityAccess = (agent: Pick<AgentProfile, 'community_permissions'>) =>
+  agent.community_permissions.length > 0
 export const canViewTickets = (agent: Pick<AgentProfile, 'roles'>) =>
   worksTickets(agent) || isSuperAdmin(agent)
 export const atCapacity = (agent: Pick<AgentProfile, 'active_tickets' | 'max_active_tickets'>) =>

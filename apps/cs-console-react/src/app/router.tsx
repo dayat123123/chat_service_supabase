@@ -6,9 +6,11 @@ import {
   redirect,
 } from '@tanstack/react-router'
 
+import { communityTabs, type CommunityTab } from '@/features/community/types'
 import { caseStates, type CaseState } from '@/features/compliance/types'
 import {
   canViewTickets,
+  hasCommunityAccess,
   hasNasabah,
   isCompliance,
   isSuperAdmin,
@@ -43,6 +45,7 @@ const homeRoute = createRoute({
     if (canViewTickets(context.agent)) return
     if (isCompliance(context.agent)) throw redirect({ to: '/compliance' })
     if (hasNasabah(context.agent)) throw redirect({ to: '/nasabah' })
+    if (hasCommunityAccess(context.agent)) throw redirect({ to: '/community' })
   },
   component: Home,
 })
@@ -140,6 +143,22 @@ const nasabahRoute = createRoute({
   component: lazyRouteComponent(() => import('@/features/nasabah/components/nasabah-page'), 'NasabahPage'),
 })
 
+const communityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/community',
+  validateSearch: (search: Record<string, unknown>): { tab?: CommunityTab } => {
+    const tab = text(search.tab)
+    return communityTabs.includes(tab as CommunityTab) ? { tab: tab as CommunityTab } : {}
+  },
+  beforeLoad: ({ context }) => {
+    if (!hasCommunityAccess(context.agent)) throw redirect({ to: '/' })
+  },
+  component: lazyRouteComponent(
+    () => import('@/features/community/components/community-page'),
+    'CommunityPage',
+  ),
+})
+
 const perfRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/__perf',
@@ -160,6 +179,7 @@ const routeTree = rootRoute.addChildren([
   compliancePolicyRoute,
   complianceWordsRoute,
   nasabahRoute,
+  communityRoute,
   perfRoute,
 ])
 

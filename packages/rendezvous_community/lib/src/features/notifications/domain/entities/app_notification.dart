@@ -4,7 +4,7 @@ import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'app_notification.freezed.dart';
 
-enum NotificationType { reply, mention, like, follow, message }
+enum NotificationType { reply, mention, like, follow, message, announcement }
 
 @freezed
 abstract class AppNotification with _$AppNotification {
@@ -27,4 +27,7 @@ abstract class AppNotification with _$AppNotification {
   String? get roomId => payload['room_id'] as String?;
   String? get snippet => payload['snippet'] as String?;
   String? get targetType => payload['target_type'] as String?;
+  String? get title => payload['title'] as String?;
+  String? get body => payload['body'] as String?;
+  String? get url => payload['url'] as String?;
 }

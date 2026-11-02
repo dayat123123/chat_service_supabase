@@ -784,6 +784,7 @@ services:
     secrets: [anon_key]
     environment:
       SUPABASE_URL: ${CS_CONSOLE_API_URL:-http://localhost:8000}
+      PUBLIC_API_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:8000}
       SUPABASE_ANON_KEY_FILE: /run/secrets/anon_key
       APP_ENV: production
     healthcheck:

@@ -35,6 +35,7 @@ import { Tooltip } from '@/components/ui/menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useAgent } from '@/features/auth/hooks'
 import { useNasabahLabels } from '@/features/nasabah/labels'
+import { communityPermissions } from '@/features/community/types'
 import { nasabahPermissions } from '@/features/nasabah/types'
 import { errorText } from '@/lib/error-text'
 import { toApiError } from '@/lib/errors'
@@ -61,6 +62,7 @@ const editSchema = z.object({
     .refine((value) => /^\d{1,2}$/.test(value) && Number(value) >= 1 && Number(value) <= 20),
   active: z.boolean(),
   nasabah: z.array(z.string()),
+  community: z.array(z.string()),
 })
 
 const createSchema = editSchema.extend({
@@ -114,6 +116,7 @@ function AccountDialog({
       limit: String(account?.max_active_tickets ?? 5),
       active: account ? account.disabled_at === null : true,
       nasabah: account?.nasabah_permissions ?? [],
+      community: account?.community_permissions ?? [],
     },
   })
   const errors = form.formState.errors
@@ -135,7 +138,8 @@ function AccountDialog({
       const nasabah = values.roles.includes('cs_agent')
         ? nasabahPermissions.filter((permission) => values.nasabah.includes(permission))
         : []
-      const result = await save.mutateAsync({ id: account?.id ?? null, draft, nasabah })
+      const community = communityPermissions.filter((permission) => values.community.includes(permission))
+      const result = await save.mutateAsync({ id: account?.id ?? null, draft, nasabah, community })
       onClose()
       if ('temporary_password' in result && typeof result.temporary_password === 'string') {
         onCreated({ agent: result.agent, temporary_password: result.temporary_password })
@@ -293,6 +297,39 @@ function AccountDialog({
               />
             </fieldset>
           ) : null}
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-medium">{t('settings.communityAccess')}</legend>
+            <p className="text-xs text-muted-foreground">{t('settings.communityHint')}</p>
+            <Controller
+              control={form.control}
+              name="community"
+              render={({ field }) => (
+                <div className="flex flex-col gap-1.5">
+                  {communityPermissions.map((permission) => (
+                    <label key={permission} className="flex items-start gap-2 text-row">
+                      <Checkbox
+                        className="mt-0.5"
+                        checked={field.value.includes(permission)}
+                        onCheckedChange={(value) =>
+                          field.onChange(
+                            value === true
+                              ? [...field.value, permission]
+                              : field.value.filter((item) => item !== permission),
+                          )
+                        }
+                      />
+                      <span>
+                        <span className="block">{t(`community.permissions.${permission}`)}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {t(`community.permissionHints.${permission}`)}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            />
+          </fieldset>
           {editing ? (
             <div className="flex flex-col gap-2">
               <Controller
