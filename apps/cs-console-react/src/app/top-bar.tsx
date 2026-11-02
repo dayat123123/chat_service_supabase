@@ -48,6 +48,7 @@ type NavTarget =
   | '/compliance/cases'
   | '/compliance/audit'
   | '/compliance/policy'
+  | '/compliance/words'
   | '/nasabah'
 
 function NavLink({
@@ -219,6 +220,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
             />
             <NavLink to="/compliance/audit" label={t('nav.audit')} />
             <NavLink to="/compliance/policy" label={t('nav.policy')} />
+            <NavLink to="/compliance/words" label={t('nav.words')} />
           </>
         ) : null}
       </nav>

@@ -29,6 +29,24 @@ const nasabahCodes = [
 
 type NasabahCode = (typeof nasabahCodes)[number]
 
+const bannedWordCodes = [
+  'invalid_banned_word',
+  'invalid_banned_action',
+  'banned_word_exists',
+  'banned_word_not_found',
+  'banned_word_limit',
+  'import_conflict',
+  'import_too_large',
+  'invalid_import',
+  'unsupported_file',
+  'unreadable_file',
+] as const
+
+type BannedWordCode = (typeof bannedWordCodes)[number]
+
+const isBannedWordCode = (code: string): code is BannedWordCode =>
+  (bannedWordCodes as readonly string[]).includes(code)
+
 const isNasabahCode = (code: string): code is NasabahCode =>
   (nasabahCodes as readonly string[]).includes(code)
 
@@ -36,6 +54,7 @@ export function errorText(error: unknown): string {
   const e = toApiError(error)
   const t = i18n.t.bind(i18n)
   if (isNasabahCode(e.code)) return t(`nasabah.errors.${e.code}`)
+  if (isBannedWordCode(e.code)) return t(`compliance.words.errors.${e.code}`)
   switch (e.code) {
     case 'invalid_credentials':
       return t('errors.invalidLogin')

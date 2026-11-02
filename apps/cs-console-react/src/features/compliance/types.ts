@@ -154,3 +154,11 @@ export type PolicyChange = {
 export type PolicyBook = { policies: Policy[]; history: PolicyChange[] }
 
 export type TranscriptExport = { ticket_id: string; sha256: string; exported_at: string }
+
+export type BannedAction = 'mask' | 'block'
+
+export type BannedWord = { word: string; action: BannedAction; created_at: string }
+
+export type BannedWordList = { limit: number; words: BannedWord[] }
+
+export type BannedImportResult = BannedWordList & { added: number; updated: number; unchanged: number }

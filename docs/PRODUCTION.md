@@ -161,7 +161,7 @@ Moderasi dijalankan lewat fungsi di schema `admin_api`. Panel admin web (F1) mem
 | Sanksi bertingkat | `admin_api.sanction_user(user_id, alasan)`. Tanpa `p_kind`, tangga dipakai: peringatan → mute 1 jam → mute 24 jam → ban 7 hari → ban permanen |
 | Cabut sanksi / sesi | `admin_api.revoke_sanction(id, alasan)` / `admin_api.revoke_user_sessions(user_id, alasan)` |
 | Detail user | `admin_api.user_detail(user_id)`. Email hanya untuk compliance/super, dan setiap aksesnya dicatat |
-| Kata terlarang | `admin_api.upsert_banned_word(kata, 'mask' \| 'block')` / `admin_api.delete_banned_word(kata)` |
+| Kata terlarang | Web CS: **Kepatuhan → Kata terlarang** (tambah, ubah aksi, hapus, import/unduh Excel). Lewat API: `admin_api.upsert_banned_word(kata, 'mask' \| 'block')` / `admin_api.delete_banned_word(kata)` |
 | Trust & verifikasi | `admin_api.set_trust_level(user_id, 0..3, alasan)` / `admin_api.set_verified(user_id, true, alasan)` |
 | Syarat & Ketentuan | `admin_api.publish_legal_document('terms', judul, isi)`. User wajib menyetujui ulang versi baru |
 | Pengaturan | `admin_api.update_setting(key, value)`. Contoh: `retention.archive_days`, `rate_limit.new_account_factor` |
@@ -231,7 +231,7 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 
 **Data & operasional**
 - [ ] Cron backup aktif, salinan offsite tersedia, restore sudah diuji.
-- [ ] Daftar kata terlarang dan rate limit sudah ditinjau tim compliance.
+- [ ] Daftar kata terlarang (web CS, Kepatuhan → Kata terlarang) dan rate limit sudah ditinjau tim compliance.
 - [ ] Prosedur moderasi (bagian 5) sudah disosialisasikan.
 - [ ] DNS dan sertifikat HTTPS valid (Traefik memperbarui otomatis).
 

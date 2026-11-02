@@ -119,6 +119,16 @@ const compliancePolicyRoute = createRoute({
   ),
 })
 
+const complianceWordsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance/words',
+  beforeLoad: complianceOnly,
+  component: lazyRouteComponent(
+    () => import('@/features/compliance/components/banned-words-page'),
+    'BannedWordsPage',
+  ),
+})
+
 const nasabahRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/nasabah',
@@ -148,6 +158,7 @@ const routeTree = rootRoute.addChildren([
   complianceCasesRoute,
   complianceAuditRoute,
   compliancePolicyRoute,
+  complianceWordsRoute,
   nasabahRoute,
   perfRoute,
 ])
