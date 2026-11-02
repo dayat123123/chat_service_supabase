@@ -43,6 +43,7 @@ Pemilik produk mendelegasikan pilihan ke tim. Yang dipilih beserta alasannya:
      - Gambar (JPEG, PNG, WebP, GIF, maksimal 5 MB, bucket `attachments`) untuk screenshot dan foto bukti.
      - PDF (maksimal 10 MB, bucket privat `cs-documents`) untuk bukti transfer dari internet banking, formulir, dan surat.
      - Maksimal 4 lampiran per pesan.
+     - Di web CS, lampiran bisa dipilih lewat tombol klip, diseret ke kotak balas, atau ditempel seperti di WhatsApp: tekan Print Screen (atau Win+Shift+S), lalu Ctrl+V di mana saja pada percakapan. Klik thumbnail untuk melihat pratinjau besar sebelum dikirim. Gambar di atas 5 MB otomatis dikecilkan menjadi JPEG (sisi terpanjang 2560 px, lalu 1920 px bila masih terlalu besar) sebelum diunggah.
      - Video, voice note, file Office, arsip, dan HEIC ditolak database (`attachment_not_allowed`): berat, sulit ditinjau Kepatuhan, dan file Office bisa membawa makro. Nasabah diminta mengirim screenshot atau PDF.
      - PDF hanya bisa diunggah dan dibaca nasabah pemilik room dan CS yang menangani tiketnya; Kepatuhan bisa membaca untuk tiket berflag.
      - Chat global tetap hanya gambar (migrasi `0053`, `0054`).

@@ -68,6 +68,12 @@ function setup(agent: AgentProfile = agentFixture) {
 
 const offlineAgent: AgentProfile = { ...agentFixture, status: 'offline' }
 
+function screenshot(name = 'image.png') {
+  const file = new File(['png'], name, { type: 'image/png' })
+  const clipboardData = { items: [{ kind: 'file', type: file.type, getAsFile: () => file }] }
+  return { file, clipboardData }
+}
+
 describe('Composer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -210,11 +216,43 @@ describe('Composer', () => {
 
     const pdf = new File([new Uint8Array(2048)], 'Bukti Transfer.pdf', { type: 'application/pdf' })
     fireEvent.change(input!, { target: { files: [pdf] } })
-    expect(screen.getByText('Bukti Transfer.pdf')).toBeVisible()
+    expect(await screen.findByText('Bukti Transfer.pdf')).toBeVisible()
     expect(screen.getByText('2 KB')).toBeVisible()
     await user.click(screen.getByRole('button', { name: 'Kirim' }))
     await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
     expect(send.mock.calls[0]?.[0]?.files?.map((item) => item.file)).toEqual([pdf])
+  })
+
+  it('attaches a screenshot pasted anywhere in the conversation, like WhatsApp', async () => {
+    const { box } = setup()
+    fireEvent.paste(document.body, { clipboardData: screenshot().clipboardData })
+    expect(await screen.findByRole('button', { name: 'Lihat image.png' })).toBeVisible()
+    expect(box).toHaveFocus()
+  })
+
+  it('shows a large preview of a pasted image before it is sent', async () => {
+    const { send, user, box } = setup()
+    const shot = screenshot()
+    fireEvent.paste(box, { clipboardData: shot.clipboardData })
+    await user.click(await screen.findByRole('button', { name: 'Lihat image.png' }))
+    const preview = screen.getByRole('dialog', { name: 'Pratinjau lampiran' })
+    expect(within(preview).getByRole('img', { name: 'image.png' })).toBeVisible()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Kirim' }))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+    expect(send.mock.calls[0]?.[0]?.files?.map((item) => item.file)).toEqual([shot.file])
+  })
+
+  it('leaves pasted images alone in other fields and in internal notes', async () => {
+    const { user } = setup()
+    const search = document.createElement('input')
+    document.body.append(search)
+    fireEvent.paste(search, { clipboardData: screenshot().clipboardData })
+    await user.click(screen.getByRole('tab', { name: /Catatan internal/ }))
+    fireEvent.paste(document.body, { clipboardData: screenshot().clipboardData })
+    await act(() => Promise.resolve())
+    expect(screen.queryByRole('button', { name: /^Lihat / })).not.toBeInTheDocument()
+    search.remove()
   })
 
   it('keeps a draft per ticket', async () => {
