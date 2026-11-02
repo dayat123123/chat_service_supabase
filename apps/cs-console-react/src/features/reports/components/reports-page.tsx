@@ -32,6 +32,7 @@ import {
   type ReportSummary,
   type TopicCount,
 } from '../types'
+import { CustomersSection } from './customers-section'
 import { DailyChart } from './daily-chart'
 import { SortableTable } from './sortable-table'
 
@@ -332,6 +333,7 @@ export function ReportsPage() {
             <Skeleton className="h-2 w-2/3" />
           </div>
         )}
+        <CustomersSection range={range} />
       </div>
     </div>
   )

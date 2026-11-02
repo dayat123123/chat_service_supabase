@@ -94,6 +94,7 @@ class _Conversation extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<SupportCubit>();
     final roomId = state.home!.roomId!;
+    final ticket = state.ticket;
     final chat = CommunitySupportScope.of(context).supportChat;
     final deps = CommunityScope.of(context);
     return CommunitySupportMessageActions(
@@ -110,7 +111,9 @@ class _Conversation extends StatelessWidget {
           roomId: roomId,
           repository: chat,
           showHeader: false,
-          composer: const SupportComposer(),
+          composer: ticket == null || ticket.isActive || ticket.reopenable(DateTime.now())
+              ? const SupportComposer()
+              : SupportClosedBar(ticketNumber: ticket.ticketNumber),
         ),
       ),
     );

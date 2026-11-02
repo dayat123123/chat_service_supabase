@@ -55,3 +55,40 @@ class SupportComposer extends StatelessWidget {
     );
   }
 }
+
+class SupportClosedBar extends StatelessWidget {
+  const SupportClosedBar({super.key, required this.ticketNumber});
+
+  final String ticketNumber;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.communityL10n;
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          border: Border(top: BorderSide(color: scheme.outlineVariant)),
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 10, 12, 10),
+        child: Row(
+          children: [
+            Icon(Icons.lock_outline, size: 18, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                l10n.supportTicketClosedNotice(ticketNumber),
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.tonal(onPressed: context.read<SupportCubit>().pickTopic, child: Text(l10n.supportNewTicket)),
+          ],
+        ),
+      ),
+    );
+  }
+}

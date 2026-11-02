@@ -277,7 +277,7 @@ function customerHeader(home) {
   const t = home?.ticket;
   const parts = [];
   if (!t || t.status === 'closed') {
-    parts.push(t ? `Tiket #${t.ticket_number} ditutup. Pilih topik atau ketik pesan untuk membuat tiket baru.`
+    parts.push(t ? `Tiket #${t.ticket_number} ditutup dan tidak bisa dibalas lagi. Pilih topik untuk membuat tiket baru.`
       : 'Belum ada tiket. Pilih topik untuk mulai.');
   } else {
     parts.push(h('div', { class: 'ticket-line' }, `#${t.ticket_number} · ${t.topic_name || topicName(t.topic)}`));
@@ -288,7 +288,7 @@ function customerHeader(home) {
     } else if (t.status === 'waiting_customer') {
       parts.push('Menunggu balasan Anda');
     } else if (t.status === 'resolved') {
-      parts.push(t.reopen_until ? `Selesai · balas sebelum ${stamp(t.reopen_until)} untuk membuka kembali` : 'Selesai');
+      parts.push(t.reopen_until ? `Selesai · balas sebelum ${stamp(t.reopen_until)} untuk membuka kembali, atau beri nilai untuk menutup` : 'Selesai');
     }
   }
   if (t?.complaint) {
@@ -625,8 +625,8 @@ function renderAgentChatHead() {
   if (!owner) {
     const canClaim = t.status === 'open' && agent.me?.status === 'online' && agent.me.active_tickets < agent.me.max_active_tickets;
     const notes = {
-      resolved: 'Tiket selesai. Bila nasabah membalas dalam masa buka kembali, tiket kembali ke CS pemilik.',
-      closed: 'Tiket ditutup. Pesan nasabah berikutnya membuat tiket baru.',
+      resolved: 'Tiket selesai. Bila nasabah membalas sebelum memberi nilai dan sebelum batas tutup otomatis, tiket kembali ke CS pemilik.',
+      closed: 'Tiket ditutup dan tidak bisa dibalas lagi. Nasabah membuat tiket baru untuk chat lagi.',
     };
     fill(readonly, t.status === 'open'
       ? [h('span', {}, 'Pratinjau hanya-baca. Ambil tiket ini untuk membalas.'),

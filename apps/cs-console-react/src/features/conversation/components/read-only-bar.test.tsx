@@ -129,7 +129,7 @@ describe('ReadOnlyBar', () => {
     renderBar(agentFixture, ticketFixture({ id: 'ticket-old', status: 'closed' }))
 
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Tiket ditutup. Pesan nasabah berikutnya membuat tiket baru.',
+      'Tiket ditutup dan tidak bisa dibalas lagi. Nasabah membuat tiket baru untuk chat lagi.',
     )
     expect(screen.queryByRole('button', { name: 'Buka tiket aktif' })).not.toBeInTheDocument()
   })

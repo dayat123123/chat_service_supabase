@@ -1,5 +1,5 @@
 begin;
-select plan(82);
+select plan(83);
 
 update cs.tickets set status = 'closed', closed_at = now() where status <> 'closed';
 update cs.agent_status set status = 'offline';
@@ -132,16 +132,13 @@ select is((select count(*)::integer from public.chat_members m where m.room_id =
 select is((select kind from public.messages where session_id = :'t1' and payload ->> 'code' = 'ticket_resolved'), 'csat',
   'Pesan selesai sekaligus permintaan rating');
 
-select tests.authenticate_as(:'budi');
-select is(cs_api.rate_ticket(:'t1', 5, 'Cepat, password saya Rahasia123!') ->> 'rating', '5', 'Nasabah memberi rating');
-select throws_ok(format($$select cs_api.rate_ticket(%L, 4)$$, :'t1'), 'PT409', 'cannot_rate', 'Rating hanya sekali');
-
 select tests.agent_online(:'joko');
+select tests.authenticate_as(:'budi');
 select is((select body from cs_api.send_message(:'room', 'Maaf, satu pertanyaan lagi')), 'Maaf, satu pertanyaan lagi',
   'Nasabah mengetik setelah tiket selesai');
 reset role;
 select is((select status || '/' || cs.agent_name(owner_agent_id) from cs.tickets where id = :'t1'), 'claimed/Joko',
-  'Dalam 24 jam tiket dibuka kembali ke CS pemilik');
+  'Sebelum batas hari tutup otomatis, tiket dibuka kembali ke CS pemilik');
 select is((select m.body from public.messages m where m.session_id = :'t1' and m.payload ->> 'code' = 'ticket_reopened_owner'),
   'Tiket #' || :'num1' || ' dibuka kembali dan ditangani Joko – CS Resmi.', 'Satu pesan saat tiket dibuka kembali');
 
@@ -159,18 +156,22 @@ select is((select status || '/' || coalesce(owner_agent_id::text, '-') from cs.t
 select tests.authenticate_agent(:'rina');
 select cs_api.claim_ticket(:'t1') ->> 'status' as c3 \gset
 select cs_api.resolve_ticket(:'t1', 'answered', 'Selesai dibantu') ->> 'status' as r3 \gset
+select tests.authenticate_as(:'budi');
+select is(cs_api.rate_ticket(:'t1', 5, 'Cepat, password saya Rahasia123!') ->> 'rating', '5', 'Nasabah memberi rating');
+select throws_ok(format($$select cs_api.rate_ticket(%L, 4)$$, :'t1'), 'PT409', 'cannot_rate', 'Rating hanya sekali');
 reset role;
-update cs.tickets set resolved_at = now() - interval '25 hours' where id = :'t1';
-select ok((cs.run_sweep() ->> 'tickets_closed')::integer >= 1, 'Sweep menutup tiket setelah masa buka kembali habis');
-select is((select status from cs.tickets where id = :'t1'), 'closed', 'Tiket menjadi final');
+select is((select status from cs.tickets where id = :'t1'), 'closed', 'Tiket menjadi final setelah dinilai');
 
 select tests.authenticate_as(:'budi');
+select throws_ok(format($$select cs_api.send_message(%L, 'Saya ada masalah baru')$$, :'room'), 'PT409', 'ticket_closed',
+  'Nasabah tidak bisa mengetik di tiket yang sudah ditutup');
+select is(cs_api.open_ticket('other') ->> 'status', 'open', 'Nasabah membuat tiket baru dari menu Chat CS');
 select is((select body from cs_api.send_message(:'room', 'Saya ada masalah baru')), 'Saya ada masalah baru',
-  'Nasabah mengetik setelah tiket ditutup');
+  'Nasabah mengetik di tiket baru');
 reset role;
-select is((select count(*)::integer from cs.tickets where customer_id = :'budi'), 2, 'Pesan setelah tiket ditutup membuat tiket baru');
+select is((select count(*)::integer from cs.tickets where customer_id = :'budi'), 2, 'Tiket lama tetap ditutup, chat masuk ke tiket baru');
 select id as t2 from cs.tickets where customer_id = :'budi' and status = 'open' \gset
-select is((select topic || '/' || priority from cs.tickets where id = :'t2'), 'other/P4', 'Tiket baru memakai topik default');
+select is((select topic || '/' || priority from cs.tickets where id = :'t2'), 'other/P4', 'Tiket baru memakai topik yang dipilih');
 
 select tests.authenticate_agent(:'rina');
 select cs_api.claim_ticket(:'t2') ->> 'status' as c4 \gset

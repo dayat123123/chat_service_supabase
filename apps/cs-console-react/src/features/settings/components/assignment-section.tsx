@@ -122,6 +122,43 @@ function ReleaseCard({ items }: { items: SettingEntry[] }) {
   )
 }
 
+function CloseCard({ items }: { items: SettingEntry[] }) {
+  const { t } = useTranslation()
+  const save = useSaveSettings()
+  const saved = numberSetting(items, 'ticket.auto_close_days', 3)
+  const [days, setDays] = useState(String(saved))
+  const [touched, setTouched] = useState(false)
+  const valid = inRange(days, 1, 30)
+  return (
+    <SettingsCard title={t('settings.autoClose')} subtitle={t('settings.autoCloseHint')}>
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="flex w-72 flex-col gap-1.5">
+          <Label htmlFor="close-days">{t('settings.autoCloseDays')}</Label>
+          <Input
+            id="close-days"
+            inputMode="numeric"
+            maxLength={2}
+            value={days}
+            aria-invalid={touched && !valid ? true : undefined}
+            onChange={(event) => setDays(event.target.value)}
+          />
+        </div>
+        <SaveButton
+          pending={save.isPending}
+          disabled={valid && Number(days.trim()) === saved}
+          onClick={() => {
+            setTouched(true)
+            if (!valid) return
+            save.mutate({ 'ticket.auto_close_days': Number(days.trim()) })
+          }}
+        />
+      </div>
+      <FieldMessage error={touched && !valid ? t('settings.numberRange', { min: 1, max: 30 }) : undefined} />
+      <ChangedBy entry={findSetting(items, 'ticket.auto_close_days')} />
+    </SettingsCard>
+  )
+}
+
 function AlertsCard({ items }: { items: SettingEntry[] }) {
   const { t } = useTranslation()
   const save = useSaveSettings()
@@ -178,6 +215,10 @@ export function AssignmentSection() {
             <ModeCard key={`mode-${findSetting(items, 'assignment.mode')?.version ?? 0}`} items={items} />
             <ReleaseCard
               key={`release-${findSetting(items, 'ticket.auto_release_offline_minutes')?.version ?? 0}`}
+              items={items}
+            />
+            <CloseCard
+              key={`close-${findSetting(items, 'ticket.auto_close_days')?.version ?? 0}`}
               items={items}
             />
             <AlertsCard

@@ -728,6 +728,11 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
   String get supportClosed => 'Chat ended.';
 
   @override
+  String supportTicketClosedNotice(String ticket) {
+    return 'Ticket #$ticket is closed and can no longer be answered.';
+  }
+
+  @override
   String supportTicketMeta(String date, String status) {
     return '$date · $status';
   }

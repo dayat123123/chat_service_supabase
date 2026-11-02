@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { csvCell, reportCsv, reportFileName, toCsv } from './csv'
+import { csvCell, customersCsv, reportCsv, reportFileName, toCsv } from './csv'
 import { emptyStats, type ReportSummary } from './types'
 
 const label = (key: string) => key.toUpperCase()
@@ -73,5 +73,38 @@ describe('report export', () => {
 
   it('names files after the kind and range', () => {
     expect(reportFileName(report, 'agents')).toBe('laporan-cs-agents-2026-10-24-2026-10-30.csv')
+  })
+})
+
+describe('customersCsv', () => {
+  it('exports per-customer performance with neutralised names', () => {
+    const csv = customersCsv(
+      [
+        {
+          id: 'c1',
+          display_name: '=Budi',
+          username: 'budi',
+          tickets: 3,
+          resolved: 2,
+          reopened: 1,
+          complaints: 0,
+          avg_first_response_minutes: 4.5,
+          avg_resolution_minutes: null,
+          avg_rating: 4.5,
+          ratings: 2,
+          closed_unrated: 1,
+          last_ticket_at: '2026-11-02T03:00:00.000Z',
+        },
+      ],
+      label,
+    )
+    expect(csv.slice(1).split('\r\n')).toEqual([
+      'CUSTOMER,USERNAME,TICKETS,RESOLVED,REOPENED,COMPLAINTS,FIRSTRESPONSEMINUTES,RESOLUTIONMINUTES,AVGRATING,RATINGS,CLOSEDUNRATED,LASTTICKET',
+      "'=Budi,budi,3,2,1,0,4.5,,4.5,2,1,2026-11-02T03:00:00.000Z",
+      '',
+    ])
+    expect(reportFileName({ from: '2026-11-01', to: '2026-11-02' }, 'customers')).toBe(
+      'laporan-cs-customers-2026-11-01-2026-11-02.csv',
+    )
   })
 })

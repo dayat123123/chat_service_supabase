@@ -219,6 +219,7 @@
   "supportComplaintFiled": "Complaint recorded. The resolution deadline is shown in the chat.",
   "supportFakeReported": "Report sent. Our team will follow up shortly.",
   "supportClosed": "Chat ended.",
+  "supportTicketClosedNotice": "Ticket #{ticket} is closed and can no longer be answered.",
   "supportTicketMeta": "{date} · {status}",
   "supportRating": "Rated {rating}/5",
   "supportUnavailable": "Support chat is unavailable. Please try again shortly."
