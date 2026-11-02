@@ -720,6 +720,11 @@ class CommunityLocalizationsId extends CommunityLocalizations {
   String get supportClosed => 'Chat diakhiri.';
 
   @override
+  String supportTicketClosedNotice(String ticket) {
+    return 'Tiket #$ticket sudah ditutup dan tidak bisa dibalas lagi.';
+  }
+
+  @override
   String supportTicketMeta(String date, String status) {
     return '$date · $status';
   }

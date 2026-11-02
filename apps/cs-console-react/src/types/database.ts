@@ -178,8 +178,13 @@ export type Database = {
         Args: { p_action: string; p_details: Json; p_user_id: string }
         Returns: undefined
       }
+      nasabah_clear_integration: { Args: { p_user_id: string }; Returns: Json }
       nasabah_integration: { Args: Record<PropertyKey, never>; Returns: Json }
       nasabah_is_super_admin: { Args: { p_user_id: string }; Returns: boolean }
+      nasabah_save_integration: {
+        Args: { p_client_id: string; p_url: string; p_user_id: string }
+        Returns: Json
+      }
       notes: { Args: { p_customer_id: string }; Returns: Json }
       online_agents: { Args: Record<PropertyKey, never>; Returns: Json }
       open_ticket: {
@@ -202,6 +207,14 @@ export type Database = {
       }
       release_ticket: {
         Args: { p_reason: string; p_ticket_id: string; p_version?: number }
+        Returns: Json
+      }
+      report_customer_trail: {
+        Args: { p_customer_id: string; p_from: string; p_to: string }
+        Returns: Json
+      }
+      report_customers: {
+        Args: { p_from: string; p_search?: string; p_to: string }
         Returns: Json
       }
       report_fake_cs: { Args: { p_description: string }; Returns: Json }

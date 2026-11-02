@@ -41,11 +41,11 @@ select ok(not cs.is_market_hours('2026-11-02 16:30+07') and not cs.is_market_hou
 select is(cs.format_time('2026-10-31 09:00+07', 'id'), 'Sabtu, 31 Oktober 2026 pukul 09.00 WIB', 'Format waktu Indonesia');
 select is(cs.format_time('2026-10-31 09:00+07', 'en'), 'Saturday, 31 October 2026, 09:00 WIB', 'Format waktu Inggris');
 
-select is(cs.set_setting('ticket.reopen_hours', '48', null), 2, 'Perubahan pengaturan menaikkan versi');
-select is((select old_value::text || '>' || new_value::text from cs.cs_settings_history where key = 'ticket.reopen_hours'),
-  '24>48', 'Riwayat menyimpan nilai lama dan baru');
-select is(cs.set_setting('ticket.reopen_hours', '48', null), 2, 'Nilai yang sama tidak membuat versi baru');
-select throws_ok($$select cs.set_setting('ticket.reopen_hours', '"empat puluh delapan"', null)$$,
+select is(cs.set_setting('ticket.auto_close_days', '7', null), 2, 'Perubahan pengaturan menaikkan versi');
+select is((select old_value::text || '>' || new_value::text from cs.cs_settings_history where key = 'ticket.auto_close_days'),
+  '3>7', 'Riwayat menyimpan nilai lama dan baru');
+select is(cs.set_setting('ticket.auto_close_days', '7', null), 2, 'Nilai yang sama tidak membuat versi baru');
+select throws_ok($$select cs.set_setting('ticket.auto_close_days', '"tujuh"', null)$$,
   'PT400', 'invalid_setting', 'Tipe nilai pengaturan diperiksa');
 select throws_ok($$update cs.cs_settings_history set new_value = '1'$$, '42501', null,
   'Riwayat pengaturan tidak bisa diubah');

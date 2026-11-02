@@ -37,6 +37,27 @@ const _topics = [
   SupportTopic(code: 'funds', name: 'Deposit/Tarik Dana'),
 ];
 
+Future<FakeChatRepository> pumpSupportChat(WidgetTester tester, SupportRepository support) async {
+  final chat = FakeChatRepository(
+    rooms: [ChatRoom(id: 'r-cs', type: RoomType.support, createdAt: DateTime.now(), lastReadAt: DateTime.now())],
+  );
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: const Locale('id'),
+      localizationsDelegates: CommunityLocalizations.localizationsDelegates,
+      supportedLocales: CommunityLocalizations.supportedLocales,
+      home: Scaffold(
+        body: CommunityScope(
+          dependencies: FakeDependencies(chat: chat),
+          child: CommunitySupportScope(dependencies: _SupportDeps(support, chat), child: const CommunitySupportChat()),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return chat;
+}
+
 void main() {
   late _MockSupport support;
 
@@ -176,6 +197,35 @@ void main() {
     expect(find.text('Apa yang bisa kami bantu?'), findsOneWidget);
     expect(find.text('Deposit/Tarik Dana'), findsOneWidget);
     expect(find.text('Lampirkan order'), findsNothing);
+    await chat.dispose();
+  });
+
+  testWidgets('a closed ticket can no longer be answered and offers a new ticket instead', (tester) async {
+    when(
+      () => support.home(),
+    ).thenAnswer((_) async => home(current: ticket(status: SupportStatus.closed, canRate: true)));
+    final chat = await pumpSupportChat(tester, support);
+
+    expect(find.text('Tiket #CS-20261030-0001 sudah ditutup dan tidak bisa dibalas lagi.'), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+
+    await tester.tap(find.text('Buat tiket baru'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Apa yang bisa kami bantu?'), findsOneWidget);
+    await chat.dispose();
+  });
+
+  testWidgets('a resolved ticket that is not rated yet can still be answered until it closes', (tester) async {
+    final resolved = ticket(
+      status: SupportStatus.resolved,
+      canRate: true,
+    ).copyWith(reopenUntil: DateTime.now().add(const Duration(days: 2)));
+    when(() => support.home()).thenAnswer((_) async => home(current: resolved));
+    final chat = await pumpSupportChat(tester, support);
+
+    expect(find.byType(TextField), findsOneWidget);
+    expect(find.textContaining('sudah ditutup'), findsNothing);
     await chat.dispose();
   });
 }

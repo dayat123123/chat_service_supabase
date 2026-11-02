@@ -1,4 +1,4 @@
-import type { ReportExport, ReportStats, ReportSummary } from './types'
+import type { CustomerReport, DateRange, ReportExport, ReportStats, ReportSummary } from './types'
 
 export type CsvLabel =
   | 'date'
@@ -16,6 +16,13 @@ export type CsvLabel =
   | 'topicCode'
   | 'topic'
   | 'count'
+  | 'customer'
+  | 'username'
+  | 'tickets'
+  | 'reopened'
+  | 'complaints'
+  | 'closedUnrated'
+  | 'lastTicket'
 
 type CsvValue = string | number | null | undefined
 
@@ -85,6 +92,41 @@ export function reportCsv(report: ReportSummary, kind: ReportExport, label: (key
   ])
 }
 
-export function reportFileName(report: Pick<ReportSummary, 'from' | 'to'>, kind: ReportExport) {
+export function customersCsv(rows: CustomerReport[], label: (key: CsvLabel) => string) {
+  return toCsv([
+    (
+      [
+        'customer',
+        'username',
+        'tickets',
+        'resolved',
+        'reopened',
+        'complaints',
+        'firstResponseMinutes',
+        'resolutionMinutes',
+        'avgRating',
+        'ratings',
+        'closedUnrated',
+        'lastTicket',
+      ] as const
+    ).map((key) => label(key)),
+    ...rows.map((row) => [
+      row.display_name,
+      row.username,
+      row.tickets,
+      row.resolved,
+      row.reopened,
+      row.complaints,
+      row.avg_first_response_minutes,
+      row.avg_resolution_minutes,
+      row.avg_rating,
+      row.ratings,
+      row.closed_unrated,
+      row.last_ticket_at,
+    ]),
+  ])
+}
+
+export function reportFileName(report: Pick<DateRange, 'from' | 'to'>, kind: ReportExport | 'customers') {
   return `laporan-cs-${kind}-${report.from}-${report.to}.csv`
 }

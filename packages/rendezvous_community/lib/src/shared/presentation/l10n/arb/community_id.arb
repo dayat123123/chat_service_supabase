@@ -252,6 +252,8 @@
   "supportComplaintFiled": "Pengaduan dicatat. Tenggat penyelesaian tampil di chat.",
   "supportFakeReported": "Laporan terkirim. Tim kami segera menindaklanjuti.",
   "supportClosed": "Chat diakhiri.",
+  "supportTicketClosedNotice": "Tiket #{ticket} sudah ditutup dan tidak bisa dibalas lagi.",
+  "@supportTicketClosedNotice": { "placeholders": { "ticket": { "type": "String" } } },
   "supportTicketMeta": "{date} · {status}",
   "@supportTicketMeta": { "placeholders": { "date": { "type": "String" }, "status": { "type": "String" } } },
   "supportRating": "Nilai {rating}/5",

@@ -48,3 +48,63 @@ export const emptyStats: ReportStats = {
   avg_rating: null,
   ratings: 0,
 }
+
+export type CustomerReport = {
+  id: string
+  display_name: string | null
+  username: string | null
+  tickets: number
+  resolved: number
+  reopened: number
+  complaints: number
+  avg_first_response_minutes: number | null
+  avg_resolution_minutes: number | null
+  avg_rating: number | null
+  ratings: number
+  closed_unrated: number
+  last_ticket_at: string
+}
+
+export type TrailEvent = {
+  type: string
+  actor_type: string | null
+  actor_name: string | null
+  data: Record<string, unknown>
+  created_at: string
+}
+
+export type TrailTicket = {
+  id: string
+  ticket_number: string
+  topic: string
+  topic_name: string
+  status: string
+  priority: string
+  flags: string[]
+  outcome: string | null
+  close_reason: string | null
+  agent: string | null
+  created_at: string
+  first_claimed_at: string | null
+  first_response_at: string | null
+  resolved_at: string | null
+  closed_at: string | null
+  claim_minutes: number | null
+  first_response_minutes: number | null
+  resolution_minutes: number | null
+  rating: number | null
+  rating_comment: string | null
+  rated_at: string | null
+  reopened: number
+  transfers: number
+  events: TrailEvent[]
+}
+
+export type CustomerTrail = {
+  customer: { id: string; display_name: string | null; username: string | null }
+  from: string
+  to: string
+  tickets: TrailTicket[]
+}
+
+export const MAX_CUSTOMER_ROWS = 200

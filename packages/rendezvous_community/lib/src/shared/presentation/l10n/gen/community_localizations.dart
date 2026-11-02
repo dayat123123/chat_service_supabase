@@ -1322,6 +1322,12 @@ abstract class CommunityLocalizations {
   /// **'Chat diakhiri.'**
   String get supportClosed;
 
+  /// No description provided for @supportTicketClosedNotice.
+  ///
+  /// In id, this message translates to:
+  /// **'Tiket #{ticket} sudah ditutup dan tidak bisa dibalas lagi.'**
+  String supportTicketClosedNotice(String ticket);
+
   /// No description provided for @supportTicketMeta.
   ///
   /// In id, this message translates to:
