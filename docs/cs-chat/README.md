@@ -52,7 +52,7 @@ Pemilik produk mendelegasikan pilihan ke tim. Yang dipilih beserta alasannya:
 
 ## Model data
 
-Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessions`, `0029_cs_api`, `0030_cs_session_detail`, `0031_cs_concurrency`, `0032_cs_tickets` (model ambil tiket), `0033_cs_tickets_api`, `0034_cs_room_members`, `0035_cs_supervisor_admin` (dashboard, laporan, pengaturan admin), `0037_client_owned_business_data` (hapus kartu order dan fungsi data nasabah), `0038_cs_supervisor_monitor_only`, `0039_cs_super_admin_without_totp`, `0040_cs_auto_assign_immediate`, `0041_cs_offline_agent_reply`, `0042_cs_compliance` (menu Kepatuhan), `0043_cs_auto_assign_reachable` (penugasan otomatis di luar jam layanan), `0044_cs_nasabah_access`–`0047_cs_nasabah_cs_only` (izin menu Akun Nasabah khusus akun CS, termasuk approve sendiri, [docs/nasabah](../nasabah/README.md)), `0048_cs_ticket_customer_login` (LoginId csAdmin nasabah tiket untuk panel info nasabah), `0049_cs_release_skips_releaser` (tiket yang dilepas tidak ditugaskan kembali ke CS yang melepas). RLS aktif di semua tabel `cs` (termasuk partisi).
+Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessions`, `0029_cs_api`, `0030_cs_session_detail`, `0031_cs_concurrency`, `0032_cs_tickets` (model ambil tiket), `0033_cs_tickets_api`, `0034_cs_room_members`, `0035_cs_supervisor_admin` (dashboard, laporan, pengaturan admin), `0037_client_owned_business_data` (hapus kartu order dan fungsi data nasabah), `0038_cs_supervisor_monitor_only`, `0039_cs_super_admin_without_totp`, `0040_cs_auto_assign_immediate`, `0041_cs_offline_agent_reply`, `0042_cs_compliance` (menu Kepatuhan), `0043_cs_auto_assign_reachable` (penugasan otomatis di luar jam layanan), `0044_cs_nasabah_access`–`0047_cs_nasabah_cs_only` (izin menu Akun Nasabah khusus akun CS, termasuk approve sendiri, [docs/nasabah](../nasabah/README.md)), `0048_cs_ticket_customer_login` (LoginId csAdmin nasabah tiket untuk panel info nasabah), `0049_cs_release_skips_releaser` (tiket yang dilepas tidak ditugaskan kembali ke CS yang melepas), `0050_cs_nasabah_integration_settings` (alamat csAdmin diatur Super Admin dari web). RLS aktif di semua tabel `cs` (termasuk partisi).
 
 **Perluasan chat yang ada:**
 - `chat_rooms.type` + `support`, kolom `customer_id`, satu room `support` per nasabah (unique index). Semua tiket nasabah ada di room yang sama.
@@ -120,7 +120,7 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 | Kebijakan tenggat pengaduan, perpanjangan, dan retensi chat | – | – | – | Ya |
 | Channel realtime | `cs:room:<room miliknya>` | `cs:queue`, `cs:agent:<diri>`, `cs:room:<yang ditangani>` | Sama | `cs:room` berflag |
 
-Semua dicek di server (RLS + fungsi). Login web CS cukup email + password (tanpa TOTP); di produksi web CS hanya bisa diakses lewat VPN. Akun nonaktif langsung kehilangan akses. Client tidak bisa mengirim broadcast ke channel `cs:*` (hanya server), sehingga event status tidak bisa dipalsukan.
+Semua dicek di server (RLS + fungsi). Login web CS cukup email + password (tanpa TOTP); di produksi web CS hanya bisa diakses dari IP yang diizinkan (LAN kantor atau VPN). Akun nonaktif langsung kehilangan akses. Client tidak bisa mengirim broadcast ke channel `cs:*` (hanya server), sehingga event status tidak bisa dipalsukan.
 
 ## API `cs_api`
 

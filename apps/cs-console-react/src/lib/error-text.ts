@@ -23,6 +23,8 @@ const nasabahCodes = [
   'too_many_accounts',
   'invalid_account_link',
   'links_client_only',
+  'invalid_csadmin_url',
+  'invalid_csadmin_client_id',
 ] as const
 
 type NasabahCode = (typeof nasabahCodes)[number]

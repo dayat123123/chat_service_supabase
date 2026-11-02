@@ -63,7 +63,7 @@ integration {
 }
 ```
 
-- **`public_key`**: base64 SubjectPublicKeyInfo Ed25519, satu baris, tanpa `=`. Ambil dari output `gen-secrets`, dari log start gateway (`public_key` di baris "Customer admin integration configured"), atau dari perintah ini:
+- **`public_key`**: base64 SubjectPublicKeyInfo Ed25519, satu baris, tanpa `=`. Cara termudah: salin blok siap tempel dari web CS, **Pengaturan → Integrasi csAdmin**. Bisa juga dari output `gen-secrets`, dari log start gateway (`public_key` di baris "Customer admin integration configured"), atau dari perintah ini:
   ```bash
   openssl pkey -in docker/secrets/csadmin_signing_key -pubout -outform DER | openssl base64 -A | tr -d '='
   ```
@@ -92,20 +92,51 @@ Nasabah tiket adalah profil aplikasi sosial yang dibuat dari token OLT. Username
 
 ## Konfigurasi gateway
 
+Super Admin mengatur sambungan ke csAdmin dari web CS, di **Pengaturan → Integrasi csAdmin**. Server cukup menjalankan `make up`; alamat csAdmin tidak perlu ditulis di `docker/.env`.
+
+- **Alamat csAdmin** dan **client id** disimpan di `cs.cs_settings` (`nasabah.csadmin_url`, `nasabah.csadmin_client_id`, migrasi `0050`). Setiap perubahan masuk riwayat pengaturan dan audit log.
+- **Gateway membaca nilainya** lewat `cs_api.nasabah_integration()` (service_role) paling lama setiap 15 detik, jadi tidak perlu restart. Bila alamat atau client id berubah, token csAdmin lama dibuang. Bila database sedang tidak terbaca, gateway tetap memakai nilai terakhir.
+- **Bila pengaturan web kosong**, gateway memakai `CSADMIN_URL` dan `CSADMIN_CLIENT_ID` di `docker/.env`.
+- **Isi halaman:** alamat yang sedang dipakai beserta sumbernya, blok `integration { … }` siap tempel untuk `csAdminEL.cfg`, dan tombol **Tes koneksi**.
+
+Endpoint gateway khusus Super Admin aktif (dicek lewat `cs_api.nasabah_is_super_admin`):
+
+| Rute | Isi |
+|---|---|
+| `GET /api-nasabah/integration` | Alamat dan client id yang dipakai beserta sumbernya (`settings`, `server`, atau `none`), kunci publik, dan `configured` |
+| `POST /api-nasabah/integration/test` | Body opsional `{url, client_id}`; yang kosong memakai nilai yang sedang dipakai. Gateway meminta token ke csAdmin dan menjawab `result` (tabel di bawah) |
+
+| `result` | Arti |
+|---|---|
+| `ok` | csAdmin menerbitkan token |
+| `refused` | csAdmin menjawab 401: `public_key` atau `client_id` di `csAdminEL.cfg` tidak cocok, atau jam server berbeda jauh |
+| `ip_not_allowed` | csAdmin menjawab 403: IP server web CS tidak ada di `allowed_ips` |
+| `disabled` | csAdmin menjawab 404: blok `integration` belum diisi, atau csAdmin masih versi lama |
+| `unexpected` | Status HTTP lain, biasanya prefix path salah |
+| `unreachable` | Alamat, port, atau firewall menghalangi |
+| `not_configured` / `no_key` | Alamat kosong / kunci integrasi belum ada di server |
+
+Yang tetap di server:
+
 | Tempat | Kunci | Isi |
 |---|---|---|
-| `docker/.env` | `CSADMIN_URL` | Alamat csAdmin termasuk prefix path, mis. `http://192.168.10.10:8080` atau `http://host:9001/csAdmin` |
-| `docker/.env` | `CSADMIN_CLIENT_ID` | Default `web-cs`; harus sama dengan `client_id` di csAdmin |
-| `docker/secrets/csadmin_signing_key` | | Kunci privat Ed25519 (PEM PKCS#8). Kosong = menu belum aktif |
+| `docker/secrets/csadmin_signing_key` | | Kunci privat Ed25519 (PEM PKCS#8), dibuat `gen-secrets`. Kosong = menu belum aktif |
+| `docker/.env` | `CSADMIN_URL`, `CSADMIN_CLIENT_ID` | Cadangan bila pengaturan web kosong |
 | `docker/.env` | `CSADMIN_TIMEOUT` | Batas waktu panggilan ke csAdmin (default `15s`) |
 
-Setelah mengubah, jalankan ulang gateway:
+Perubahan di `docker/.env` atau kunci baru baru dipakai setelah gateway dijalankan ulang:
 
 ```bash
 docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs up -d nasabah-gateway
 ```
 
-Bila URL atau kunci kosong, gateway tetap hidup dan menjawab `503 not_configured`. Bila csAdmin menolak kuncinya, gateway menjawab `503 integration_refused`, dan menu menampilkan pesan untuk memeriksa `public_key`.
+**Keamanan alamat.** Siapa pun yang bisa mengubah alamat bisa mengarahkan assertion gateway (berumur 60 detik) ke server lain. Karena itu:
+- hanya Super Admin aktif yang bisa mengubah alamat dan menjalankan tes;
+- alamat divalidasi di database dan di gateway: hanya `http(s)://host[:port][/path]`, tanpa login, query, atau fragment;
+- setiap perubahan tercatat di audit log;
+- isi `allowed_ips` di csAdmin dengan IP server web CS, supaya assertion yang tertangkap tidak bisa dipakai dari mesin lain.
+
+Bila alamat atau kunci kosong, gateway tetap hidup dan menjawab `503 not_configured`. Bila csAdmin menolak kuncinya, gateway menjawab `503 integration_refused`, dan menu menampilkan pesan untuk memeriksa `public_key`.
 
 ## Izin per akun CS
 

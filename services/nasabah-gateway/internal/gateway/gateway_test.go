@@ -34,12 +34,17 @@ type auditEntry struct {
 
 type fakeStore struct {
 	grants map[string]*access.Grant
+	admins map[string]bool
 	mu     sync.Mutex
 	audits []auditEntry
 }
 
 func (s *fakeStore) Grant(_ context.Context, userID string) (*access.Grant, error) {
 	return s.grants[userID], nil
+}
+
+func (s *fakeStore) IsSuperAdmin(_ context.Context, userID string) (bool, error) {
+	return s.admins[userID], nil
 }
 
 func (s *fakeStore) Audit(_ context.Context, userID, action string, details map[string]any) error {
@@ -114,7 +119,7 @@ func setup(t *testing.T, status int, reply string) (*Gateway, *fakeStore, *upstr
 	store := &fakeStore{grants: map[string]*access.Grant{
 		"nadia": {AgentCode: "CS-0045", Permissions: []string{"online_user.view", "online_user.create"}},
 		"bima":  {AgentCode: "CS-0046", Permissions: []string{"online_user.view"}},
-	}}
+	}, admins: map[string]bool{"sinta": true}}
 	g := New(Options{
 		Routes: []Route{
 			{Method: http.MethodGet, Path: "/online/get-list-online-user", Action: "list", Permissions: []string{"online_user.view"}},
@@ -122,11 +127,16 @@ func setup(t *testing.T, status int, reply string) (*Gateway, *fakeStore, *upstr
 				ActorFields: []string{"CreatedBy"}, SubjectFields: []string{"LoginId"}, Audit: true},
 		},
 		Grants:    store,
+		Admins:    store,
 		JWTSecret: jwtSecret,
-		Upstream:  csadmin.NewSession(server.URL+"/csAdmin/", "web-cs", key, nil),
+		Upstream:  provider(server.URL+"/csAdmin/", key),
 		Now:       func() time.Time { return now },
 	})
 	return g, store, up
+}
+
+func provider(url string, key ed25519.PrivateKey) *csadmin.Provider {
+	return csadmin.NewProvider(csadmin.ProviderOptions{Server: csadmin.Settings{URL: url, ClientID: "web-cs"}, Key: key})
 }
 
 func session(t *testing.T, sub string, mutate func(map[string]any)) string {
@@ -319,7 +329,7 @@ func TestRejectsNonObjectBodies(t *testing.T) {
 func TestAnswersNotConfiguredWithoutUpstreamSettings(t *testing.T) {
 	g, _, _ := setup(t, 200, `{}`)
 	_, key, _ := ed25519.GenerateKey(rand.Reader)
-	g.opts.Upstream = csadmin.NewSession("", "web-cs", key, nil)
+	g.opts.Upstream = provider("", key)
 	rec := do(g, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "nadia", nil), "")
 	if rec.Code != http.StatusServiceUnavailable || errorCode(t, rec) != "not_configured" {
 		t.Fatalf("status %d code %q", rec.Code, errorCode(t, rec))
@@ -329,7 +339,7 @@ func TestAnswersNotConfiguredWithoutUpstreamSettings(t *testing.T) {
 func TestReportsAnUnreachableUpstream(t *testing.T) {
 	g, _, _ := setup(t, 200, `{}`)
 	_, key, _ := ed25519.GenerateKey(rand.Reader)
-	g.opts.Upstream = csadmin.NewSession("http://127.0.0.1:1", "web-cs", key, nil)
+	g.opts.Upstream = provider("http://127.0.0.1:1", key)
 	rec := do(g, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "nadia", nil), "")
 	if rec.Code != http.StatusBadGateway || errorCode(t, rec) != "upstream_unavailable" {
 		t.Fatalf("status %d code %q", rec.Code, errorCode(t, rec))

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { hoursValue, placeholders, readHours, validDay } from './logic'
+import {
+  csadminConfigBlock,
+  hoursValue,
+  placeholders,
+  readHours,
+  textSetting,
+  validClientId,
+  validCsadminUrl,
+  validDay,
+} from './logic'
 
 describe('service hours', () => {
   it('reads saved hours and fills closed days with defaults', () => {
@@ -40,5 +49,55 @@ describe('placeholders', () => {
       '{nomor_tiket}',
     ])
     expect(placeholders(['Tanpa variabel'])).toEqual([])
+  })
+})
+
+describe('csAdmin integration', () => {
+  it('accepts plain http(s) addresses with an optional port and path prefix', () => {
+    for (const url of [
+      'http://192.168.10.10:8080',
+      'https://csadmin.local/csAdmin/',
+      'http://host:9001/csAdmin',
+    ]) {
+      expect(validCsadminUrl(url)).toBe(true)
+    }
+    for (const url of [
+      '',
+      '192.168.10.10:8080',
+      'ftp://host',
+      'http://admin:secret@host',
+      'http://host/csAdmin?x=1',
+      'http://host/#top',
+      'http://ho st',
+      `http://host/${'a'.repeat(200)}`,
+    ]) {
+      expect(validCsadminUrl(url)).toBe(false)
+    }
+  })
+
+  it('accepts client ids made of letters, digits, dots, dashes, and underscores', () => {
+    expect(validClientId('web-cs.prod_1')).toBe(true)
+    expect(validClientId('web cs')).toBe(false)
+    expect(validClientId('a'.repeat(51))).toBe(false)
+  })
+
+  it('reads text settings and ignores other value types', () => {
+    expect(textSetting('http://host')).toBe('http://host')
+    expect(textSetting(8080)).toBe('')
+    expect(textSetting(undefined)).toBe('')
+  })
+
+  it('builds the integration block for csAdminEL.cfg', () => {
+    expect(csadminConfigBlock('web-cs', 'MCowBQYDK2VwAyEA')).toBe(
+      [
+        '#INTEGRATION (web CS gateway)',
+        'integration {',
+        '        client_id       = web-cs',
+        '        public_key      = MCowBQYDK2VwAyEA',
+        '        #DURATION IN MINUTES (1-60)',
+        '        duration_token_minutes = 15',
+        '}',
+      ].join('\n'),
+    )
   })
 })

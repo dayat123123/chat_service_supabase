@@ -59,11 +59,16 @@ type Route struct {
 	Audit         bool
 }
 
+type Admins interface {
+	IsSuperAdmin(ctx context.Context, userID string) (bool, error)
+}
+
 type Options struct {
 	Routes    []Route
 	Grants    access.Store
+	Admins    Admins
 	JWTSecret []byte
-	Upstream  *csadmin.Session
+	Upstream  *csadmin.Provider
 	Client    *http.Client
 	Log       *slog.Logger
 	Now       func() time.Time
@@ -94,12 +99,17 @@ func New(opts Options) *Gateway {
 func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	started := g.opts.Now()
 	path := strings.TrimPrefix(r.URL.Path, Prefix)
+	if strings.HasPrefix(r.URL.Path, Prefix+"/") && integrationRoute(r.Method, path) {
+		g.serveIntegration(w, r, path)
+		return
+	}
 	route, ok := g.routes[r.Method+" "+path]
 	if !strings.HasPrefix(r.URL.Path, Prefix+"/") || !ok {
 		writeError(w, http.StatusNotFound, "route_not_found", "Route is not available through the gateway")
 		return
 	}
-	if !g.opts.Upstream.Configured() {
+	session := g.opts.Upstream.Session(r.Context())
+	if !session.Configured() {
 		writeError(w, http.StatusServiceUnavailable, "not_configured", "Customer admin service is not configured")
 		return
 	}
@@ -140,7 +150,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if route.Guard != nil {
-		if err := route.Guard(r.Context(), g, req); err != nil {
+		if err := route.Guard(r.Context(), caller{g: g, session: session}, req); err != nil {
 			g.fail(w, route, err)
 			return
 		}
@@ -152,7 +162,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	status, payload, err := g.call(r.Context(), r.Method, path, req.Query.Encode(), body)
+	status, payload, err := g.call(r.Context(), session, r.Method, path, req.Query.Encode(), body)
 	if err != nil {
 		g.fail(w, route, err)
 		return
@@ -174,8 +184,13 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(payload)
 }
 
-func (g *Gateway) Get(ctx context.Context, path string, query url.Values) (int, []byte, error) {
-	return g.call(ctx, http.MethodGet, path, query.Encode(), nil)
+type caller struct {
+	g       *Gateway
+	session *csadmin.Session
+}
+
+func (c caller) Get(ctx context.Context, path string, query url.Values) (int, []byte, error) {
+	return c.g.call(ctx, c.session, http.MethodGet, path, query.Encode(), nil)
 }
 
 func filterQuery(route Route, in url.Values) (url.Values, error) {
@@ -246,28 +261,28 @@ func readFields(r *http.Request) (map[string]any, error) {
 	return fields, nil
 }
 
-func (g *Gateway) call(ctx context.Context, method, path, rawQuery string, body []byte) (int, []byte, error) {
+func (g *Gateway) call(ctx context.Context, session *csadmin.Session, method, path, rawQuery string, body []byte) (int, []byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	for attempt := 0; ; attempt++ {
-		token, err := g.opts.Upstream.Token(ctx)
+		token, err := session.Token(ctx)
 		if err != nil {
 			return 0, nil, err
 		}
-		status, payload, err := g.send(ctx, method, path, rawQuery, body, token)
+		status, payload, err := g.send(ctx, session.BaseURL(), method, path, rawQuery, body, token)
 		if err != nil {
 			return 0, nil, err
 		}
 		if status == http.StatusUnauthorized && attempt == 0 {
-			g.opts.Upstream.Invalidate(token)
+			session.Invalidate(token)
 			continue
 		}
 		return status, payload, nil
 	}
 }
 
-func (g *Gateway) send(ctx context.Context, method, path, rawQuery string, body []byte, token string) (int, []byte, error) {
-	target := g.opts.Upstream.BaseURL() + path
+func (g *Gateway) send(ctx context.Context, baseURL, method, path, rawQuery string, body []byte, token string) (int, []byte, error) {
+	target := baseURL + path
 	if rawQuery != "" {
 		target += "?" + rawQuery
 	}

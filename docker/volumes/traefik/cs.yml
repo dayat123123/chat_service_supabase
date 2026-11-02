@@ -1,5 +1,5 @@
 # Router web CS React + API agen (profil single dengan CS=1, dan cluster).
-# Semua router di domain CS_CONSOLE_DOMAIN dibatasi ke IP VPN (vpn-only).
+# Semua router di domain CS_CONSOLE_DOMAIN dibatasi ke IP di VPN_SOURCE_RANGES (LAN kantor atau VPN).
 # Header keamanan halaman web (CSP, HSTS, dsb.) dipasang nginx cs-console.
 http:
   middlewares:

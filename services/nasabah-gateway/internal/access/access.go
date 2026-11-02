@@ -8,9 +8,11 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
+	"olt-social/nasabah-gateway/internal/csadmin"
 	"olt-social/nasabah-gateway/internal/jwt"
 )
 
@@ -67,6 +69,25 @@ func (p *PostgREST) Grant(ctx context.Context, userID string) (*Grant, error) {
 func (p *PostgREST) Audit(ctx context.Context, userID, action string, details map[string]any) error {
 	var ignored any
 	return p.rpc(ctx, "nasabah_audit", map[string]any{"p_user_id": userID, "p_action": action, "p_details": details}, &ignored)
+}
+
+func (p *PostgREST) Integration(ctx context.Context) (csadmin.Settings, error) {
+	var stored struct {
+		URL      string `json:"url"`
+		ClientID string `json:"client_id"`
+	}
+	if err := p.rpc(ctx, "nasabah_integration", map[string]any{}, &stored); err != nil {
+		return csadmin.Settings{}, err
+	}
+	return csadmin.Settings{URL: strings.TrimSpace(stored.URL), ClientID: strings.TrimSpace(stored.ClientID)}, nil
+}
+
+func (p *PostgREST) IsSuperAdmin(ctx context.Context, userID string) (bool, error) {
+	var admin bool
+	if err := p.rpc(ctx, "nasabah_is_super_admin", map[string]any{"p_user_id": userID}, &admin); err != nil {
+		return false, err
+	}
+	return admin, nil
 }
 
 func (p *PostgREST) Ping(ctx context.Context) error {

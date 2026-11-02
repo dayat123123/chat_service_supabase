@@ -55,6 +55,36 @@ func TestPostgRESTGrantTreatsNullOrEmptyPermissionsAsNoAccess(t *testing.T) {
 	}
 }
 
+func TestPostgRESTReadsIntegrationSettingsAndSuperAdmins(t *testing.T) {
+	var paths []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.Path)
+		var args map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&args)
+		switch r.URL.Path {
+		case "/rpc/nasabah_integration":
+			_, _ = w.Write([]byte(`{"url":" http://10.0.0.5:9001/csAdmin ","client_id":"web-cs.prod"}`))
+		case "/rpc/nasabah_is_super_admin":
+			_, _ = w.Write([]byte(map[bool]string{true: "true", false: "false"}[args["p_user_id"] == "sinta"]))
+		}
+	}))
+	defer server.Close()
+	store := NewPostgREST(server.URL, []byte("secret"), "supabase")
+
+	settings, err := store.Integration(context.Background())
+	if err != nil || settings.URL != "http://10.0.0.5:9001/csAdmin" || settings.ClientID != "web-cs.prod" {
+		t.Fatalf("settings = %+v, err = %v", settings, err)
+	}
+	sinta, _ := store.IsSuperAdmin(context.Background(), "sinta")
+	nadia, _ := store.IsSuperAdmin(context.Background(), "nadia")
+	if !sinta || nadia {
+		t.Fatalf("super admin check: sinta %v nadia %v", sinta, nadia)
+	}
+	if strings.Join(paths, ",") != "/rpc/nasabah_integration,/rpc/nasabah_is_super_admin,/rpc/nasabah_is_super_admin" {
+		t.Fatalf("paths = %v", paths)
+	}
+}
+
 type countingStore struct {
 	calls atomic.Int32
 	grant *Grant

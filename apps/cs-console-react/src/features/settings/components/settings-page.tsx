@@ -2,6 +2,7 @@ import {
   CalendarClockIcon,
   MessageSquareTextIcon,
   MessagesSquareIcon,
+  PlugZapIcon,
   SlidersHorizontalIcon,
   TagsIcon,
   UsersIcon,
@@ -16,6 +17,7 @@ import type { SettingsSection } from '../types'
 import { AccountsSection } from './accounts-section'
 import { AssignmentSection } from './assignment-section'
 import { HoursSection } from './hours-section'
+import { IntegrationSection } from './integration-section'
 import { MessagesSection } from './messages-section'
 import { QuickRepliesSection } from './quick-replies-section'
 import { TopicsSection } from './topics-section'
@@ -27,6 +29,7 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
   { id: 'hours', icon: CalendarClockIcon },
   { id: 'messages', icon: MessagesSquareIcon },
   { id: 'assignment', icon: SlidersHorizontalIcon },
+  { id: 'integration', icon: PlugZapIcon },
 ]
 
 const content: Record<SettingsSection, () => React.ReactNode> = {
@@ -36,6 +39,7 @@ const content: Record<SettingsSection, () => React.ReactNode> = {
   hours: () => <HoursSection />,
   messages: () => <MessagesSection />,
   assignment: () => <AssignmentSection />,
+  integration: () => <IntegrationSection />,
 }
 
 export function SettingsPage() {

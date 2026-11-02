@@ -77,8 +77,33 @@ export const settingsSections = [
   'hours',
   'messages',
   'assignment',
+  'integration',
 ] as const
 export type SettingsSection = (typeof settingsSections)[number]
+
+export type IntegrationSource = 'settings' | 'server' | 'none'
+
+export type IntegrationStatus = {
+  url: string
+  url_source: IntegrationSource
+  client_id: string
+  client_id_source: IntegrationSource
+  public_key: string
+  key_configured: boolean
+  configured: boolean
+}
+
+export type IntegrationResult =
+  | 'ok'
+  | 'refused'
+  | 'ip_not_allowed'
+  | 'disabled'
+  | 'unexpected'
+  | 'unreachable'
+  | 'not_configured'
+  | 'no_key'
+
+export type IntegrationCheck = { result: IntegrationResult; status?: number; duration_ms: number }
 
 export const isStaffRole = (role: string): role is StaffRole =>
   (staffRoles as readonly string[]).includes(role)
