@@ -3,6 +3,7 @@ import { rpc, supabase } from '@/lib/supabase'
 import { uuid } from '@/lib/utils'
 
 import { AFTER_LIMIT } from './cache'
+import { DOCUMENT_BUCKET, isDocumentFile } from './media'
 import type { Attachment, ChatMessage, QuickReply, RoomMember, SendKind, SendResult } from './types'
 
 export const PAGE_SIZE = 50
@@ -77,6 +78,20 @@ export const conversationApi = {
       p_customer_id: target.customerId,
     }),
   upload: async (roomId: string, userId: string, file: File): Promise<Attachment> => {
+    if (isDocumentFile(file)) {
+      const path = `rooms/${roomId}/${userId}/${uuid()}.pdf`
+      const { error } = await supabase()
+        .storage.from(DOCUMENT_BUCKET)
+        .upload(path, file, { contentType: file.type })
+      if (error) throw toApiError(error)
+      return {
+        bucket: DOCUMENT_BUCKET,
+        path,
+        mime: file.type,
+        name: file.name.slice(0, 200),
+        size: file.size,
+      }
+    }
     const path = `rooms/${roomId}/${userId}/${uuid()}.${extension[file.type] ?? 'jpg'}`
     const { error } = await supabase()
       .storage.from('attachments')
@@ -85,8 +100,8 @@ export const conversationApi = {
     const size = await imageSize(file)
     return { path, mime: file.type, width: size.width, height: size.height }
   },
-  signedUrl: async (path: string) => {
-    const { data, error } = await supabase().storage.from('attachments').createSignedUrl(path, 120)
+  signedUrl: async (path: string, bucket = 'attachments') => {
+    const { data, error } = await supabase().storage.from(bucket).createSignedUrl(path, 120)
     if (error) throw toApiError(error)
     return data.signedUrl
   },

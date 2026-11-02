@@ -83,12 +83,26 @@ export class Customer {
     return ticket
   }
 
-  send(body: string) {
+  send(body: string, attachments: Record<string, unknown>[] = []) {
     return this.rpc<CustomerMessage[]>('send_message', {
       p_room_id: this.roomId,
       p_body: body,
       p_client_id: randomUUID(),
+      p_attachments: attachments,
     })
+  }
+
+  async upload(bucket: string, extension: string, type: string, body: Buffer) {
+    const path = `rooms/${this.roomId}/${this.userId}/${randomUUID()}.${extension}`
+    await json(
+      await fetch(`${apiUrl}/storage/v1/object/${bucket}/${path}`, {
+        method: 'POST',
+        headers: { apikey: anonKey, Authorization: `Bearer ${this.token}`, 'Content-Type': type },
+        body: new Uint8Array(body),
+      }),
+      `${this.username} upload ${bucket}`,
+    )
+    return path
   }
 
   messages() {

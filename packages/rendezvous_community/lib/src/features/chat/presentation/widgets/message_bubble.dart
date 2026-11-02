@@ -8,6 +8,7 @@ import 'package:rendezvous_community/src/features/chat/presentation/builders/com
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/receipt_icon.dart';
 import 'package:rendezvous_community/src/features/media/presentation/widgets/attachment_grid.dart';
+import 'package:rendezvous_community/src/features/media/presentation/widgets/document_attachments.dart';
 import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
 import 'package:rendezvous_community/src/features/moderation/presentation/widgets/moderation_actions.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/support_message_parts.dart';
@@ -169,7 +170,22 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
               style: theme.textTheme.bodyMedium?.copyWith(color: fg, fontStyle: FontStyle.italic),
             )
           else ...[
-            if (m.attachments.isNotEmpty) AttachmentGrid(attachments: m.attachments, maxHeight: 220),
+            if (m.attachments.any((a) => !a.isDocument))
+              AttachmentGrid(
+                attachments: [
+                  for (final a in m.attachments)
+                    if (!a.isDocument) a,
+                ],
+                maxHeight: 220,
+              ),
+            if (m.attachments.any((a) => a.isDocument))
+              DocumentAttachments(
+                attachments: [
+                  for (final a in m.attachments)
+                    if (a.isDocument) a,
+                ],
+                color: fg,
+              ),
             if ((m.body ?? '').isNotEmpty)
               support
                   ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))

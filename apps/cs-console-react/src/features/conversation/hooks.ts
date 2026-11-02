@@ -18,7 +18,7 @@ export const conversationKeys = {
   messages: (roomId: string) => ['messages', roomId] as const,
   members: (roomId: string) => ['members', roomId] as const,
   quickReplies: (language: string) => ['quick-replies', language] as const,
-  signedUrl: (path: string) => ['signed-url', path] as const,
+  signedUrl: (path: string, bucket: string) => ['signed-url', bucket, path] as const,
 }
 
 type PendingStore = {
@@ -72,10 +72,10 @@ export function useQuickReplies() {
   })
 }
 
-export function useSignedUrl(path: string) {
+export function useSignedUrl(path: string, bucket = 'attachments') {
   return useQuery({
-    queryKey: conversationKeys.signedUrl(path),
-    queryFn: () => conversationApi.signedUrl(path),
+    queryKey: conversationKeys.signedUrl(path, bucket),
+    queryFn: () => conversationApi.signedUrl(path, bucket),
     staleTime: 90_000,
     gcTime: 110_000,
   })

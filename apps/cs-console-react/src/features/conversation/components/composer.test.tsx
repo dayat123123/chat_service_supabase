@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -157,7 +157,7 @@ describe('Composer', () => {
     )
     expect(box).toBeDisabled()
     expect(box).toHaveValue('Draf sebelum Offline')
-    for (const name of ['Lampirkan gambar', 'Sisipkan balasan cepat', 'Kirim lainnya', 'Kirim']) {
+    for (const name of ['Lampirkan gambar atau PDF', 'Sisipkan balasan cepat', 'Kirim lainnya', 'Kirim']) {
       expect(screen.getByRole('button', { name })).toBeDisabled()
     }
 
@@ -199,6 +199,22 @@ describe('Composer', () => {
     await user.type(screen.getByRole('textbox', { name: 'Catatan internal' }), 'Telepon balik besok')
     await user.keyboard('{Enter}')
     await waitFor(() => expect(conversationApi.addNote).toHaveBeenCalledTimes(1))
+  })
+
+  it('attaches PDFs and refuses videos with a clear reason', async () => {
+    const { send, user } = setup()
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')
+    expect(input?.accept).toContain('application/pdf')
+    fireEvent.change(input!, { target: { files: [new File(['x'], 'rekaman.mp4', { type: 'video/mp4' })] } })
+    expect(await findToast(/^rekaman\.mp4 tidak didukung/)).toBeVisible()
+
+    const pdf = new File([new Uint8Array(2048)], 'Bukti Transfer.pdf', { type: 'application/pdf' })
+    fireEvent.change(input!, { target: { files: [pdf] } })
+    expect(screen.getByText('Bukti Transfer.pdf')).toBeVisible()
+    expect(screen.getByText('2 KB')).toBeVisible()
+    await user.click(screen.getByRole('button', { name: 'Kirim' }))
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1))
+    expect(send.mock.calls[0]?.[0]?.files?.map((item) => item.file)).toEqual([pdf])
   })
 
   it('keeps a draft per ticket', async () => {

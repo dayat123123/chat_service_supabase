@@ -9,4 +9,8 @@ abstract interface class MediaRepository {
   Future<Attachment> uploadChatImage(String roomId, Uint8List bytes, {required String mimeType});
 
   Future<AuthorizedImage> attachmentImage(Attachment attachment);
+
+  Future<Attachment> uploadSupportDocument(String roomId, Uint8List bytes, {required String name});
+
+  Future<Uri> documentUri(Attachment attachment);
 }

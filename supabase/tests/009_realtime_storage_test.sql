@@ -19,7 +19,7 @@ select ok(
 select is(
   (select count(*)::int from pg_policies
    where schemaname = 'storage' and tablename = 'objects' and policyname like 'olt_%'),
-  9, 'Policy storage OLT terpasang (termasuk lampiran chat CS)');
+  11, 'Policy storage OLT terpasang (termasuk lampiran dan dokumen chat CS)');
 select is(
   (select count(*)::int from pg_policies
    where schemaname = 'realtime' and tablename = 'messages' and policyname like 'olt_%'),

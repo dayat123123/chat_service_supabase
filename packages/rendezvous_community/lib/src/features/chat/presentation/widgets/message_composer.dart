@@ -7,12 +7,14 @@ import 'package:rendezvous_community/src/features/chat/presentation/builders/com
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_composer_field.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 
 class MessageComposer extends StatefulWidget {
-  const MessageComposer({super.key, this.onChanged, this.leading = const []});
+  const MessageComposer({super.key, this.onChanged, this.leading = const [], this.allowDocuments = false});
 
   final ValueChanged<String>? onChanged;
   final List<Widget> leading;
+  final bool allowDocuments;
 
   @override
   State<MessageComposer> createState() => _MessageComposerState();
@@ -49,12 +51,28 @@ class _MessageComposerState extends State<MessageComposer> {
   }
 
   Future<void> _pickImage() async {
-    const group = XTypeGroup(label: 'images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif']);
-    final file = await openFile(acceptedTypeGroups: const [group]);
+    const images = XTypeGroup(label: 'images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+    const pdf = XTypeGroup(
+      label: 'PDF',
+      extensions: ['pdf'],
+      mimeTypes: [pdfMimeType],
+      uniformTypeIdentifiers: ['com.adobe.pdf'],
+    );
+    final file = await openFile(acceptedTypeGroups: widget.allowDocuments ? const [images, pdf] : const [images]);
     if (file == null || !mounted) return;
+    final document = widget.allowDocuments && isPdfFile(file.name, file.mimeType);
+    if (document && await file.length() > maxSupportDocumentBytes) {
+      if (mounted) showCommunityMessage(context, context.communityL10n.documentTooLarge);
+      return;
+    }
     final bytes = await file.readAsBytes();
     if (!mounted) return;
-    await context.read<ChatRoomCubit>().sendImage(bytes, mimeFromName(file.name, file.mimeType));
+    final cubit = context.read<ChatRoomCubit>();
+    if (document) {
+      await cubit.sendDocument(bytes, file.name);
+    } else {
+      await cubit.sendImage(bytes, mimeFromName(file.name, file.mimeType));
+    }
   }
 
   @override
@@ -80,6 +98,7 @@ class _MessageComposerState extends State<MessageComposer> {
               : '${replyTo.sender?.name ?? l10n.someone}: ${replyTo.body ?? l10n.attachment}',
           onCancelReply: replyTo == null ? null : () => context.read<ChatRoomCubit>().setReplyTo(null),
           onPickImage: state.uploading ? null : _pickImage,
+          allowsDocuments: widget.allowDocuments,
           extraActions: widget.leading,
         );
         return buildChatPart(builder, context, details, _DefaultComposer(details: details));
@@ -131,7 +150,7 @@ class _DefaultComposer extends StatelessWidget {
               children: [
                 ...d.extraActions,
                 IconButton(
-                  tooltip: l10n.composeAddImage,
+                  tooltip: d.allowsDocuments ? l10n.composeAddImageOrPdf : l10n.composeAddImage,
                   onPressed: d.onPickImage,
                   icon: d.uploading
                       ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2))

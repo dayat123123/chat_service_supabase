@@ -105,7 +105,7 @@ src/
 - Header nginx: CSP ketat (`script-src 'self'`, `connect-src` hanya origin API), HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, COOP/CORP, `X-Robots-Tag: noindex`. Hanya GET/HEAD.
 - Container non-root (uid 101), filesystem read-only + tmpfs, `cap_drop: ALL`, batas CPU/memori/pids, healthcheck `/healthz`.
 - Login email + password tanpa TOTP, jadi akses dibatasi jaringan (LAN kantor atau VPN). Password sementara wajib diganti saat login pertama dan setelah reset. Sesi GoTrue per tab (`sessionStorage` dengan kunci per tab), jadi login, logout, dan refresh token di satu tab tidak menyentuh akun lain di tab lain. Logout otomatis setelah 30 menit tidak aktif, cache/draf/data yang ditampilkan dibersihkan saat keluar.
-- Isi pesan selalu plain text; tautan `rel="noopener noreferrer"` dan konfirmasi bila di luar situs bantuan; lampiran lewat signed URL 120 detik dengan watermark nama CS.
+- Isi pesan selalu plain text; tautan `rel="noopener noreferrer"` dan konfirmasi bila di luar situs bantuan; lampiran lewat signed URL 120 detik: gambar dengan watermark nama CS, PDF sebagai kartu file yang dibuka di tab baru. Composer menerima gambar (5 MB) dan PDF (10 MB); video, voice note, dan file Office ditolak dengan pesan yang jelas.
 - Log produksi tanpa token dan tanpa isi pesan. Zod berjalan `jitless` sehingga tidak ada `eval`.
 
 ## Tes

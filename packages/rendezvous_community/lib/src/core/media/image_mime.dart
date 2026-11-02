@@ -1,3 +1,9 @@
+const supportDocumentBucket = 'cs-documents';
+const pdfMimeType = 'application/pdf';
+const maxSupportDocumentBytes = 10 * 1024 * 1024;
+
+bool isPdfFile(String name, [String? reported]) => reported == pdfMimeType || name.toLowerCase().endsWith('.pdf');
+
 String imageExtension(String mimeType) => switch (mimeType) {
   'image/png' => 'png',
   'image/webp' => 'webp',

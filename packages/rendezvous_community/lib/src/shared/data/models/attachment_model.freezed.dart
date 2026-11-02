@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AttachmentModel {
 
- String get path; String? get mime; int? get width; int? get height;
+ String get path;@JsonKey(includeIfNull: false) String? get bucket; String? get mime;@JsonKey(includeIfNull: false) String? get name;@JsonKey(includeIfNull: false) int? get size; int? get width; int? get height;
 /// Create a copy of AttachmentModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $AttachmentModelCopyWith<AttachmentModel> get copyWith => _$AttachmentModelCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AttachmentModel&&(identical(other.path, path) || other.path == path)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AttachmentModel&&(identical(other.path, path) || other.path == path)&&(identical(other.bucket, bucket) || other.bucket == bucket)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.name, name) || other.name == name)&&(identical(other.size, size) || other.size == size)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,mime,width,height);
+int get hashCode => Object.hash(runtimeType,path,bucket,mime,name,size,width,height);
 
 @override
 String toString() {
-  return 'AttachmentModel(path: $path, mime: $mime, width: $width, height: $height)';
+  return 'AttachmentModel(path: $path, bucket: $bucket, mime: $mime, name: $name, size: $size, width: $width, height: $height)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $AttachmentModelCopyWith<$Res>  {
   factory $AttachmentModelCopyWith(AttachmentModel value, $Res Function(AttachmentModel) _then) = _$AttachmentModelCopyWithImpl;
 @useResult
 $Res call({
- String path, String? mime, int? width, int? height
+ String path,@JsonKey(includeIfNull: false) String? bucket, String? mime,@JsonKey(includeIfNull: false) String? name,@JsonKey(includeIfNull: false) int? size, int? width, int? height
 });
 
 
@@ -65,11 +65,14 @@ class _$AttachmentModelCopyWithImpl<$Res>
 
 /// Create a copy of AttachmentModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? mime = freezed,Object? width = freezed,Object? height = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? bucket = freezed,Object? mime = freezed,Object? name = freezed,Object? size = freezed,Object? width = freezed,Object? height = freezed,}) {
   return _then(_self.copyWith(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
+as String,bucket: freezed == bucket ? _self.bucket : bucket // ignore: cast_nullable_to_non_nullable
+as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,size: freezed == size ? _self.size : size // ignore: cast_nullable_to_non_nullable
+as int?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
 as int?,height: freezed == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
 as int?,
   ));
@@ -156,10 +159,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String path,  String? mime,  int? width,  int? height)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String path, @JsonKey(includeIfNull: false)  String? bucket,  String? mime, @JsonKey(includeIfNull: false)  String? name, @JsonKey(includeIfNull: false)  int? size,  int? width,  int? height)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AttachmentModel() when $default != null:
-return $default(_that.path,_that.mime,_that.width,_that.height);case _:
+return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height);case _:
   return orElse();
 
 }
@@ -177,10 +180,10 @@ return $default(_that.path,_that.mime,_that.width,_that.height);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String path,  String? mime,  int? width,  int? height)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String path, @JsonKey(includeIfNull: false)  String? bucket,  String? mime, @JsonKey(includeIfNull: false)  String? name, @JsonKey(includeIfNull: false)  int? size,  int? width,  int? height)  $default,) {final _that = this;
 switch (_that) {
 case _AttachmentModel():
-return $default(_that.path,_that.mime,_that.width,_that.height);case _:
+return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +200,10 @@ return $default(_that.path,_that.mime,_that.width,_that.height);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String path,  String? mime,  int? width,  int? height)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String path, @JsonKey(includeIfNull: false)  String? bucket,  String? mime, @JsonKey(includeIfNull: false)  String? name, @JsonKey(includeIfNull: false)  int? size,  int? width,  int? height)?  $default,) {final _that = this;
 switch (_that) {
 case _AttachmentModel() when $default != null:
-return $default(_that.path,_that.mime,_that.width,_that.height);case _:
+return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height);case _:
   return null;
 
 }
@@ -212,11 +215,14 @@ return $default(_that.path,_that.mime,_that.width,_that.height);case _:
 @JsonSerializable()
 
 class _AttachmentModel extends AttachmentModel {
-  const _AttachmentModel({required this.path, this.mime, this.width, this.height}): super._();
+  const _AttachmentModel({required this.path, @JsonKey(includeIfNull: false) this.bucket, this.mime, @JsonKey(includeIfNull: false) this.name, @JsonKey(includeIfNull: false) this.size, this.width, this.height}): super._();
   factory _AttachmentModel.fromJson(Map<String, dynamic> json) => _$AttachmentModelFromJson(json);
 
 @override final  String path;
+@override@JsonKey(includeIfNull: false) final  String? bucket;
 @override final  String? mime;
+@override@JsonKey(includeIfNull: false) final  String? name;
+@override@JsonKey(includeIfNull: false) final  int? size;
 @override final  int? width;
 @override final  int? height;
 
@@ -233,16 +239,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AttachmentModel&&(identical(other.path, path) || other.path == path)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AttachmentModel&&(identical(other.path, path) || other.path == path)&&(identical(other.bucket, bucket) || other.bucket == bucket)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.name, name) || other.name == name)&&(identical(other.size, size) || other.size == size)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,mime,width,height);
+int get hashCode => Object.hash(runtimeType,path,bucket,mime,name,size,width,height);
 
 @override
 String toString() {
-  return 'AttachmentModel(path: $path, mime: $mime, width: $width, height: $height)';
+  return 'AttachmentModel(path: $path, bucket: $bucket, mime: $mime, name: $name, size: $size, width: $width, height: $height)';
 }
 
 
@@ -253,7 +259,7 @@ abstract mixin class _$AttachmentModelCopyWith<$Res> implements $AttachmentModel
   factory _$AttachmentModelCopyWith(_AttachmentModel value, $Res Function(_AttachmentModel) _then) = __$AttachmentModelCopyWithImpl;
 @override @useResult
 $Res call({
- String path, String? mime, int? width, int? height
+ String path,@JsonKey(includeIfNull: false) String? bucket, String? mime,@JsonKey(includeIfNull: false) String? name,@JsonKey(includeIfNull: false) int? size, int? width, int? height
 });
 
 
@@ -270,11 +276,14 @@ class __$AttachmentModelCopyWithImpl<$Res>
 
 /// Create a copy of AttachmentModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? mime = freezed,Object? width = freezed,Object? height = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? bucket = freezed,Object? mime = freezed,Object? name = freezed,Object? size = freezed,Object? width = freezed,Object? height = freezed,}) {
   return _then(_AttachmentModel(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
-as String?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
+as String,bucket: freezed == bucket ? _self.bucket : bucket // ignore: cast_nullable_to_non_nullable
+as String?,mime: freezed == mime ? _self.mime : mime // ignore: cast_nullable_to_non_nullable
+as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String?,size: freezed == size ? _self.size : size // ignore: cast_nullable_to_non_nullable
+as int?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
 as int?,height: freezed == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
 as int?,
   ));

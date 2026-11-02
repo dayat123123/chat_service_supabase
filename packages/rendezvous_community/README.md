@@ -55,6 +55,7 @@ supportedLocales: CommunityLocalizations.supportedLocales,
 | Lazy load chat | Pesan dimuat 30 per halaman memakai cursor (bukan offset). Halaman lebih lama diambil saat scroll mendekati pesan tertua, dan otomatis bila halaman pertama belum memenuhi layar. Daftar room juga dimuat 30 per halaman dengan aturan yang sama. Setelah koneksi pulih, pesan yang terlewat disusulkan per 100 sampai habis; bila lebih dari 500, room dimuat ulang dari pesan terbaru dan pesan lama tetap bisa dimuat dengan scroll |
 | Badge tab chat | `CommunityChatBadge` menampilkan jumlah **chat** (DM & grup yang tidak dibisukan) yang punya pesan belum dibaca, seperti tab Chat WhatsApp; `99+` bila lebih. Room saham tidak dihitung. Diperbarui saat pesan masuk dan saat room dibuka |
 | Mengetik & online | "mengetik…" (DM) atau "Budi sedang mengetik…" (grup) tampil di daftar chat dan di room. Titik hijau dan teks "Online" untuk lawan bicara DM |
+| Lampiran | Chat global (DM, grup, room saham) hanya gambar (JPEG, PNG, WebP, GIF). Chat CS (`CommunitySupportChat`) juga menerima PDF maksimal 10 MB lewat `MessageComposer(allowDocuments: true)`. PDF tampil sebagai kartu nama + ukuran dan dibuka di aplikasi PDF perangkat lewat signed URL 5 menit |
 | Polling | Tombol polling di composer: 2–4 pilihan (maks 40 karakter, tidak boleh sama), durasi 1 jam–7 hari. Satu suara per user dan tidak bisa diubah; pembuat tidak ikut memilih. Hasil (persentase, pilihan Anda, pilihan teratas) tampil setelah memilih, saat polling selesai, atau bagi pembuat |
 | State | Skeleton saat memuat, tampilan kosong, error dengan tombol coba lagi, pull-to-refresh, infinite scroll, banner "N post baru" |
 | Disclaimer | *"Konten ini opini pengguna, bukan rekomendasi investasi."* di composer dan detail post |
@@ -143,7 +144,7 @@ Builder juga bisa dipasang per widget: `CommunityChatList(builders: ...)` atau `
 | Builder | `details` | Data dan handler |
 |---|---|---|
 | `message` | `CommunityMessageDetails` | `message`, `isMine`, `receipt`, `showSender`, `startsGroup`, `timeLabel`; `onReply`, `onDelete` (dengan konfirmasi bawaan), `onReport`, `onRetry`, `onSenderTap`, `onShowActions` (menu aksi bawaan) |
-| `composer` | `CommunityComposerDetails` | `controller`, `focusNode`, `hintText`, `maxLength`, `uploading`, `replyTo`, `replyPreview`, `extraActions`; `onSend`, `onPickImage`, `onCancelReply` |
+| `composer` | `CommunityComposerDetails` | `controller`, `focusNode`, `hintText`, `maxLength`, `uploading`, `replyTo`, `replyPreview`, `allowsDocuments`, `extraActions`; `onSend`, `onPickImage` (di chat CS juga memilih PDF), `onCancelReply` |
 | `roomHeader` | `CommunityRoomHeaderDetails` | `room`, `title`, `subtitle`, `highlightSubtitle`, `online`, `typing`, `memberCount`; `onTap`, `onToggleMute`, `onLeave` |
 | `typingIndicator` | `CommunityTypingDetails` | `users`, `text` (dipanggil hanya saat ada yang mengetik) |
 | `connectionBanner` | `CommunityConnectionDetails` | `status`, `label` (dipanggil hanya saat menyambung ulang) |

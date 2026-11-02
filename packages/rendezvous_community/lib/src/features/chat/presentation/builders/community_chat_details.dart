@@ -47,6 +47,7 @@ class CommunityComposerDetails {
     this.replyPreview,
     this.onCancelReply,
     this.onPickImage,
+    this.allowsDocuments = false,
     this.extraActions = const [],
   });
 
@@ -60,6 +61,7 @@ class CommunityComposerDetails {
   final String? replyPreview;
   final VoidCallback? onCancelReply;
   final VoidCallback? onPickImage;
+  final bool allowsDocuments;
   final List<Widget> extraActions;
 }
 

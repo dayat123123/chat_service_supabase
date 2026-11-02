@@ -10,6 +10,8 @@ const png = Buffer.from(
   'base64',
 )
 
+const pdf = Buffer.from(['%PDF-1.4', '1 0 obj<<>>endobj', 'trailer<<>>', '%%EOF', ''].join('\n'))
+
 pinAssignmentMode(claimMode)
 
 test('balas, tanda dibaca, lampiran, pesan nasabah realtime, dan panel info nasabah', async ({ page }) => {
@@ -59,6 +61,51 @@ test('balas, tanda dibaca, lampiran, pesan nasabah realtime, dan panel info nasa
     await customer.send(inbound)
     await expect(log.getByText(inbound)).toBeVisible()
     await expect(log.getByText(inbound)).toHaveCount(1)
+  } finally {
+    await customer.closeActiveTicket()
+  }
+})
+
+test('PDF dua arah di chat CS, video ditolak', async ({ page }) => {
+  const customer = await Customer.login('andi_trader')
+  try {
+    await signIn(page, 'Nadia')
+    const ticket = await customer.openTicket(`Mau kirim bukti transfer ${tag()}`)
+    await claim(page, ticket.id, ticket.ticket_number)
+    const log = page.getByRole('log')
+
+    const path = await customer.upload('cs-documents', 'pdf', 'application/pdf', pdf)
+    await customer.send(`Ini bukti transfernya ${tag()}`, [
+      { bucket: 'cs-documents', path, mime: 'application/pdf', name: 'Bukti Transfer.pdf', size: pdf.length },
+    ])
+    await expect(log.getByRole('link', { name: 'Buka Bukti Transfer.pdf' })).toHaveAttribute(
+      'href',
+      /\/storage\/v1\/object\/sign\/cs-documents\//,
+    )
+    await expect(customer.upload('attachments', 'mp4', 'video/mp4', Buffer.from('video'))).rejects.toThrow()
+
+    const input = page.locator('input[type="file"]')
+    await input.setInputFiles({ name: 'rekaman.mp4', mimeType: 'video/mp4', buffer: Buffer.from('video') })
+    await expect(page.getByText(/^rekaman\.mp4 tidak didukung/)).toBeVisible()
+
+    await input.setInputFiles({ name: 'Formulir.pdf', mimeType: 'application/pdf', buffer: pdf })
+    const box = page.getByRole('textbox', { name: 'Balas' })
+    const caption = `Silakan isi formulir ini ${tag()}`
+    await box.fill(caption)
+    await box.press('Enter')
+    const sent = log.getByRole('link', { name: 'Buka Formulir.pdf' })
+    await expect(sent).toHaveAttribute('href', /token=/)
+    await expect
+      .poll(async () =>
+        (await customer.messages()).some(
+          (message) =>
+            message.body === caption &&
+            (message.attachments[0] as { bucket?: string } | undefined)?.bucket === 'cs-documents',
+        ),
+      )
+      .toBe(true)
+    const file = await fetch((await sent.getAttribute('href')) ?? '')
+    expect(file.headers.get('content-type')).toContain('application/pdf')
   } finally {
     await customer.closeActiveTicket()
   }

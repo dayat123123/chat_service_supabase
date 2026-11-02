@@ -35,6 +35,8 @@ abstract interface class SocialRemoteDataSource {
   String publicUrl(String bucket, String path);
 
   Future<AuthorizedImage> authorizedObject(String bucket, String path);
+
+  Future<String> signedUrl(String bucket, String path, {int expiresIn = 300});
 }
 
 class SupabaseSocialDataSource implements SocialRemoteDataSource {
@@ -145,6 +147,10 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
   @override
   String publicUrl(String bucket, String path) => _client.storage.from(bucket).getPublicUrl(path);
+
+  @override
+  Future<String> signedUrl(String bucket, String path, {int expiresIn = 300}) =>
+      _run(() => _client.storage.from(bucket).createSignedUrl(path, expiresIn));
 
   @override
   Future<AuthorizedImage> authorizedObject(String bucket, String path) async {

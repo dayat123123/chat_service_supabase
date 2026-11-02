@@ -231,6 +231,8 @@ class FakeChatRepository extends Fake implements ChatRepository {
   @override
   Future<void> deleteMessage(String messageId) async => deletedMessages.add(messageId);
 
+  final sentAttachments = <List<Attachment>>[];
+
   @override
   Future<ChatMessage> sendMessage(
     String roomId, {
@@ -241,6 +243,7 @@ class FakeChatRepository extends Fake implements ChatRepository {
   }) async {
     final error = sendError;
     if (error != null) throw error;
+    sentAttachments.add(attachments);
     return ChatMessage(
       id: 'srv-$clientId',
       roomId: roomId,
@@ -296,8 +299,10 @@ class FakeDependencies implements CommunityDependencies {
     ChatRepository? chat,
     NotificationRepository? notifications,
     StockRepository? stocks,
+    MediaRepository? mediaRepository,
     this.callbacks = const CommunityCallbacks(),
-  }) : feed = feed ?? FakeFeedRepository(),
+  }) : _media = mediaRepository,
+       feed = feed ?? FakeFeedRepository(),
        comments = comments ?? FakeCommentRepository(),
        polls = polls ?? FakePollRepository(),
        chat = chat ?? FakeChatRepository(),
@@ -305,6 +310,7 @@ class FakeDependencies implements CommunityDependencies {
        stocks = stocks ?? _Unused();
 
   final _unused = _Unused();
+  final MediaRepository? _media;
 
   @override
   final FakeFeedRepository feed;
@@ -323,7 +329,7 @@ class FakeDependencies implements CommunityDependencies {
   @override
   ModerationRepository get moderation => _unused;
   @override
-  MediaRepository get media => _unused;
+  MediaRepository get media => _media ?? _unused;
   @override
   final CommunityCallbacks callbacks;
   @override

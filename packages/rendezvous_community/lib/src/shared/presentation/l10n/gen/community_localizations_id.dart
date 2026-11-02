@@ -125,6 +125,27 @@ class CommunityLocalizationsId extends CommunityLocalizations {
   String get composeAddImage => 'Tambah gambar';
 
   @override
+  String get composeAddImageOrPdf => 'Lampirkan gambar atau PDF';
+
+  @override
+  String get documentTooLarge => 'PDF maksimal 10 MB.';
+
+  @override
+  String get documentOpenFailed => 'Dokumen tidak bisa dibuka. Coba lagi.';
+
+  @override
+  String get documentFallbackName => 'Dokumen.pdf';
+
+  @override
+  String openDocument(String name) {
+    return 'Buka $name';
+  }
+
+  @override
+  String get errorAttachmentNotAllowed =>
+      'Lampiran ini tidak didukung. Chat CS menerima gambar dan PDF; chat lain hanya gambar.';
+
+  @override
   String get composeRemoveImage => 'Hapus gambar';
 
   @override

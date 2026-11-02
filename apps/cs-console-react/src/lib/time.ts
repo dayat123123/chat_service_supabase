@@ -90,8 +90,8 @@ export function formatDay(day: string, pattern: string) {
 
 const numberLocale = () => (i18n.language === 'en' ? 'en-US' : 'id-ID')
 
-export function formatNumber(value: number) {
-  return new Intl.NumberFormat(numberLocale()).format(value)
+export function formatNumber(value: number, maximumFractionDigits?: number) {
+  return new Intl.NumberFormat(numberLocale(), { maximumFractionDigits }).format(value)
 }
 
 export function formatRating(value: number | null | undefined) {

@@ -392,6 +392,18 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     }
   }
 
+  Future<void> sendDocument(Uint8List bytes, String name) async {
+    emit(state.copyWith(uploading: true));
+    try {
+      final attachment = await _media.uploadSupportDocument(roomId, bytes, name: name);
+      if (!isClosed) emit(state.copyWith(uploading: false));
+      await send('', attachments: [attachment]);
+    } catch (e) {
+      if (!isClosed) emit(state.copyWith(uploading: false));
+      _fail(e);
+    }
+  }
+
   Future<void> deleteMessage(ChatMessage message) async {
     final before = state.messages;
     emit(

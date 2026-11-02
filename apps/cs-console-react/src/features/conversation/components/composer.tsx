@@ -3,6 +3,7 @@ import {
   EllipsisIcon,
   LinkIcon,
   ListChecksIcon,
+  FileTextIcon,
   LoaderCircleIcon,
   PaperclipIcon,
   ShieldAlertIcon,
@@ -43,11 +44,11 @@ import {
   slashToken,
   type SlashToken,
 } from '../quick-replies'
+import { ATTACHMENT_TYPES, fileSize, isDocumentFile, mediaLimit, mediaProblem } from '../media'
 import { requestsSecret } from '../secret'
 import {
   IMAGE_TYPES,
   MAX_BODY,
-  MAX_FILE_BYTES,
   MAX_FILES,
   type ChatMessage,
   type ComposerMode,
@@ -137,15 +138,16 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
     (incoming: File[]) => {
       const images: LocalAttachment[] = []
       for (const file of incoming) {
-        if (!IMAGE_TYPES.includes(file.type)) {
+        const problem = mediaProblem(file)
+        if (problem === 'badType') {
           toast.error(t('composer.badType', { name: file.name }))
           continue
         }
-        if (file.size > MAX_FILE_BYTES) {
-          toast.error(t('composer.tooLarge', { name: file.name }))
+        if (problem === 'tooLarge') {
+          toast.error(t('composer.tooLarge', { name: file.name, max: fileSize(mediaLimit(file)) }))
           continue
         }
-        images.push({ id: uuid(), file, preview: URL.createObjectURL(file) })
+        images.push({ id: uuid(), file, preview: isDocumentFile(file) ? '' : URL.createObjectURL(file) })
       }
       setFiles((current) => {
         const room = MAX_FILES - current.length
@@ -414,11 +416,21 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         <div className="mb-2 flex flex-wrap gap-2">
           {files.map((file) => (
             <div key={file.id} className="relative">
-              <img
-                src={file.preview}
-                alt={file.file.name}
-                className="size-14 rounded-md border object-cover"
-              />
+              {isDocumentFile(file.file) ? (
+                <div className="flex h-14 w-44 items-center gap-2 rounded-md border px-2.5">
+                  <FileTextIcon className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs font-medium">{file.file.name}</span>
+                    <span className="block text-xs text-muted-foreground">{fileSize(file.file.size)}</span>
+                  </span>
+                </div>
+              ) : (
+                <img
+                  src={file.preview}
+                  alt={file.file.name}
+                  className="size-14 rounded-md border object-cover"
+                />
+              )}
               <button
                 type="button"
                 aria-label={t('composer.removeAttachment', { name: file.file.name })}
@@ -565,7 +577,7 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
       <input
         ref={fileInput}
         type="file"
-        accept={IMAGE_TYPES.join(',')}
+        accept={ATTACHMENT_TYPES.join(',')}
         multiple
         hidden
         onChange={(event) => {

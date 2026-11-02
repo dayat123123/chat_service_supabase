@@ -27,6 +27,8 @@ extension CommunityErrorText on CommunityLocalizations {
       'duplicate_content' => errorDuplicateContent,
       'user_muted' => errorUserMuted,
       'secret_request_blocked' => errorSecretRequestBlocked,
+      'attachment_not_allowed' => errorAttachmentNotAllowed,
+      'attachment_too_large' => documentTooLarge,
       _ => switch (mapped.kind) {
         CommunityErrorKind.network => errorNetwork,
         CommunityErrorKind.unauthenticated => errorUnauthenticated,
