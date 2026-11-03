@@ -9,12 +9,13 @@ select tests.create_user('np_dodi') as dodi \gset
 select tests.authenticate_as(:'ani');
 select ok(public.register_push_device('np-token-ani-00000000000000001', 'android') is not null, 'Perangkat push terdaftar');
 select public.get_notification_prefs() as prefs \gset
-select is(jsonb_array_length(:'prefs'::jsonb -> 'types'), 8, 'Preferensi memuat delapan jenis notifikasi');
+select is(jsonb_array_length(:'prefs'::jsonb -> 'types'), 12, 'Preferensi memuat dua belas jenis notifikasi');
 select ok(not exists (select 1 from jsonb_array_elements(:'prefs'::jsonb -> 'types') e
-                      where (e ->> 'push')::boolean is false or (e ->> 'in_app')::boolean is false),
-  'Tanpa pengaturan semua notifikasi aktif');
+                      where e ->> 'type' <> 'olt.promo'
+                        and ((e ->> 'push')::boolean is false or (e ->> 'in_app')::boolean is false)),
+  'Tanpa pengaturan semua notifikasi aktif kecuali push promo OLT');
 select is((select e -> 'in_app' from jsonb_array_elements(:'prefs'::jsonb -> 'types') e where e ->> 'type' = 'olt.trade'),
-  'null'::jsonb, 'Notifikasi transaksi OLT hanya push');
+  'true'::jsonb, 'Notifikasi transaksi OLT bisa masuk kotak notifikasi');
 select is(:'prefs'::jsonb -> 'quiet_hours' ->> 'enabled', 'false', 'Jam tenang mati secara default');
 
 select throws_ok($$select public.set_notification_prefs('{"types": [{"type": "promo", "push": false}]}')$$,

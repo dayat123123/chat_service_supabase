@@ -970,7 +970,7 @@ services:
     <<: *base
     build:
       context: ../services/integration
-    image: olt-social/integration:0.1.0
+    image: olt-social/integration:0.2.0
     networks: [app]
     depends_on:
       migrate:

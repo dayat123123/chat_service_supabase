@@ -378,6 +378,8 @@ export type RoomMessage = {
 
 export type RoomMessages = { room_id: string; items: RoomMessage[] }
 
+export type RoomCursor = Pick<RoomMessage, 'created_at' | 'id'>
+
 export type ContentType = 'post' | 'comment' | 'message'
 
 export type ContentTarget = { type: ContentType; id: string }

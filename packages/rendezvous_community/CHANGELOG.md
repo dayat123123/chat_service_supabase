@@ -1,6 +1,6 @@
 ## 1.3.0
 
-* **Butuh backend dengan migrasi `0068`–`0085`** (keamanan konten, permintaan DM, banding,
+* **Butuh backend dengan migrasi `0068`–`0086`** (keamanan konten, permintaan DM, banding,
   integritas pasar, pencarian, trending, edit/bookmark/reaksi/bagikan, preferensi notifikasi,
   konfigurasi klien, analitik, link preview, `moderation_status`) serta layanan `link-preview`
   dan `classifier`. Fitur baru dibaca lewat `get_client_config`; backend lama tanpa RPC ini
@@ -47,6 +47,24 @@
 * Baru: preferensi notifikasi per jenis (di aplikasi / push), jam tenang WIB
   (`CommunityNotificationSettings`, bagian "Notifikasi" di Privasi & akun), dan teks notifikasi
   gabungan ("Budi dan 4 lainnya menyukai konten Anda") dari `actor_count`/`actors`.
+* Baru (`0086`): lima jenis notifikasi OLT di pengaturan notifikasi, dalam bagian "Notifikasi OLT"
+  dengan keterangan singkat: `olt.trade` (Transaksi), `olt.funds` (Dana), `olt.market` (Pasar),
+  `olt.info` (Info), `olt.promo` (Promo; push default mati). Semua jenis OLT kini punya sakelar
+  di aplikasi dan push; sakelar di aplikasi hanya disembunyikan bila server mengirim
+  `in_app: null`. Jenis yang belum dikenal ditampilkan dengan namanya. Konstanta baru
+  `notificationFundsType`, `notificationMarketType`, `notificationOltInfoType`,
+  `notificationPromoType`, `isOltNotificationType()`, dan `NotificationTypePreference.isOlt`.
+* Baru: pesan OLT di kotak notifikasi (`type = announcement`, `payload.source = "olt"`) tampil
+  dengan judul/isi sesuai bahasa aplikasi (`id`/`en`, cadangan `id` lalu `en`, atau teks biasa)
+  dan ikon netral per jenis (ikon khusus untuk kategori `important` dan `promo`), tanpa avatar.
+  `AppNotification.isOlt`, `oltKind`, `oltCategory`, `localizedTitle()`, `localizedBody()`.
+  `AppNotification.title`/`body` kini `null` (bukan error) bila nilainya bukan teks.
+* Baru: callback `onOltNotificationTap` di `RendezvousCommunity.initialize`/`create` dan
+  `CommunityCallbacks` (`CommunityOltNotificationTapCallback`). Mengetuk pesan OLT di kotak
+  notifikasi menandainya terbaca lalu memanggil callback dengan seluruh payload (`kind`,
+  `category`, `message_id`, `cust_id`, `title`, `body`, `data`) plus `notification_id`.
+  `openCommunityPush` meneruskan push OLT (`source: "olt"`) ke callback yang sama, menandai
+  `notification_id` terbaca, dan mengembalikan `true`; tanpa callback tetap `false`.
 * Baru: pencarian (`CommunitySearch` / `openCommunitySearch`: tab Semua/Post/Pengguna/Saham/
   Hashtag, debounce 300 ms, paginasi), feed hashtag (`CommunityHashtagFeed`), hashtag trending.
   `SocialText` kini membuat `#hashtag` dan tautan `http(s)` bisa diketuk; tautan dibuka setelah
@@ -73,9 +91,9 @@
   Batch maks 50, dikirim tiap 60 detik, saat 20 event terkumpul, atau saat aplikasi ke latar
   belakang; batch gagal dibuang; berhenti bila server menjawab `disabled`. Hanya properti
   whitelist yang dikirim, tidak pernah teks konten atau kata kunci.
-* Baru: `isCommunityPush(data)` dan `isOltPush(data)`. `openCommunityPush` mengembalikan `false`
-  untuk push `olt.*` (`source: "olt"`, `cust_id`, `message_id`, plus `data` dari OLT seperti
-  `screen`) supaya host yang menanganinya.
+* Baru: `isCommunityPush(data)` dan `isOltPush(data)`. Tanpa `onOltNotificationTap`,
+  `openCommunityPush` mengembalikan `false` untuk push `olt.*` (`source: "olt"`, `cust_id`,
+  `message_id`, plus `data` dari OLT seperti `screen`) supaya host yang menanganinya.
 * Logger baru `RendezvousCommunity.Config` dan `RendezvousCommunity.Analytics`.
 * Kompatibilitas: `CommunityDependencies` tidak berubah; fitur baru lewat antarmuka baru
   `CommunityFeatureDependencies` dan `CommunityFeatureScope` (bawaannya

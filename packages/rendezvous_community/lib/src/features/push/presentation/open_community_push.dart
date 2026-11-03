@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:rendezvous_community/src/app/community_dependencies.dart';
 import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/app/rendezvous_community.dart';
 import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:rendezvous_community/src/features/push/domain/entities/community_push_message.dart';
@@ -18,6 +20,7 @@ bool isOltPush(Map<String, Object?> data) {
 }
 
 bool openCommunityPush(BuildContext context, Map<String, Object?> data) {
+  if (isOltPush(data)) return _openOltPush(context, data);
   final message = CommunityPushMessage.tryParse(data);
   if (message == null) return false;
   final notificationId = message.notificationId;
@@ -44,6 +47,22 @@ bool openCommunityPush(BuildContext context, Map<String, Object?> data) {
   }
   return true;
 }
+
+bool _openOltPush(BuildContext context, Map<String, Object?> data) {
+  final dependencies = _dependencies(context);
+  final callback = dependencies?.callbacks.onOltNotificationTap;
+  if (dependencies == null || callback == null) return false;
+  final notificationId = data['notification_id'];
+  if (notificationId is String && notificationId.isNotEmpty) {
+    unawaited(_markRead(dependencies.notifications, notificationId));
+  }
+  callback(context, Map.unmodifiable(data));
+  return true;
+}
+
+CommunityDependencies? _dependencies(BuildContext context) =>
+    context.getInheritedWidgetOfExactType<CommunityScope>()?.dependencies ??
+    (RendezvousCommunity.isInitialized ? RendezvousCommunity.instance : null);
 
 Future<void> _markRead(NotificationRepository notifications, String id) async {
   try {

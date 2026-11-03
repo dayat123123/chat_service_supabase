@@ -26,6 +26,7 @@ const (
 	notifyKey = "oik_NotifyKey000000000000000000000000000000000"
 	botKey    = "oik_BotPostKey00000000000000000000000000000000"
 	lanKey    = "oik_LanOnlyKey00000000000000000000000000000000"
+	wideKey   = "oik_BroadcastKey000000000000000000000000000000"
 )
 
 type fakeKeys struct {
@@ -42,6 +43,7 @@ func newFakeKeys() *fakeKeys {
 		hash(notifyKey): {ID: "k-notify", Prefix: "NotifyKe", Scopes: []string{keys.ScopeNotify}, RateLimit: 3},
 		hash(botKey):    {ID: "k-bot", Prefix: "BotPostK", Scopes: []string{keys.ScopeBotPost}, RateLimit: 100},
 		hash(lanKey):    {ID: "k-lan", Prefix: "LanOnlyK", Scopes: []string{keys.ScopeNotify}, RateLimit: 100},
+		hash(wideKey):   {ID: "k-wide", Prefix: "Broadcas", Scopes: []string{keys.ScopeNotify, keys.ScopeNotifyBroadcast}, RateLimit: 100},
 	}}
 }
 
@@ -186,6 +188,56 @@ func TestNotifyPassesTheBatchToTheDatabase(t *testing.T) {
 	}
 	if !strings.Contains(h.logs.String(), `"key_prefix":"NotifyKe"`) || !strings.Contains(h.logs.String(), `"queued":1`) {
 		t.Fatalf("log harus memuat prefix key dan ringkasan:\n%s", h.logs)
+	}
+}
+
+func TestNotifyForwardsTargetsChannelsAndCategory(t *testing.T) {
+	h := newHarness(t, nil)
+	h.store.out = `{"results":[{"index":0,"id":"b1","status":"accepted","broadcast_id":"6f1c2a54-0b9e-4c55-9a52-0d5f3f0c2b11"},` +
+		`{"index":1,"id":"c1","status":"queued","devices":1,"inbox":1}],` +
+		`"queued":1,"devices":1,"no_recipient":0,"duplicate":0,"invalid":0,"accepted":1,"inbox":1}`
+	body := `{"messages":[` +
+		`{"id":"b1","target":{"audience":"stock_watchers","stock":"BBCA"},"channels":["push","inbox"],"category":"promo","title":"IPO"},` +
+		`{"id":"c1","cust_id":"W137","channels":["push","inbox"],"category":"important","title":"Order"}]}`
+	rec := h.do("POST", "/notify/messages", wideKey, body)
+	if rec.Code != http.StatusOK || rec.Body.String() != h.store.out {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body)
+	}
+	var items []struct {
+		Target   map[string]string `json:"target"`
+		Channels []string          `json:"channels"`
+		Category string            `json:"category"`
+	}
+	if err := json.Unmarshal(h.store.calls[0].items, &items); err != nil || len(items) != 2 {
+		t.Fatalf("items = %s err = %v", h.store.calls[0].items, err)
+	}
+	if items[0].Target["audience"] != "stock_watchers" || items[0].Target["stock"] != "BBCA" ||
+		len(items[0].Channels) != 2 || items[0].Category != "promo" || items[1].Category != "important" {
+		t.Fatalf("items = %+v", items)
+	}
+	if strings.Contains(h.logs.String(), "BBCA") || !strings.Contains(h.logs.String(), `"accepted":1`) {
+		t.Fatalf("log harus memuat ringkasan tanpa isi pesan:\n%s", h.logs)
+	}
+	snap := h.srv.Metrics()
+	if snap.Messages["accepted"] != 1 || snap.Messages["queued"] != 1 || snap.Devices != 1 || snap.Inbox != 1 {
+		t.Fatalf("metrics = %+v", snap)
+	}
+	if _, ok := snap.Messages["inbox"]; ok {
+		t.Fatalf("inbox bukan hasil pesan: %+v", snap.Messages)
+	}
+}
+
+func TestNotifyBroadcastScopeStillNeedsNotify(t *testing.T) {
+	key := &keys.Key{Scopes: []string{keys.ScopeNotifyBroadcast}}
+	if key.Has(keys.ScopeNotify) || !key.Has(keys.ScopeNotifyBroadcast) {
+		t.Fatalf("scopes = %v", key.Scopes)
+	}
+	h := newHarness(t, nil)
+	h.keys.known[func() string { s, _ := keys.Hash(wideKey); return s }()] = keys.Key{ID: "k-only", Prefix: "Broadcas",
+		Scopes: []string{keys.ScopeNotifyBroadcast}, RateLimit: 100}
+	rec := h.do("POST", "/notify/messages", wideKey, oneMessage)
+	if rec.Code != http.StatusForbidden || errorCode(t, rec) != codeScopeForbidden || len(h.store.calls) != 0 {
+		t.Fatalf("status = %d body = %s", rec.Code, rec.Body)
 	}
 }
 

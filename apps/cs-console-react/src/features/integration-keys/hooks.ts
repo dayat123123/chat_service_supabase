@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { integrationKeysApi } from './api'
+import { hasActiveBroadcast } from './logic'
 import type { IntegrationKey, KeyDraft } from './types'
 
 export const integrationKeys = {
@@ -9,6 +10,7 @@ export const integrationKeys = {
   stats: (days: number) => ['integration-keys', 'stats', days] as const,
   daily: (days: number, keyId: string) => ['integration-keys', 'daily', days, keyId] as const,
   officials: ['integration-keys', 'officials'] as const,
+  broadcasts: (keyId: string) => ['integration-keys', 'broadcasts', keyId] as const,
 }
 
 export function useIntegrationKeys() {
@@ -30,6 +32,15 @@ export function useKeyDaily(days: number, keyId: string | null) {
     enabled: keyId !== null,
     placeholderData: (previous) => previous,
     refetchInterval: 60_000,
+  })
+}
+
+export function useKeyBroadcasts(keyId: string | null) {
+  return useQuery({
+    queryKey: integrationKeys.broadcasts(keyId ?? ''),
+    queryFn: () => integrationKeysApi.broadcasts(keyId ?? ''),
+    enabled: keyId !== null,
+    refetchInterval: (query) => (hasActiveBroadcast(query.state.data ?? []) ? 5_000 : 60_000),
   })
 }
 

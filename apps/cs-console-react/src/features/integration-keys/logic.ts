@@ -10,9 +10,12 @@ import {
   RATE_LIMIT_MAX,
   type DailyIntegration,
   type KeyDailyRow,
+  keyScopes,
+  type IntegrationBroadcast,
   type IntegrationKey,
   type KeyDraft,
   type KeyScope,
+  type LocalizedText,
 } from './types'
 
 export type KeyField = 'name' | 'scopes' | 'official' | 'rate' | 'cidrs'
@@ -58,6 +61,8 @@ export function keyProblems(draft: KeyDraft): KeyProblems {
   if (name === '') problems.name = 'required'
   else if (name.length < KEY_NAME_MIN || name.length > KEY_NAME_MAX) problems.name = 'length'
   if (draft.scopes.length === 0) problems.scopes = 'required'
+  else if (draft.scopes.includes('notify_broadcast') && !draft.scopes.includes('notify'))
+    problems.scopes = 'invalid'
   if (draft.scopes.includes('bot_post') && !draft.official_account_id) problems.official = 'required'
   if (
     !Number.isInteger(draft.rate_limit_per_minute) ||
@@ -95,9 +100,29 @@ export function draftFrom(key: IntegrationKey | null): KeyDraft {
   }
 }
 
+const scopeNeeds: Partial<Record<KeyScope, KeyScope>> = { notify_broadcast: 'notify' }
+
 export function toggleScope(scopes: KeyScope[], scope: KeyScope, on: boolean): KeyScope[] {
-  const next = on ? [...new Set([...scopes, scope])] : scopes.filter((item) => item !== scope)
-  return (['notify', 'bot_post'] as const).filter((item) => next.includes(item))
+  const next = new Set(scopes)
+  if (on) next.add(scope)
+  else next.delete(scope)
+  for (const item of keyScopes) {
+    const needed = scopeNeeds[item]
+    if (!needed || !next.has(item) || next.has(needed)) continue
+    if (on) next.add(needed)
+    else next.delete(item)
+  }
+  return keyScopes.filter((item) => next.has(item))
+}
+
+export function broadcastTitle(title: LocalizedText | null, language: 'id' | 'en') {
+  if (title === null) return ''
+  const text = typeof title === 'string' ? title : (title[language] ?? title[language === 'id' ? 'en' : 'id'])
+  return text?.trim() ?? ''
+}
+
+export function hasActiveBroadcast(broadcasts: IntegrationBroadcast[]) {
+  return broadcasts.some((item) => item.status === 'queued' || item.status === 'sending')
 }
 
 export function dailySeries(daily: DailyIntegration[], from: string, days: number): DailyIntegration[] {

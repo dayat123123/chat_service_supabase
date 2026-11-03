@@ -286,7 +286,12 @@ export type Database = {
         Returns: Json
       }
       community_room_messages: {
-        Args: { p_before?: string; p_code: string; p_limit?: number }
+        Args: {
+          p_before?: string
+          p_before_id?: string
+          p_code: string
+          p_limit?: number
+        }
         Returns: Json
       }
       community_room_settings: {
@@ -506,6 +511,10 @@ export type Database = {
         }
       }
       health_acknowledge: { Args: { p_alert_id: number }; Returns: undefined }
+      integration_broadcasts: {
+        Args: { p_key_id?: string; p_limit?: number }
+        Returns: Json
+      }
       integration_key_create: {
         Args: {
           p_allowed_cidrs?: string[]

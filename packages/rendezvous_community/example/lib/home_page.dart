@@ -271,7 +271,7 @@ class _HomePageState extends State<HomePage> {
                   trailing: Expanded(
                     child: Align(
                       alignment: Alignment.bottomCenter,
-                      child: Padding(
+                      child: SingleChildScrollView(
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Column(mainAxisSize: MainAxisSize.min, children: actions),
                       ),

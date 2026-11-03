@@ -21,6 +21,8 @@ typedef CommunityRoomTapCallback = void Function(BuildContext context, String ro
 
 typedef CommunityHashtagTapCallback = void Function(BuildContext context, String tag);
 
+typedef CommunityOltNotificationTapCallback = void Function(BuildContext context, Map<String, Object?> data);
+
 typedef CommunityStockSearch = Future<List<StockSuggestion>> Function(String query);
 
 class CommunityCallbacks {
@@ -31,6 +33,7 @@ class CommunityCallbacks {
     this.onRoomTap,
     this.stockSearch,
     this.onHashtagTap,
+    this.onOltNotificationTap,
   });
 
   final CommunityStockTapCallback? onStockTap;
@@ -39,6 +42,7 @@ class CommunityCallbacks {
   final CommunityRoomTapCallback? onRoomTap;
   final CommunityStockSearch? stockSearch;
   final CommunityHashtagTapCallback? onHashtagTap;
+  final CommunityOltNotificationTapCallback? onOltNotificationTap;
 }
 
 abstract interface class CommunityDependencies {

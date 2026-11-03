@@ -201,7 +201,7 @@ await openCommunityNotificationSettings(context);
 ```
 
 - **Permintaan pesan:** DM dari orang yang tidak Anda ikuti masuk ke "Permintaan pesan" di atas daftar chat (jumlah dari `get_message_request_count`). Room permintaan memburamkan gambar sampai diterima; aksi Terima / Tolak / Blokir & laporkan. Saat DM dibuka, `get_dm_request_state` dibaca: pengirim melihat "Pesan Anda masih berupa permintaan (n/3)" lalu pemberitahuan batas, penerima bisa menekan "Terima" langsung dari room.
-- **Privasi & akun** kini juga berisi "Pesan langsung" (semua orang / hanya yang saya ikuti / tidak ada), "Notifikasi" (di aplikasi & push per jenis, jam tenang WIB; transaksi OLT hanya push; pesan CS resmi selalu dikirim), dan "Banding & sanksi".
+- **Privasi & akun** kini juga berisi "Pesan langsung" (semua orang / hanya yang saya ikuti / tidak ada), "Notifikasi" (di aplikasi & push per jenis, jam tenang WIB; bagian "Notifikasi OLT" untuk Transaksi, Dana, Pasar, Info, dan Promo; pesan CS resmi dan pesan OLT kategori `important` selalu dikirim), dan "Banding & sanksi".
 - **Banding saya:** sanksi aktif, "Konten yang dimoderasi" (post/komentar/pesan yang disembunyikan atau dihapus moderator dalam 90 hari, dari `get_my_moderated_content`) dengan tombol "Ajukan banding" bila belum dibanding, dan riwayat banding.
 - **Notifikasi gabungan:** "Budi dan 4 lainnya menyukai konten Anda" memakai `actor_count`, bukan `event_count`. Notifikasi `appeal` membuka "Banding saya".
 
@@ -215,7 +215,16 @@ RendezvousCommunity.instance.trackOrderTap(stockCode: 'BBCA', side: 'buy', sourc
 
 ## Push transaksi OLT
 
-Push dari backend OLT (`/integration/v1/notify/messages`) berisi `source: "olt"`, `kind` berawalan `olt.` (mis. `olt.trade`), `message_id`, `cust_id`, dan isi `data` dari OLT (mis. `screen`, `order_id`). `openCommunityPush` mengembalikan `false` untuk push ini supaya app OLT yang membuka layarnya sendiri:
+Push dari backend OLT (`/integration/v1/notify/messages`) berisi `source: "olt"`, `kind` berawalan `olt.` (`olt.trade`, `olt.funds`, `olt.market`, `olt.info`, `olt.promo`), `category`, `message_id`, `cust_id`, `notification_id`, dan isi `data` dari OLT (mis. `screen`, `order_id`). Pesan yang sama juga masuk ke kotak notifikasi. Daftarkan `onOltNotificationTap` di `initialize` supaya ketukan di kotak notifikasi (payload lengkap: `kind`, `category`, `message_id`, `title`, `body`, `data`, `notification_id`) dan `openCommunityPush` untuk push OLT diteruskan ke router OLT; notifikasinya ditandai terbaca otomatis:
+
+```dart
+await RendezvousCommunity.initialize(
+  // ...
+  onOltNotificationTap: (context, data) => oltRouter.openOltMessage(data),
+);
+```
+
+Tanpa callback itu, `openCommunityPush` mengembalikan `false` untuk push OLT supaya app OLT yang membuka layarnya sendiri:
 
 ```dart
 if (isOltPush(message.data)) return oltRouter.openTradePush(message.data);

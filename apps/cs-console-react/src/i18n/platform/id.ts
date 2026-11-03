@@ -25,9 +25,15 @@ export const platform = {
       lastUsed: 'Terakhir dipakai',
       actions: 'Aksi',
     },
-    scopes: { notify: 'Notifikasi transaksi', bot_post: 'Postingan bot' },
+    scopes: {
+      notify: 'Notifikasi transaksi',
+      notify_broadcast: 'Notifikasi massal',
+      bot_post: 'Postingan bot',
+    },
     scopeHints: {
       notify: 'notifEngine mengirim cust_id dan isi pesan saat order match.',
+      notify_broadcast:
+        'Satu permintaan bisa mengirim notifikasi ke banyak pengguna sekaligus: semua pengguna, pemantau satu saham, atau daftar user OLT. Izin Notifikasi transaksi ikut dicentang otomatis.',
       bot_post: 'Sistem otomatis memposting atas nama satu akun resmi, langsung terbit dengan label Bot.',
     },
     status: { active: 'Aktif', disabled: 'Nonaktif', revoked: 'Dicabut' },
@@ -51,6 +57,8 @@ export const platform = {
     name: 'Nama key',
     nameHint: 'Contoh: notifEngine produksi. 3–80 karakter.',
     scopeLabel: 'Izin',
+    broadcastWarning:
+      'Peringatan: key ini bisa mengirim notifikasi ke SEMUA pengguna aplikasi. Berikan hanya ke sistem OLT yang tepercaya dan batasi IP-nya.',
     official: 'Akun resmi untuk bot',
     officialHint: 'Postingan bot terbit atas nama akun ini.',
     officialNone: 'Pilih akun resmi',
@@ -68,6 +76,7 @@ export const platform = {
     problems: {
       name: { required: 'Isi nama key.', length: 'Nama 3–80 karakter.' },
       scopes: 'Pilih minimal satu izin.',
+      scopesBroadcast: 'Izin Notifikasi massal butuh izin Notifikasi transaksi.',
       official: 'Pilih akun resmi untuk izin Postingan bot.',
       rate: 'Isi angka bulat 1–100.000.',
       cidrsInvalid: 'Alamat tidak valid: {{items}}',
@@ -126,6 +135,33 @@ export const platform = {
       chartKey: 'Pesan dan postingan bot per hari untuk {{name}}',
       perKey: 'Statistik per API key',
       empty: 'Belum ada aktivitas di periode ini.',
+    },
+    broadcasts: {
+      open: 'Broadcast',
+      openLabel: 'Broadcast {{name}}',
+      title: 'Broadcast {{name}}',
+      description: 'Notifikasi massal dari key ini, terbaru di atas (paling banyak {{max}}).',
+      list: 'Daftar broadcast',
+      empty: 'Belum ada broadcast dari key ini.',
+      untitled: 'Tanpa judul',
+      category: { important: 'Penting', info: 'Info', promo: 'Promo' },
+      channels: { inbox: 'Kotak masuk', push: 'Push' },
+      target: {
+        all: 'Semua pengguna',
+        stock_watchers: 'Pemantau {{stock}}',
+        olt_user_ids_one: '{{value}} user OLT',
+        olt_user_ids_other: '{{value}} user OLT',
+      },
+      status: { queued: 'Antre', sending: 'Mengirim', done: 'Selesai', failed: 'Gagal' },
+      counters: {
+        targeted: 'Sasaran',
+        recipients: 'Penerima',
+        devices: 'Perangkat',
+        inbox: 'Kotak masuk',
+        capped: 'Kena batas',
+        pref_skipped: 'Dilewati preferensi',
+      },
+      error: 'Galat: {{error}}',
     },
   },
   flags: {
@@ -325,7 +361,8 @@ export const platform = {
   },
   errors: {
     invalid_name: 'Nama key 3–80 karakter.',
-    invalid_scopes: 'Pilih izin Notifikasi transaksi, Postingan bot, atau keduanya.',
+    invalid_scopes:
+      'Pilih minimal satu izin. Izin Notifikasi massal hanya bisa bersama izin Notifikasi transaksi.',
     invalid_cidr: 'Ada alamat IP atau CIDR yang tidak valid, atau lebih dari 20 alamat.',
     invalid_rate_limit: 'Batas per menit harus 1–100.000.',
     official_required: 'Izin Postingan bot wajib memilih akun resmi yang aktif.',

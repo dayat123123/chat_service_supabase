@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  broadcastTitle,
   dailySeries,
   deliveryRatio,
+  hasActiveBroadcast,
   keyDailySeries,
   keyProblems,
   parseCidrs,
   toggleScope,
   validCidr,
 } from './logic'
-import type { KeyDraft } from './types'
+import type { IntegrationBroadcast, KeyDraft } from './types'
 
 const draft = (overrides: Partial<KeyDraft> = {}): KeyDraft => ({
   name: 'notifEngine produksi',
@@ -75,6 +77,11 @@ describe('keyProblems', () => {
     const many = Array.from({ length: 21 }, (_, i) => `10.0.0.${i}`)
     expect(keyProblems(draft({ allowed_cidrs: many })).cidrs).toBe('tooMany')
   })
+
+  it('rejects mass notifications without the notify scope', () => {
+    expect(keyProblems(draft({ scopes: ['notify_broadcast'] })).scopes).toBe('invalid')
+    expect(keyProblems(draft({ scopes: ['notify', 'notify_broadcast'] }))).toEqual({})
+  })
 })
 
 describe('toggleScope', () => {
@@ -82,6 +89,42 @@ describe('toggleScope', () => {
     expect(toggleScope(['bot_post'], 'notify', true)).toEqual(['notify', 'bot_post'])
     expect(toggleScope(['notify', 'bot_post'], 'notify', false)).toEqual(['bot_post'])
     expect(toggleScope(['notify'], 'notify', true)).toEqual(['notify'])
+  })
+
+  it('turns on notify together with mass notifications', () => {
+    expect(toggleScope([], 'notify_broadcast', true)).toEqual(['notify', 'notify_broadcast'])
+    expect(toggleScope(['bot_post'], 'notify_broadcast', true)).toEqual([
+      'notify',
+      'notify_broadcast',
+      'bot_post',
+    ])
+  })
+
+  it('drops mass notifications when notify is turned off', () => {
+    expect(toggleScope(['notify', 'notify_broadcast', 'bot_post'], 'notify', false)).toEqual(['bot_post'])
+    expect(toggleScope(['notify', 'notify_broadcast'], 'notify_broadcast', false)).toEqual(['notify'])
+  })
+})
+
+describe('broadcastTitle', () => {
+  it('reads plain and localized titles with a fallback language', () => {
+    expect(broadcastTitle(' Promo akhir tahun ', 'en')).toBe('Promo akhir tahun')
+    expect(broadcastTitle({ id: 'Pasar tutup', en: 'Market closed' }, 'en')).toBe('Market closed')
+    expect(broadcastTitle({ id: 'Pasar tutup' }, 'en')).toBe('Pasar tutup')
+    expect(broadcastTitle({ en: 'Market closed' }, 'id')).toBe('Market closed')
+    expect(broadcastTitle({}, 'id')).toBe('')
+    expect(broadcastTitle(null, 'id')).toBe('')
+  })
+})
+
+describe('hasActiveBroadcast', () => {
+  const broadcast = (status: IntegrationBroadcast['status']) => ({ status }) as IntegrationBroadcast
+
+  it('is true only while a broadcast is queued or sending', () => {
+    expect(hasActiveBroadcast([broadcast('done'), broadcast('failed')])).toBe(false)
+    expect(hasActiveBroadcast([broadcast('done'), broadcast('sending')])).toBe(true)
+    expect(hasActiveBroadcast([broadcast('queued')])).toBe(true)
+    expect(hasActiveBroadcast([])).toBe(false)
   })
 })
 

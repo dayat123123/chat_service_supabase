@@ -174,7 +174,8 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('Suka'), findsOneWidget);
-      expect(find.text('Transaksi OLT'), findsOneWidget);
+      expect(find.text('Transaksi'), findsOneWidget);
+      expect(find.text('Notifikasi OLT'), findsOneWidget);
       expect(find.byType(Switch), findsNWidgets(4));
       await tester.tap(find.text('Jam tenang'));
       await tester.pumpAndSettle();

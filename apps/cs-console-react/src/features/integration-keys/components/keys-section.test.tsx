@@ -10,7 +10,7 @@ import { renderWithProviders } from '@/test/render'
 import { Toaster } from '@/test/toast'
 
 import { integrationKeysApi } from '../api'
-import type { IntegrationKey, IntegrationStats } from '../types'
+import type { IntegrationBroadcast, IntegrationKey, IntegrationStats } from '../types'
 import { IntegrationKeysSection } from './keys-section'
 
 vi.mock('../api', () => ({
@@ -22,6 +22,7 @@ vi.mock('../api', () => ({
     stats: vi.fn(),
     statsDaily: vi.fn(),
     officialAccounts: vi.fn(),
+    broadcasts: vi.fn(),
   },
 }))
 
@@ -78,6 +79,28 @@ const stats: IntegrationStats = {
   linked: { accounts: 3, profiles: 2 },
 }
 
+const broadcastBase: IntegrationBroadcast = {
+  id: 'bc-1',
+  key: { id: 'key-1', name: 'notifEngine produksi', prefix: 'AbCdEfGh' },
+  message_id: 'market-close-20261103',
+  kind: 'market',
+  title: { id: 'Pasar tutup lebih awal', en: 'Market closes early' },
+  category: 'important',
+  channels: ['inbox', 'push'],
+  target: { type: 'all' },
+  status: 'done',
+  targeted: 1500,
+  recipients: 1400,
+  devices: 2100,
+  inbox: 1350,
+  capped: 0,
+  pref_skipped: 50,
+  error: null,
+  created_at: '2026-11-03T02:00:00.000Z',
+  started_at: '2026-11-03T02:00:01.000Z',
+  finished_at: '2026-11-03T02:00:09.000Z',
+}
+
 const research: AccountRef = {
   id: 'acc-1',
   username: 'olt_research',
@@ -101,6 +124,7 @@ beforeEach(() => {
   vi.mocked(integrationKeysApi.stats).mockResolvedValue(stats)
   vi.mocked(integrationKeysApi.officialAccounts).mockResolvedValue([research])
   vi.mocked(integrationKeysApi.statsDaily).mockResolvedValue([])
+  vi.mocked(integrationKeysApi.broadcasts).mockResolvedValue([])
 })
 
 describe('IntegrationKeysSection', () => {
@@ -195,7 +219,7 @@ describe('IntegrationKeysSection', () => {
     await user.click(screen.getByRole('button', { name: 'Buat API key' }))
     const dialog = await screen.findByRole('dialog', { name: 'Buat API key' })
     await user.type(within(dialog).getByLabelText('Nama key'), 'Bot berita')
-    await user.click(within(dialog).getByRole('checkbox', { name: /Notifikasi transaksi/ }))
+    await user.click(within(dialog).getByRole('checkbox', { name: /^Notifikasi transaksi/ }))
     await user.click(within(dialog).getByRole('checkbox', { name: /Postingan bot/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Buat API key' }))
     expect(within(dialog).getByText('Pilih akun resmi untuk izin Postingan bot.')).toBeVisible()
@@ -209,6 +233,94 @@ describe('IntegrationKeysSection', () => {
         expect.objectContaining({ scopes: ['bot_post'], official_account_id: 'acc-1' }),
       ),
     )
+  })
+
+  it('selects trade notifications together with mass notifications and warns about the reach', async () => {
+    const user = userEvent.setup()
+    vi.mocked(integrationKeysApi.create).mockResolvedValue({ key: notifyKey, secret: SECRET })
+    renderSection()
+
+    await user.click(screen.getByRole('button', { name: 'Buat API key' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Buat API key' })
+    await user.type(within(dialog).getByLabelText('Nama key'), 'Broadcast pasar')
+    const notify = within(dialog).getByRole('checkbox', { name: /^Notifikasi transaksi/ })
+    const broadcast = within(dialog).getByRole('checkbox', { name: /^Notifikasi massal/ })
+    await user.click(notify)
+    expect(notify).not.toBeChecked()
+
+    await user.click(broadcast)
+    expect(broadcast).toBeChecked()
+    expect(notify).toBeChecked()
+    expect(within(dialog).getByText(/bisa mengirim notifikasi ke SEMUA pengguna/)).toBeVisible()
+
+    await user.click(notify)
+    expect(broadcast).not.toBeChecked()
+    expect(within(dialog).queryByText(/bisa mengirim notifikasi ke SEMUA pengguna/)).not.toBeInTheDocument()
+
+    await user.click(broadcast)
+    await user.click(within(dialog).getByRole('button', { name: 'Buat API key' }))
+    await waitFor(() =>
+      expect(integrationKeysApi.create).toHaveBeenCalledWith(
+        expect.objectContaining({ scopes: ['notify', 'notify_broadcast'] }),
+      ),
+    )
+  })
+
+  it('lists the broadcasts of a key with target, status, and counters', async () => {
+    const user = userEvent.setup()
+    vi.mocked(integrationKeysApi.list).mockResolvedValue([
+      { ...notifyKey, scopes: ['notify', 'notify_broadcast'] },
+    ])
+    vi.mocked(integrationKeysApi.broadcasts).mockResolvedValue([
+      {
+        ...broadcastBase,
+        id: 'bc-2',
+        message_id: 'promo-20261103',
+        title: 'Promo biaya transaksi',
+        category: 'promo',
+        channels: ['push'],
+        target: { type: 'olt_user_ids', count: 3 },
+        status: 'failed',
+        error: 'fcm_unavailable',
+      },
+      broadcastBase,
+    ])
+    renderSection()
+
+    const list = await screen.findByRole('table', { name: 'API key' })
+    const row = within(list).getByRole('row', { name: /notifEngine produksi/ })
+    expect(within(row).getByText('Notifikasi massal')).toBeInTheDocument()
+
+    await user.click(within(row).getByRole('button', { name: 'Broadcast notifEngine produksi' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Broadcast notifEngine produksi' })
+    const items = await within(dialog).findAllByRole('listitem')
+    expect(integrationKeysApi.broadcasts).toHaveBeenCalledWith('key-1')
+    expect(items).toHaveLength(2)
+
+    const [failed, done] = items as [HTMLElement, HTMLElement]
+    expect(within(failed).getByText('Promo biaya transaksi')).toBeVisible()
+    expect(within(failed).getByText('Gagal')).toBeVisible()
+    expect(within(failed).getByText('3 user OLT')).toBeVisible()
+    expect(within(failed).getByText('Galat: fcm_unavailable')).toBeVisible()
+
+    expect(within(done).getByText('Pasar tutup lebih awal')).toBeVisible()
+    expect(within(done).getByText('market-close-20261103')).toBeVisible()
+    expect(within(done).getByText('Selesai')).toBeVisible()
+    expect(within(done).getByText('Penting')).toBeVisible()
+    expect(within(done).getByText('Kotak masuk, Push')).toBeVisible()
+    expect(within(done).getByText('Semua pengguna')).toBeVisible()
+    expect(within(done).getByText('1.500')).toBeVisible()
+    expect(within(done).getByText('2.100')).toBeVisible()
+    expect(within(done).queryByText(/Galat/)).not.toBeInTheDocument()
+  })
+
+  it('shows an empty broadcast list', async () => {
+    const user = userEvent.setup()
+    renderSection()
+
+    await user.click(await screen.findByRole('button', { name: 'Broadcast notifEngine produksi' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Broadcast notifEngine produksi' })
+    expect(await within(dialog).findByText('Belum ada broadcast dari key ini.')).toBeVisible()
   })
 
   it('explains when the official accounts cannot be loaded', async () => {

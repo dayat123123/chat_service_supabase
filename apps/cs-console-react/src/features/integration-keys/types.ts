@@ -1,6 +1,6 @@
 import type { AccountRef, StaffRef } from '@/features/community/types'
 
-export const keyScopes = ['notify', 'bot_post'] as const
+export const keyScopes = ['notify', 'notify_broadcast', 'bot_post'] as const
 export type KeyScope = (typeof keyScopes)[number]
 
 export type KeyStatus = 'active' | 'disabled' | 'revoked'
@@ -39,6 +39,18 @@ export type CreatedKey = { key: IntegrationKey; secret: string }
 
 export type PushOutcome = { sent: number; failed: number; invalid: number; expired: number; pending: number }
 
+export type BroadcastTotals = {
+  total: number
+  active: number
+  done: number
+  failed: number
+  recipients: number
+  devices: number
+  inbox: number
+  capped: number
+  pref_skipped: number
+}
+
 export type KeyStats = {
   id: string
   name: string
@@ -53,6 +65,9 @@ export type KeyStats = {
   invalid: number
   posts: number
   posts_rejected: number
+  accepted?: number
+  inbox?: number
+  broadcasts?: BroadcastTotals
   push: PushOutcome
 }
 
@@ -62,6 +77,7 @@ export type DailyIntegration = {
   queued: number
   no_recipient: number
   posts: number
+  accepted?: number
 }
 
 export type KeyDailyRow = {
@@ -83,8 +99,45 @@ export type IntegrationStats = {
   from: string
   keys: KeyStats[]
   daily: DailyIntegration[]
+  broadcasts?: BroadcastTotals
   linked: { accounts: number; profiles: number }
 }
+
+export type LocalizedText = string | { id?: string; en?: string }
+
+export const broadcastCategories = ['important', 'info', 'promo'] as const
+export type BroadcastCategory = (typeof broadcastCategories)[number]
+
+export type BroadcastChannel = 'inbox' | 'push'
+
+export type BroadcastStatus = 'queued' | 'sending' | 'done' | 'failed'
+
+export type BroadcastTarget =
+  { type: 'olt_user_ids'; count: number } | { type: 'all' } | { type: 'stock_watchers'; stock: string }
+
+export type IntegrationBroadcast = {
+  id: string
+  key: { id: string; name: string; prefix: string }
+  message_id: string
+  kind: string
+  title: LocalizedText | null
+  category: BroadcastCategory
+  channels: BroadcastChannel[]
+  target: BroadcastTarget
+  status: BroadcastStatus
+  targeted: number
+  recipients: number
+  devices: number
+  inbox: number
+  capped: number
+  pref_skipped: number
+  error: string | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export const BROADCAST_LIMIT = 50
 
 export const statsWindows = [7, 30, 90] as const
 export type StatsWindow = (typeof statsWindows)[number]

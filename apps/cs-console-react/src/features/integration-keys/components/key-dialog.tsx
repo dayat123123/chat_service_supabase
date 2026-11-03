@@ -113,7 +113,12 @@ function KeyForm({
     name: shown.name
       ? t(`platform.keys.problems.name.${shown.name === 'length' ? 'length' : 'required'}`)
       : undefined,
-    scopes: shown.scopes ? t('platform.keys.problems.scopes') : undefined,
+    scopes:
+      shown.scopes === 'invalid'
+        ? t('platform.keys.problems.scopesBroadcast')
+        : shown.scopes
+          ? t('platform.keys.problems.scopes')
+          : undefined,
     official: shown.official ? t('platform.keys.problems.official') : undefined,
     rate: shown.rate ? t('platform.keys.problems.rate') : undefined,
     cidrs:
@@ -186,6 +191,12 @@ function KeyForm({
             </span>
           </label>
         ))}
+        {draft.scopes.includes('notify_broadcast') ? (
+          <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/5 px-3 py-2 text-row text-warning">
+            <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {t('platform.keys.broadcastWarning')}
+          </p>
+        ) : null}
         <FieldText id={`${id}-scopes-text`} error={problemText.scopes} />
       </fieldset>
       {draft.scopes.includes('bot_post') ? (

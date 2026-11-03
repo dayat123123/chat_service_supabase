@@ -54,7 +54,20 @@ String notificationTypeLabel(CommunityLocalizations l10n, String type) => switch
   'announcement' => l10n.notifTypeAnnouncement,
   'appeal' => l10n.notifTypeAppeal,
   notificationTradeType => l10n.notifTypeTrade,
+  notificationFundsType => l10n.notifTypeFunds,
+  notificationMarketType => l10n.notifTypeMarket,
+  notificationOltInfoType => l10n.notifTypeOltInfo,
+  notificationPromoType => l10n.notifTypePromo,
   _ => type,
+};
+
+String? notificationTypeDescription(CommunityLocalizations l10n, String type) => switch (type) {
+  notificationTradeType => l10n.notifTypeTradeHint,
+  notificationFundsType => l10n.notifTypeFundsHint,
+  notificationMarketType => l10n.notifTypeMarketHint,
+  notificationOltInfoType => l10n.notifTypeOltInfoHint,
+  notificationPromoType => l10n.notifTypePromoHint,
+  _ => null,
 };
 
 String? _formatTime(TimeOfDay? time) =>
@@ -66,6 +79,54 @@ TimeOfDay? _parseTime(String? value) {
   final hour = int.tryParse(parts[0]);
   final minute = int.tryParse(parts[1]);
   return hour == null || minute == null ? null : TimeOfDay(hour: hour, minute: minute);
+}
+
+class _TypeRow extends StatelessWidget {
+  const _TypeRow({required this.preference, required this.muted});
+
+  final NotificationTypePreference preference;
+  final TextStyle? muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.communityL10n;
+    final cubit = context.read<NotificationPreferencesCubit>();
+    final pref = preference;
+    final description = notificationTypeDescription(l10n, pref.type);
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(notificationTypeLabel(l10n, pref.type)),
+                if (description != null) Text(description, style: muted),
+              ],
+            ),
+          ),
+          SizedBox(
+            width: 72,
+            child: pref.supportsInApp
+                ? Switch(
+                    value: pref.inApp ?? true,
+                    onChanged: (value) => cubit.setChannel(pref.type, inApp: value),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          SizedBox(
+            width: 72,
+            child: Switch(
+              value: pref.push,
+              onChanged: (value) => cubit.setChannel(pref.type, push: value),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SettingsView extends StatelessWidget {
@@ -111,6 +172,10 @@ class _SettingsView extends StatelessWidget {
             break;
         }
         final quiet = state.preferences.quietHours;
+        final oltTypes = [
+          for (final pref in state.preferences.types)
+            if (pref.isOlt) pref,
+        ];
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -132,34 +197,22 @@ class _SettingsView extends StatelessWidget {
               ),
             ),
             for (final pref in state.preferences.types)
-              Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16),
-                child: Row(
-                  children: [
-                    Expanded(child: Text(notificationTypeLabel(l10n, pref.type))),
-                    SizedBox(
-                      width: 72,
-                      child: pref.supportsInApp
-                          ? Switch(
-                              value: pref.inApp ?? true,
-                              onChanged: (value) => cubit.setChannel(pref.type, inApp: value),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                    SizedBox(
-                      width: 72,
-                      child: Switch(
-                        value: pref.push,
-                        onChanged: (value) => cubit.setChannel(pref.type, push: value),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              if (!pref.isOlt) _TypeRow(preference: pref, muted: muted),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Text(l10n.notifSupportAlwaysOn, style: muted),
             ),
+            if (oltTypes.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Text(l10n.notifSectionOlt, style: theme.textTheme.titleSmall),
+              ),
+              for (final pref in oltTypes) _TypeRow(preference: pref, muted: muted),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                child: Text(l10n.notifOltImportantHint, style: muted),
+              ),
+            ],
             SwitchListTile(
               title: Text(l10n.quietHours),
               subtitle: Text(

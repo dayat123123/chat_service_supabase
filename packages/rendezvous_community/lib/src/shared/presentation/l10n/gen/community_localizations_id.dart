@@ -1194,7 +1194,40 @@ class CommunityLocalizationsId extends CommunityLocalizations {
   String get notifTypeAppeal => 'Banding';
 
   @override
-  String get notifTypeTrade => 'Transaksi OLT';
+  String get notifTypeTrade => 'Transaksi';
+
+  @override
+  String get notifTypeTradeHint => 'Order dan transaksi saham';
+
+  @override
+  String get notifTypeFunds => 'Dana';
+
+  @override
+  String get notifTypeFundsHint => 'Setoran, penarikan, dan RDN';
+
+  @override
+  String get notifTypeMarket => 'Pasar';
+
+  @override
+  String get notifTypeMarketHint => 'Alert harga, IPO, dan aksi korporasi';
+
+  @override
+  String get notifTypeOltInfo => 'Info';
+
+  @override
+  String get notifTypeOltInfoHint => 'Informasi lain dari OLT';
+
+  @override
+  String get notifTypePromo => 'Promo';
+
+  @override
+  String get notifTypePromoHint => 'Promo dan penawaran';
+
+  @override
+  String get notifSectionOlt => 'Notifikasi OLT';
+
+  @override
+  String get notifOltImportantHint => 'Pesan penting dari OLT selalu dikirim, termasuk saat jam tenang.';
 
   @override
   String get notifInApp => 'Di aplikasi';

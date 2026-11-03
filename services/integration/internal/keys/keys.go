@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	ScopeNotify  = "notify"
-	ScopeBotPost = "bot_post"
+	ScopeNotify          = "notify"
+	ScopeNotifyBroadcast = "notify_broadcast"
+	ScopeBotPost         = "bot_post"
 
 	maxKeyLength = 200
 	maxEntries   = 10_000
