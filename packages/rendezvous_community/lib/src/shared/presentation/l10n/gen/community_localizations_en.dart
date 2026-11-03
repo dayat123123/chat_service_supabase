@@ -1203,7 +1203,40 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
   String get notifTypeAppeal => 'Appeals';
 
   @override
-  String get notifTypeTrade => 'OLT trades';
+  String get notifTypeTrade => 'Trades';
+
+  @override
+  String get notifTypeTradeHint => 'Orders and stock trades';
+
+  @override
+  String get notifTypeFunds => 'Funds';
+
+  @override
+  String get notifTypeFundsHint => 'Deposits, withdrawals, and RDN';
+
+  @override
+  String get notifTypeMarket => 'Market';
+
+  @override
+  String get notifTypeMarketHint => 'Price alerts, IPOs, and corporate actions';
+
+  @override
+  String get notifTypeOltInfo => 'Info';
+
+  @override
+  String get notifTypeOltInfoHint => 'Other information from OLT';
+
+  @override
+  String get notifTypePromo => 'Promotions';
+
+  @override
+  String get notifTypePromoHint => 'Promotions and offers';
+
+  @override
+  String get notifSectionOlt => 'OLT notifications';
+
+  @override
+  String get notifOltImportantHint => 'Important messages from OLT are always delivered, even during quiet hours.';
 
   @override
   String get notifInApp => 'In app';

@@ -6,7 +6,9 @@ import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_preferences.dart';
 import 'package:rendezvous_community/src/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:rendezvous_community/src/features/notifications/presentation/widgets/community_notification_settings.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
@@ -80,6 +82,12 @@ class CommunityNotificationList extends StatelessWidget {
   }
 
   static void _openDefault(BuildContext context, AppNotification n) {
+    if (n.isOlt) {
+      CommunityScope.of(
+        context,
+      ).callbacks.onOltNotificationTap?.call(context, Map.unmodifiable({...n.payload, 'notification_id': n.id}));
+      return;
+    }
     final postId = n.postId;
     final roomId = n.roomId;
     final url = Uri.tryParse(n.url ?? '');
@@ -106,6 +114,7 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final n = notification;
+    if (n.isOlt) return _OltNotificationTile(notification: n, onTap: onTap);
     final l10n = context.communityL10n;
     final theme = Theme.of(context);
     final name = n.actor?.name ?? l10n.someone;
@@ -152,6 +161,48 @@ class _NotificationTile extends StatelessWidget {
       ),
       title: Text(title, style: n.isRead ? null : const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: snippet == null || snippet.isEmpty ? null : Text(snippet, maxLines: 2, overflow: TextOverflow.ellipsis),
+      trailing: Text(l10n.relativeTime(n.createdAt), style: theme.textTheme.bodySmall),
+    );
+  }
+}
+
+class _OltNotificationTile extends StatelessWidget {
+  const _OltNotificationTile({required this.notification, required this.onTap});
+
+  final AppNotification notification;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = notification;
+    final l10n = context.communityL10n;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final language = l10n.localeName.split('_').first;
+    final kind = n.oltKind;
+    final kindLabel = kind == null ? null : notificationTypeLabel(l10n, kind);
+    final title =
+        n.localizedTitle(language) ?? (kindLabel == null || kindLabel == kind ? l10n.notifSectionOlt : kindLabel);
+    final body = n.localizedBody(language);
+    final important = n.oltCategory == 'important';
+    final icon = important
+        ? Icons.notification_important_outlined
+        : switch (kind) {
+            notificationTradeType => Icons.receipt_long_outlined,
+            notificationFundsType => Icons.account_balance_wallet_outlined,
+            notificationMarketType => Icons.show_chart,
+            notificationPromoType => Icons.local_offer_outlined,
+            _ => n.oltCategory == 'promo' ? Icons.local_offer_outlined : Icons.info_outline,
+          };
+    return ListTile(
+      tileColor: n.isRead ? null : scheme.primaryContainer.withValues(alpha: 0.25),
+      onTap: onTap,
+      leading: CircleAvatar(
+        backgroundColor: important ? scheme.errorContainer : scheme.secondaryContainer,
+        child: Icon(icon, color: important ? scheme.onErrorContainer : scheme.onSecondaryContainer),
+      ),
+      title: Text(title, style: n.isRead ? null : const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: body == null ? null : Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
       trailing: Text(l10n.relativeTime(n.createdAt), style: theme.textTheme.bodySmall),
     );
   }

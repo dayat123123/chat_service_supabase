@@ -19,6 +19,7 @@ import type {
   ReportAction,
   ReportStatus,
   ReportTarget,
+  RoomCursor,
 } from './types'
 
 export const communityKeys = {
@@ -337,8 +338,11 @@ export function useRoomMessages(code: string | null) {
   return useInfiniteQuery({
     queryKey: communityKeys.roomMessages(code ?? ''),
     queryFn: ({ pageParam }) => communityApi.roomMessages(code ?? '', pageParam),
-    initialPageParam: null as string | null,
-    getNextPageParam: (page) => (page.items.length >= 30 ? (page.items.at(-1)?.created_at ?? null) : null),
+    initialPageParam: null as RoomCursor | null,
+    getNextPageParam: (page): RoomCursor | null => {
+      const last = page.items.at(-1)
+      return page.items.length >= 30 && last ? { created_at: last.created_at, id: last.id } : null
+    },
     enabled: code !== null,
     retry: false,
     staleTime: 10_000,

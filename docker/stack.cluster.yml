@@ -129,7 +129,7 @@ services:
       <<: *deploy
       replicas: 2
   integration:
-    image: ${REGISTRY}/olt-social/integration:0.1.0
+    image: ${REGISTRY}/olt-social/integration:0.2.0
     deploy:
       <<: *deploy
       replicas: 2

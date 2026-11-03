@@ -2189,8 +2189,74 @@ abstract class CommunityLocalizations {
   /// No description provided for @notifTypeTrade.
   ///
   /// In id, this message translates to:
-  /// **'Transaksi OLT'**
+  /// **'Transaksi'**
   String get notifTypeTrade;
+
+  /// No description provided for @notifTypeTradeHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Order dan transaksi saham'**
+  String get notifTypeTradeHint;
+
+  /// No description provided for @notifTypeFunds.
+  ///
+  /// In id, this message translates to:
+  /// **'Dana'**
+  String get notifTypeFunds;
+
+  /// No description provided for @notifTypeFundsHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Setoran, penarikan, dan RDN'**
+  String get notifTypeFundsHint;
+
+  /// No description provided for @notifTypeMarket.
+  ///
+  /// In id, this message translates to:
+  /// **'Pasar'**
+  String get notifTypeMarket;
+
+  /// No description provided for @notifTypeMarketHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Alert harga, IPO, dan aksi korporasi'**
+  String get notifTypeMarketHint;
+
+  /// No description provided for @notifTypeOltInfo.
+  ///
+  /// In id, this message translates to:
+  /// **'Info'**
+  String get notifTypeOltInfo;
+
+  /// No description provided for @notifTypeOltInfoHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Informasi lain dari OLT'**
+  String get notifTypeOltInfoHint;
+
+  /// No description provided for @notifTypePromo.
+  ///
+  /// In id, this message translates to:
+  /// **'Promo'**
+  String get notifTypePromo;
+
+  /// No description provided for @notifTypePromoHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Promo dan penawaran'**
+  String get notifTypePromoHint;
+
+  /// No description provided for @notifSectionOlt.
+  ///
+  /// In id, this message translates to:
+  /// **'Notifikasi OLT'**
+  String get notifSectionOlt;
+
+  /// No description provided for @notifOltImportantHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan penting dari OLT selalu dikirim, termasuk saat jam tenang.'**
+  String get notifOltImportantHint;
 
   /// No description provided for @notifInApp.
   ///

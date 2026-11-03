@@ -77,6 +77,7 @@ type Server struct {
 	messages map[string]uint64
 	posts    map[string]uint64
 	devices  uint64
+	inbox    uint64
 	duration float64
 	handled  uint64
 }
@@ -302,11 +303,14 @@ func (s *Server) record(endpoint string, res outcome, elapsed time.Duration) {
 		target = s.posts
 	}
 	for k, v := range res.counts {
-		if k == "devices" {
+		switch k {
+		case "devices":
 			s.devices += uint64(v)
-			continue
+		case "inbox":
+			s.inbox += uint64(v)
+		default:
+			target[k] += uint64(v)
 		}
-		target[k] += uint64(v)
 	}
 }
 
@@ -355,6 +359,7 @@ func (s *Server) Metrics() metrics.Snapshot {
 		Messages:        make(map[string]uint64, len(s.messages)),
 		Posts:           make(map[string]uint64, len(s.posts)),
 		Devices:         s.devices,
+		Inbox:           s.inbox,
 		DurationSeconds: s.duration,
 		Handled:         s.handled,
 		Inflight:        len(s.slots),
@@ -380,7 +385,7 @@ func summary(out json.RawMessage) map[string]int {
 		return nil
 	}
 	counts := map[string]int{}
-	for _, k := range []string{"queued", "devices", "no_recipient", "duplicate", "invalid", "published", "rejected", "rate_limited"} {
+	for _, k := range []string{"queued", "accepted", "devices", "inbox", "no_recipient", "duplicate", "invalid", "published", "rejected", "rate_limited"} {
 		var n int
 		if raw, ok := body[k]; ok && json.Unmarshal(raw, &n) == nil {
 			counts[k] = n

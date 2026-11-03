@@ -3,6 +3,12 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'notification_preferences.freezed.dart';
 
 const notificationTradeType = 'olt.trade';
+const notificationFundsType = 'olt.funds';
+const notificationMarketType = 'olt.market';
+const notificationOltInfoType = 'olt.info';
+const notificationPromoType = 'olt.promo';
+
+bool isOltNotificationType(String type) => type.startsWith('olt.');
 
 @freezed
 abstract class NotificationTypePreference with _$NotificationTypePreference {
@@ -12,6 +18,7 @@ abstract class NotificationTypePreference with _$NotificationTypePreference {
   const NotificationTypePreference._();
 
   bool get supportsInApp => inApp != null;
+  bool get isOlt => isOltNotificationType(type);
 }
 
 @freezed

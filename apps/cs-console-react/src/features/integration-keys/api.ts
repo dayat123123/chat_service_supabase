@@ -1,7 +1,15 @@
 import type { AccountRef } from '@/features/community/types'
 import { rpc } from '@/lib/supabase'
 
-import type { CreatedKey, IntegrationKey, IntegrationStats, KeyDaily, KeyDraft } from './types'
+import {
+  BROADCAST_LIMIT,
+  type CreatedKey,
+  type IntegrationBroadcast,
+  type IntegrationKey,
+  type IntegrationStats,
+  type KeyDaily,
+  type KeyDraft,
+} from './types'
 
 function withoutSecret(raw: IntegrationKey & { key?: unknown }): IntegrationKey {
   const { key: _secret, ...view } = raw
@@ -44,4 +52,11 @@ export const integrationKeysApi = {
     const raw = await rpc<IntegrationStats>('integration_stats', { p_days: days })
     return { ...raw, keys: raw.keys ?? [], daily: raw.daily ?? [] }
   },
+  broadcasts: async (keyId: string) =>
+    (
+      (await rpc<IntegrationBroadcast[] | null>('integration_broadcasts', {
+        p_key_id: keyId,
+        p_limit: BROADCAST_LIMIT,
+      })) ?? []
+    ).map((row) => ({ ...row, channels: row.channels ?? [] })),
 }

@@ -35,6 +35,7 @@ import type {
   ReportRow,
   ReportStatus,
   ReportTarget,
+  RoomCursor,
   RoomMessages,
   RoomState,
   ZeroToleranceResult,
@@ -233,11 +234,12 @@ export const communityApi = {
         p_until: until,
       }),
     ),
-  roomMessages: async (code: string, before: string | null): Promise<RoomMessages> => {
+  roomMessages: async (code: string, before: RoomCursor | null): Promise<RoomMessages> => {
     const raw = await rpc<RoomMessages>('community_room_messages', {
       p_code: code,
       p_limit: 30,
-      p_before: before,
+      p_before: before?.created_at ?? null,
+      p_before_id: before?.id ?? null,
     })
     return { ...raw, items: raw.items ?? [] }
   },

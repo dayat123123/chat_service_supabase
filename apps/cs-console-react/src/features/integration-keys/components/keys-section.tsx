@@ -1,4 +1,4 @@
-import { KeyRoundIcon, PencilIcon, PlusIcon } from 'lucide-react'
+import { KeyRoundIcon, MegaphoneIcon, PencilIcon, PlusIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { useIntegrationKeys, useIntegrationOfficialAccounts, useRevokeIntegrationKey } from '../hooks'
 import { curlExample } from '../logic'
 import { REVOKE_REASON_MAX, REVOKE_REASON_MIN, type IntegrationKey, type KeyStatus } from '../types'
+import { BroadcastsDialog } from './broadcasts-dialog'
 import { KeyDialog, SecretDialog, type Revealed } from './key-dialog'
 import { KeyStatsCard } from './key-stats'
 
@@ -30,10 +31,12 @@ function KeyRow({
   item,
   onEdit,
   onRevoke,
+  onBroadcasts,
 }: {
   item: IntegrationKey
   onEdit: () => void
   onRevoke: () => void
+  onBroadcasts: () => void
 }) {
   const { t } = useTranslation()
   const revoked = item.status === 'revoked'
@@ -92,27 +95,38 @@ function KeyRow({
         )}
       </TableCell>
       <TableCell className="py-2">
-        {revoked ? null : (
-          <div className="flex justify-end gap-1">
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              aria-label={t('platform.keys.editLabel', { name: item.name })}
-              onClick={onEdit}
-            >
-              <PencilIcon />
-            </Button>
-            <Button
-              size="xs"
-              variant="ghost"
-              className="text-destructive"
-              aria-label={t('platform.keys.revokeLabel', { name: item.name })}
-              onClick={onRevoke}
-            >
-              {t('platform.keys.revoke')}
-            </Button>
-          </div>
-        )}
+        <div className="flex justify-end gap-1">
+          <Button
+            size="xs"
+            variant="ghost"
+            aria-label={t('platform.keys.broadcasts.openLabel', { name: item.name })}
+            onClick={onBroadcasts}
+          >
+            <MegaphoneIcon />
+            {t('platform.keys.broadcasts.open')}
+          </Button>
+          {revoked ? null : (
+            <>
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                aria-label={t('platform.keys.editLabel', { name: item.name })}
+                onClick={onEdit}
+              >
+                <PencilIcon />
+              </Button>
+              <Button
+                size="xs"
+                variant="ghost"
+                className="text-destructive"
+                aria-label={t('platform.keys.revokeLabel', { name: item.name })}
+                onClick={onRevoke}
+              >
+                {t('platform.keys.revoke')}
+              </Button>
+            </>
+          )}
+        </div>
       </TableCell>
     </TableRow>
   )
@@ -122,10 +136,12 @@ function KeysTable({
   keys,
   onEdit,
   onRevoke,
+  onBroadcasts,
 }: {
   keys: IntegrationKey[]
   onEdit: (key: IntegrationKey) => void
   onRevoke: (key: IntegrationKey) => void
+  onBroadcasts: (key: IntegrationKey) => void
 }) {
   const { t } = useTranslation()
   if (keys.length === 0) {
@@ -154,7 +170,13 @@ function KeysTable({
       </TableHeader>
       <TableBody>
         {keys.map((item) => (
-          <KeyRow key={item.id} item={item} onEdit={() => onEdit(item)} onRevoke={() => onRevoke(item)} />
+          <KeyRow
+            key={item.id}
+            item={item}
+            onEdit={() => onEdit(item)}
+            onRevoke={() => onRevoke(item)}
+            onBroadcasts={() => onBroadcasts(item)}
+          />
         ))}
       </TableBody>
     </Table>
@@ -196,6 +218,7 @@ export function IntegrationKeysSection() {
   const [creating, setCreating] = useState(false)
   const [revoking, setRevoking] = useState<IntegrationKey | null>(null)
   const [revealed, setRevealed] = useState<Revealed | null>(null)
+  const [viewing, setViewing] = useState<IntegrationKey | null>(null)
   const formOpen = creating || editing !== null
   return (
     <SectionFrame
@@ -210,7 +233,9 @@ export function IntegrationKeysSection() {
     >
       <SettingsCard title={t('platform.keys.listTitle')} subtitle={t('platform.keys.listHint')}>
         <QueryContent query={keys}>
-          {(items) => <KeysTable keys={items} onEdit={setEditing} onRevoke={setRevoking} />}
+          {(items) => (
+            <KeysTable keys={items} onEdit={setEditing} onRevoke={setRevoking} onBroadcasts={setViewing} />
+          )}
         </QueryContent>
       </SettingsCard>
       <KeyStatsCard />
@@ -229,6 +254,7 @@ export function IntegrationKeysSection() {
         />
       ) : null}
       <SecretDialog revealed={revealed} onClose={() => setRevealed(null)} />
+      <BroadcastsDialog item={viewing} onClose={() => setViewing(null)} />
       <ReasonDialog
         key={revoking?.id ?? 'none'}
         open={revoking !== null}

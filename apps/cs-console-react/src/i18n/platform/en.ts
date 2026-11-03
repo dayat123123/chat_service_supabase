@@ -28,9 +28,11 @@ export const platform: Translated<typeof source> = {
       lastUsed: 'Last used',
       actions: 'Actions',
     },
-    scopes: { notify: 'Trade notifications', bot_post: 'Bot posts' },
+    scopes: { notify: 'Trade notifications', notify_broadcast: 'Mass notifications', bot_post: 'Bot posts' },
     scopeHints: {
       notify: 'notifEngine sends a cust_id and the message when an order matches.',
+      notify_broadcast:
+        'One request can notify many users at once: all users, watchers of a stock, or a list of OLT user ids. Trade notifications is checked automatically.',
       bot_post: 'An automated system posts as one official account, published immediately with a Bot label.',
     },
     status: { active: 'Active', disabled: 'Disabled', revoked: 'Revoked' },
@@ -54,6 +56,8 @@ export const platform: Translated<typeof source> = {
     name: 'Key name',
     nameHint: 'For example: notifEngine production. 3–80 characters.',
     scopeLabel: 'Scopes',
+    broadcastWarning:
+      'Warning: this key can send notifications to ALL app users. Give it only to a trusted OLT system and restrict its IPs.',
     official: 'Official account for the bot',
     officialHint: 'Bot posts are published as this account.',
     officialNone: 'Choose an official account',
@@ -71,6 +75,7 @@ export const platform: Translated<typeof source> = {
     problems: {
       name: { required: 'Enter a key name.', length: 'Name must be 3–80 characters.' },
       scopes: 'Choose at least one scope.',
+      scopesBroadcast: 'The Mass notifications scope needs the Trade notifications scope.',
       official: 'Choose an official account for the Bot posts scope.',
       rate: 'Enter a whole number from 1 to 100,000.',
       cidrsInvalid: 'Invalid address: {{items}}',
@@ -129,6 +134,33 @@ export const platform: Translated<typeof source> = {
       chartKey: 'Messages and bot posts per day for {{name}}',
       perKey: 'Statistics per API key',
       empty: 'No activity in this period.',
+    },
+    broadcasts: {
+      open: 'Broadcasts',
+      openLabel: 'Broadcasts of {{name}}',
+      title: 'Broadcasts of {{name}}',
+      description: 'Mass notifications sent with this key, newest first (at most {{max}}).',
+      list: 'Broadcast list',
+      empty: 'No broadcasts from this key yet.',
+      untitled: 'Untitled',
+      category: { important: 'Important', info: 'Info', promo: 'Promo' },
+      channels: { inbox: 'Inbox', push: 'Push' },
+      target: {
+        all: 'All users',
+        stock_watchers: 'Watchers of {{stock}}',
+        olt_user_ids_one: '{{value}} OLT user',
+        olt_user_ids_other: '{{value}} OLT users',
+      },
+      status: { queued: 'Queued', sending: 'Sending', done: 'Done', failed: 'Failed' },
+      counters: {
+        targeted: 'Targeted',
+        recipients: 'Recipients',
+        devices: 'Devices',
+        inbox: 'Inbox',
+        capped: 'Capped',
+        pref_skipped: 'Skipped by preference',
+      },
+      error: 'Error: {{error}}',
     },
   },
   flags: {
@@ -326,7 +358,8 @@ export const platform: Translated<typeof source> = {
   },
   errors: {
     invalid_name: 'Key name must be 3–80 characters.',
-    invalid_scopes: 'Choose Trade notifications, Bot posts, or both.',
+    invalid_scopes:
+      'Choose at least one scope. Mass notifications can only be combined with Trade notifications.',
     invalid_cidr: 'An IP address or CIDR is not valid, or there are more than 20.',
     invalid_rate_limit: 'The per-minute limit must be 1–100,000.',
     official_required: 'The Bot posts scope needs an active official account.',

@@ -19,6 +19,7 @@ type Snapshot struct {
 	Messages        map[string]uint64
 	Posts           map[string]uint64
 	Devices         uint64
+	Inbox           uint64
 	DurationSeconds float64
 	Handled         uint64
 	Inflight        int
@@ -48,10 +49,12 @@ func Render(s Snapshot) string {
 	for _, k := range reqs {
 		fmt.Fprintf(&b, "integration_requests_total{endpoint=%q,code=%q} %d\n", k.Endpoint, k.Code, s.Requests[k])
 	}
-	header(&b, "integration_messages_total", "Notification messages by result (queued, no_recipient, duplicate, invalid).", "counter")
+	header(&b, "integration_messages_total", "Notification messages by result (queued, accepted, no_recipient, duplicate, invalid).", "counter")
 	labeled(&b, "integration_messages_total", s.Messages)
 	header(&b, "integration_push_devices_total", "Push rows queued for devices by accepted notification messages.", "counter")
 	fmt.Fprintf(&b, "integration_push_devices_total %d\n", s.Devices)
+	header(&b, "integration_inbox_notifications_total", "Inbox notifications created synchronously by cust_id messages.", "counter")
+	fmt.Fprintf(&b, "integration_inbox_notifications_total %d\n", s.Inbox)
 	header(&b, "integration_bot_posts_total", "Bot posts by result (published, rejected, duplicate, invalid, rate_limited).", "counter")
 	labeled(&b, "integration_bot_posts_total", s.Posts)
 	header(&b, "integration_request_duration_seconds", "Time spent handling authenticated requests.", "summary")
