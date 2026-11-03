@@ -159,6 +159,7 @@ class _RequestsView extends StatelessWidget {
                     return false;
                   },
                   child: ListView.separated(
+                    addAutomaticKeepAlives: false,
                     physics: const AlwaysScrollableScrollPhysics(),
                     itemCount: state.requests.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),

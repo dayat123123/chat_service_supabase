@@ -85,6 +85,7 @@ class _CommunitySkeletonState extends State<CommunitySkeleton> with SingleTicker
     return FadeTransition(
       opacity: Tween<double>(begin: 0.45, end: 1).animate(_controller),
       child: ListView.builder(
+        addAutomaticKeepAlives: false,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: widget.itemCount,
         itemBuilder: (context, _) => widget.itemBuilder?.call(context) ?? const _PostSkeleton(),

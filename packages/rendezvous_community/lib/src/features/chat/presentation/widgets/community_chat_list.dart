@@ -222,6 +222,7 @@ class _RoomListState extends State<_RoomList> {
       LoadStatus.ready => RefreshIndicator(
         onRefresh: () => _refresh(cubit),
         child: ListView.builder(
+          addAutomaticKeepAlives: false,
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
           itemCount: rooms.length + (state.loadingMore && social ? 1 : 0) + (social ? 0 : 1),

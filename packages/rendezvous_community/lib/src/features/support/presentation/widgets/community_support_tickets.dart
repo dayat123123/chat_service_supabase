@@ -46,6 +46,7 @@ class _CommunitySupportTicketsState extends State<CommunitySupportTickets> {
         final tickets = snapshot.data!;
         if (tickets.isEmpty) return CommunityEmptyView(message: l10n.supportNoTickets, icon: Icons.inbox_outlined);
         return ListView.separated(
+          addAutomaticKeepAlives: false,
           itemCount: tickets.length,
           separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, i) {

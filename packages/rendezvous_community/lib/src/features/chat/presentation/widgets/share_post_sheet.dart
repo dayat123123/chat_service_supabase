@@ -95,6 +95,7 @@ class _SharePostSheetState extends State<_SharePostSheet> {
                       icon: Icons.chat_bubble_outline,
                     ),
                     LoadStatus.ready => ListView.builder(
+                      addAutomaticKeepAlives: false,
                       itemCount: state.rooms.length,
                       itemBuilder: (context, i) {
                         final room = state.rooms[i];

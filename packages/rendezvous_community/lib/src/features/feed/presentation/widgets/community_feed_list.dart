@@ -153,6 +153,7 @@ class _FeedPostListState extends State<FeedPostList> {
           LoadStatus.ready => RefreshIndicator(
             onRefresh: cubit.refresh,
             child: ListView.builder(
+              addAutomaticKeepAlives: false,
               controller: _scroll,
               physics: const AlwaysScrollableScrollPhysics(),
               itemCount: posts.length + 2,

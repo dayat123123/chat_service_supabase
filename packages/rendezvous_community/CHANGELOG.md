@@ -5,6 +5,9 @@
   membuang builder kartu saham milik host. Tes regresi + tes analyzer
   (`test/tool/merge_completeness_test.dart`) yang memastikan setiap `merge`/`copyWith`/`lerp` di package
   meneruskan semua field.
+* **Perbaikan:** di desktop/web, scroll cepat saat kursor berada di atas tombol bertooltip tidak lagi membekukan
+  input mouse. Semua list lazy package memakai `addAutomaticKeepAlives: false`, sehingga baris yang sedang di-hover
+  tidak ditahan di luar layar (bug Flutter flutter/flutter#193566). Dijaga oleh `test/tool/list_keep_alive_test.dart`.
 * Baru: builder UI untuk feed, notifikasi, profil, dan badge dengan pola yang sama seperti chat
   (`CommunityPartBuilder<T>(context, details, fallback)` + scope + `merge`):
   * `CommunityFeedBuilders`: `postCard`, `postAvatar`, `postHeader`, `postBody`, `attachments`, `linkPreview`,

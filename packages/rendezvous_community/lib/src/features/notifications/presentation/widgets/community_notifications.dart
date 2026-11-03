@@ -83,6 +83,7 @@ class CommunityNotificationList extends StatelessWidget {
                               return false;
                             },
                             child: ListView.separated(
+                              addAutomaticKeepAlives: false,
                               itemCount: state.items.length,
                               separatorBuilder: (_, _) => const Divider(height: 1),
                               itemBuilder: (context, i) {

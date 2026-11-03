@@ -66,6 +66,7 @@ class _DraftsView extends StatelessWidget {
           LoadStatus.ready => RefreshIndicator(
             onRefresh: cubit.load,
             child: ListView.separated(
+              addAutomaticKeepAlives: false,
               itemCount: state.drafts.length,
               separatorBuilder: (_, _) => const Divider(height: 1),
               itemBuilder: (context, index) {

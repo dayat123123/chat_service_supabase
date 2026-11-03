@@ -60,6 +60,7 @@ class _MessageListState extends State<MessageList> {
           if (mounted) _loadOlderNearTop();
         });
         return ListView.builder(
+          addAutomaticKeepAlives: false,
           controller: _scroll,
           reverse: true,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
