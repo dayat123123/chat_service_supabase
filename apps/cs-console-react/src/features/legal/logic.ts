@@ -4,8 +4,6 @@ import { format } from '@/lib/time'
 import {
   LEGAL_BODY_MAX,
   LEGAL_BODY_MIN,
-  LEGAL_NOTE_MAX,
-  LEGAL_NOTE_MIN,
   LEGAL_SUMMARY_MAX,
   LEGAL_TITLE_MAX,
   LEGAL_TITLE_MIN,
@@ -53,11 +51,6 @@ export function draftProblems(
   return problems
 }
 
-export function validNote(note: string) {
-  const length = note.trim().length
-  return length >= LEGAL_NOTE_MIN && length <= LEGAL_NOTE_MAX
-}
-
 export function acceptanceRatio(accepted: number, activeUsers: number) {
   if (activeUsers <= 0) return null
   return Math.min(1, Math.max(0, accepted / activeUsers))
@@ -74,7 +67,10 @@ export function draftTone(status: DraftStatus) {
   return statusTones[status]
 }
 
-export function isAuthor(draft: Pick<LegalDraft, 'created_by_id' | 'updated_by_id' | 'submitted_by_id'>, me: string) {
+export function isAuthor(
+  draft: Pick<LegalDraft, 'created_by_id' | 'updated_by_id' | 'submitted_by_id'>,
+  me: string,
+) {
   return draft.created_by_id === me || draft.updated_by_id === me || draft.submitted_by_id === me
 }
 

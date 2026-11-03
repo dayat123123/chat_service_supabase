@@ -35,6 +35,8 @@ web CS ◀── cs_api.system_health (Super Admin)
 | `queue:storage_cleanup` | peringatan | Folder gagal dibersihkan janitor 3 kali atau lebih |
 | `alerts:delivery` | peringatan | Ada alert yang gagal dikirim dalam 24 jam |
 | `backup:*` | lihat [docs/backup](../backup/README.md#alert) | Backup belum diatur, WAL berhenti, backup penuh terlambat, offsite tertunda, uji restore gagal |
+| `backup:secret` | kritis | Rahasia backup di Vault tidak bisa dibuka (biasanya setelah restore ke server baru); isi ulang di tab Backup |
+| `alerts:secret` | peringatan | Token Telegram atau password SMTP di Vault tidak bisa dibuka; isi ulang di tab Alert |
 
 Ambang dapat diubah tanpa deploy di `private.settings`: `health.alert_after_seconds` (default 120), `health.resolve_after_seconds` (60), `health.disk_warn_ratio` (0,8), `health.disk_critical_ratio` (0,9), `health.expected_services`.
 

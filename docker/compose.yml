@@ -20,7 +20,7 @@
 #     data   Postgres, PgBouncer, Valkey, dan kliennya
 #     egress hanya untuk service yang butuh internet atau port di host
 # - Aplikasi konek ke Postgres lewat PgBouncer. Pengecualian: Realtime (replikasi
-#   logis) dan migrate/tools (operasi DB sebagai superuser).
+#   logis), backup (replikasi fisik), dan migrate/tools (operasi DB sebagai superuser).
 # - Hardening: non-root bila image mendukung, read-only + tmpfs, cap_drop ALL,
 #   no-new-privileges, batas CPU/memori/pids, healthcheck, log dirotasi.
 
@@ -875,6 +875,53 @@ services:
     deploy:
       resources:
         limits: {cpus: "1", memory: 384M, pids: 64}
+
+  # Backup PostgreSQL (PITR) + file Storage ke repositori restic di S3 (services/backup, docs/backup):
+  # pg_receivewal lewat slot olt_backup + pg_basebackup harian + uji restore mingguan. Tujuan S3,
+  # password enkripsi, dan jadwal diatur Super Admin dari web CS (Kesehatan sistem -> Backup).
+  # Koneksi replikasi langsung ke Postgres (tidak bisa lewat PgBouncer).
+  backup:
+    <<: *base
+    build:
+      context: ../services/backup
+    image: olt-social/backup:0.1.0
+    # Hostname tetap agar restic mengenali lock basi miliknya sendiri setelah restart.
+    hostname: backup
+    networks: [data, app, egress]
+    # Membaca file storage milik 1000:1000 walau mode 0640.
+    group_add: ["1000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      rest:
+        condition: service_healthy
+    stop_grace_period: 90s
+    secrets: [jwt_secret, backup_db_password]
+    environment:
+      PORT: 8080
+      LOG_LEVEL: ${BACKUP_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      PGHOST: ${POSTGRES_HOST:-db}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      PGUSER: olt_backup
+      PGPASSWORD_FILE: /run/secrets/backup_db_password
+      DATA_DIR: /var/lib/olt-backup
+      STORAGE_DIR: /mnt/storage
+    volumes:
+      - backup-data:/var/lib/olt-backup
+      - storage-data:/mnt/storage:ro
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/backup", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: "${BACKUP_MEMORY:-1G}", pids: 256}
 
   # Pemantau sistem (services/sentinel): probe HTTP/TCP ke layanan internal + pemakaian disk setiap
   # 30 dtk ke database (aturan alert dihitung di DB, docs/system-health), lalu mengirim alert ke

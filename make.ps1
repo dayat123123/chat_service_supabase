@@ -21,6 +21,7 @@ param(
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
                  'test-media', 'test-sentinel', 'test-backup', 'check-go-comments', 'secrets-scan',
+                 'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
@@ -39,7 +40,9 @@ param(
     [string]$User = 'budi_santoso',
     [string]$Email = '',
     [string]$Name = '',
-    [string]$Ttl = ''
+    [string]$Ttl = '',
+    # restore-pitr: waktu target (RFC3339) atau 'latest'.
+    [string]$At = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -189,6 +192,8 @@ switch ($Target) {
   test-backup    Unit test layanan backup (Go, di container)
   check-go-comments  Pastikan kode Go tanpa komentar (selain directive)
   secrets-scan   Pindai riwayat git dengan gitleaks (.gitleaks.toml)
+  backup-snapshots  Daftar snapshot backup (restic) + rentang waktu PITR
+  restore-pitr   Pulihkan DB ke waktu tertentu: -At 2026-11-03T10:15:00+07:00 -Yes (env RESTIC_*, AWS_*; docs/backup)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
@@ -390,6 +395,38 @@ switch ($Target) {
     { $_ -in 'test-media', 'test-sentinel', 'test-backup' } {
         $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    'backup-snapshots' { Assert-Config; Invoke-Compose @('run', '--rm', '--no-deps', '-T', 'backup', 'snapshots') }
+    'restore-pitr' {
+        Assert-Config
+        if (-not $At) { throw 'Sebutkan waktu: .\make.ps1 restore-pitr -At 2026-11-03T10:15:00+07:00 -Yes (atau -At latest)' }
+        if (-not $Yes) { throw 'Isi database diganti hasil restore. Ulangi dengan -Yes' }
+        if (-not $env:RESTIC_REPOSITORY) { throw 'Set $env:RESTIC_REPOSITORY, $env:RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE), $env:AWS_ACCESS_KEY_ID, $env:AWS_SECRET_ACCESS_KEY' }
+        Invoke-Compose @('build', 'backup')
+        Invoke-Compose @('stop')
+        $runArgs = @('run', '--rm', '--user', '0:0', '--network', "${Stack}_egress",
+                     '-e', 'RESTIC_REPOSITORY', '-e', 'RESTIC_PASSWORD', '-e', 'AWS_ACCESS_KEY_ID',
+                     '-e', 'AWS_SECRET_ACCESS_KEY', '-e', 'AWS_DEFAULT_REGION', '-v', "${Stack}_db-data:/restore")
+        if ($env:RESTIC_PASSWORD_FILE) {
+            $pw = (Resolve-Path -LiteralPath $env:RESTIC_PASSWORD_FILE).Path
+            $runArgs += @('-v', "${pw}:/run/secrets/restic_password:ro", '-e', 'RESTIC_PASSWORD_FILE=/run/secrets/restic_password')
+        }
+        $runArgs += @('olt-social/backup:0.1.0', 'restore', '--target-time', $At, '--data-dir', '/restore', '--wipe')
+        Invoke-Docker $runArgs
+        Invoke-Compose @('up', '-d', 'db')
+        Write-Host 'Menunggu recovery selesai (pantau: .\make.ps1 logs -Service db)...'
+        $ready = $false
+        for ($i = 0; $i -lt 720 -and -not $ready; $i++) {
+            & docker @($Compose + @('exec', '-T', 'db', 'pg_isready', '-U', 'postgres', '-h', 'localhost', '-q')) 2>$null
+            if ($LASTEXITCODE -eq 0) { $ready = $true } else { Start-Sleep -Seconds 5 }
+        }
+        if (-not $ready) { throw 'Database belum siap; lihat .\make.ps1 logs -Service db' }
+        Invoke-Compose @('exec', '-T', 'db', 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1',
+                         '-c', 'ALTER SYSTEM RESET restore_command', '-c', 'ALTER SYSTEM RESET recovery_target_time',
+                         '-c', 'ALTER SYSTEM RESET recovery_target_action', '-c', 'ALTER SYSTEM RESET recovery_target_timeline',
+                         '-c', 'SELECT pg_reload_conf()')
+        Invoke-Compose @('exec', '-T', '-u', 'postgres', 'db', 'rm', '-rf', '/var/lib/postgresql/data/restore_wal')
+        Write-Host "Database dipulihkan ke $At. Periksa data, lalu: .\make.ps1 up"
     }
     'check-go-comments' {
         Invoke-Docker @('run', '--rm', '-v', "${PSScriptRoot}:/repo", '-w', '/repo/scripts/check-go-comments', $GoImage,

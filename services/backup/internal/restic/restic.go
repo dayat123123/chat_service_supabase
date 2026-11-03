@@ -111,6 +111,9 @@ func classify(err error) error {
 	if err == nil {
 		return nil
 	}
+	if strings.Contains(err.Error()+runner.Output(err), "bucket does not exist") {
+		return fmt.Errorf("%w: %v", ErrNoRepository, err)
+	}
 	switch runner.Code(err) {
 	case exitNoRepo:
 		return fmt.Errorf("%w: %v", ErrNoRepository, err)

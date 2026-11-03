@@ -252,6 +252,7 @@ type fakeDB struct {
 	calls     []string
 	receivers int
 	verifies  [][]string
+	server    *fakeProc
 	recovery  bool
 }
 
@@ -340,7 +341,11 @@ func (d *fakeDB) StartReceiver(ctx context.Context, dir string, line func(string
 func (d *fakeDB) StartServer(context.Context, pg.LocalServer) (runner.Process, error) {
 	defer d.track.enter()()
 	d.log("start-server")
-	return newProc(), nil
+	p := newProc()
+	d.mu.Lock()
+	d.server = p
+	d.mu.Unlock()
+	return p, nil
 }
 
 func (d *fakeDB) Query(_ context.Context, s pg.LocalServer, user, sql string) (string, error) {
@@ -361,6 +366,12 @@ func (d *fakeDB) Query(_ context.Context, s pg.LocalServer, user, sql string) (s
 
 func (d *fakeDB) StopServer(context.Context, pg.LocalServer) error {
 	d.log("stop-server")
+	d.mu.Lock()
+	p := d.server
+	d.mu.Unlock()
+	if p != nil {
+		p.Interrupt()
+	}
 	return nil
 }
 

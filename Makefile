@@ -52,7 +52,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
-        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \n        test-media test-sentinel test-backup check-go-comments secrets-scan \
+        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \n        test-media test-sentinel test-backup check-go-comments secrets-scan backup-snapshots restore-pitr \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
@@ -120,6 +120,31 @@ backup: check-config ## Backup DB (+ file storage) ke folder backups/
 
 restore: check-config ## Restore DB: make restore FILE=olt-YYYYMMDD-HHMMSS.dump CONFIRM=yes
 	$(COMPOSE) run --rm -e CONFIRM=$(CONFIRM) tools restore $(FILE)
+
+backup-snapshots: check-config ## Daftar snapshot backup (restic) + rentang waktu PITR
+	$(COMPOSE) run --rm --no-deps -T backup snapshots
+
+restore-pitr: check-config ## PITR: make restore-pitr AT=<RFC3339|latest> CONFIRM=yes (env RESTIC_*, AWS_*; docs/backup)
+	@test "$(CONFIRM)" = yes || { echo "Isi database diganti hasil restore. Ulangi dengan CONFIRM=yes"; exit 1; }
+	@test -n "$(AT)" || { echo "Sebutkan AT=2026-11-03T10:15:00+07:00 atau AT=latest"; exit 1; }
+	@test -n "$$RESTIC_REPOSITORY" || { echo "Set RESTIC_REPOSITORY, RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE), AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"; exit 1; }
+	$(COMPOSE) build backup
+	$(COMPOSE) stop
+	docker run --rm --user 0:0 --network $(STACK)_egress \
+	  -e RESTIC_REPOSITORY -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
+	  $(if $(RESTIC_PASSWORD_FILE),-v "$(abspath $(RESTIC_PASSWORD_FILE)):/run/secrets/restic_password:ro" -e RESTIC_PASSWORD_FILE=/run/secrets/restic_password) \
+	  -v $(STACK)_db-data:/restore olt-social/backup:0.1.0 \
+	  restore --target-time "$(AT)" --data-dir /restore --wipe
+	$(COMPOSE) up -d db
+	@echo "Menunggu recovery selesai (pantau: make logs s=db)..."
+	@for i in $$(seq 1 720); do $(COMPOSE) exec -T db pg_isready -U postgres -h localhost -q && exit 0; sleep 5; done; \
+	  echo "Database belum siap setelah 1 jam; lihat make logs s=db"; exit 1
+	$(COMPOSE) exec -T db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+	  -c "ALTER SYSTEM RESET restore_command" -c "ALTER SYSTEM RESET recovery_target_time" \
+	  -c "ALTER SYSTEM RESET recovery_target_action" -c "ALTER SYSTEM RESET recovery_target_timeline" \
+	  -c "SELECT pg_reload_conf()"
+	$(COMPOSE) exec -T -u postgres db rm -rf /var/lib/postgresql/data/restore_wal
+	@echo "Database dipulihkan ke $(AT). Periksa data, lalu: make up"
 
 gen-secrets: ## Buat docker/secrets/ + docker/.env (idempoten; FORCE=1 membuat ulang semua)
 	docker build -q -t $(TOOLS_IMG) docker/tools > /dev/null

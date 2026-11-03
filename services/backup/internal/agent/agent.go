@@ -93,6 +93,7 @@ type Options struct {
 	SlotCheck          time.Duration
 	BaseWait           time.Duration
 	RepositoryRetry    time.Duration
+	OpenTimeout        time.Duration
 	ProbePoll          time.Duration
 }
 
@@ -142,7 +143,7 @@ func New(opts Options) *Agent {
 		{&opts.ConfigPoll, 15 * time.Second}, {&opts.HeartbeatInterval, 30 * time.Second}, {&opts.RequestTimeout, 10 * time.Second},
 		{&opts.RestoreTestTimeout, 2 * time.Hour}, {&opts.Tick, 5 * time.Second}, {&opts.BackoffMin, time.Second},
 		{&opts.BackoffMax, time.Minute}, {&opts.SlotCheck, 30 * time.Second}, {&opts.BaseWait, 2 * time.Minute},
-		{&opts.RepositoryRetry, time.Minute}, {&opts.ProbePoll, 2 * time.Second},
+		{&opts.RepositoryRetry, time.Minute}, {&opts.ProbePoll, 2 * time.Second}, {&opts.OpenTimeout, 45 * time.Second},
 	}
 	for _, d := range defaults {
 		if *d.v <= 0 {

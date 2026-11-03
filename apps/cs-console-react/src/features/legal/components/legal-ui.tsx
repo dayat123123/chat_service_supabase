@@ -50,7 +50,15 @@ export function AcceptanceMeter({ accepted, activeUsers }: { accepted: number; a
   )
 }
 
-export function LegalPreview({ title, body, className }: { title: string; body: string; className?: string }) {
+export function LegalPreview({
+  title,
+  body,
+  className,
+}: {
+  title: string
+  body: string
+  className?: string
+}) {
   const { t } = useTranslation()
   return (
     <section

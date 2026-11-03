@@ -71,17 +71,26 @@ Lihat juga [docs/system-health](../system-health/README.md).
 
 ## Pemulihan
 
-Langkah lengkap ada di [services/backup/README.md](../../services/backup/README.md). Ringkasnya:
+Langkah lengkap ada di [services/backup/README.md](../../services/backup/README.md#prosedur-pemulihan). Ringkasnya:
 
 1. **Hentikan stack** (kecuali yang dibutuhkan untuk restore).
-2. **Pulihkan backup penuh + WAL** sampai waktu target ke volume database baru, dengan subcommand `backup restore`. Perintah ini butuh repositori, access key S3, dan password enkripsi yang Anda simpan di luar server.
+2. **Pulihkan backup penuh + WAL** sampai waktu target ke volume database:
+   ```bash
+   export RESTIC_REPOSITORY=s3:https://s3.penyedia.co.id/olt-backup/prod RESTIC_PASSWORD_FILE=/aman/password-backup
+   export AWS_ACCESS_KEY_ID=… AWS_SECRET_ACCESS_KEY=…
+   make backup-snapshots                                              # lihat rentang waktu yang bisa dipulihkan
+   make restore-pitr AT=2026-11-03T10:15:00+07:00 CONFIRM=yes          # atau AT=latest
+   ```
+   Windows: `.\make.ps1 restore-pitr -At 2026-11-03T10:15:00+07:00 -Yes`. Kredensial dan password diambil dari salinan yang Anda simpan di luar server.
 3. **Jalankan database.** Postgres memutar WAL sampai waktu target lalu naik sebagai primary.
 4. **Jalankan stack lagi**, lalu periksa data.
 
-**Kunci Vault.** Kunci enkripsi Supabase Vault ada di volume `db-config` (`/etc/postgresql-custom/pgsodium_root.key`), bukan di backup database. Bila memulihkan di server yang sama, volume itu tetap ada dan semua rahasia di Vault terbaca. Bila memulihkan ke **server baru**, rahasia di Vault tidak bisa dibuka. Isi ulang dari web:
+**Kunci Vault.** Kunci enkripsi Supabase Vault ada di volume `db-config` (`/etc/postgresql-custom/pgsodium_root.key`), bukan di backup database. Bila memulihkan di server yang sama, volume itu tetap ada dan semua rahasia di Vault terbaca. Bila memulihkan ke **server baru**, rahasia di Vault tidak bisa dibuka, dan Kesehatan sistem menampilkan alert `backup:secret` / `alerts:secret`. Isi ulang dari web:
 - kunci Firebase (Pengaturan → Push notification);
-- tujuan dan password backup (Kesehatan sistem → Backup);
+- secret access key dan password enkripsi **yang sama** untuk tujuan backup yang sama (Kesehatan sistem → Backup). Selama rahasia lama tidak terbaca, password repositori yang ada boleh diisi ulang;
 - kanal alert Telegram/email (Kesehatan sistem → Alert).
+
+Simpan juga `docker/secrets/` dan `docker/.env` di luar server. Password role database ada di dalam backup dan harus cocok dengan isi `docker/secrets/`.
 
 Simpan juga salinan `pgsodium_root.key` di tempat aman bersama password backup. Dengan salinan itu, rahasia di Vault ikut pulih.
 

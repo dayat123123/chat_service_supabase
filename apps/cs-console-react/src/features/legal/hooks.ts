@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { legalApi } from './api'
-import type { DraftInput, LegalKind, LegalOverview } from './types'
+import type { DraftInput, LegalDocument, LegalDraft, LegalKind, LegalOverview } from './types'
 
 export const legalKeys = {
   all: ['legal'] as const,
@@ -57,8 +57,13 @@ export function useDraftAction() {
   const client = useQueryClient()
   const refresh = useRefresh()
   return useMutation({
-    mutationFn: ({ id, action }: { id: string; action: 'submit' | 'withdraw' | 'approve' | 'remove' }) =>
-      legalApi[action](id),
+    mutationFn: ({
+      id,
+      action,
+    }: {
+      id: string
+      action: 'submit' | 'withdraw' | 'approve' | 'remove'
+    }): Promise<LegalDraft | LegalDocument | null> => legalApi[action](id),
     onSuccess: (result, { id, action }) => {
       if (action === 'submit' || action === 'withdraw') client.setQueryData(legalKeys.draft(id), result)
       else client.removeQueries({ queryKey: legalKeys.draft(id) })

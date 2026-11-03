@@ -140,7 +140,9 @@ func (a *Agent) ensureRepository(ctx context.Context) bool {
 	}
 	repo := a.opts.Repository(creds)
 	c, cancel := context.WithTimeout(ctx, 5*time.Minute)
-	err := repo.Open(c)
+	open, stopOpen := context.WithTimeout(c, a.opts.OpenTimeout)
+	err := repo.Open(open)
+	stopOpen()
 	created := false
 	if errors.Is(err, restic.ErrNoRepository) {
 		if err = repo.Init(c); err == nil {

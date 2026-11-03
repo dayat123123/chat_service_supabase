@@ -54,7 +54,10 @@ function Banner({ health }: { health: SystemHealth }) {
   return (
     <div
       role="status"
-      className={cn('flex flex-col gap-2 rounded-lg border p-4 sm:flex-row sm:items-center', bannerClass[health.status])}
+      className={cn(
+        'flex flex-col gap-2 rounded-lg border p-4 sm:flex-row sm:items-center',
+        bannerClass[health.status],
+      )}
     >
       <Icon className={cn('size-6 shrink-0', iconClass[health.status])} aria-hidden="true" />
       <div className="min-w-0 flex-1">
@@ -86,11 +89,16 @@ function Problems({ health }: { health: SystemHealth }) {
       ) : (
         <ul className="flex flex-col border-t">
           {health.checks.map((check) => (
-            <li key={check.key} className="flex flex-col gap-1 border-b py-2.5 sm:flex-row sm:items-start sm:gap-3">
+            <li
+              key={check.key}
+              className="flex flex-col gap-1 border-b py-2.5 sm:flex-row sm:items-start sm:gap-3"
+            >
               <SeverityBadge severity={check.severity} />
               <div className="min-w-0 flex-1">
                 <p className="text-row font-medium break-words">{check.title}</p>
-                {check.detail ? <p className="text-xs break-words text-muted-foreground">{check.detail}</p> : null}
+                {check.detail ? (
+                  <p className="text-xs break-words text-muted-foreground">{check.detail}</p>
+                ) : null}
               </div>
               <p className="tabular text-xs text-muted-foreground sm:text-right">
                 {t('system.status.since', {
@@ -115,7 +123,9 @@ function AlertRow({ alert }: { alert: OpenAlert }) {
       <div className="min-w-0 flex-1">
         <p className="text-row font-medium break-words">{alert.title}</p>
         {alert.detail ? <p className="text-xs break-words text-muted-foreground">{alert.detail}</p> : null}
-        <p className="text-xs text-muted-foreground">{t('system.alerts.openedAt', { time: stamp(alert.opened_at) })}</p>
+        <p className="text-xs text-muted-foreground">
+          {t('system.alerts.openedAt', { time: stamp(alert.opened_at) })}
+        </p>
       </div>
       {alert.acknowledged_at ? (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -175,13 +185,17 @@ function Services({ health }: { health: SystemHealth }) {
           {health.services.map((group) => (
             <li key={group.service} className="flex flex-col gap-1.5 border-b py-2.5">
               <p className="text-row font-medium">
-                {group.label} <span className="font-mono text-xs font-normal text-muted-foreground">{group.service}</span>
+                {group.label}{' '}
+                <span className="font-mono text-xs font-normal text-muted-foreground">{group.service}</span>
               </p>
               <ul className="flex flex-col gap-1.5">
                 {group.instances.map((instance) => {
                   const state = instanceState(instance)
                   return (
-                    <li key={instance.instance} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    <li
+                      key={instance.instance}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+                    >
                       <ToneBadge tone={instanceTone(state)}>{t(`system.services.states.${state}`)}</ToneBadge>
                       <span className="min-w-0 font-mono break-all">{instance.instance}</span>
                       <span className="text-muted-foreground">
@@ -235,18 +249,24 @@ function Probes({ health, live }: { health: SystemHealth; live: boolean }) {
                 </ToneBadge>
                 <span className="text-row font-medium">{probe.label}</span>
                 {probe.target ? (
-                  <span className="min-w-0 font-mono text-xs break-all text-muted-foreground">{probe.target}</span>
+                  <span className="min-w-0 font-mono text-xs break-all text-muted-foreground">
+                    {probe.target}
+                  </span>
                 ) : null}
                 <span className="tabular ml-auto text-xs text-muted-foreground">
                   {[
-                    probe.latency_ms !== null ? t('system.probes.latency', { value: formatNumber(probe.latency_ms) }) : null,
+                    probe.latency_ms !== null
+                      ? t('system.probes.latency', { value: formatNumber(probe.latency_ms) })
+                      : null,
                     probe.status !== null ? `HTTP ${probe.status}` : null,
                     stamp(probe.checked_at),
                   ]
                     .filter(Boolean)
                     .join(' · ')}
                 </span>
-                {probe.error ? <span className="w-full text-xs break-words text-destructive">{probe.error}</span> : null}
+                {probe.error ? (
+                  <span className="w-full text-xs break-words text-destructive">{probe.error}</span>
+                ) : null}
               </li>
             )
           })}
@@ -270,11 +290,18 @@ function DiskRow({ disk }: { disk: Disk }) {
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-row">{disk.name}</span>
         {tone !== 'ok' ? (
-          <ToneBadge tone={tone}>{tone === 'late' ? t('system.severity.critical') : t('system.severity.warning')}</ToneBadge>
+          <ToneBadge tone={tone}>
+            {tone === 'late' ? t('system.severity.critical') : t('system.severity.warning')}
+          </ToneBadge>
         ) : null}
         <span className="tabular ml-auto text-xs text-muted-foreground">{text}</span>
       </div>
-      <UsageBar ratio={ratio} tone={tone === 'ok' ? 'accent' : tone} label={t('system.disks.label', { name: disk.name })} valueText={text} />
+      <UsageBar
+        ratio={ratio}
+        tone={tone === 'ok' ? 'accent' : tone}
+        label={t('system.disks.label', { name: disk.name })}
+        valueText={text}
+      />
     </li>
   )
 }
@@ -320,7 +347,12 @@ function Database({ health }: { health: SystemHealth }) {
           <dt className="text-xs text-muted-foreground">{t('system.database.connections')}</dt>
           <dd className="flex flex-col gap-1.5">
             <span className="tabular text-row">{text}</span>
-            <UsageBar ratio={ratio} tone={tone === 'ok' ? 'accent' : tone} label={t('system.database.connections')} valueText={text} />
+            <UsageBar
+              ratio={ratio}
+              tone={tone === 'ok' ? 'accent' : tone}
+              label={t('system.database.connections')}
+              valueText={text}
+            />
           </dd>
         </div>
       </dl>
@@ -333,7 +365,10 @@ function Database({ health }: { health: SystemHealth }) {
             {db.slots.map((slot) => {
               const lost = slot.wal_status === 'lost'
               return (
-                <li key={slot.name} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b py-2 text-xs">
+                <li
+                  key={slot.name}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b py-2 text-xs"
+                >
                   <ToneBadge tone={lost ? 'late' : slot.active ? 'ok' : 'warn'}>
                     {lost
                       ? t('system.database.slotLost')
@@ -377,7 +412,10 @@ function QueueStrip({ health }: { health: SystemHealth }) {
             label: t('system.queues.storage'),
             value: formatNumber(q.storage_cleanup.pending),
             tone: q.storage_cleanup.failing > 0 ? 'warn' : undefined,
-            caption: t('system.queues.failing', { count: q.storage_cleanup.failing, value: formatNumber(q.storage_cleanup.failing) }),
+            caption: t('system.queues.failing', {
+              count: q.storage_cleanup.failing,
+              value: formatNumber(q.storage_cleanup.failing),
+            }),
           },
           {
             label: t('system.queues.alerts'),
@@ -423,7 +461,9 @@ function Cron({ health }: { health: SystemHealth }) {
                   <ToneBadge tone="neutral">{t('system.cron.inactive')}</ToneBadge>
                 ) : job.last_status ? (
                   <ToneBadge tone={cronTones[job.last_status] ?? 'neutral'}>
-                    {t(`system.cron.states.${job.last_status as 'succeeded'}`, { defaultValue: job.last_status })}
+                    {t(`system.cron.states.${job.last_status as 'succeeded'}`, {
+                      defaultValue: job.last_status,
+                    })}
                   </ToneBadge>
                 ) : (
                   <span className="text-xs text-muted-foreground">{t('system.cron.never')}</span>
@@ -432,7 +472,10 @@ function Cron({ health }: { health: SystemHealth }) {
               <TableCell className="tabular text-xs text-muted-foreground">
                 {job.last_start ? stamp(job.last_start) : '–'}
               </TableCell>
-              <TableCell className="max-w-80 truncate text-xs text-muted-foreground" title={job.last_message ?? undefined}>
+              <TableCell
+                className="max-w-80 truncate text-xs text-muted-foreground"
+                title={job.last_message ?? undefined}
+              >
                 {job.last_message ?? '–'}
               </TableCell>
             </TableRow>
@@ -452,7 +495,10 @@ function Recent({ health }: { health: SystemHealth }) {
       ) : (
         <ul className="flex flex-col border-t">
           {health.alerts.recent.map((alert) => (
-            <li key={alert.id} className="flex flex-col gap-1 border-b py-2 sm:flex-row sm:items-center sm:gap-3">
+            <li
+              key={alert.id}
+              className="flex flex-col gap-1 border-b py-2 sm:flex-row sm:items-center sm:gap-3"
+            >
               <SeverityBadge severity={alert.severity} />
               <span className="min-w-0 flex-1 text-row break-words">{alert.title}</span>
               <span className="tabular text-xs text-muted-foreground">

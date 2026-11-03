@@ -153,3 +153,12 @@ func TestExecStartWritesToLogFileAndInterrupts(t *testing.T) {
 		t.Fatalf("log = %q", data)
 	}
 }
+
+func TestExecRunKeepsStderrOnTimeout(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	_, err := Exec{WaitDelay: time.Second}.Run(ctx, Cmd{Name: "/bin/sh", Args: []string{"-c", "echo retrying >&2; echo 'bucket does not exist' >&2; sleep 10"}})
+	if !errors.Is(err, context.DeadlineExceeded) || !strings.Contains(err.Error(), "bucket does not exist") || !strings.Contains(Output(err), "retrying") {
+		t.Fatalf("err = %v", err)
+	}
+}

@@ -186,7 +186,8 @@ export function targetProblems(
 
 const TIME = /^([01][0-9]|2[0-3]):[0-5][0-9]$/
 
-const inRange = (value: number, min: number, max: number) => Number.isInteger(value) && value >= min && value <= max
+const inRange = (value: number, min: number, max: number) =>
+  Number.isInteger(value) && value >= min && value <= max
 
 export type ScheduleField = keyof BackupScheduleInput
 

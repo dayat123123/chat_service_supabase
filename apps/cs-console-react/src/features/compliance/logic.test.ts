@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { ChatMessage } from '@/features/conversation/types'
+import { en } from '@/i18n/en'
+import { id } from '@/i18n/id'
 
 import {
   actionKey,
+  auditActions,
   auditCsv,
   caseAttention,
   casePresetRange,
@@ -100,6 +103,17 @@ describe('compliance logic', () => {
     expect(actionKey('ticket.transfer_accept')).toBe('compliance.actions.ticket_transfer_accept')
     expect(actionKey('compliance.review')).toBe('compliance.actions.compliance_review')
     expect(actionKey('something.new')).toBeNull()
+  })
+
+  it('has Indonesian and English labels for every known audit action', () => {
+    for (const action of auditActions) {
+      const key = action.replace('.', '_') as keyof typeof id.compliance.actions
+      expect(id.compliance.actions[key], action).toBeTruthy()
+      expect(en.compliance.actions[key], action).toBeTruthy()
+    }
+    expect(actionKey('legal.published')).toBe('compliance.actions.legal_published')
+    expect(actionKey('health.alert_acknowledged')).toBe('compliance.actions.health_alert_acknowledged')
+    expect(id.compliance.actions.backup_target_set).toBe('Atur tujuan backup')
   })
 
   it('formats timestamps inside audit details when a formatter is given', () => {

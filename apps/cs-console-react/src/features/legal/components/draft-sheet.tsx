@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label'
 import { Sheet, SheetContent } from '@/components/ui/overlay'
 import { Textarea } from '@/components/ui/textarea'
 import { useAgent } from '@/features/auth/hooks'
+import { useNow } from '@/hooks/use-now'
 import { ReasonDialog } from '@/features/community/components/shared'
 import { Confirm } from '@/features/nasabah/components/confirm'
 import { legalErrorText } from '@/lib/error-text'
@@ -115,13 +116,16 @@ function DraftEditor({
   const save = useSaveDraft()
   const action = useDraftAction()
   const [baseline, setBaseline] = useState<Form>(() =>
-    draft ? formOf(draft) : formOf(seed ?? { kind: 'terms', title: '', body: '', changeSummary: '', effectiveAt: null }),
+    draft
+      ? formOf(draft)
+      : formOf(seed ?? { kind: 'terms', title: '', body: '', changeSummary: '', effectiveAt: null }),
   )
   const [form, setForm] = useState<Form>(baseline)
   const [mode, setMode] = useState<'write' | 'preview'>('write')
   const [checked, setChecked] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const problems = draftProblems(form)
+  const now = useNow(30_000)
+  const problems = draftProblems(form, now)
   const shown = checked ? problems : {}
   const valid = Object.keys(problems).length === 0
   const dirty = !sameForm(form, baseline)
@@ -170,14 +174,18 @@ function DraftEditor({
 
   const problemText = (field: 'title' | 'body' | 'changeSummary' | 'effectiveAt') => {
     const problem = shown[field]
-    return problem ? t(`legal.editor.problems.${field}.${problem}` as 'legal.editor.problems.title.length') : undefined
+    return problem
+      ? t(`legal.editor.problems.${field}.${problem}` as 'legal.editor.problems.title.length')
+      : undefined
   }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex flex-col gap-2 border-b px-5 pt-4 pr-12 pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-panel font-semibold">{draft ? t('legal.editor.editTitle') : t('legal.editor.newTitle')}</h2>
+          <h2 className="text-panel font-semibold">
+            {draft ? t('legal.editor.editTitle') : t('legal.editor.newTitle')}
+          </h2>
           {draft ? <DraftStatusBadge status={draft.status} /> : null}
           {dirty ? <span className="text-xs text-muted-foreground">{t('legal.editor.unsaved')}</span> : null}
         </div>
@@ -199,7 +207,10 @@ function DraftEditor({
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {draft?.status === 'rejected' && draft.review_note ? (
-          <p role="note" className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 p-3 text-row">
+          <p
+            role="note"
+            className="mb-4 flex items-start gap-2 rounded-md border border-destructive/40 p-3 text-row"
+          >
             <CircleAlertIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden="true" />
             <span className="min-w-0 break-words">
               <span className="font-medium">
@@ -246,7 +257,7 @@ function DraftEditor({
                   id={`${ids}-effective`}
                   type="datetime-local"
                   value={form.effectiveInput}
-                  min={isoToWibInput(new Date().toISOString())}
+                  min={isoToWibInput(now.toISOString())}
                   aria-invalid={shown.effectiveAt ? true : undefined}
                   aria-describedby={`${ids}-effective-hint`}
                   onChange={(event) => update({ effectiveInput: event.target.value })}
@@ -283,7 +294,10 @@ function DraftEditor({
               />
               <p
                 id={`${ids}-body-hint`}
-                className={cn('flex flex-wrap justify-between gap-2 text-xs', shown.body ? 'text-destructive' : 'text-muted-foreground')}
+                className={cn(
+                  'flex flex-wrap justify-between gap-2 text-xs',
+                  shown.body ? 'text-destructive' : 'text-muted-foreground',
+                )}
               >
                 <span>{problemText('body') ?? t('legal.editor.bodyHint')}</span>
                 <span className="tabular" aria-live="polite">
@@ -323,7 +337,12 @@ function DraftEditor({
             {action.isPending ? <LoaderCircleIcon className="animate-spin" /> : <SendIcon />}
             {dirty || !draft ? t('legal.actions.saveSubmit') : t('legal.actions.submit')}
           </Button>
-          <Button size="sm" variant="outline" disabled={busy || (!dirty && draft !== null)} onClick={() => void run(false)}>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy || (!dirty && draft !== null)}
+            onClick={() => void run(false)}
+          >
             {save.isPending && !action.isPending ? <LoaderCircleIcon className="animate-spin" /> : null}
             {t('legal.actions.save')}
           </Button>
@@ -388,17 +407,22 @@ function ApproveDialog({
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const later = draft.effective_at && Date.parse(draft.effective_at) > Date.now()
+  const now = useNow(30_000)
+  const later = draft.effective_at && Date.parse(draft.effective_at) > now.getTime()
   return (
     <AlertDialog open={open} onOpenChange={(next) => !next && !pending && onClose()}>
       <AlertDialogContent>
-        <AlertDialogTitle>{t('legal.confirm.approveTitle', { kind: t(`legal.kinds.${draft.kind}`) })}</AlertDialogTitle>
+        <AlertDialogTitle>
+          {t('legal.confirm.approveTitle', { kind: t(`legal.kinds.${draft.kind}`) })}
+        </AlertDialogTitle>
         <AlertDialogDescription>
           {later
             ? t('legal.confirm.approveLater', { time: wibStamp(draft.effective_at ?? '') })
             : t('legal.confirm.approveNow')}
         </AlertDialogDescription>
-        {required ? <p className="text-sm text-muted-foreground">{t('legal.confirm.approveRequired')}</p> : null}
+        {required ? (
+          <p className="text-sm text-muted-foreground">{t('legal.confirm.approveRequired')}</p>
+        ) : null}
         {self ? (
           <p role="alert" className="flex items-start gap-2 text-sm text-warning">
             <TriangleAlertIcon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -437,7 +461,8 @@ function DraftReview({
   const [rejecting, setRejecting] = useState(false)
   const allowed = draftActions(draft, agent.id, overview.four_eyes)
   const busy = action.isPending || reject.isPending
-  const later = draft.effective_at && Date.parse(draft.effective_at) > Date.now()
+  const now = useNow(30_000)
+  const later = draft.effective_at && Date.parse(draft.effective_at) > now.getTime()
 
   const approve = () =>
     void action
@@ -474,7 +499,9 @@ function DraftReview({
           <Fact label={t('legal.effectiveFrom')}>
             {later ? wibStamp(draft.effective_at ?? '') : t('legal.effectiveOnApproval')}
           </Fact>
-          <Fact label={t('legal.bodyLength')}>{t('legal.characters', { value: formatNumber(draft.body_length) })}</Fact>
+          <Fact label={t('legal.bodyLength')}>
+            {t('legal.characters', { value: formatNumber(draft.body_length) })}
+          </Fact>
           <Fact label={t('legal.changes')} className="sm:col-span-2">
             <span className="whitespace-pre-wrap">{draft.change_summary ?? t('legal.noChanges')}</span>
           </Fact>

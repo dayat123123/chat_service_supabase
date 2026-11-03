@@ -38,17 +38,27 @@ import {
   weekdays,
   type TargetField,
 } from '../logic'
-import type {
-  BackupConfig,
-  BackupOverview,
-  BackupRequestKind,
-  BackupRun,
-  BackupScheduleInput,
-  BackupTargetInput,
+import {
+  backupRunKinds,
+  type BackupConfig,
+  type BackupOverview,
+  type BackupRequestKind,
+  type BackupRun,
+  type BackupRunKind,
+  type BackupScheduleInput,
+  type BackupTargetInput,
 } from '../types'
 import { FieldText, SecretField, TextField, ToneBadge } from './system-ui'
 
-function Fact({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+function Fact({
+  label,
+  children,
+  className,
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
   return (
     <div className={cn('flex min-w-0 flex-col gap-1 bg-background px-4 py-3', className)}>
       <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -73,7 +83,15 @@ function ServiceState({ overview }: { overview: BackupOverview }) {
   return (
     <>
       <ToneBadge tone="ok">{t('system.backup.state.running')}</ToneBadge>
-      {busy ? <Muted>{t('system.backup.busy', { task: busy })}</Muted> : null}
+      {busy ? (
+        <Muted>
+          {t('system.backup.busy', {
+            task: (backupRunKinds as readonly string[]).includes(busy)
+              ? t(`system.backup.kinds.${busy as BackupRunKind}`)
+              : busy,
+          })}
+        </Muted>
+      ) : null}
     </>
   )
 }
@@ -99,18 +117,26 @@ function Summary({ overview }: { overview: BackupOverview }) {
         <span className="flex flex-wrap items-center gap-2">
           <ServiceState overview={overview} />
         </span>
-        {summary.target ? <span className="font-mono text-xs break-all text-muted-foreground">{summary.target}</span> : null}
+        {summary.target ? (
+          <span className="font-mono text-xs break-all text-muted-foreground">{summary.target}</span>
+        ) : null}
         {state?.error ? <span className="text-xs break-words text-destructive">{state.error}</span> : null}
       </Fact>
       <Fact label={t('system.backup.summary.wal')}>
         {!summary.live || !wal ? (
           <Muted>{t('system.backup.unknown')}</Muted>
         ) : wal.slot_lost ? (
-          <ToneBadge tone="late" className="self-start">{t('system.backup.walSlotLost')}</ToneBadge>
+          <ToneBadge tone="late" className="self-start">
+            {t('system.backup.walSlotLost')}
+          </ToneBadge>
         ) : wal.streaming ? (
-          <ToneBadge tone="ok" className="self-start">{t('system.backup.walStreaming')}</ToneBadge>
+          <ToneBadge tone="ok" className="self-start">
+            {t('system.backup.walStreaming')}
+          </ToneBadge>
         ) : (
-          <ToneBadge tone="late" className="self-start">{t('system.backup.walStopped')}</ToneBadge>
+          <ToneBadge tone="late" className="self-start">
+            {t('system.backup.walStopped')}
+          </ToneBadge>
         )}
         {wal?.error ? <span className="text-xs break-words text-destructive">{wal.error}</span> : null}
       </Fact>
@@ -121,7 +147,9 @@ function Summary({ overview }: { overview: BackupOverview }) {
             <Muted>
               {[
                 formatBytes(summary.last_base.bytes),
-                summary.last_base.snapshot_id ? t('system.backup.snapshot', { id: summary.last_base.snapshot_id.slice(0, 12) }) : null,
+                summary.last_base.snapshot_id
+                  ? t('system.backup.snapshot', { id: summary.last_base.snapshot_id.slice(0, 12) })
+                  : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -145,7 +173,9 @@ function Summary({ overview }: { overview: BackupOverview }) {
         {test ? (
           <>
             <span className="flex flex-wrap items-center gap-2">
-              <ToneBadge tone={test.status === 'ok' ? 'ok' : 'late'}>{t(`system.backup.runStatus.${test.status}`)}</ToneBadge>
+              <ToneBadge tone={test.status === 'ok' ? 'ok' : 'late'}>
+                {t(`system.backup.runStatus.${test.status}`)}
+              </ToneBadge>
               <span className="tabular">{stamp(test.finished_at)}</span>
             </span>
             <Muted>
@@ -206,12 +236,18 @@ function Requests({ overview }: { overview: BackupOverview }) {
             disabled={!configured || request.isPending || pending(kind) !== undefined}
             onClick={() => ask(kind)}
           >
-            {request.isPending && request.variables === kind ? <LoaderCircleIcon className="animate-spin" /> : <Icon />}
+            {request.isPending && request.variables === kind ? (
+              <LoaderCircleIcon className="animate-spin" />
+            ) : (
+              <Icon />
+            )}
             {t(`system.backup.request.${kind}`)}
           </Button>
         ))}
       </div>
-      {!configured ? <p className="text-xs text-muted-foreground">{t('system.backup.requestNeedsConfig')}</p> : null}
+      {!configured ? (
+        <p className="text-xs text-muted-foreground">{t('system.backup.requestNeedsConfig')}</p>
+      ) : null}
       {overview.requests.length > 0 ? (
         <ul className="flex flex-col gap-1" aria-live="polite">
           {overview.requests.map((item) => (
@@ -224,7 +260,9 @@ function Requests({ overview }: { overview: BackupOverview }) {
               })}
             </li>
           ))}
-          {!overview.summary.live ? <li className="text-xs text-warning">{t('system.backup.pendingOffline')}</li> : null}
+          {!overview.summary.live ? (
+            <li className="text-xs text-warning">{t('system.backup.pendingOffline')}</li>
+          ) : null}
         </ul>
       ) : null}
     </div>
@@ -271,7 +309,9 @@ function TargetCard({ config }: { config: BackupConfig }) {
   const update = (patch: Partial<TargetForm>) => setForm((current) => ({ ...current, ...patch }))
   const problem = (field: TargetField) => {
     const value = shown[field]
-    return value ? t(`system.backup.problems.${field}.${value}` as 'system.backup.problems.endpoint.required') : undefined
+    return value
+      ? t(`system.backup.problems.${field}.${value}` as 'system.backup.problems.endpoint.required')
+      : undefined
   }
 
   const clearSecrets = () => {
@@ -468,7 +508,8 @@ function ScheduleCard({ config }: { config: BackupConfig }) {
   })
   const [checked, setChecked] = useState(false)
   const text = (key: keyof BackupScheduleInput) => String(form[key])
-  const number = (key: keyof BackupScheduleInput) => (/^\d+$/.test(text(key)) ? Number(text(key)) : Number.NaN)
+  const number = (key: keyof BackupScheduleInput) =>
+    /^\d+$/.test(text(key)) ? Number(text(key)) : Number.NaN
   const input: BackupScheduleInput = {
     baseTime: text('baseTime'),
     offsiteMinutes: number('offsiteMinutes'),
@@ -561,7 +602,12 @@ function ScheduleCard({ config }: { config: BackupConfig }) {
               {weekdays.map((day) => {
                 const name = weekdayName(day, i18n.language)
                 return (
-                  <ToggleGroupItem key={day} value={String(day)} aria-label={name} className="px-2.5 capitalize">
+                  <ToggleGroupItem
+                    key={day}
+                    value={String(day)}
+                    aria-label={name}
+                    className="px-2.5 capitalize"
+                  >
                     {name.slice(0, 3)}
                   </ToggleGroupItem>
                 )
@@ -612,11 +658,17 @@ function Runs({ runs }: { runs: BackupRun[] }) {
               <TableRow key={run.id}>
                 <TableCell>{t(`system.backup.kinds.${run.kind}`)}</TableCell>
                 <TableCell>
-                  <ToneBadge tone={run.status === 'ok' ? 'ok' : 'late'}>{t(`system.backup.runStatus.${run.status}`)}</ToneBadge>
+                  <ToneBadge tone={run.status === 'ok' ? 'ok' : 'late'}>
+                    {t(`system.backup.runStatus.${run.status}`)}
+                  </ToneBadge>
                 </TableCell>
-                <TableCell className="tabular text-xs text-muted-foreground">{stamp(run.finished_at)}</TableCell>
+                <TableCell className="tabular text-xs text-muted-foreground">
+                  {stamp(run.finished_at)}
+                </TableCell>
                 <TableCell className="tabular text-xs">{durationLabel(runDuration(run))}</TableCell>
-                <TableCell className="tabular text-xs">{run.bytes === undefined ? '–' : formatBytes(run.bytes)}</TableCell>
+                <TableCell className="tabular text-xs">
+                  {run.bytes === undefined ? '–' : formatBytes(run.bytes)}
+                </TableCell>
                 <TableCell className="font-mono text-xs" title={run.snapshot_id}>
                   {run.snapshot_id ? run.snapshot_id.slice(0, 12) : '–'}
                 </TableCell>

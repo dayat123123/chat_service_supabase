@@ -81,7 +81,7 @@ reset role;
 
 select is((select severity || ' ' || detail from private.health_checks_backup() where key = 'backup:wal'),
   'critical koneksi ditolak', 'Streaming WAL yang berhenti menjadi masalah kritis');
-select is((select status from private.service_instances where service = 'backup'), 'error',
+select is((select status from private.service_instances where service = 'backup' and instance = 'backup-a'), 'error',
   'Error backup tercermin di heartbeat layanan');
 
 select tests.authenticate_service();

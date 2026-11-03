@@ -2,6 +2,7 @@ import type * as RouterModule from '@tanstack/react-router'
 import { screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
+import { systemApi } from '@/features/system/api'
 import { agentFixture, monitorFixture } from '@/test/fixtures'
 import { renderWithProviders } from '@/test/render'
 
@@ -33,6 +34,12 @@ vi.mock('@/features/community/api', () => ({
   },
 }))
 
+vi.mock('@/features/system/api', () => ({
+  systemApi: {
+    badge: vi.fn(() => Promise.resolve({ critical: 0, warning: 0, open: 0 })),
+  },
+}))
+
 function navLinks() {
   return within(screen.getByRole('navigation', { name: 'Menu' }))
     .getAllByRole('link')
@@ -55,7 +62,7 @@ describe('TopBar', () => {
     expect(screen.getByText('Mode pantau')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Ubah status/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/^Aktif \d+\/\d+$/)).not.toBeInTheDocument()
-    expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Pengaturan'])
+    expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Pengaturan', 'Kesehatan sistem'])
   })
 
   it('places Akun Nasabah right before Pengaturan for CS accounts with customer access', () => {
@@ -64,7 +71,14 @@ describe('TopBar', () => {
       roles: ['cs_agent', 'cs_super_admin'],
       nasabah_permissions: ['online_user.view'],
     })
-    expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Akun Nasabah', 'Pengaturan'])
+    expect(navLinks()).toEqual([
+      'Layanan Nasabah',
+      'Dashboard',
+      'Laporan',
+      'Akun Nasabah',
+      'Pengaturan',
+      'Kesehatan sistem',
+    ])
   })
 
   it('shows only Komunitas to community staff, with the items they can act on', async () => {
@@ -83,5 +97,45 @@ describe('TopBar', () => {
       nasabah_permissions: ['online_user.view'],
     })
     expect(navLinks()).toEqual(['Layanan Nasabah', 'Akun Nasabah'])
+  })
+
+  it('marks unhandled critical system alerts in red on Kesehatan sistem', async () => {
+    vi.mocked(systemApi.badge).mockResolvedValue({ critical: 2, warning: 3, open: 5 })
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, monitorFixture)
+
+    const count = await screen.findByLabelText('2 alert kritis belum ditangani')
+    expect(count).toHaveTextContent('2')
+    expect(count).toHaveClass('text-danger')
+    expect(systemApi.badge).toHaveBeenCalled()
+  })
+
+  it('shows unhandled warnings in amber when nothing is critical', async () => {
+    vi.mocked(systemApi.badge).mockResolvedValue({ critical: 0, warning: 1, open: 1 })
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, monitorFixture)
+
+    const count = await screen.findByLabelText('1 peringatan belum ditangani')
+    expect(count).toHaveClass('text-warning')
+  })
+
+  it('does not ask for the system badge without Super Admin access', () => {
+    vi.mocked(systemApi.badge).mockClear()
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, agentFixture)
+
+    expect(systemApi.badge).not.toHaveBeenCalled()
+  })
+
+  it('lists Dokumen hukum among the compliance menus', () => {
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, {
+      ...agentFixture,
+      roles: ['compliance'],
+    })
+    expect(navLinks()).toEqual([
+      'Ringkasan',
+      'Kasus',
+      'Jejak Audit',
+      'Kebijakan',
+      'Kata terlarang',
+      'Dokumen hukum',
+    ])
   })
 })

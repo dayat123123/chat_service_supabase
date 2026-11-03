@@ -37,6 +37,7 @@ type ExitError struct {
 	Name   string
 	Code   int
 	Stderr string
+	Output string
 }
 
 func (e *ExitError) Error() string {
@@ -47,12 +48,42 @@ func (e *ExitError) Error() string {
 	return msg
 }
 
+type StopError struct {
+	Name   string
+	Cause  error
+	Stderr string
+	Output string
+}
+
+func (e *StopError) Error() string {
+	if e.Stderr == "" {
+		return fmt.Sprintf("%s: %v", e.Name, e.Cause)
+	}
+	return fmt.Sprintf("%s: %v: %s", e.Name, e.Cause, e.Stderr)
+}
+
+func (e *StopError) Unwrap() error {
+	return e.Cause
+}
+
 func Code(err error) int {
 	var exit *ExitError
 	if errors.As(err, &exit) {
 		return exit.Code
 	}
 	return -1
+}
+
+func Output(err error) string {
+	var exit *ExitError
+	if errors.As(err, &exit) {
+		return exit.Output
+	}
+	var stop *StopError
+	if errors.As(err, &stop) {
+		return stop.Output
+	}
+	return ""
 }
 
 func Detail(err error) string {
@@ -209,11 +240,11 @@ func wrap(ctx context.Context, cmd Cmd, err error, stderr string) error {
 		return nil
 	}
 	if ctx.Err() != nil {
-		return fmt.Errorf("%s: %w", cmd.Name, ctx.Err())
+		return &StopError{Name: cmd.Name, Cause: ctx.Err(), Stderr: LastLines(stderr, 2), Output: stderr}
 	}
 	var exit *exec.ExitError
 	if errors.As(err, &exit) {
-		return &ExitError{Name: cmd.Name, Code: exit.ExitCode(), Stderr: LastLines(stderr, 3)}
+		return &ExitError{Name: cmd.Name, Code: exit.ExitCode(), Stderr: LastLines(stderr, 3), Output: stderr}
 	}
 	return fmt.Errorf("%s: %w", cmd.Name, err)
 }

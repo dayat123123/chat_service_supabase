@@ -15,7 +15,13 @@ import { toast } from 'sonner'
 
 import { ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/button'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger, Switch } from '@/components/ui/controls'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Switch,
+} from '@/components/ui/controls'
 import { Confirm } from '@/features/nasabah/components/confirm'
 import { legalErrorText } from '@/lib/error-text'
 import { formatNumber, stamp } from '@/lib/time'
@@ -60,7 +66,9 @@ function RequiredSwitch({ state, overview }: { state: LegalKindState; overview: 
       </label>
       <Confirm
         open={asking !== null}
-        title={asking ? t('legal.confirm.requireOnTitle', { kind }) : t('legal.confirm.requireOffTitle', { kind })}
+        title={
+          asking ? t('legal.confirm.requireOnTitle', { kind }) : t('legal.confirm.requireOffTitle', { kind })
+        }
         body={body}
         action={asking ? t('legal.confirm.requireOn') : t('legal.confirm.requireOff')}
         destructive={asking === true}
@@ -70,7 +78,11 @@ function RequiredSwitch({ state, overview }: { state: LegalKindState; overview: 
           const next = asking === true
           void setRequired
             .mutateAsync(toggleRequired(overview.required_kinds, state.kind, next))
-            .then(() => toast.success(next ? t('legal.toast.requiredOn', { kind }) : t('legal.toast.requiredOff', { kind })))
+            .then(() =>
+              toast.success(
+                next ? t('legal.toast.requiredOn', { kind }) : t('legal.toast.requiredOff', { kind }),
+              ),
+            )
             .catch((error: unknown) => toast.error(legalErrorText(error)))
             .finally(() => setAsking(null))
         }}
@@ -212,7 +224,11 @@ function KindCard({
             disabled={actions.drafting !== null}
             onClick={() => actions.draftFrom(current.id)}
           >
-            {actions.drafting === current.id ? <LoaderCircleIcon className="animate-spin" /> : <FilePlus2Icon />}
+            {actions.drafting === current.id ? (
+              <LoaderCircleIcon className="animate-spin" />
+            ) : (
+              <FilePlus2Icon />
+            )}
             {t('legal.actions.draftFromCurrent')}
           </Button>
         </div>
@@ -291,7 +307,11 @@ function LegalContent({ overview }: { overview: LegalOverview }) {
     draftFrom: (id) => {
       setDrafting(id)
       void client
-        .fetchQuery({ queryKey: legalKeys.document(id), queryFn: () => legalApi.document(id), staleTime: 60_000 })
+        .fetchQuery({
+          queryKey: legalKeys.document(id),
+          queryFn: () => legalApi.document(id),
+          staleTime: 60_000,
+        })
         .then(startFrom)
         .catch((error: unknown) => toast.error(legalErrorText(error)))
         .finally(() => setDrafting(null))

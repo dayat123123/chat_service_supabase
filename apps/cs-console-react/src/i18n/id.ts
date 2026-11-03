@@ -2149,7 +2149,8 @@ export const id = {
       discardBody: 'Perubahan yang belum disimpan akan hilang.',
       discard: 'Buang perubahan',
       cancelTitle: 'Batalkan jadwal versi {{version}}?',
-      cancelBody: 'Versi terjadwal dihapus dan drafnya kembali menjadi draf yang bisa diubah dan diajukan lagi.',
+      cancelBody:
+        'Versi terjadwal dihapus dan drafnya kembali menjadi draf yang bisa diubah dan diajukan lagi.',
       requireOnTitle: 'Wajibkan {{kind}}?',
       requireOnBody:
         'Pengguna yang belum menyetujui versi berlaku tidak bisa posting, berkomentar, atau chat komunitas sampai menyetujuinya. Saat ini {{users}} pengguna aktif belum menyetujui. Chat dengan CS tetap bisa.',
@@ -2177,8 +2178,10 @@ export const id = {
       four_eyes: 'Draf ini harus disetujui staf kepatuhan lain, bukan penyusun atau pengajunya.',
       legal_scheduled_exists:
         'Sudah ada versi terjadwal untuk dokumen ini. Batalkan jadwalnya dulu sebelum menyetujui versi lain.',
-      legal_draft_locked: 'Draf yang sedang ditinjau atau sudah terbit tidak bisa diubah. Tarik kembali dulu.',
-      legal_draft_not_pending: 'Draf ini sudah tidak menunggu persetujuan. Muat ulang untuk melihat statusnya.',
+      legal_draft_locked:
+        'Draf yang sedang ditinjau atau sudah terbit tidak bisa diubah. Tarik kembali dulu.',
+      legal_draft_not_pending:
+        'Draf ini sudah tidak menunggu persetujuan. Muat ulang untuk melihat statusnya.',
       legal_note_required: 'Tulis alasan penolakan (5–1.000 karakter).',
       legal_effective_past: 'Tanggal berlaku tidak boleh di masa lalu.',
       legal_already_effective: 'Versi ini sudah berlaku sehingga jadwalnya tidak bisa dibatalkan.',
@@ -2217,7 +2220,8 @@ export const id = {
     },
     alerts: {
       openTitle: 'Alert terbuka',
-      openHint: 'Alert dibuka bila masalah bertahan lebih dari 2 menit dan dikirim ke kanal Telegram atau email.',
+      openHint:
+        'Alert dibuka bila masalah bertahan lebih dari 2 menit dan dikirim ke kanal Telegram atau email.',
       noneOpen: 'Tidak ada alert terbuka.',
       openedAt: 'Dibuka {{time}}',
       acknowledge: 'Tandai sudah ditangani',
@@ -2245,7 +2249,7 @@ export const id = {
     },
     disks: {
       title: 'Disk',
-      hint: 'Peringatan di 80 %, kritis di 90 %.',
+      hint: 'Peringatan di 80%, kritis di 90%.',
       empty: 'Sentinel belum melaporkan disk.',
       label: 'Pemakaian disk {{name}}',
       usage: '{{percent}} terpakai · sisa {{avail}} dari {{total}}',
@@ -2343,7 +2347,8 @@ export const id = {
       },
       password: {
         title: 'Password enkripsi backup',
-        first: 'Buat password enkripsi untuk repositori ini. Backup tidak bisa dipulihkan tanpa password ini.',
+        first:
+          'Buat password enkripsi untuk repositori ini. Backup tidak bisa dipulihkan tanpa password ini.',
         newRepository:
           'Lokasi backup berubah, jadi ini repositori baru yang butuh password enkripsi baru. Backup di lokasi lama tidak dipindahkan dan tetap memakai password lama.',
         locked: 'Password enkripsi repositori ini sudah tersimpan.',
@@ -2366,7 +2371,9 @@ export const id = {
           required: 'Isi nama bucket.',
           invalid: 'Nama bucket 3–63 karakter: huruf kecil, angka, titik, atau tanda hubung.',
         },
-        prefix: { invalid: 'Folder hanya huruf, angka, titik, garis bawah, atau tanda hubung, maks. 5 tingkat.' },
+        prefix: {
+          invalid: 'Folder hanya huruf, angka, titik, garis bawah, atau tanda hubung, maks. 5 tingkat.',
+        },
         region: { invalid: 'Region hanya huruf kecil, angka, dan tanda hubung.' },
         accessKeyId: { required: 'Isi access key ID.', length: 'Access key ID 3–200 karakter.' },
         secretAccessKey: { required: 'Isi secret access key.', length: 'Secret access key terlalu panjang.' },

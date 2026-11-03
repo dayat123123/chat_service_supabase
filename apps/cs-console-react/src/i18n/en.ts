@@ -2076,7 +2076,8 @@ export const en: Translation = {
         'You wrote, edited, or submitted this draft. Under the four-eyes rule another compliance staff member must approve it.',
       selfHint:
         'You are the only active compliance staff member, so you may approve your own draft. It is flagged as self-approved in the audit trail.',
-      selfWarning: 'You are approving your own draft. The audit trail records it as self-approved (self_approved).',
+      selfWarning:
+        'You are approving your own draft. The audit trail records it as self-approved (self_approved).',
     },
     actions: {
       newDraft: 'New draft',
@@ -2146,11 +2147,13 @@ export const en: Translation = {
       discardBody: 'Unsaved changes will be lost.',
       discard: 'Discard changes',
       cancelTitle: 'Cancel the schedule for version {{version}}?',
-      cancelBody: 'The scheduled version is removed and its draft returns to the draft list so it can be edited and submitted again.',
+      cancelBody:
+        'The scheduled version is removed and its draft returns to the draft list so it can be edited and submitted again.',
       requireOnTitle: 'Make {{kind}} mandatory?',
       requireOnBody:
         'Users who have not accepted the current version cannot post, comment, or chat in the community until they accept it. {{users}} active users have not accepted yet. Chat with CS keeps working.',
-      requireOnEmpty: '{{kind}} has no version in effect yet, so this takes effect when the first version is published.',
+      requireOnEmpty:
+        '{{kind}} has no version in effect yet, so this takes effect when the first version is published.',
       requireOn: 'Make mandatory',
       requireOffTitle: 'Make {{kind}} optional?',
       requireOffBody:
@@ -2170,7 +2173,8 @@ export const en: Translation = {
       requiredOff: '{{kind}} no longer has to be accepted.',
     },
     errors: {
-      four_eyes: 'This draft must be approved by another compliance staff member, not its author or submitter.',
+      four_eyes:
+        'This draft must be approved by another compliance staff member, not its author or submitter.',
       legal_scheduled_exists:
         'A version of this document is already scheduled. Cancel that schedule before approving another version.',
       legal_draft_locked: 'Drafts under review or already published cannot be changed. Withdraw it first.',
@@ -2213,7 +2217,8 @@ export const en: Translation = {
     },
     alerts: {
       openTitle: 'Open alerts',
-      openHint: 'An alert opens when a problem lasts more than 2 minutes and is sent to the Telegram or email channel.',
+      openHint:
+        'An alert opens when a problem lasts more than 2 minutes and is sent to the Telegram or email channel.',
       noneOpen: 'No open alerts.',
       openedAt: 'Opened {{time}}',
       acknowledge: 'Mark as handled',
@@ -2348,9 +2353,9 @@ export const en: Translation = {
           'The password cannot be changed for an existing repository. To use a new password, enter a new folder or bucket.',
         length: 'At least {{min}} characters. Use a password manager.',
         confirmHint: 'Type it again to rule out typos.',
-        acknowledge:
-          'I have stored this password somewhere safe; without it the backups cannot be restored.',
-        cannotChange: 'The encryption password is never shown again and cannot be changed for an existing repository.',
+        acknowledge: 'I have stored this password somewhere safe; without it the backups cannot be restored.',
+        cannotChange:
+          'The encryption password is never shown again and cannot be changed for an existing repository.',
       },
       problems: {
         endpoint: {
@@ -2361,10 +2366,18 @@ export const en: Translation = {
           required: 'Enter the bucket name.',
           invalid: 'Bucket names are 3–63 characters: lowercase letters, digits, dots, or hyphens.',
         },
-        prefix: { invalid: 'Folders may only use letters, digits, dots, underscores, or hyphens, up to 5 levels.' },
+        prefix: {
+          invalid: 'Folders may only use letters, digits, dots, underscores, or hyphens, up to 5 levels.',
+        },
         region: { invalid: 'Region may only use lowercase letters, digits, and hyphens.' },
-        accessKeyId: { required: 'Enter the access key ID.', length: 'Access key ID must be 3–200 characters.' },
-        secretAccessKey: { required: 'Enter the secret access key.', length: 'Secret access key is too long.' },
+        accessKeyId: {
+          required: 'Enter the access key ID.',
+          length: 'Access key ID must be 3–200 characters.',
+        },
+        secretAccessKey: {
+          required: 'Enter the secret access key.',
+          length: 'Secret access key is too long.',
+        },
         password: {
           required: 'Enter the encryption password.',
           length: 'Encryption password must be 16–200 characters.',
@@ -2388,7 +2401,8 @@ export const en: Translation = {
         timeInvalid: 'Invalid time (HH:MM).',
         restoreTitle: 'Weekly restore test',
         restoreTest: 'Run the restore test automatically',
-        restoreHint: 'The latest backup is restored into a temporary database to prove the backups actually work.',
+        restoreHint:
+          'The latest backup is restored into a temporary database to prove the backups actually work.',
         weekday: 'Day',
         restoreTime: 'Restore test time',
         save: 'Save schedule',
@@ -2453,7 +2467,8 @@ export const en: Translation = {
       testDirty: 'Save your changes before sending a test.',
       lastDelivery: 'Last delivery:',
       noDelivery: 'Nothing has been sent through this channel yet.',
-      pendingHint: 'Waiting for the sentinel to send it. If it stays waiting, check the sentinel service on the Status tab.',
+      pendingHint:
+        'Waiting for the sentinel to send it. If it stays waiting, check the sentinel service on the Status tab.',
       deliveryStatus: { pending: 'Waiting', sent: 'Sent', failed: 'Failed' },
       deliveryKind: { opened: 'New alert', escalated: 'Escalated', resolved: 'Resolved', test: 'Test' },
       problems: {
@@ -2473,7 +2488,10 @@ export const en: Translation = {
         username: { length: 'Username is too long.' },
         password: { length: 'Password is too long.' },
         from: { invalid: 'Invalid sender address.' },
-        to: { invalid: 'One of the recipient addresses is invalid.', too_many: 'At most {{max}} recipients.' },
+        to: {
+          invalid: 'One of the recipient addresses is invalid.',
+          too_many: 'At most {{max}} recipients.',
+        },
       },
     },
     secret: {
@@ -2499,7 +2517,8 @@ export const en: Translation = {
       invalid_backup_prefix: 'Invalid folder (prefix).',
       invalid_backup_region: 'Invalid region.',
       invalid_backup_credentials: 'Invalid access key, or the secret access key is missing.',
-      weak_backup_password: 'Enter an encryption password of 16–200 characters (required for a new repository).',
+      weak_backup_password:
+        'Enter an encryption password of 16–200 characters (required for a new repository).',
       backup_password_locked:
         'The encryption password of an existing repository cannot be changed. Use a new folder or bucket.',
       invalid_backup_schedule: 'Schedule or retention out of range.',

@@ -195,3 +195,17 @@ func TestFromEnvRequiresRepositoryAndPassword(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestMissingBucketCountsAsMissingRepository(t *testing.T) {
+	stuck := &runner.StopError{Name: "restic", Cause: context.DeadlineExceeded, Stderr: "Is there a repository at the following location? | s3:http://s3/b",
+		Output: "Stat(<config/>) returned error, retrying after 4s: Stat: The specified bucket does not exist\nIs there a repository at the following location?\ns3:http://s3/b\n"}
+	f := &runnertest.Fake{Respond: func(runner.Cmd) runnertest.Reply { return runnertest.Reply{Err: stuck} }}
+	if err := client(f).Open(context.Background()); !errors.Is(err, ErrNoRepository) {
+		t.Fatalf("err = %v", err)
+	}
+	other := &runner.StopError{Name: "restic", Cause: context.DeadlineExceeded, Output: "dial tcp: lookup s3: no such host"}
+	f = &runnertest.Fake{Respond: func(runner.Cmd) runnertest.Reply { return runnertest.Reply{Err: other} }}
+	if err := client(f).Open(context.Background()); errors.Is(err, ErrNoRepository) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v", err)
+	}
+}

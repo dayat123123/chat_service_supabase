@@ -126,6 +126,7 @@ export function durationLabel(milliseconds: number | null | undefined) {
   const seconds = Math.round(milliseconds / 1000)
   if (seconds < 60) return `${seconds} ${i18n.t('time.secondShort')}`
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} ${i18n.t('time.minuteShort')} ${seconds % 60} ${i18n.t('time.secondShort')}`
+  if (minutes < 60)
+    return `${minutes} ${i18n.t('time.minuteShort')} ${seconds % 60} ${i18n.t('time.secondShort')}`
   return `${Math.floor(minutes / 60)} ${i18n.t('time.hourShort')} ${minutes % 60} ${i18n.t('time.minuteShort')}`
 }

@@ -9,8 +9,6 @@ export const LEGAL_TITLE_MAX = 150
 export const LEGAL_BODY_MIN = 50
 export const LEGAL_BODY_MAX = 100_000
 export const LEGAL_SUMMARY_MAX = 2000
-export const LEGAL_NOTE_MIN = 5
-export const LEGAL_NOTE_MAX = 1000
 
 export type LegalDocument = {
   id: string

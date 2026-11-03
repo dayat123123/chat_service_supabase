@@ -4,7 +4,14 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Switch } from '@/components/ui/controls'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Switch,
+} from '@/components/ui/controls'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { QueryContent, SettingsCard } from '@/features/settings/components/settings-ui'
@@ -100,7 +107,10 @@ function useProblem() {
   const { t } = useTranslation()
   return (scope: string, problem: ChannelProblem | undefined, options?: { max?: number }) =>
     problem
-      ? t(`system.channels.problems.${scope}.${problem}` as 'system.channels.problems.host.invalid', options ?? {})
+      ? t(
+          `system.channels.problems.${scope}.${problem}` as 'system.channels.problems.host.invalid',
+          options ?? {},
+        )
       : undefined
 }
 
@@ -411,7 +421,9 @@ function EmailCard({ channels }: { channels: AlertChannels }) {
                 }}
               >
                 <Trash2Icon />
-                {clearPassword ? t('system.channels.email.keepPassword') : t('system.channels.email.clearPassword')}
+                {clearPassword
+                  ? t('system.channels.email.keepPassword')
+                  : t('system.channels.email.clearPassword')}
               </Button>
             ) : null}
           </div>

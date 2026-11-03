@@ -1,5 +1,5 @@
 begin;
-select plan(50);
+select plan(51);
 
 delete from public.legal_documents;
 delete from cs.legal_drafts;
@@ -32,7 +32,9 @@ select throws_ok(format('select cs_api.legal_draft_save(null, %L, %L, %L, null, 
 select cs_api.legal_draft_save(null, 'terms', 'Syarat dan Ketentuan Komunitas', :'body', 'Versi pertama') ->> 'id' as terms_draft \gset
 select is((cs_api.legal_draft(:'terms_draft') ->> 'status'), 'draft', 'Draf tersimpan sebagai draf');
 select is((cs_api.legal_draft(:'terms_draft') ->> 'created_by'), 'Kirana', 'Penyusun draf tercatat');
-select is((cs_api.legal_draft_submit(:'terms_draft') ->> 'status'), 'pending', 'Draf diajukan untuk persetujuan');
+select cs_api.legal_draft_submit(:'terms_draft') as submitted \gset
+select is((:'submitted'::jsonb ->> 'status'), 'pending', 'Draf diajukan untuk persetujuan');
+select is((:'submitted'::jsonb ->> 'submitted_by_id'), :'kirana', 'ID pengaju dikirim agar web bisa menerapkan empat mata');
 select throws_ok(format('select cs_api.legal_draft_save(%L, %L, %L, %L)', :'terms_draft', 'terms', 'Ubah', :'body'),
   'PT409', 'legal_draft_locked', 'Draf yang sedang ditinjau tidak bisa diubah');
 select throws_ok(format('select cs_api.legal_draft_approve(%L)', :'terms_draft'), 'PT403', 'four_eyes',

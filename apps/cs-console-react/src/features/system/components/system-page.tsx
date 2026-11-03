@@ -27,7 +27,11 @@ export function SystemPage() {
           <h1 className="text-lg font-semibold">{t('system.title')}</h1>
           <p className="max-w-3xl text-row text-muted-foreground">{t('system.subtitle')}</p>
         </header>
-        <div role="tablist" aria-label={t('system.tabsLabel')} className="flex gap-4 overflow-x-auto border-b">
+        <div
+          role="tablist"
+          aria-label={t('system.tabsLabel')}
+          className="flex gap-4 overflow-x-auto border-b"
+        >
           {systemTabs.map((item) => (
             <button
               key={item}
@@ -41,7 +45,9 @@ export function SystemPage() {
                 if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
                 const index = systemTabs.indexOf(item)
                 const next =
-                  systemTabs[(index + (event.key === 'ArrowRight' ? 1 : systemTabs.length - 1)) % systemTabs.length]
+                  systemTabs[
+                    (index + (event.key === 'ArrowRight' ? 1 : systemTabs.length - 1)) % systemTabs.length
+                  ]
                 if (!next) return
                 void navigate({ to: '/system', search: { tab: next } })
                 document.getElementById(`system-tab-${next}`)?.focus()
