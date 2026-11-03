@@ -148,7 +148,7 @@ const complianceWordsRoute = createRoute({
   path: '/compliance/words',
   beforeLoad: complianceOnly,
   component: lazyRouteComponent(
-    () => import('@/features/compliance/components/banned-words-page'),
+    withStrings(() => import('@/features/compliance/components/banned-words-page'), 'policy'),
     'BannedWordsPage',
   ),
 })
@@ -172,6 +172,24 @@ const complianceLegalRoute = createRoute({
   path: '/compliance/legal',
   beforeLoad: complianceOnly,
   component: lazyRouteComponent(() => import('@/features/legal/components/legal-page'), 'LegalPage'),
+})
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+const complianceEvidenceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance/evidence',
+  beforeLoad: ({ context }) => {
+    if (!isCompliance(context.agent) && !isSuperAdmin(context.agent)) throw redirect({ to: '/' })
+  },
+  validateSearch: (search: Record<string, unknown>): { id?: string } => {
+    const id = text(search.id)
+    return id && uuidPattern.test(id) ? { id } : {}
+  },
+  component: lazyRouteComponent(
+    withStrings(() => import('@/features/compliance/evidence/components/evidence-page'), 'evidence'),
+    'EvidencePage',
+  ),
 })
 
 const systemRoute = createRoute({
@@ -242,6 +260,7 @@ const routeTree = rootRoute.addChildren([
   complianceWordsRoute,
   complianceContentRoute,
   complianceLegalRoute,
+  complianceEvidenceRoute,
   systemRoute,
   nasabahRoute,
   communityRoute,

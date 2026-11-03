@@ -2,6 +2,8 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { SectionBoundary } from '@/components/states'
+import { DraftBanner } from '@/features/compliance/policy-versions/components/draft-banner'
+import { VersionsTab } from '@/features/compliance/policy-versions/components/versions-tab'
 import { cn } from '@/lib/utils'
 
 import { policyTabs, type PolicyTab } from '../types'
@@ -19,6 +21,7 @@ const panels: Record<PolicyTab, () => React.ReactNode> = {
   images: () => <ImagesTab />,
   manipulation: () => <ManipulationTab />,
   tester: () => <TesterTab />,
+  versions: () => <VersionsTab />,
 }
 
 export function ContentPolicyPage() {
@@ -34,6 +37,7 @@ export function ContentPolicyPage() {
           <h1 className="text-lg font-semibold">{t('policy.title')}</h1>
           <p className="max-w-3xl text-row text-muted-foreground">{t('policy.subtitle')}</p>
         </header>
+        {tab === 'versions' ? null : <DraftBanner />}
         <div
           role="tablist"
           aria-label={t('policy.tabsLabel')}

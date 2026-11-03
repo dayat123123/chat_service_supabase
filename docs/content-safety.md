@@ -185,10 +185,32 @@ event `room_state`.
    ban permanen (kategori `zero_tolerance`), semua sesi dicabut, semua postingan/komentar/pesan akun
    disembunyikan (bukan dihapus, sebagai bukti). Sanksi dan konten ini tidak bisa dibanding.
 3. Gambar ditolak/ditahan oleh moderasi gambar (layanan classifier) bila terdeteksi; laporan pengguna
-   masuk antrean moderasi dengan prioritas.
+   masuk antrean moderasi dengan prioritas. Gambar pratinjau link (og:image dari situs luar) juga melewati
+   classifier sebelum disimpan, lihat [Gambar pratinjau link](#gambar-pratinjau-link).
 4. Pelaporan ke pihak berwenang (mis. aparat penegak hukum / kanal resmi pemerintah) dan penyimpanan
    bukti **ditentukan tim legal** — kanal pelaporan belum ditetapkan dan harus dilengkapi sebelum produksi.
 5. Semua tindakan tercatat di audit (`community.zero_tolerance`).
+
+### Gambar pratinjau link
+
+Layanan `link-preview` 0.2.0 (migrasi `0094_link_preview_nsfw`) mengirim setiap gambar pratinjau yang
+sudah dibersihkan ke classifier sebelum diunggah ke bucket publik `link-previews`, memakai **ambang yang
+sama** dengan upload media (Kepatuhan → Ambang gambar, `media_moderation_config`).
+
+| Verdict | Hasil pratinjau |
+|---|---|
+| `allow` | Gambar disimpan dan tampil |
+| `block` (mis. pornografi) | Gambar dibuang, judul/deskripsi tetap tampil |
+| `hold` (ragu-ragu) | Gambar tidak ditampilkan; **tidak** masuk antrean tinjauan (gambar milik situs luar, tidak ada pengunggah yang bisa ditinjau atau dibanding) |
+| `unreadable` | Gambar dibuang |
+| `unavailable` (classifier/ambang tidak tersedia) | Fail closed: pratinjau tanpa gambar, link dicoba lagi dengan jeda sampai `link_preview.max_attempts`; pratinjau tanpa gambar hanya di-cache `link_preview.failed_cache_hours` |
+
+Verdict, kategori, skor, dan revisi ambang dicatat di `public.link_previews` (`image_verdict`,
+`image_category`, `image_score`, `image_thresholds_revision`, `image_sha256`). Skor classifier di-cache per
+SHA-256 gambar bersih di `private.link_preview_image_scores`, sehingga thumbnail yang sama (mis. logo situs)
+tidak diklasifikasi ulang; keputusan selalu dihitung ulang dengan ambang terbaru. Constraint tabel
+menolak `image_path` tanpa verdict `allow`. Gambar pratinjau lama (sebelum 0.2.0) dilepas saat migrasi dan
+diklasifikasi saat link muncul lagi.
 
 ## 10. Yang bisa diatur dari web CS
 
@@ -202,6 +224,7 @@ event `room_state`.
 | Masa akun baru (0–30 hari) | Kepatuhan | `compliance_set_new_account_days` |
 | Uji teks terhadap aturan | Kepatuhan | `compliance_test_content` |
 | Kata terlarang + import Excel | Kepatuhan | `compliance_*_banned_word*` (0051) |
+| Ambang gambar NSFW (upload media dan gambar pratinjau link) | Kepatuhan | `compliance_image_thresholds`, `compliance_set_image_thresholds` (0079) |
 | Ambang deteksi manipulasi, aksi otomatis, jam ramai | Kepatuhan | `compliance_manipulation_settings`, `compliance_set_manipulation_settings` |
 | Antrean konten ditahan | `community.moderate` | `community_held_content` + `community_resolve_report` |
 | Alert manipulasi | `community.moderate` | `community_manipulation_alerts`, `community_manipulation_review` |
@@ -211,3 +234,52 @@ event `room_state`.
 
 Semua perubahan tercatat di `cs.cs_audit_log`. Pengaturan lain (`dm.request_max_messages`,
 `appeals.window_days`) ada di `private.settings` dan diubah lewat migrasi/operasional.
+
+Sejak 0092 semua RPC ubah di tabel ini dipanggil web lewat gerbang draf `compliance_policy_call` (bagian 11).
+RPC lama tetap ada; saat empat mata kebijakan aktif, memanggilnya langsung sebagai staf ditolak
+`409 policy_review_required`.
+
+## 11. Versi, draf, simulasi, dan empat mata kebijakan (0092)
+
+**Isi kebijakan yang diversikan** (snapshot `private.policy_snapshot()`): kata terlarang (`public.banned_words`),
+aksi & cakupan kategori (`cs.content_rules`), domain diblokir/tepercaya, istilah pengecualian, frasa promosi,
+pengaturan `safety.new_account_days`, `manipulation.*`, `rooms.busy_slow_mode`, `rooms.busy_windows`
+(`private.settings`), dan ambang gambar (`private.media_moderation`). Kebijakan kasus 0042 (tenggat pengaduan,
+retensi) punya riwayat konfirmasi sendiri dan tidak ikut.
+
+**Versi** (`cs.policy_versions`): nomor naik, snapshot penuh, ringkasan diff terhadap versi sebelumnya (per
+bagian: tambah/hapus/ubah, maksimal 200 butir per bagian), sumber (`baseline`, `direct`, `change`, `rollback`,
+`system`), alasan, permintaan asal, versi yang dipulihkan, pembuat, waktu. Tabel append-only
+(`cs.reject_change`, termasuk TRUNCATE). Versi dibuat sekali per transaksi oleh constraint trigger deferred di
+`private.policy_pending` yang ditandai trigger statement pada tiap tabel kebijakan, sehingga perubahan dari mana
+pun (web, migrasi, operasional) tetap tercatat; perubahan tanpa staf tercatat sebagai `system`.
+
+**Draf per staf** (`cs.policy_changes` status `draft`, satu per staf): tab di Kebijakan konten dan halaman Kata
+terlarang memanggil `compliance_policy_call(p_fn, p_args)` dengan nama RPC lama yang di-whitelist. Gerbang
+memuat draf ke tabel di dalam subtransaksi, menjalankan RPC asli (validasi sama persis), mengambil snapshot
+baru, lalu membatalkan subtransaksi. Tabel aktif tidak berubah dan jejak audit RPC lama ikut dibatalkan. Draf
+otomatis di-rebase ke versi terbaru: hanya butir yang diubah staf yang menimpa kebijakan berlaku.
+
+| Aksi | RPC | Catatan |
+|---|---|---|
+| Status (empat mata, versi berlaku, draf + diff, jumlah tertunda) | `compliance_policy_state` | Kepatuhan dan Super Admin |
+| Buang draf | `compliance_policy_discard` | |
+| Ajukan/aktifkan draf | `compliance_policy_submit(p_reason)` | Alasan 5–500 karakter. Empat mata aktif: `pending`; nonaktif: langsung berlaku |
+| Daftar & detail permintaan | `compliance_policy_changes`, `compliance_policy_change` | Detail memuat diff yang diajukan dan efeknya bila disetujui sekarang |
+| Putuskan | `compliance_policy_decide(p_id, p_approve, p_note)` | Pembuat ≠ pemeriksa (`403 four_eyes`); tolak wajib alasan; Super Admin hanya melihat |
+| Tarik | `compliance_policy_withdraw` | Hanya pembuat |
+| Riwayat & detail versi | `compliance_policy_versions`, `compliance_policy_version` | Detail memuat diff versi dan diff pemulihan terhadap kebijakan berlaku |
+| Pulihkan versi | `compliance_policy_rollback(p_version, p_reason)` | Membuat permintaan `rollback` berisi snapshot versi lama; setelah disetujui terbentuk versi baru dengan isi identik. Bila kebijakan berubah sebelum disetujui: `409 policy_stale` |
+| Simulasi | `compliance_policy_simulate` | Lihat di bawah |
+| Saklar empat mata | `admin_policy_four_eyes`, `admin_set_policy_four_eyes` | Super Admin, Pengaturan → Komunitas. Default aktif (`compliance.policy_four_eyes`) |
+
+Audit: `policy_change.submit`, `policy_change.apply` (empat mata nonaktif), `policy_change.approve`,
+`policy_change.reject`, `policy_change.withdraw`, `policy.rollback`, dan `setting.update` untuk saklar.
+
+**Simulasi** hanya membaca (tanpa audit): target draf sendiri, permintaan tertunda, atau versi lama. Contoh teks
+opsional plus konten nyata N hari terakhir (1–30, default 7, maksimal 1.000 terbaru): postingan, komentar, dan
+pesan room saham; DM, grup, chat CS, akun staf, dan akun resmi tidak ikut. Setiap konten dinilai seperti
+`compliance_test_content` (kata terlarang + kategori) dengan kebijakan berlaku dan dengan target di dalam
+subtransaksi yang dibatalkan. Hasil: jumlah per aksi, berapa yang jadi lebih ketat/longgar, maksimal 100 konten
+yang berubah, serta simulasi ambang gambar terhadap skor `private.media_reviews` (hanya gambar yang pernah ditahan
+punya skor).

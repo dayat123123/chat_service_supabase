@@ -176,7 +176,7 @@ class ChatListCubit extends Cubit<ChatListState> {
         final previous = _channels[roomId];
         _channels[roomId] = status;
         if (status == RealtimeStatus.connected && previous != null && previous != status) _scheduleRefresh();
-      case RoomReaction() || RoomStateSignal():
+      case RoomReaction() || RoomStateSignal() || RoomMessageHidden():
         return;
     }
   }

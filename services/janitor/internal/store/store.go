@@ -40,6 +40,31 @@ type wireResult struct {
 	Release bool    `json:"release"`
 }
 
+type CopyJob struct {
+	ID           int64  `json:"id"`
+	SourceBucket string `json:"source_bucket"`
+	SourceName   string `json:"source_name"`
+	ObjectName   string `json:"object_name"`
+}
+
+type CopyResult struct {
+	ID      int64
+	SHA256  string
+	Size    int64
+	Missing bool
+	Error   string
+	Release bool
+}
+
+type wireCopyResult struct {
+	ID      int64   `json:"id"`
+	SHA256  *string `json:"sha256"`
+	Size    *int64  `json:"size"`
+	Missing bool    `json:"missing"`
+	Error   *string `json:"error"`
+	Release bool    `json:"release"`
+}
+
 type PostgREST struct {
 	baseURL string
 	secret  []byte
@@ -74,6 +99,32 @@ func (p *PostgREST) Report(ctx context.Context, instance string, results []Resul
 	}
 	var updated int
 	if err := p.rpc(ctx, "storage_cleanup_report", map[string]any{"p_instance": instance, "p_results": rows}, &updated); err != nil {
+		return 0, err
+	}
+	return updated, nil
+}
+
+func (p *PostgREST) ClaimCopies(ctx context.Context, instance string, limit int, lease time.Duration) ([]CopyJob, error) {
+	var jobs []CopyJob
+	args := map[string]any{"p_instance": instance, "p_limit": limit, "p_lease_seconds": seconds(lease)}
+	if err := p.rpc(ctx, "evidence_copy_claim", args, &jobs); err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
+func (p *PostgREST) ReportCopies(ctx context.Context, instance string, results []CopyResult) (int, error) {
+	rows := make([]wireCopyResult, 0, len(results))
+	for _, r := range results {
+		row := wireCopyResult{ID: r.ID, Missing: r.Missing, Release: r.Release, Error: nullable(clip(r.Error, maxError))}
+		if r.SHA256 != "" && row.Error == nil && !r.Missing && !r.Release {
+			row.SHA256 = &r.SHA256
+			row.Size = &r.Size
+		}
+		rows = append(rows, row)
+	}
+	var updated int
+	if err := p.rpc(ctx, "evidence_copy_report", map[string]any{"p_instance": instance, "p_results": rows}, &updated); err != nil {
 		return 0, err
 	}
 	return updated, nil

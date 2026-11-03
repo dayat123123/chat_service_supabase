@@ -27,6 +27,11 @@ class CommunityMessageDetails {
     this.onReact,
     this.onAppeal,
     this.onOpenSharedPost,
+    this.senderIsModerator = false,
+    this.senderMutedUntil,
+    this.onHide,
+    this.onMuteSender,
+    this.onEscalate,
   });
 
   final ChatMessage message;
@@ -47,6 +52,13 @@ class CommunityMessageDetails {
   final ValueChanged<String>? onReact;
   final VoidCallback? onAppeal;
   final VoidCallback? onOpenSharedPost;
+  final bool senderIsModerator;
+  final DateTime? senderMutedUntil;
+  final VoidCallback? onHide;
+  final VoidCallback? onMuteSender;
+  final VoidCallback? onEscalate;
+
+  bool get hasModeration => onHide != null || onMuteSender != null || onEscalate != null;
 }
 
 class CommunityComposerDetails {
@@ -65,6 +77,7 @@ class CommunityComposerDetails {
     this.extraActions = const [],
     this.cooldown = Duration.zero,
     this.onSendStockCard,
+    this.mutedUntil,
   });
 
   final TextEditingController controller;
@@ -81,8 +94,11 @@ class CommunityComposerDetails {
   final List<Widget> extraActions;
   final Duration cooldown;
   final VoidCallback? onSendStockCard;
+  final DateTime? mutedUntil;
 
   bool get coolingDown => cooldown > Duration.zero;
+
+  bool get muted => mutedUntil != null;
 
   int get cooldownSeconds => (cooldown.inMilliseconds + 999) ~/ 1000;
 }

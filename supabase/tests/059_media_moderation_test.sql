@@ -1,5 +1,6 @@
 begin;
 select plan(50);
+update cs.cs_settings set value = 'false' where key = 'compliance.policy_four_eyes';
 
 select tests.create_user('mm_budi') as budi \gset
 select tests.create_user('mm_sari') as sari \gset

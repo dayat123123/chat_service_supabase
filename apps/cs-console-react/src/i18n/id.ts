@@ -134,6 +134,7 @@ export const id = {
     community: 'Komunitas',
     communityAttention: '{{count}} perlu tindakan di Komunitas',
     legal: 'Dokumen hukum',
+    evidence: 'Bukti',
     system: 'Kesehatan sistem',
     analytics: 'Analitik',
     contentPolicy: 'Kebijakan konten',
@@ -618,6 +619,9 @@ export const id = {
     fourEyes: 'Aturan empat mata',
     fourEyesHint:
       'Default aktif. Postingan dan notifikasi resmi wajib disetujui staf lain, bukan pembuatnya. Bila dimatikan, staf dengan izin "Setujui & terbitkan" bisa langsung menerbitkan buatannya sendiri.',
+    policyFourEyes: 'Empat mata kebijakan konten',
+    policyFourEyesHint:
+      'Default aktif. Perubahan kebijakan konten (kata terlarang, kategori, domain, frasa, ambang gambar, anti-manipulasi) dan pemulihan versi wajib disetujui staf Kepatuhan lain, bukan pembuatnya. Bila dimatikan, staf Kepatuhan bisa langsung mengaktifkan drafnya sendiri.',
     push: 'Push notification',
     integrationDescription:
       'Sambungan menu Akun Nasabah ke CS Admin service. Menu baru tampil untuk CS setelah alamat dan client id disimpan dengan tes koneksi berhasil.',
@@ -1052,6 +1056,12 @@ export const id = {
       promo_phrase_delete: 'Hapus frasa promosi',
       manipulation_settings: 'Ubah pengaturan anti-manipulasi',
       media_thresholds_set: 'Ubah ambang moderasi gambar',
+      policy_change_submit: 'Ajukan perubahan kebijakan konten',
+      policy_change_apply: 'Aktifkan perubahan kebijakan konten',
+      policy_change_approve: 'Setujui perubahan kebijakan konten',
+      policy_change_reject: 'Tolak perubahan kebijakan konten',
+      policy_change_withdraw: 'Tarik perubahan kebijakan konten',
+      policy_rollback: 'Pulihkan versi kebijakan konten',
       community_media_approve: 'Loloskan gambar ditahan',
       community_media_remove: 'Hapus gambar ditahan',
       community_manipulation_review: 'Tinjau indikasi manipulasi',

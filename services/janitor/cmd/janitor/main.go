@@ -7,18 +7,20 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
 	"olt-social/janitor/internal/cleaner"
 	"olt-social/janitor/internal/config"
+	"olt-social/janitor/internal/evidence"
 	"olt-social/janitor/internal/metrics"
 	"olt-social/janitor/internal/storage"
 	"olt-social/janitor/internal/store"
 )
 
 const (
-	version     = "0.1.0"
+	version     = "0.2.0"
 	pingTimeout = 5 * time.Second
 )
 
@@ -58,6 +60,23 @@ func run(cfg config.Config, log *slog.Logger) error {
 		RequestTimeout:  cfg.RequestTimeout,
 		ShutdownTimeout: cfg.ShutdownTimeout,
 	})
+	copier := evidence.New(evidence.Options{
+		Store:           queue,
+		Storage:         objects,
+		Log:             log,
+		Instance:        cfg.InstanceID,
+		BatchSize:       cfg.BatchSize,
+		Concurrency:     cfg.Concurrency,
+		Lease:           cfg.Lease,
+		PollInterval:    cfg.PollInterval,
+		RequestTimeout:  cfg.RequestTimeout,
+		ShutdownTimeout: cfg.ShutdownTimeout,
+	})
+	snapshot := func() metrics.Snapshot {
+		s := c.Metrics()
+		s.EvidenceFiles, s.EvidenceClaimErrors = copier.Metrics()
+		return s
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -76,7 +95,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 		}
 		_, _ = w.Write([]byte("ok"))
 	})
-	mux.Handle("GET /metrics", metrics.Handler(c.Metrics))
+	mux.Handle("GET /metrics", metrics.Handler(snapshot))
 
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
@@ -93,7 +112,15 @@ func run(cfg config.Config, log *slog.Logger) error {
 	}()
 	done := make(chan struct{})
 	go func() {
-		c.Run(ctx)
+		var wg sync.WaitGroup
+		for _, run := range []func(context.Context){c.Run, copier.Run} {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				run(ctx)
+			}()
+		}
+		wg.Wait()
 		close(done)
 	}()
 
@@ -103,7 +130,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 		<-done
 		return err
 	case <-ctx.Done():
-		log.Info("Shutting down; finishing the deletes in flight")
+		log.Info("Shutting down; finishing the deletes and evidence copies in flight")
 	}
 	<-done
 	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -10,7 +10,8 @@ import (
 
 var (
 	Results     = []string{"ok", "empty", "blocked", "failed", "retry", "release"}
-	ImageEvents = []string{"stored", "skipped", "rejected", "blocked", "failed"}
+	ImageEvents = []string{"stored", "skipped", "rejected", "blocked", "failed", "unsafe"}
+	Verdicts    = []string{"allow", "hold", "block", "unreadable", "unavailable"}
 )
 
 type Snapshot struct {
@@ -26,6 +27,12 @@ type Snapshot struct {
 	LastClaim       time.Time
 	LastHeartbeat   time.Time
 	StoredImageSize uint64
+	Verdicts        map[string]uint64
+	CacheHits       uint64
+	ClassifySeconds float64
+	Classifications uint64
+	ClassifierFails int
+	ThresholdsSet   bool
 }
 
 func Handler(snapshot func() Snapshot) http.Handler {
@@ -54,6 +61,19 @@ func Render(s Snapshot) string {
 	for _, e := range ImageEvents {
 		fmt.Fprintf(&b, "link_preview_images_total{outcome=%q} %d\n", e, s.Images[e])
 	}
+	header(&b, "link_preview_image_verdicts_total", "Preview images checked against the NSFW thresholds, by verdict.", "counter")
+	for _, v := range Verdicts {
+		fmt.Fprintf(&b, "link_preview_image_verdicts_total{verdict=%q} %d\n", v, s.Verdicts[v])
+	}
+	header(&b, "link_preview_image_cache_hits_total", "Image verdicts decided from cached classifier scores.", "counter")
+	fmt.Fprintf(&b, "link_preview_image_cache_hits_total %d\n", s.CacheHits)
+	header(&b, "link_preview_classify_duration_seconds", "Time spent waiting for the classifier.", "summary")
+	fmt.Fprintf(&b, "link_preview_classify_duration_seconds_sum %g\n", s.ClassifySeconds)
+	fmt.Fprintf(&b, "link_preview_classify_duration_seconds_count %d\n", s.Classifications)
+	header(&b, "link_preview_classifier_consecutive_failures", "Classifier calls that failed in a row.", "gauge")
+	fmt.Fprintf(&b, "link_preview_classifier_consecutive_failures %d\n", s.ClassifierFails)
+	header(&b, "link_preview_thresholds_loaded", "1 when the image thresholds are loaded from the database.", "gauge")
+	fmt.Fprintf(&b, "link_preview_thresholds_loaded %d\n", boolean(s.ThresholdsSet))
 	header(&b, "link_preview_image_bytes_total", "Sanitized image bytes uploaded to Storage.", "counter")
 	fmt.Fprintf(&b, "link_preview_image_bytes_total %d\n", s.StoredImageSize)
 	header(&b, "link_preview_fetch_duration_seconds", "Time spent per link, including the image.", "summary")
@@ -76,6 +96,13 @@ func Render(s Snapshot) string {
 
 func header(b *strings.Builder, name, help, kind string) {
 	fmt.Fprintf(b, "# HELP %s %s\n# TYPE %s %s\n", name, help, name, kind)
+}
+
+func boolean(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
 }
 
 func unix(t time.Time) int64 {

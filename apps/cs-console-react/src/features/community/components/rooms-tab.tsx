@@ -1,5 +1,5 @@
 import { LoaderCircleIcon, PinIcon, PinOffIcon, SearchIcon, TimerIcon } from 'lucide-react'
-import { useId, useState } from 'react'
+import { lazy, Suspense, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Confirm } from '@/features/nasabah/components/confirm'
 import { FieldText } from '@/features/system/components/system-ui'
+import { withStrings } from '@/i18n'
 import { moderationErrorText } from '@/lib/error-text'
 import { toApiError } from '@/lib/errors'
 import { stamp } from '@/lib/time'
@@ -26,6 +27,16 @@ import {
 } from '../logic'
 import { SLOW_MODE_MAX, type RoomMessage, type RoomState } from '../types'
 import { EditedMark, QueueHeader } from './moderation-ui'
+
+const RoomModeratorsSection = lazy(
+  withStrings(
+    () =>
+      import('../room-moderators/room-moderators-section').then((module) => ({
+        default: module.RoomModeratorsSection,
+      })),
+    'moderation',
+  ),
+)
 
 const presets = [0, 10, 30, 60, 300] as const
 
@@ -426,6 +437,9 @@ function RoomBody({
         <SlowModeForm key={`${code}-${override?.updated_at ?? ''}`} code={code} state={state} />
       </section>
       <PinnedCard state={state} />
+      <Suspense fallback={<ListSkeleton rows={2} />}>
+        <RoomModeratorsSection code={state.stock_code} />
+      </Suspense>
     </div>
   )
 }

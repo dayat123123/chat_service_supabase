@@ -1577,6 +1577,24 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
   String get notifModerationAppealed => 'An appeal for this content was already filed';
 
   @override
+  String notifRoomMuted(String room) {
+    return 'A moderator muted you in $room';
+  }
+
+  @override
+  String notifRoomUnmuted(String room) {
+    return 'Your mute in $room was lifted';
+  }
+
+  @override
+  String notifRoomMutedUntil(String time) {
+    return 'You can send messages again after $time';
+  }
+
+  @override
+  String get notifRoomUnmutedBody => 'You can send messages in this room again';
+
+  @override
   String get notifTypeFollowedPost => 'Posts from accounts you follow';
 
   @override
@@ -1593,4 +1611,98 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
 
   @override
   String get notifTypeModerationHint => 'Always shown in the app';
+
+  @override
+  String get roomModeratorBadge => 'Moderator';
+
+  @override
+  String get roomModeratorNotice => 'You moderate this room. Long-press a member\'s message for moderation actions.';
+
+  @override
+  String get roomModHide => 'Hide message';
+
+  @override
+  String get roomModMute => 'Mute member';
+
+  @override
+  String get roomModEscalate => 'Escalate to staff';
+
+  @override
+  String get roomModHideTitle => 'Hide this message?';
+
+  @override
+  String get roomModHideBody =>
+      'The message is hidden from other members. Staff review every moderator action and the sender can appeal.';
+
+  @override
+  String roomModMuteTitle(String name) {
+    return 'Mute $name in this room';
+  }
+
+  @override
+  String get roomModMuteBody => 'The member can still read the room but cannot send messages until the mute ends.';
+
+  @override
+  String get roomModEscalateTitle => 'Escalate message to staff';
+
+  @override
+  String get roomModEscalateBody => 'The message goes to the staff report queue. It stays visible until staff decide.';
+
+  @override
+  String get roomModReason => 'Reason';
+
+  @override
+  String get roomModDuration => 'Mute duration';
+
+  @override
+  String get roomModNoteHint => 'Note for staff (optional)';
+
+  @override
+  String roomModMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String roomModHours(int hours) {
+    return '$hours h';
+  }
+
+  @override
+  String get roomModHidden => 'Message hidden';
+
+  @override
+  String roomModMuted(String name, String time) {
+    return '$name muted until $time';
+  }
+
+  @override
+  String get roomModEscalated => 'Message escalated to staff';
+
+  @override
+  String roomModMemberMuted(String time) {
+    return 'Muted until $time';
+  }
+
+  @override
+  String roomMutedBanner(String time) {
+    return 'A moderator muted you in this room until $time. You can still read messages.';
+  }
+
+  @override
+  String get roomMutedComposer => 'You are muted in this room';
+
+  @override
+  String get errorRoomMuted => 'A moderator muted you in this room.';
+
+  @override
+  String get errorNotRoomModerator => 'You no longer moderate this room.';
+
+  @override
+  String get errorRoomModeratorSuspended => 'Your moderator rights are suspended.';
+
+  @override
+  String get errorRoomModTarget => 'Official accounts, other moderators, and your own messages cannot be moderated.';
+
+  @override
+  String get errorAlreadyModerated => 'This action was already taken.';
 }

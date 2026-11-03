@@ -9,7 +9,7 @@ import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseRoomConnection implements ChatRoomConnection {
-  SupabaseRoomConnection(this._realtime, this._hub, this.roomId, this.me) {
+  SupabaseRoomConnection(this._realtime, this._hub, this.roomId, this.me, [this._muteNotices]) {
     _controller = StreamController<ChatRoomEvent>.broadcast(onListen: _open);
   }
 
@@ -17,9 +17,11 @@ class SupabaseRoomConnection implements ChatRoomConnection {
   final RoomChannelHub _hub;
   final String roomId;
   final UserSummary me;
+  final Stream<RoomMuteNotice>? _muteNotices;
   late final StreamController<ChatRoomEvent> _controller;
   StreamSubscription<PostgresChangePayload>? _messages;
   StreamSubscription<RoomSignal>? _signals;
+  StreamSubscription<RoomMuteNotice>? _mutes;
   bool _opened = false;
 
   @override
@@ -44,6 +46,10 @@ class SupabaseRoomConnection implements ChatRoomConnection {
           _emit(MessageUpserted(MessageRowModel.fromJson(payload.newRecord).toEntity()));
         });
 
+    _mutes = _muteNotices
+        ?.where((notice) => notice.roomId == roomId)
+        .listen((notice) => _emit(OwnRoomMuteChanged(notice.mutedUntil)), onError: (Object _) {});
+
     _signals = _hub.watch(roomId, me).listen((signal) {
       switch (signal) {
         case RoomTyping(:final user, :final isTyping):
@@ -58,6 +64,8 @@ class SupabaseRoomConnection implements ChatRoomConnection {
           _emit(ReactionChanged(messageId: messageId, userId: userId, emoji: emoji, counts: counts));
         case RoomStateSignal(:final state):
           _emit(StockRoomStateChanged(state));
+        case RoomMessageHidden(:final messageId, :final userId):
+          _emit(MessageHidden(messageId, userId: userId));
       }
     });
   }
@@ -71,6 +79,8 @@ class SupabaseRoomConnection implements ChatRoomConnection {
     _messages = null;
     await _signals?.cancel();
     _signals = null;
+    await _mutes?.cancel();
+    _mutes = null;
     await _controller.close();
   }
 }

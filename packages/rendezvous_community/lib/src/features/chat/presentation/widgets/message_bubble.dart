@@ -7,10 +7,12 @@ import 'package:rendezvous_community/src/features/appeals/presentation/widgets/c
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/receipt_icon.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/shared_post_card.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/stock_cards.dart';
 import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
@@ -62,6 +64,10 @@ class MessageBubble extends StatelessWidget {
         cubit.state.supportsReactions &&
         context.communityFeature(CommunityFlags.messageReactions);
     final sharedPostId = m.sharedPostId;
+    final room = cubit.state;
+    final moderating = room.canModerate(m);
+    VoidCallback moderate(RoomModerationAction action) =>
+        () => runRoomModeration(context, cubit, m, action);
     late final CommunityMessageDetails details;
     details = CommunityMessageDetails(
       message: m,
@@ -88,6 +94,11 @@ class MessageBubble extends StatelessWidget {
           ? () => showCommunityAppealDialog(context, targetType: AppealTargetType.message, targetId: m.id)
           : null,
       onOpenSharedPost: sharedPostId == null ? null : () => CommunityNavigator.openPost(context, sharedPostId),
+      senderIsModerator: room.isModerator(m.senderId),
+      senderMutedUntil: room.isRoomModerator ? room.memberMutedUntil(m.senderId) : null,
+      onHide: moderating ? moderate(RoomModerationAction.hide) : null,
+      onMuteSender: moderating ? moderate(RoomModerationAction.mute) : null,
+      onEscalate: room.canEscalate(m) ? moderate(RoomModerationAction.escalate) : null,
     );
     return details;
   }
@@ -103,27 +114,52 @@ class MessageBubble extends StatelessWidget {
     final onReact = details.onReact;
     final action = await showModalBottomSheet<VoidCallback>(
       context: context,
+      isScrollControlled: details.hasModeration,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onReact != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: ReactionPicker(
-                  choices: details.reactionChoices,
-                  selected: myReaction(details.reactions),
-                  onSelected: (emoji) => Navigator.pop(sheetContext, () => onReact(emoji)),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onReact != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                  child: ReactionPicker(
+                    choices: details.reactionChoices,
+                    selected: myReaction(details.reactions),
+                    onSelected: (emoji) => Navigator.pop(sheetContext, () => onReact(emoji)),
+                  ),
                 ),
-              ),
-            for (final (handler, icon, label) in [
-              (details.onReply, Icons.reply, l10n.replyToMessage),
-              (details.onDelete, Icons.delete_outline, l10n.delete),
-              (details.onReport, Icons.flag_outlined, l10n.report),
-            ])
-              if (handler != null)
-                ListTile(leading: Icon(icon), title: Text(label), onTap: () => Navigator.pop(sheetContext, handler)),
-          ],
+              for (final (handler, icon, label) in [
+                (details.onReply, Icons.reply, l10n.replyToMessage),
+                (details.onDelete, Icons.delete_outline, l10n.delete),
+                (details.onReport, Icons.flag_outlined, l10n.report),
+              ])
+                if (handler != null)
+                  ListTile(leading: Icon(icon), title: Text(label), onTap: () => Navigator.pop(sheetContext, handler)),
+              if (details.hasModeration) ...[
+                const Divider(height: 1),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.shield_outlined),
+                  title: Text(l10n.roomModeratorBadge),
+                  subtitle: details.senderMutedUntil == null
+                      ? null
+                      : Text(l10n.roomModMemberMuted(roomModerationTime(l10n, details.senderMutedUntil!))),
+                ),
+                for (final (handler, icon, label) in [
+                  (details.onHide, Icons.visibility_off_outlined, l10n.roomModHide),
+                  (details.onMuteSender, Icons.volume_off_outlined, l10n.roomModMute),
+                  (details.onEscalate, Icons.outlined_flag, l10n.roomModEscalate),
+                ])
+                  if (handler != null)
+                    ListTile(
+                      leading: Icon(icon),
+                      title: Text(label),
+                      onTap: () => Navigator.pop(sheetContext, handler),
+                    ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -176,6 +212,20 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
           if (d.showSender && m.sender != null)
             if (m.isOfficial)
               OfficialSenderLabel(sender: m.sender!, color: t.link)
+            else if (d.senderIsModerator)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: GestureDetector(
+                      onTap: d.onSenderTap,
+                      child: Text(m.sender!.name, style: senderStyle, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  RoomModeratorBadge(color: t.link),
+                ],
+              )
             else
               GestureDetector(
                 onTap: d.onSenderTap,

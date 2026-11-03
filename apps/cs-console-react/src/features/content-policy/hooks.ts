@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { policyVersionKeys } from '@/features/compliance/policy-versions/hooks'
+
 import { contentPolicyApi } from './api'
 import type {
   BlockedDraft,
@@ -42,7 +44,10 @@ function useRulesMutation<TArgs>(run: (args: TArgs) => Promise<ContentRules>) {
   const client = useQueryClient()
   return useMutation({
     mutationFn: run,
-    onSuccess: (data) => client.setQueryData(policyKeys.rules, data),
+    onSuccess: (data) => {
+      client.setQueryData(policyKeys.rules, data)
+      void client.invalidateQueries({ queryKey: policyVersionKeys.state })
+    },
     onError: () => void client.invalidateQueries({ queryKey: policyKeys.rules }),
   })
 }
@@ -90,7 +95,10 @@ export function useSetImageThresholds() {
   return useMutation({
     mutationFn: (args: { thresholds: ImageThresholds['thresholds']; note: string | null }) =>
       contentPolicyApi.setImageThresholds(args.thresholds, args.note),
-    onSuccess: (data) => client.setQueryData(policyKeys.images, data),
+    onSuccess: (data) => {
+      client.setQueryData(policyKeys.images, data)
+      void client.invalidateQueries({ queryKey: policyVersionKeys.state })
+    },
     onError: () => void client.invalidateQueries({ queryKey: policyKeys.images }),
   })
 }
@@ -99,7 +107,10 @@ export function useSetManipulationSettings() {
   const client = useQueryClient()
   return useMutation({
     mutationFn: (values: ManipulationSettings) => contentPolicyApi.setManipulation(values),
-    onSuccess: (data) => client.setQueryData(policyKeys.manipulation, data),
+    onSuccess: (data) => {
+      client.setQueryData(policyKeys.manipulation, data)
+      void client.invalidateQueries({ queryKey: policyVersionKeys.state })
+    },
     onError: () => void client.invalidateQueries({ queryKey: policyKeys.manipulation }),
   })
 }

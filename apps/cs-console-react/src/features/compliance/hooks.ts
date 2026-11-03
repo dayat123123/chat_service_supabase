@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { complianceApi } from './api'
+import { policyVersionKeys } from './policy-versions/hooks'
 import {
   AUDIT_PAGE_SIZE,
   type AuditFilter,
@@ -143,11 +144,13 @@ function useBannedWordMutation<T, R extends BannedWordList>(run: (input: T) => P
   const client = useQueryClient()
   return useMutation({
     mutationFn: run,
-    onSuccess: (list) =>
+    onSuccess: (list) => {
       client.setQueryData<BannedWordList>(complianceKeys.bannedWords, {
         limit: list.limit,
         words: list.words,
-      }),
+      })
+      void client.invalidateQueries({ queryKey: policyVersionKeys.state })
+    },
     onError: () => void client.invalidateQueries({ queryKey: complianceKeys.bannedWords }),
   })
 }

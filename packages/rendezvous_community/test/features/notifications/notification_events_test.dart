@@ -121,6 +121,56 @@ void main() {
       expect(events, ['opened:n:n-d', 'tapped:n:n-d', 'opened:n:n-r', 'tapped:n:n-r', 'opened:n:n-f', 'tapped:n:n-f']);
     });
 
+    testWidgets('room mute notices name the stock room, skip the appeal hint, and open the room', (tester) async {
+      final until = DateTime.now().toUtc().add(const Duration(hours: 1));
+      final muted = _notification('moderation', {
+        'target_type': 'room',
+        'target_id': 'room-bbca',
+        'state': 'muted',
+        'room_id': 'room-bbca',
+        'stock_code': 'BBCA',
+        'until': until.toIso8601String(),
+        'reason': 'spam',
+        'appealable': false,
+      }, id: 'n-mu');
+      final unmuted = _notification('moderation', {
+        'target_type': 'room',
+        'target_id': 'room-tlkm',
+        'state': 'unmuted',
+        'room_id': 'room-tlkm',
+        'stock_code': 'TLKM',
+        'until': null,
+        'appealable': false,
+      }, id: 'n-un');
+      expect(muted.isRoomMute, isTrue);
+      expect(muted.muteUntil, until);
+      expect(moderation.isRoomMute, isFalse);
+      final rooms = <String>[];
+      final features = FakeFeatureDependencies(config: loadedConfig());
+      addTearDown(features.dispose);
+      await pumpFeatureApp(
+        tester,
+        const CommunityNotificationList(),
+        dependencies: FakeDependencies(
+          notifications: _Notifications([muted, unmuted]),
+          callbacks: CommunityCallbacks(onRoomTap: (_, id) => rooms.add(id)),
+        ),
+        features: features,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(r'Anda dibisukan moderator di $BBCA'), findsOneWidget);
+      expect(find.textContaining('Anda bisa mengirim pesan lagi setelah'), findsOneWidget);
+      expect(find.text(r'Bisu Anda di $TLKM dicabut'), findsOneWidget);
+      expect(find.text('Anda bisa mengirim pesan lagi di room ini'), findsOneWidget);
+      expect(find.textContaining('banding'), findsNothing);
+
+      await tester.tap(find.text(r'Anda dibisukan moderator di $BBCA'));
+      await tester.tap(find.text(r'Bisu Anda di $TLKM dicabut'));
+      await tester.pumpAndSettle();
+      expect(rooms, ['room-bbca', 'room-tlkm']);
+    });
+
     testWidgets('the in-app switch is disabled when the server locks it', (tester) async {
       final features = FakeFeatureDependencies(config: loadedConfig());
       addTearDown(features.dispose);

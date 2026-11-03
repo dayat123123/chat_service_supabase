@@ -67,6 +67,8 @@ abstract class AppNotification with _$AppNotification {
   bool get appealable => payload['appealable'] == true || payload['appealable'] == 'true';
   String? get excerpt => payload['excerpt'] is String ? payload['excerpt'] as String : null;
   bool get isRoomMention => type == NotificationType.mention && roomId != null && postId == null;
+  bool get isRoomMute => type == NotificationType.moderation && targetType == 'room';
+  DateTime? get muteUntil => payload['until'] is String ? DateTime.tryParse(payload['until'] as String)?.toUtc() : null;
   String? localizedTitle(String languageCode) => _localizedText(payload['title'], languageCode);
   String? localizedBody(String languageCode) => _localizedText(payload['body'], languageCode);
 }

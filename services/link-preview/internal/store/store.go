@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"olt-social/link-preview/internal/heartbeat"
 	"olt-social/link-preview/internal/jwt"
+	"olt-social/link-preview/internal/moderation"
 )
 
 const (
@@ -25,6 +27,12 @@ const (
 	StatusFailed  = "failed"
 	StatusRetry   = "retry"
 	StatusRelease = "release"
+
+	VerdictAllow       = "allow"
+	VerdictHold        = "hold"
+	VerdictBlock       = "block"
+	VerdictUnreadable  = "unreadable"
+	VerdictUnavailable = "unavailable"
 )
 
 type Entry struct {
@@ -44,6 +52,17 @@ type Result struct {
 	ImageWidth  int    `json:"image_width,omitempty"`
 	ImageHeight int    `json:"image_height,omitempty"`
 	Error       string `json:"error,omitempty"`
+	ImageCheck
+}
+
+type ImageCheck struct {
+	ImageSHA256        string             `json:"image_sha256,omitempty"`
+	ImageVerdict       string             `json:"image_verdict,omitempty"`
+	ImageCategory      string             `json:"image_category,omitempty"`
+	ImageScore         *float64           `json:"image_score,omitempty"`
+	ImageModel         string             `json:"image_model,omitempty"`
+	ImageScores        map[string]float64 `json:"image_scores,omitempty"`
+	ThresholdsRevision int64              `json:"thresholds_revision,omitempty"`
 }
 
 type PostgREST struct {
@@ -84,6 +103,36 @@ func (p *PostgREST) Report(ctx context.Context, instance string, results []Resul
 		return 0, err
 	}
 	return updated, nil
+}
+
+func (p *PostgREST) ModerationConfig(ctx context.Context, known int64) (moderation.Config, error) {
+	args := map[string]any{"p_revision": nil}
+	if known != moderation.UnknownRevision {
+		args["p_revision"] = known
+	}
+	var reply struct {
+		Revision   int64                       `json:"revision"`
+		Unchanged  bool                        `json:"unchanged"`
+		Thresholds map[string]moderation.Limit `json:"thresholds"`
+	}
+	if err := p.rpc(ctx, "media_moderation_config", args, &reply); err != nil {
+		return moderation.Config{}, err
+	}
+	if !reply.Unchanged && reply.Thresholds == nil {
+		return moderation.Config{}, errors.New("rpc media_moderation_config: reply without thresholds")
+	}
+	return moderation.Config{Revision: reply.Revision, Unchanged: reply.Unchanged, Limits: reply.Thresholds}, nil
+}
+
+func (p *PostgREST) CachedScores(ctx context.Context, sha256 string) (moderation.Result, bool, error) {
+	var reply *moderation.Result
+	if err := p.rpc(ctx, "link_preview_image_scores", map[string]any{"p_sha256": sha256}, &reply); err != nil {
+		return moderation.Result{}, false, err
+	}
+	if reply == nil || reply.Model == "" || len(reply.Scores) == 0 {
+		return moderation.Result{}, false, nil
+	}
+	return *reply, true, nil
 }
 
 func (p *PostgREST) Heartbeat(ctx context.Context, beat heartbeat.Beat) error {

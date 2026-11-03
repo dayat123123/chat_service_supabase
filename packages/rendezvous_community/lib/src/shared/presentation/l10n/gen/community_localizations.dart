@@ -2828,6 +2828,30 @@ abstract class CommunityLocalizations {
   /// **'Banding untuk konten ini sudah diajukan'**
   String get notifModerationAppealed;
 
+  /// No description provided for @notifRoomMuted.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda dibisukan moderator di {room}'**
+  String notifRoomMuted(String room);
+
+  /// No description provided for @notifRoomUnmuted.
+  ///
+  /// In id, this message translates to:
+  /// **'Bisu Anda di {room} dicabut'**
+  String notifRoomUnmuted(String room);
+
+  /// No description provided for @notifRoomMutedUntil.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda bisa mengirim pesan lagi setelah {time}'**
+  String notifRoomMutedUntil(String time);
+
+  /// No description provided for @notifRoomUnmutedBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda bisa mengirim pesan lagi di room ini'**
+  String get notifRoomUnmutedBody;
+
   /// No description provided for @notifTypeFollowedPost.
   ///
   /// In id, this message translates to:
@@ -2863,6 +2887,168 @@ abstract class CommunityLocalizations {
   /// In id, this message translates to:
   /// **'Selalu tampil di aplikasi'**
   String get notifTypeModerationHint;
+
+  /// No description provided for @roomModeratorBadge.
+  ///
+  /// In id, this message translates to:
+  /// **'Moderator'**
+  String get roomModeratorBadge;
+
+  /// No description provided for @roomModeratorNotice.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda moderator room ini. Tekan lama pesan anggota untuk aksi moderasi.'**
+  String get roomModeratorNotice;
+
+  /// No description provided for @roomModHide.
+  ///
+  /// In id, this message translates to:
+  /// **'Sembunyikan pesan'**
+  String get roomModHide;
+
+  /// No description provided for @roomModMute.
+  ///
+  /// In id, this message translates to:
+  /// **'Bisukan anggota'**
+  String get roomModMute;
+
+  /// No description provided for @roomModEscalate.
+  ///
+  /// In id, this message translates to:
+  /// **'Eskalasi ke staf'**
+  String get roomModEscalate;
+
+  /// No description provided for @roomModHideTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Sembunyikan pesan ini?'**
+  String get roomModHideTitle;
+
+  /// No description provided for @roomModHideBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan disembunyikan dari anggota lain. Staf meninjau setiap aksi moderator dan pengirim bisa mengajukan banding.'**
+  String get roomModHideBody;
+
+  /// No description provided for @roomModMuteTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Bisukan {name} di room ini'**
+  String roomModMuteTitle(String name);
+
+  /// No description provided for @roomModMuteBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Anggota tetap bisa membaca room, tetapi tidak bisa mengirim pesan sampai waktu bisu berakhir.'**
+  String get roomModMuteBody;
+
+  /// No description provided for @roomModEscalateTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Eskalasi pesan ke staf'**
+  String get roomModEscalateTitle;
+
+  /// No description provided for @roomModEscalateBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan dikirim ke antrean laporan staf untuk ditinjau. Pesan tetap tampil sampai staf memutuskan.'**
+  String get roomModEscalateBody;
+
+  /// No description provided for @roomModReason.
+  ///
+  /// In id, this message translates to:
+  /// **'Alasan'**
+  String get roomModReason;
+
+  /// No description provided for @roomModDuration.
+  ///
+  /// In id, this message translates to:
+  /// **'Lama bisu'**
+  String get roomModDuration;
+
+  /// No description provided for @roomModNoteHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Catatan untuk staf (opsional)'**
+  String get roomModNoteHint;
+
+  /// No description provided for @roomModMinutes.
+  ///
+  /// In id, this message translates to:
+  /// **'{minutes} menit'**
+  String roomModMinutes(int minutes);
+
+  /// No description provided for @roomModHours.
+  ///
+  /// In id, this message translates to:
+  /// **'{hours} jam'**
+  String roomModHours(int hours);
+
+  /// No description provided for @roomModHidden.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan disembunyikan'**
+  String get roomModHidden;
+
+  /// No description provided for @roomModMuted.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} dibisukan sampai {time}'**
+  String roomModMuted(String name, String time);
+
+  /// No description provided for @roomModEscalated.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan dieskalasi ke staf'**
+  String get roomModEscalated;
+
+  /// No description provided for @roomModMemberMuted.
+  ///
+  /// In id, this message translates to:
+  /// **'Dibisukan sampai {time}'**
+  String roomModMemberMuted(String time);
+
+  /// No description provided for @roomMutedBanner.
+  ///
+  /// In id, this message translates to:
+  /// **'Moderator membisukan Anda di room ini sampai {time}. Anda tetap bisa membaca pesan.'**
+  String roomMutedBanner(String time);
+
+  /// No description provided for @roomMutedComposer.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda sedang dibisukan di room ini'**
+  String get roomMutedComposer;
+
+  /// No description provided for @errorRoomMuted.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda sedang dibisukan moderator di room ini.'**
+  String get errorRoomMuted;
+
+  /// No description provided for @errorNotRoomModerator.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda bukan lagi moderator room ini.'**
+  String get errorNotRoomModerator;
+
+  /// No description provided for @errorRoomModeratorSuspended.
+  ///
+  /// In id, this message translates to:
+  /// **'Hak moderator Anda sedang ditangguhkan.'**
+  String get errorRoomModeratorSuspended;
+
+  /// No description provided for @errorRoomModTarget.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun resmi, moderator lain, dan pesan Anda sendiri tidak bisa dimoderasi.'**
+  String get errorRoomModTarget;
+
+  /// No description provided for @errorAlreadyModerated.
+  ///
+  /// In id, this message translates to:
+  /// **'Aksi ini sudah dilakukan sebelumnya.'**
+  String get errorAlreadyModerated;
 }
 
 class _CommunityLocalizationsDelegate extends LocalizationsDelegate<CommunityLocalizations> {

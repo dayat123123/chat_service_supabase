@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_moderation.dart'
+    show roomModerationTime;
 import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_event.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_preferences.dart';
@@ -97,7 +99,9 @@ bool openCommunityNotification(BuildContext context, AppNotification n) {
   final roomId = n.roomId;
   final url = Uri.tryParse(n.url ?? '');
   final topStock = n.stocks.firstOrNull;
-  if (n.type == NotificationType.appeal || n.type == NotificationType.moderation) {
+  if (n.isRoomMute && roomId != null) {
+    CommunityNavigator.openRoom(context, roomId);
+  } else if (n.type == NotificationType.appeal || n.type == NotificationType.moderation) {
     if (context.communityFeatures == null) return false;
     unawaited(openCommunityAppeals(context));
   } else if (n.type == NotificationType.watchlistDigest) {
@@ -163,6 +167,7 @@ class _NotificationTile extends StatelessWidget {
       NotificationType.announcement => n.body,
       NotificationType.appeal => n.note ?? n.body,
       NotificationType.watchlistDigest => notificationDigestText(l10n, n),
+      NotificationType.moderation when n.isRoomMute => roomMuteNotificationText(l10n, n),
       NotificationType.moderation => [
         if ((n.excerpt ?? '').isNotEmpty) n.excerpt!,
         n.appealable ? l10n.notifModerationAppealable : l10n.notifModerationAppealed,
@@ -195,12 +200,23 @@ class _NotificationTile extends StatelessWidget {
 }
 
 String notificationModerationTitle(CommunityLocalizations l10n, AppNotification n) {
+  if (n.isRoomMute) {
+    final room = n.stockCode == null ? (n.payload['room_name'] as String? ?? '') : '\$${n.stockCode}';
+    return n.moderationState == 'muted' ? l10n.notifRoomMuted(room) : l10n.notifRoomUnmuted(room);
+  }
   final target = switch (n.targetType) {
     'comment' => l10n.notifTargetComment,
     'message' => l10n.notifTargetMessage,
     _ => l10n.notifTargetPost,
   };
   return n.moderationState == 'removed' ? l10n.notifModerationRemoved(target) : l10n.notifModerationHidden(target);
+}
+
+String roomMuteNotificationText(CommunityLocalizations l10n, AppNotification n) {
+  final until = n.muteUntil;
+  return n.moderationState == 'muted' && until != null
+      ? l10n.notifRoomMutedUntil(roomModerationTime(l10n, until))
+      : l10n.notifRoomUnmutedBody;
 }
 
 String notificationDigestText(CommunityLocalizations l10n, AppNotification n) {

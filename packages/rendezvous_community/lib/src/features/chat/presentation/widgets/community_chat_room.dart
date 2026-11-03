@@ -13,6 +13,7 @@ import 'package:rendezvous_community/src/features/chat/presentation/widgets/mess
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_list.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_banners.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_header.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/typing_text.dart';
 import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
@@ -109,6 +110,7 @@ class _ChatRoomView extends StatelessWidget {
                 if (header != null) header! else if (showHeader) const RoomHeader(),
                 const _ReconnectBanner(),
                 const StockRoomBanner(),
+                const RoomModerationBanner(),
                 const DmRequestNotice(),
                 const Expanded(child: MessageList()),
                 const _TypingIndicator(),

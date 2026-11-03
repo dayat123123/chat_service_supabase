@@ -52,6 +52,7 @@ export 'src/features/chat/domain/entities/chat_room.dart';
 export 'src/features/chat/domain/entities/message_extras.dart';
 export 'src/features/chat/domain/entities/outbox_message.dart';
 export 'src/features/chat/domain/entities/receipt.dart';
+export 'src/features/chat/domain/entities/room_moderation.dart';
 export 'src/features/chat/domain/entities/stock_card.dart'
     show maxStockCards, normalizeStockCardCode, normalizeStockCardCodes;
 export 'src/features/chat/domain/entities/stock_room_state.dart';
@@ -81,6 +82,7 @@ export 'src/features/chat/presentation/widgets/community_chat_room.dart' show Co
 export 'src/features/chat/presentation/widgets/message_bubble.dart'
     show MessageDeliveryNotice, ReactionChips, ReactionPicker;
 export 'src/features/chat/presentation/widgets/receipt_icon.dart';
+export 'src/features/chat/presentation/widgets/room_moderation.dart' show RoomModerationBanner, RoomModeratorBadge;
 export 'src/features/chat/presentation/widgets/room_visuals.dart' show CommunityRoomAvatar;
 export 'src/features/chat/presentation/widgets/share_post_sheet.dart' show showSharePostToChat;
 export 'src/features/chat/presentation/widgets/shared_post_card.dart' show SharedPostCard;

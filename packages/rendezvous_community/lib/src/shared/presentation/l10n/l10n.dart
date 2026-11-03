@@ -69,6 +69,11 @@ extension CommunityErrorText on CommunityLocalizations {
       'request_not_found' => errorRequestNotFound,
       'invalid_quiet_hours' => errorInvalidQuietHours,
       'attachment_offline' => errorAttachmentOffline,
+      'room_muted' => errorRoomMuted,
+      'not_room_moderator' => errorNotRoomModerator,
+      'room_moderator_suspended' => errorRoomModeratorSuspended,
+      'protected_account' || 'moderator_target' || 'self_target' => errorRoomModTarget,
+      'already_moderated' || 'already_muted' || 'already_escalated' => errorAlreadyModerated,
       _ => switch (mapped.kind) {
         CommunityErrorKind.network => errorNetwork,
         CommunityErrorKind.unauthenticated => errorUnauthenticated,

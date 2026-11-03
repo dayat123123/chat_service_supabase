@@ -51,6 +51,13 @@ class RoomStateSignal extends RoomSignal {
   final StockRoomState state;
 }
 
+class RoomMessageHidden extends RoomSignal {
+  const RoomMessageHidden(super.roomId, this.messageId, {this.userId});
+
+  final String messageId;
+  final String? userId;
+}
+
 sealed class ChatRoomEvent {
   const ChatRoomEvent();
 }
@@ -99,6 +106,19 @@ class StockRoomStateChanged extends ChatRoomEvent {
   const StockRoomStateChanged(this.state);
 
   final StockRoomState state;
+}
+
+class OwnRoomMuteChanged extends ChatRoomEvent {
+  const OwnRoomMuteChanged(this.mutedUntil);
+
+  final DateTime? mutedUntil;
+}
+
+class MessageHidden extends ChatRoomEvent {
+  const MessageHidden(this.messageId, {this.userId});
+
+  final String messageId;
+  final String? userId;
 }
 
 class SignalsConnectionChanged extends ChatRoomEvent {

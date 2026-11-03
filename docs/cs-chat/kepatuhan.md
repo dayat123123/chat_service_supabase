@@ -13,6 +13,7 @@ Migrasi: `0042_cs_compliance`. Tes: `supabase/tests/030_cs_compliance_test.sql`.
 | **Jejak Audit** (`/compliance/audit`) | Audit log CS (append-only): filter periode, jenis aksi, dan pencarian pelaku/tiket/nasabah; halaman bertahap; ekspor CSV |
 | **Kebijakan** (`/compliance/policy`) | Nilai yang wajib dikonfirmasi kepatuhan: tenggat pengaduan, perpanjangan tenggat, dan retensi chat. Kepatuhan mengonfirmasi atau mengubah nilainya, beserta riwayat perubahan |
 | **Dokumen hukum** (`/compliance/legal`) | Syarat & Ketentuan, Pedoman Komunitas, dan Kebijakan Privasi yang dibaca dan disetujui nasabah di aplikasi: versi berlaku, jumlah persetujuan, versi terjadwal, riwayat, draf dengan persetujuan empat mata, dan jenis dokumen yang wajib disetujui. Lihat [Dokumen hukum](#dokumen-hukum) |
+| **Bukti** (`/compliance/evidence`) | Karantina bukti: konten yang dilaporkan atau dihapus beserta salinan file-nya, sidik SHA-256, pemeriksaan integritas, jejak penanganan, legal hold, dan ekspor paket bukti. Super Admin membuka halaman ini hanya baca. Lihat [docs/evidence](../evidence/README.md) |
 
 Akun yang hanya berperan Kepatuhan langsung diarahkan ke Ringkasan. Menu **Kasus** memberi angka merah sejumlah pengaduan yang lewat tenggat atau jatuh tempo ≤ 1 hari kerja. Command palette (Ctrl K) untuk Kepatuhan berisi navigasi ke semua menu Kepatuhan dan preferensi tampilan; pencarian tiket ada di halaman Kasus. Kepatuhan tidak punya status kerja, jadi login dan keluar tidak mengubah status (tidak ada catatan `agent.status` yang tidak berarti).
 

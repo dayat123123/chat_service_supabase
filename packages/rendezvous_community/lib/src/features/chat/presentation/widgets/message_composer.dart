@@ -111,7 +111,11 @@ class _MessageComposerState extends State<MessageComposer> {
     return BlocConsumer<ChatRoomCubit, ChatRoomState>(
       listenWhen: (a, b) => a.replyTo?.id != b.replyTo?.id && b.replyTo != null,
       listener: (_, _) => _focus.requestFocus(),
-      buildWhen: (a, b) => a.replyTo != b.replyTo || a.uploading != b.uploading || a.cooldownUntil != b.cooldownUntil,
+      buildWhen: (a, b) =>
+          a.replyTo != b.replyTo ||
+          a.uploading != b.uploading ||
+          a.cooldownUntil != b.cooldownUntil ||
+          a.mutedUntil() != b.mutedUntil(),
       builder: (context, state) {
         final replyTo = state.replyTo;
         final cooldown = state.cooldownLeft();
@@ -133,6 +137,7 @@ class _MessageComposerState extends State<MessageComposer> {
           extraActions: widget.leading,
           cooldown: cooldown,
           onSendStockCard: context.read<ChatRoomCubit>().canSendStockCards ? _pickStockCards : null,
+          mutedUntil: state.mutedUntil(),
         );
         return buildChatPart(builder, context, details, _DefaultComposer(details: details));
       },
@@ -207,7 +212,12 @@ class _DefaultComposer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (d.coolingDown)
+                if (d.muted)
+                  Tooltip(
+                    message: l10n.roomMutedComposer,
+                    child: IconButton.filled(onPressed: null, icon: const Icon(Icons.volume_off_outlined)),
+                  )
+                else if (d.coolingDown)
                   Tooltip(
                     message: l10n.errorSlowMode(d.cooldownSeconds),
                     child: FilledButton.tonal(onPressed: null, child: Text(l10n.slowModeWait(d.cooldownSeconds))),

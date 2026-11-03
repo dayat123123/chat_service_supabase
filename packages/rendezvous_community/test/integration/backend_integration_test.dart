@@ -545,6 +545,83 @@ void main() {
     }
   }, skip: skip);
 
+  test('room mutes stay private: the muted member hears it alone and moderators see the list', () async {
+    final code = 'ITMU${DateTime.now().microsecondsSinceEpoch % 100000}';
+    final budiId = budi.currentUser!.id;
+    final sariId = sari.currentUser!.id;
+    final roomId = await budi.chat.joinStockRoom(code);
+    await sari.chat.joinStockRoom(code);
+    final trust = await _psqlValue("select trust_level from public.profiles where id = '$sariId'");
+    final room = budi.chat.connectRoom(roomId, me: budi.currentUser!);
+    final events = room.events.asBroadcastStream();
+    final connected = _waitFor(
+      events,
+      (e) => e is ConnectionChanged && e.status == RealtimeStatus.connected,
+      timeout: const Duration(seconds: 30),
+    );
+    final sub = events.listen((_) {});
+    try {
+      final appointed =
+          trust != null &&
+          await _psql(
+            "update public.profiles set trust_level = 2 where id = '$sariId'; "
+            "insert into private.room_moderators (room_id, user_id) values ('$roomId', '$sariId')",
+          );
+      if (!appointed) {
+        connected.ignore();
+        markTestSkipped('docker exec psql is not available to appoint a room moderator');
+        return;
+      }
+      await connected;
+      await Future<void>.delayed(const Duration(seconds: 3));
+
+      final muted = _waitFor(
+        events,
+        (e) => e is OwnRoomMuteChanged && e.mutedUntil != null,
+        timeout: const Duration(seconds: 20),
+      );
+      final result = await sari.chatExtras.muteMember(roomId, budiId, const Duration(minutes: 5), ReportReason.spam);
+      final notice = await muted as OwnRoomMuteChanged;
+      expect(notice.mutedUntil!.difference(result.muteUntil!).inSeconds.abs(), lessThan(2));
+
+      final own = await budi.chatExtras.stockRoomState(code);
+      expect(own.mutes, isEmpty);
+      expect(own.viewerMute(), isNotNull);
+      final moderator = await sari.chatExtras.stockRoomState(code);
+      expect(moderator.isModerator(sariId), isTrue);
+      expect(moderator.mutedUntil(budiId), isNotNull);
+      expect(moderator.viewerMute(), isNull);
+      await expectLater(
+        budi.chat.sendMessage(roomId, body: 'Masih bisu', clientId: const Uuid().v4()),
+        throwsA(isA<CommunityException>().having((e) => e.code, 'code', 'room_muted')),
+      );
+
+      final unmuted = _waitFor(
+        events,
+        (e) => e is OwnRoomMuteChanged && e.mutedUntil == null,
+        timeout: const Duration(seconds: 20),
+      );
+      expect(
+        await _psql(
+          "update private.room_mod_actions set undone_at = now() where room_id = '$roomId'; "
+          "select private.room_mute_notice('$roomId', '$budiId')",
+        ),
+        isTrue,
+      );
+      await unmuted;
+      expect((await budi.chatExtras.stockRoomState(code)).viewerMute(), isNull);
+    } finally {
+      await sub.cancel();
+      await room.close();
+      await _psql(
+        "${trust == null ? '' : "update public.profiles set trust_level = $trust where id = '$sariId'; "}"
+        "delete from private.push_queue where data ->> 'room_id' = '$roomId'; "
+        "delete from public.notifications where payload ->> 'room_id' = '$roomId'; "
+        "delete from public.chat_rooms where id = '$roomId'",
+      );
+    }
+  }, skip: skip);
+
   test('link previews: each URL comes back with a known status', () async {
     final urls = ['https://example.com/it-${DateTime.now().microsecondsSinceEpoch}', 'https://www.idx.co.id/'];
     for (final url in urls) {
@@ -737,5 +814,27 @@ Future<bool> _psql(String sql) async {
     return result.exitCode == 0;
   } on ProcessException catch (_) {
     return false;
+  }
+}
+
+Future<String?> _psqlValue(String sql) async {
+  try {
+    final result = await Process.run('docker', [
+      'exec',
+      'olt-social-db-1',
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-tAc',
+      sql,
+    ]);
+    final value = (result.stdout as String).trim();
+    return result.exitCode == 0 && value.isNotEmpty ? value : null;
+  } on ProcessException catch (_) {
+    return null;
   }
 }

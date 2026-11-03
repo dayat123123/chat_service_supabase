@@ -1562,6 +1562,24 @@ class CommunityLocalizationsId extends CommunityLocalizations {
   String get notifModerationAppealed => 'Banding untuk konten ini sudah diajukan';
 
   @override
+  String notifRoomMuted(String room) {
+    return 'Anda dibisukan moderator di $room';
+  }
+
+  @override
+  String notifRoomUnmuted(String room) {
+    return 'Bisu Anda di $room dicabut';
+  }
+
+  @override
+  String notifRoomMutedUntil(String time) {
+    return 'Anda bisa mengirim pesan lagi setelah $time';
+  }
+
+  @override
+  String get notifRoomUnmutedBody => 'Anda bisa mengirim pesan lagi di room ini';
+
+  @override
   String get notifTypeFollowedPost => 'Postingan akun yang diikuti';
 
   @override
@@ -1578,4 +1596,100 @@ class CommunityLocalizationsId extends CommunityLocalizations {
 
   @override
   String get notifTypeModerationHint => 'Selalu tampil di aplikasi';
+
+  @override
+  String get roomModeratorBadge => 'Moderator';
+
+  @override
+  String get roomModeratorNotice => 'Anda moderator room ini. Tekan lama pesan anggota untuk aksi moderasi.';
+
+  @override
+  String get roomModHide => 'Sembunyikan pesan';
+
+  @override
+  String get roomModMute => 'Bisukan anggota';
+
+  @override
+  String get roomModEscalate => 'Eskalasi ke staf';
+
+  @override
+  String get roomModHideTitle => 'Sembunyikan pesan ini?';
+
+  @override
+  String get roomModHideBody =>
+      'Pesan disembunyikan dari anggota lain. Staf meninjau setiap aksi moderator dan pengirim bisa mengajukan banding.';
+
+  @override
+  String roomModMuteTitle(String name) {
+    return 'Bisukan $name di room ini';
+  }
+
+  @override
+  String get roomModMuteBody =>
+      'Anggota tetap bisa membaca room, tetapi tidak bisa mengirim pesan sampai waktu bisu berakhir.';
+
+  @override
+  String get roomModEscalateTitle => 'Eskalasi pesan ke staf';
+
+  @override
+  String get roomModEscalateBody =>
+      'Pesan dikirim ke antrean laporan staf untuk ditinjau. Pesan tetap tampil sampai staf memutuskan.';
+
+  @override
+  String get roomModReason => 'Alasan';
+
+  @override
+  String get roomModDuration => 'Lama bisu';
+
+  @override
+  String get roomModNoteHint => 'Catatan untuk staf (opsional)';
+
+  @override
+  String roomModMinutes(int minutes) {
+    return '$minutes menit';
+  }
+
+  @override
+  String roomModHours(int hours) {
+    return '$hours jam';
+  }
+
+  @override
+  String get roomModHidden => 'Pesan disembunyikan';
+
+  @override
+  String roomModMuted(String name, String time) {
+    return '$name dibisukan sampai $time';
+  }
+
+  @override
+  String get roomModEscalated => 'Pesan dieskalasi ke staf';
+
+  @override
+  String roomModMemberMuted(String time) {
+    return 'Dibisukan sampai $time';
+  }
+
+  @override
+  String roomMutedBanner(String time) {
+    return 'Moderator membisukan Anda di room ini sampai $time. Anda tetap bisa membaca pesan.';
+  }
+
+  @override
+  String get roomMutedComposer => 'Anda sedang dibisukan di room ini';
+
+  @override
+  String get errorRoomMuted => 'Anda sedang dibisukan moderator di room ini.';
+
+  @override
+  String get errorNotRoomModerator => 'Anda bukan lagi moderator room ini.';
+
+  @override
+  String get errorRoomModeratorSuspended => 'Hak moderator Anda sedang ditangguhkan.';
+
+  @override
+  String get errorRoomModTarget => 'Akun resmi, moderator lain, dan pesan Anda sendiri tidak bisa dimoderasi.';
+
+  @override
+  String get errorAlreadyModerated => 'Aksi ini sudah dilakukan sebelumnya.';
 }

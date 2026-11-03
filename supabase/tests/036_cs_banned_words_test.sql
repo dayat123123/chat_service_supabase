@@ -1,5 +1,6 @@
 begin;
 select plan(26);
+update cs.cs_settings set value = 'false' where key = 'compliance.policy_four_eyes';
 
 delete from public.banned_words;
 select tests.create_agent('Kirana', '{compliance}', '{}') as kirana \gset

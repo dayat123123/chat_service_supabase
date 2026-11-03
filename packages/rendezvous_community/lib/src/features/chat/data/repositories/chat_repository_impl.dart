@@ -27,6 +27,7 @@ class ChatRepositoryImpl implements ChatRepository {
   final ChatLocalCache? _cache;
   final RoomChannelHub? _hub;
   late final SharedStream<RoomActivity> _activity = SharedStream(_createActivityStream);
+  late final SharedStream<RoomMuteNotice> _muteNotices = SharedStream(_createMuteNoticeStream);
   final _unreadChanges = StreamController<void>.broadcast();
 
   @override
@@ -153,7 +154,7 @@ class ChatRepositoryImpl implements ChatRepository {
     final realtime = _realtime;
     final hub = _hub;
     if (realtime == null || hub == null) return NoopRoomConnection();
-    return SupabaseRoomConnection(realtime, hub, roomId, me);
+    return SupabaseRoomConnection(realtime, hub, roomId, me, _muteNotices.stream);
   }
 
   @override
@@ -168,6 +169,7 @@ class ChatRepositoryImpl implements ChatRepository {
 
   Future<void> dispose() async {
     await _activity.close();
+    await _muteNotices.close();
     await _unreadChanges.close();
   }
 
@@ -176,4 +178,17 @@ class ChatRepositoryImpl implements ChatRepository {
         final row = MessageRowModel.fromJson(p.newRecord);
         return RoomActivity(roomId: row.roomId, senderId: row.senderId, preview: row.body, createdAt: row.createdAt);
       });
+
+  Stream<RoomMuteNotice> _createMuteNoticeStream() async* {
+    final me = await _api.requireUserId();
+    yield* _realtime!
+        .tableChanges(
+          table: 'notifications',
+          event: PostgresChangeEvent.insert,
+          filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'user_id', value: me),
+        )
+        .map((payload) => parseRoomMuteNotice(payload.newRecord))
+        .where((notice) => notice != null)
+        .cast<RoomMuteNotice>();
+  }
 }

@@ -48,6 +48,8 @@ bool _openMessage(BuildContext context, CommunityPushMessage message) {
   final topStock = message.stocks.firstOrNull;
   if (message.isSupport) {
     unawaited(openCommunitySupport(context));
+  } else if (message.type == 'moderation' && message.data['target_type'] == 'room' && roomId != null) {
+    CommunityNavigator.openRoom(context, roomId);
   } else if ((message.type == 'appeal' || message.type == 'moderation') && context.communityFeatures != null) {
     unawaited(openCommunityAppeals(context));
   } else if (message.type == 'watchlist_digest' && topStock != null) {

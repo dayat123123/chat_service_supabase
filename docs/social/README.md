@@ -338,3 +338,54 @@ Tabel `public.post_drafts` (hanya bisa dibaca pemiliknya; tulis lewat RPC). Maks
 6. Kartu saham: render dari `attachments` bertipe `stock`; ambil harga dari aplikasi OLT.
 
 Job baru: `social-followed-posts` (30 detik), `social-watchlist-digest` (10.05 UTC).
+
+## Moderator room (`0093`)
+
+Nasabah tepercaya bisa ditunjuk staf (izin `community.moderate`) menjadi moderator room saham dari web CS: Komunitas → Room saham → Moderator room. Kuasa mereka terbatas pada room itu saja.
+
+Syarat dan batas (`private.settings`, diubah Kepatuhan/Super Admin lewat `cs_api.community_set_room_moderator_settings`, tercatat di audit):
+
+| Kunci | Bawaan | Rentang |
+| --- | --- | --- |
+| `room_mods.min_trust_level` | 2 (tepercaya) | 1–3 |
+| `room_mods.sanction_free_days` | 90 hari tanpa sanksi (sanksi yang dicabut tidak dihitung; zero tolerance selalu menolak) | 0–365 |
+| `room_mods.max_mute_hours` | 24 jam | 1–24 |
+| `room_mods.max_per_room` | 10 moderator | 1–50 |
+| `room_mods.max_rooms_per_user` | 3 room | 1–20 |
+
+Akun staf CS, akun resmi, dan agen tidak bisa ditunjuk. Moderator yang dikenai sanksi apa pun otomatis dicopot (`community.room_moderator_auto_remove`); trust level yang turun menangguhkan hak (`403 room_moderator_suspended`).
+
+### RPC nasabah (authenticated)
+
+- `room_mod_hide_message(p_message_id, p_reason, p_note = null)` → `{id, action: "hide", room_id, target_user_id, message_id, ...}`. Pesan menjadi `hidden` (bisa dipulihkan staf), pengirim mendapat notifikasi `moderation` dan bisa banding lewat `create_appeal('message', id, ...)` / `get_my_moderated_content`. Disiarkan ke `room:<id>` sebagai event `message_hidden` `{message_id, user_id}`.
+- `room_mod_mute_user(p_room_id, p_user_id, p_minutes, p_reason, p_note = null, p_message_id = null)` → `{..., mute_until}`. 5 menit sampai `max_mute_hours`. Anggota yang dibisukan ditolak saat mengirim pesan di room itu: `403 room_muted`, `detail` = batas waktu ISO UTC. Tetap bisa membaca.
+- `room_mod_escalate(p_message_id, p_reason, p_note = null)` → `{..., report_id}`. Membuat laporan di antrean staf (`details` diawali `[Moderator room $KODE]`). Boleh untuk pesan moderator lain; tidak untuk pesan sendiri.
+- `p_reason`: `spam|abuse|scam|pump_and_dump|misinformation|other` (`400 invalid_mod_reason`), catatan ≤ 500 (`400 invalid_note`).
+- Galat: `403 not_room_moderator`, `403 room_moderator_suspended`, `403 protected_account` (akun resmi/staf), `403 moderator_target` (moderator lain), `403 self_target`, `404 message_not_found` (hanya pesan room saham yang tampil), `409 already_moderated|already_muted|already_escalated`, `429 rate_limited` (`room_mod_action` 15/jam dan 50/hari, dikali faktor trust).
+- Moderator **tidak** bisa: menghapus akun, melihat DM, mengubah sematan/slow mode, atau menindak akun resmi, staf, dan moderator lain.
+
+`get_stock_room_state` dan siaran `room_state` memuat `moderators` (array user id, untuk lencana). `get_stock_room_state` juga memuat `is_moderator` dan `muted_until` milik pemanggil.
+
+#### Privasi bisu (`0096`)
+
+Siapa yang sedang dibisukan tidak dibagikan ke anggota room (di room saham, itu sama dengan membuka siapa yang sedang ditindak):
+
+- Siaran `room_state` di `room:<id>` tidak pernah memuat `mutes`, `muted_until`, atau `is_moderator`. Membisukan dan mencabut bisu juga tidak memicu siaran `room_state` sama sekali, jadi waktu siaran tidak bisa dipakai menebak.
+- `get_stock_room_state` memuat `mutes` (`[{user_id, until}]` yang masih berlaku) **hanya** bila pemanggil moderator room itu (untuk menghindari bisu ganda). Anggota biasa tidak menerima kunci `mutes`; tiap anggota tetap menerima `muted_until` miliknya sendiri. Staf melihat daftar bisu di `cs_api.community_room_state`.
+- Anggota yang dibisukan diberi tahu lewat notifikasi pribadinya: baris `public.notifications` jenis `moderation` (in-app tidak bisa dimatikan, push mengikuti preferensi) dengan payload `{target_type: "room", target_id, room_id, stock_code, state: "muted"|"unmuted", until, reason, appealable: false}`, tanpa `actor_id` dan tanpa identitas moderator. Dikirim saat dibisukan (`state: muted`) dan saat staf mencabut bisu lewat `community_undo_room_moderator_action` (`state: unmuted`, atau `muted` dengan `until` baru bila masih ada bisu lain yang berlaku). Bisu yang habis waktunya tidak dikirimi notifikasi: klien memakai `until`, dan server menolak kiriman berdasarkan waktu yang sama.
+- Push: "Anda dibisukan moderator di $KODE" / "Anda bisa mengirim pesan lagi setelah DD/MM HH:MI WIB"; pencabutan: "Bisu Anda di $KODE dicabut". Ketukan membuka room.
+- Cadangan: `403 room_muted` (`detail` = batas waktu ISO UTC) tetap dikembalikan saat mengirim.
+
+
+### RPC staf (`cs_api`, izin `community.moderate`)
+
+- `community_room_moderators(p_code)` → `{room_id, stock_code, moderators[], removed[] (20 terakhir), settings}`; tiap moderator memuat `problems` (alasan hak ditangguhkan), `actions_7d`, `undone_7d`.
+- `community_room_moderator_candidates(p_code, p_query)` → pengguna dengan `eligible`, `problems`, `is_moderator`, `moderated_rooms`, `member`.
+- `community_appoint_room_moderator(p_code, p_user_id, p_note = null)` (room dibuat bila belum ada, nasabah otomatis menjadi anggota; `400 not_eligible` dengan `detail` = daftar masalah, `409 already_moderator|room_moderator_limit|user_moderator_limit`) dan `community_remove_room_moderator(p_code, p_user_id, p_reason)` (alasan 5–500). Keduanya tercatat di `cs.cs_audit_log`.
+- `community_room_moderator_actions(p_code = null, p_limit = 50, p_before = null, p_before_id = null)` → `{items}` log aksi (semua room bila `p_code` kosong) beserta cuplikan pesan, status laporan/banding, dan `can_undo`.
+- `community_undo_room_moderator_action(p_id, p_note)`: memulihkan pesan tersembunyi (banding yang menunggu ikut diterima dan pengirim diberi tahu) atau mencabut bisu. Eskalasi diselesaikan dari antrean laporan (`400 undo_not_supported`). Tercatat `community.room_moderator_undo`.
+- `community_room_moderator_settings()`; `community_set_room_moderator_settings(p_values)` khusus peran `compliance`/`cs_super_admin`.
+
+### Klien Flutter (`rendezvous_community`)
+
+Tanpa kode tambahan di aplikasi host: `CommunityChatRoom` membaca `StockRoomState.moderatorIds`, `viewerMutedUntil` (bisu milik sendiri, dari `muted_until`), dan `mutes` (hanya terisi untuk moderator; kosong untuk anggota biasa). Selama room saham terbuka, koneksi room mendengarkan notifikasi bisu milik pengguna (postgres_changes `notifications` dengan filter `user_id`, satu channel bersama untuk semua room) dan memancarkan `OwnRoomMuteChanged(mutedUntil)`; `ChatRoomCubit` langsung menerapkannya lalu memuat ulang `get_stock_room_state`. Siaran `room_state` tidak mengubah bisu milik sendiri maupun daftar bisu moderator; anggota yang baru ditunjuk moderator memuat ulang status untuk mendapat daftar bisu. Moderator melihat strip pemberitahuan dan aksi tekan-lama (sembunyikan, bisukan, eskalasi) di pesan anggota; pesan moderator berlencana; anggota yang dibisukan melihat banner dan tombol kirim nonaktif sampai waktunya habis. API: `ChatExtrasRepository.hideMessage/muteMember/escalateMessage`, `ChatRoomCubit.hideMessage/muteMember/escalateMessage`, dan `CommunityMessageDetails.senderIsModerator/onHide/onMuteSender/onEscalate` untuk builder kustom.

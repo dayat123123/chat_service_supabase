@@ -200,6 +200,19 @@ const policyCodes = [
   'invalid_surface',
   'invalid_text',
   'invalid_image_thresholds',
+  'policy_review_required',
+  'policy_no_change',
+  'policy_stale',
+  'policy_limit',
+  'policy_draft_not_found',
+  'policy_change_not_found',
+  'policy_change_decided',
+  'policy_version_not_found',
+  'invalid_policy_call',
+  'invalid_reason',
+  'note_required',
+  'four_eyes',
+  'invalid_decision',
 ] as const
 
 const moderationCodes = [

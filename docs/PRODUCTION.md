@@ -96,6 +96,7 @@ Catatan:
 - **Gateway integrasi OLT** (`/integration/v1`, layanan `integration`): notifEngine OLT mengirim notifikasi transaksi per `cust_id`; server memetakan ke pemilik rekening dari klaim `accounts` di token sosial OLT. API key dibuat Super Admin di **Pengaturan → Integrasi OLT** (ditampilkan sekali). Batasi sumbernya dengan CIDR pada key. Spesifikasi untuk tim OLT: [docs/integration](integration/README.md).
 - **Pratinjau link**: layanan `link-preview` (satu-satunya yang mengambil URL internet sembarang, dengan proteksi SSRF) membuat pratinjau link di postingan dan chat. Detail: [services/link-preview](../services/link-preview/README.md).
 - **Pembersihan file storage**: layanan `janitor` menghapus file milik akun yang dihapus (avatar, lampiran postingan dan chat, dokumen CS) serta surat yang lewat masa simpan, dari antrean `private.storage_cleanup_queue`. Tidak perlu konfigurasi. Folder yang gagal dicoba ulang dengan jeda sampai 6 jam. Cek antrean: `select bucket_id, prefix, failures, error from private.storage_cleanup_queue where done_at is null;`. Detail: [services/janitor](../services/janitor/README.md).
+- **Karantina bukti** (migrasi `0095`): konten yang dilaporkan atau dihapus moderator/sistem disimpan utuh (teks, konteks, sidik SHA-256) dan file-nya disalin `janitor` ke bucket privat `evidence` sebelum aslinya dibersihkan. Bukti append-only, disimpan 730 hari (`private.settings` kunci `retention.evidence_days`) kecuali Kepatuhan memasang legal hold, lalu dihapus job `evidence-purge`. Akses hanya Kepatuhan (dan Super Admin baca saja) di **Kepatuhan → Bukti**, setiap buka/periksa/ekspor tercatat. Hitung ukuran bucket `evidence` dalam kapasitas disk storage. Cek salinan yang tertahan: `select status, count(*) from private.evidence_files group by 1;`. Detail: [docs/evidence](evidence/README.md).
 
 ## 3. Backup & restore
 
@@ -116,6 +117,8 @@ docker compose -f docker/compose.yml -f docker/compose.prod.yml up -d --wait db
 make restore PROFILE=single FILE=olt-20261029-020000.dump CONFIRM=yes
 make up PROFILE=single
 ```
+
+Bucket `evidence` (karantina bukti) ikut backup file storage. Bukti yang sudah lewat masa simpan masih ada di backup lama sampai backup itu terpangkas (retensi bulanan 6 bulan); sampaikan ini ke tim legal bila menjawab permintaan penghapusan data.
 
 Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Setelah memulihkan ke server baru, isi ulang kunci Firebase, tujuan backup, dan kanal alert dari web, atau pulihkan salinan `pgsodium_root.key` yang disimpan di luar server.
 

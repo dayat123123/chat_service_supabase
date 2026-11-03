@@ -11,15 +11,23 @@ const (
 	Cleaned  = "cleaned"
 	Failed   = "failed"
 	Released = "released"
+
+	EvidenceCopied  = "copied"
+	EvidenceMissing = "missing"
+	EvidenceError   = "error"
 )
 
 var Outcomes = []string{Cleaned, Failed, Released}
 
+var EvidenceOutcomes = []string{EvidenceCopied, EvidenceMissing, EvidenceError, Released}
+
 type Snapshot struct {
-	ObjectsDeleted uint64
-	Entries        map[string]uint64
-	ClaimErrors    uint64
-	LastSuccess    time.Time
+	ObjectsDeleted      uint64
+	Entries             map[string]uint64
+	ClaimErrors         uint64
+	LastSuccess         time.Time
+	EvidenceFiles       map[string]uint64
+	EvidenceClaimErrors uint64
 }
 
 func Handler(snapshot func() Snapshot) http.Handler {
@@ -41,6 +49,12 @@ func Render(s Snapshot) string {
 	fmt.Fprintf(&b, "janitor_claim_errors_total %d\n", s.ClaimErrors)
 	header(&b, "janitor_last_success_timestamp_seconds", "Unix time of the last successful report, 0 before the first one.", "gauge")
 	fmt.Fprintf(&b, "janitor_last_success_timestamp_seconds %d\n", unix(s.LastSuccess))
+	header(&b, "janitor_evidence_files_total", "Evidence copy jobs handled by this instance, by outcome.", "counter")
+	for _, outcome := range EvidenceOutcomes {
+		fmt.Fprintf(&b, "janitor_evidence_files_total{outcome=%q} %d\n", outcome, s.EvidenceFiles[outcome])
+	}
+	header(&b, "janitor_evidence_claim_errors_total", "Evidence copy claims that failed.", "counter")
+	fmt.Fprintf(&b, "janitor_evidence_claim_errors_total %d\n", s.EvidenceClaimErrors)
 	return b.String()
 }
 

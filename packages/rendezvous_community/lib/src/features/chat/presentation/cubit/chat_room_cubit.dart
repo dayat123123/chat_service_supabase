@@ -18,6 +18,7 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/outbox_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/stock_card.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/stock_room_state.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_cache_repository.dart';
@@ -28,7 +29,9 @@ import 'package:rendezvous_community/src/features/legal/domain/services/consent_
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/features/message_requests/domain/entities/message_request.dart';
 import 'package:rendezvous_community/src/features/message_requests/domain/repositories/message_request_repository.dart';
+import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:uuid/uuid.dart';
@@ -38,6 +41,8 @@ part 'chat_room_cubit.freezed.dart';
 const _uuid = Uuid();
 
 const attachmentOfflineError = CommunityException(CommunityErrorKind.network, code: 'attachment_offline');
+
+const roomMutedError = CommunityException(CommunityErrorKind.forbidden, code: 'room_muted');
 
 @freezed
 abstract class ChatRoomState with _$ChatRoomState {
@@ -71,6 +76,30 @@ abstract class ChatRoomState with _$ChatRoomState {
   bool get supportsReactions => room != null && room!.type != RoomType.support;
 
   bool get supportsDmRequests => room?.type == RoomType.direct;
+
+  bool get isStockRoom => room?.type == RoomType.stock;
+
+  bool get isRoomModerator => isStockRoom && (stockRoom?.isModerator(me?.id) ?? false);
+
+  bool isModerator(String? userId) => isStockRoom && (stockRoom?.isModerator(userId) ?? false);
+
+  DateTime? mutedUntil([DateTime? now]) =>
+      isStockRoom ? stockRoom?.viewerMute(now) ?? stockRoom?.mutedUntil(me?.id, now) : null;
+
+  DateTime? memberMutedUntil(String? userId, [DateTime? now]) =>
+      isStockRoom ? stockRoom?.mutedUntil(userId, now) : null;
+
+  bool canEscalate(ChatMessage m) =>
+      isRoomModerator &&
+      !isMine(m) &&
+      m.senderId != null &&
+      m.status == MessageStatus.sent &&
+      !m.isLocal &&
+      !m.isDeleted &&
+      !m.isSystem &&
+      m.senderRole == null;
+
+  bool canModerate(ChatMessage m) => canEscalate(m) && !isModerator(m.senderId);
 
   bool get awaitingReply {
     final room = this.room;
@@ -133,6 +162,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   final CommunityConnectivity? _connectivity;
   StreamSubscription<OutboxEvent>? _outboxEvents;
   StreamSubscription<bool>? _onlineChanges;
+  Timer? _muteExpiry;
   List<OutboxMessage> _queued = const [];
   final DateTime Function() _clock;
   final Future<UserSummary> Function() _meProvider;
@@ -273,7 +303,95 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
           cooldownUntil: wait > 0 ? _now().add(Duration(seconds: wait)) : state.cooldownUntil,
         ),
       );
+      _scheduleMuteExpiry();
     } catch (_) {}
+  }
+
+  Future<bool> hideMessage(ChatMessage message, ReportReason reason, {String? note}) async {
+    final extras = _extras;
+    if (extras == null || !state.canModerate(message)) return false;
+    try {
+      await extras.hideMessage(message.id, reason, note: note);
+      _applyHidden(message.id);
+      return true;
+    } catch (e) {
+      _fail(e);
+      return false;
+    }
+  }
+
+  Future<RoomModerationResult?> muteMember(
+    ChatMessage message,
+    Duration duration,
+    ReportReason reason, {
+    String? note,
+  }) async {
+    final extras = _extras;
+    final userId = message.senderId;
+    if (extras == null || userId == null || !state.canModerate(message)) return null;
+    try {
+      final result = await extras.muteMember(roomId, userId, duration, reason, note: note, messageId: message.id);
+      _setMute(userId, result.muteUntil ?? _now().add(duration));
+      return result;
+    } catch (e) {
+      _fail(e);
+      return null;
+    }
+  }
+
+  Future<bool> escalateMessage(ChatMessage message, ReportReason reason, {String? note}) async {
+    final extras = _extras;
+    if (extras == null || !state.canEscalate(message)) return false;
+    try {
+      await extras.escalateMessage(message.id, reason, note: note);
+      return true;
+    } catch (e) {
+      _fail(e);
+      return false;
+    }
+  }
+
+  void _applyHidden(String messageId) {
+    if (isClosed) return;
+    final message = state.messages.where((m) => m.id == messageId).firstOrNull;
+    final stockRoom = state.stockRoom;
+    final unpin = stockRoom != null && stockRoom.pinnedMessage?.id == messageId;
+    final mine = message != null && state.isMine(message);
+    emit(
+      state.copyWith(
+        messages: [
+          for (final m in state.messages)
+            if (m.id != messageId) m else if (mine) m.copyWith(moderationStatus: ModerationStatus.hidden),
+        ],
+        stockRoom: unpin && !mine ? stockRoom.copyWith(pinnedMessage: null, pinnedAt: null) : stockRoom,
+      ),
+    );
+  }
+
+  void _setMute(String userId, DateTime until) {
+    if (isClosed) return;
+    final stockRoom = state.stockRoom ?? StockRoomState(roomId: roomId, stockCode: state.room?.stockCode);
+    final next = userId == state.me?.id
+        ? stockRoom.copyWith(viewerMutedUntil: until.toUtc())
+        : stockRoom.copyWith(mutes: {...stockRoom.mutes, userId: until.toUtc()});
+    emit(state.copyWith(stockRoom: next));
+    _scheduleMuteExpiry();
+  }
+
+  void _scheduleMuteExpiry() {
+    _muteExpiry?.cancel();
+    _muteExpiry = null;
+    final now = _now();
+    final until = state.mutedUntil(now);
+    if (until == null) return;
+    _muteExpiry = Timer(until.difference(now) + const Duration(seconds: 1), () {
+      final stockRoom = state.stockRoom;
+      final me = state.me?.id;
+      if (isClosed || stockRoom == null || me == null) return;
+      emit(
+        state.copyWith(stockRoom: stockRoom.copyWith(viewerMutedUntil: null, mutes: {...stockRoom.mutes}..remove(me))),
+      );
+    });
   }
 
   DateTime _now() => _clock().toUtc();
@@ -337,7 +455,31 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
 
   void _applyStockRoomState(StockRoomState next) {
     final previous = state.stockRoom;
-    emit(state.copyWith(stockRoom: next.copyWith(waitSeconds: previous?.waitSeconds ?? 0)));
+    final me = state.me?.id;
+    final moderator = next.isModerator(me);
+    emit(
+      state.copyWith(
+        stockRoom: next.copyWith(
+          waitSeconds: previous?.waitSeconds ?? 0,
+          viewerMutedUntil: next.viewerMutedUntil ?? previous?.viewerMutedUntil,
+          mutes: !moderator
+              ? const <String, DateTime>{}
+              : next.mutes.isNotEmpty
+              ? next.mutes
+              : previous?.mutes ?? const <String, DateTime>{},
+        ),
+      ),
+    );
+    _scheduleMuteExpiry();
+    if (moderator && !(previous?.isModerator(me) ?? false)) unawaited(loadStockRoomState());
+  }
+
+  void _applyOwnMute(DateTime? until) {
+    if (!state.isStockRoom) return;
+    final stockRoom = state.stockRoom ?? StockRoomState(roomId: roomId, stockCode: state.room?.stockCode);
+    emit(state.copyWith(stockRoom: stockRoom.copyWith(viewerMutedUntil: until?.toUtc())));
+    _scheduleMuteExpiry();
+    unawaited(loadStockRoomState());
   }
 
   void _connect(UserSummary me) {
@@ -377,6 +519,10 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         _applyReactionEvent(event);
       case StockRoomStateChanged(:final state):
         _applyStockRoomState(state);
+      case MessageHidden(:final messageId):
+        _applyHidden(messageId);
+      case OwnRoomMuteChanged(:final mutedUntil):
+        _applyOwnMute(mutedUntil);
       case SignalsConnectionChanged(:final status):
         final previous = _signals;
         _signals = status;
@@ -532,6 +678,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     final body = text.trim();
     final me = state.me;
     if ((body.isEmpty && attachments.isEmpty) || me == null) return;
+    if (state.mutedUntil(_now()) != null) return _fail(roomMutedError);
     final clientId = _uuid.v4();
     final replyTo = state.replyTo;
     final local = ChatMessage(
@@ -654,6 +801,11 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     if (mapped.code == 'slow_mode' && !isClosed) {
       final wait = mapped.retryAfter ?? Duration(seconds: state.stockRoom?.slowModeSeconds ?? 0);
       if (wait > Duration.zero) emit(state.copyWith(cooldownUntil: _now().add(wait)));
+    }
+    if (mapped.code == 'room_muted' && !isClosed) {
+      final until = DateTime.tryParse(mapped.message ?? '');
+      final me = state.me?.id;
+      if (until != null && me != null) _setMute(me, until);
     }
     if (mapped.code == 'dm_request_limit' && !isClosed) {
       final dmRequest = state.dmRequest;
@@ -825,6 +977,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   Future<void> close() async {
     _readDebounce?.cancel();
     _typingIdle?.cancel();
+    _muteExpiry?.cancel();
     for (final t in _typingTimers.values) {
       t.cancel();
     }

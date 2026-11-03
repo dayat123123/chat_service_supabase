@@ -137,6 +137,7 @@ export const en: Translation = {
     community: 'Community',
     communityAttention: '{{count}} need action in Community',
     legal: 'Legal documents',
+    evidence: 'Evidence',
     system: 'System health',
     analytics: 'Analytics',
     contentPolicy: 'Content policy',
@@ -620,6 +621,9 @@ export const en: Translation = {
     fourEyes: 'Four-eyes rule',
     fourEyesHint:
       'On by default. Official posts and notifications must be approved by another staff member, not their author. When off, staff with "Approve & publish" can publish their own work directly.',
+    policyFourEyes: 'Content policy four-eyes',
+    policyFourEyesHint:
+      'On by default. Content policy changes (banned words, categories, domains, phrases, image thresholds, anti-manipulation) and version restores must be approved by another Compliance staff member, not their author. When off, Compliance staff can activate their own drafts directly.',
     push: 'Push notifications',
     integrationDescription:
       'Connects the Customer accounts menu to the CS Admin service. Agents see the menu only after the address and client id are saved with a successful connection test.',
@@ -1056,6 +1060,12 @@ export const en: Translation = {
       promo_phrase_delete: 'Promotion phrase deleted',
       manipulation_settings: 'Anti-manipulation settings changed',
       media_thresholds_set: 'Image moderation thresholds changed',
+      policy_change_submit: 'Content policy change submitted',
+      policy_change_apply: 'Content policy change activated',
+      policy_change_approve: 'Content policy change approved',
+      policy_change_reject: 'Content policy change rejected',
+      policy_change_withdraw: 'Content policy change withdrawn',
+      policy_rollback: 'Content policy version restored',
       community_media_approve: 'Held image approved',
       community_media_remove: 'Held image removed',
       community_manipulation_review: 'Manipulation signal reviewed',

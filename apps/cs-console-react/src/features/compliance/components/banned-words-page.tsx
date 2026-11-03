@@ -57,6 +57,7 @@ import {
   useImportBannedWords,
   useSetBannedWordAction,
 } from '../hooks'
+import { DraftBanner } from '../policy-versions/components/draft-banner'
 import type { BannedAction, BannedWord, BannedWordList } from '../types'
 
 const bannedActions: BannedAction[] = ['mask', 'block']
@@ -505,6 +506,7 @@ export function BannedWordsPage() {
             </Button>
           </div>
         </header>
+        <DraftBanner />
         <div className="flex flex-wrap items-center gap-2">
           <ToggleGroup
             type="single"
