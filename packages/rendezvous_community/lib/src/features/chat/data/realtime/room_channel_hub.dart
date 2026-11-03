@@ -64,6 +64,8 @@ class _RoomChannel {
     channel
       ..onBroadcast(event: 'typing', callback: _onTyping)
       ..onBroadcast(event: 'receipt', callback: _onReceipt)
+      ..onBroadcast(event: 'reaction', callback: _onReaction)
+      ..onBroadcast(event: 'room_state', callback: _onRoomState)
       ..onPresenceSync((_) => _emit(RoomPresence(roomId, {for (final s in channel.presenceState()) s.key})))
       ..subscribe((status, _) async {
         _emit(RoomConnection(roomId, mapSubscribeStatus(status)));
@@ -101,6 +103,26 @@ class _RoomChannel {
     final receipt = parseReceipt(_unwrap(payload));
     if (receipt == null || receipt.userId == me.id) return;
     _emit(RoomReceipt(roomId, receipt));
+  }
+
+  void _onReaction(Map<String, dynamic> payload) {
+    final data = _unwrap(payload);
+    final messageId = data['message_id'] as String?;
+    final userId = data['user_id'] as String?;
+    if (messageId == null || userId == null) return;
+    _emit(
+      RoomReaction(
+        roomId,
+        messageId: messageId,
+        userId: userId,
+        emoji: data['emoji'] as String?,
+        counts: reactionsFromJson(data['reactions']),
+      ),
+    );
+  }
+
+  void _onRoomState(Map<String, dynamic> payload) {
+    _emit(RoomStateSignal(roomId, parseStockRoomState(_unwrap(payload))));
   }
 
   Future<void> sendTyping(UserSummary me, {required bool isTyping}) async {

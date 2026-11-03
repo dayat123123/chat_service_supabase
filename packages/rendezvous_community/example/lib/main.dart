@@ -76,6 +76,7 @@ Future<void> _startSocial(FakeOltAuth auth) async {
     tokenProvider: auth.token,
     onStockTap: openStockPage,
     stockSearch: searchStocks,
+    appVersion: '1.3.0',
   );
   await social.ensureSignedIn();
 }

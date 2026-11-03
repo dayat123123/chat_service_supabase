@@ -1,6 +1,8 @@
 import 'package:rendezvous_community/src/core/network/realtime_status.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/stock_room_state.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 sealed class RoomSignal {
@@ -32,6 +34,21 @@ class RoomConnection extends RoomSignal {
   const RoomConnection(super.roomId, this.status);
 
   final RealtimeStatus status;
+}
+
+class RoomReaction extends RoomSignal {
+  const RoomReaction(super.roomId, {required this.messageId, required this.userId, this.emoji, required this.counts});
+
+  final String messageId;
+  final String userId;
+  final String? emoji;
+  final List<MessageReaction> counts;
+}
+
+class RoomStateSignal extends RoomSignal {
+  const RoomStateSignal(super.roomId, this.state);
+
+  final StockRoomState state;
 }
 
 sealed class ChatRoomEvent {
@@ -67,6 +84,21 @@ class ConnectionChanged extends ChatRoomEvent {
   const ConnectionChanged(this.status);
 
   final RealtimeStatus status;
+}
+
+class ReactionChanged extends ChatRoomEvent {
+  const ReactionChanged({required this.messageId, required this.userId, this.emoji, required this.counts});
+
+  final String messageId;
+  final String userId;
+  final String? emoji;
+  final List<MessageReaction> counts;
+}
+
+class StockRoomStateChanged extends ChatRoomEvent {
+  const StockRoomStateChanged(this.state);
+
+  final StockRoomState state;
 }
 
 class SignalsConnectionChanged extends ChatRoomEvent {

@@ -8,16 +8,21 @@ Panduan ini menjelaskan cara menjalankan OLT Social di VPS Ubuntu dengan profil 
 Internet ──80──▶ Traefik ── redirect ke HTTPS
 Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per IP,
                  │        batas body & koneksi WebSocket, security headers)
-                 │ hanya path API: /rest/v1 /realtime/v1 /storage/v1
+                 │ hanya path API: /rest/v1 /realtime/v1 /storage/v1 /media/v1 /integration/v1
                  │ /functions/v1 /bridge/v1      (lainnya 404, termasuk /auth/v1 & Studio)
                  ▼
                Kong ──▶ PostgREST, Storage, Edge Functions ──▶ PgBouncer ──▶ Postgres 17
                  │      Realtime ─────────────────────────────────────────▶ Postgres
                  │      auth-bridge (verifikasi token sosial OLT lokal, JWKS)   Valkey (rate limit, cache)
+                 │      media (cek isi file, buang EXIF/GPS) ──▶ classifier (NSFW) ──▶ Storage
+                 │      integration (notifEngine & bot OLT, API key) ──▶ antrean push
  127.0.0.1:8000 ─┘ entrypoint admin: Studio & semua path (SSH tunnel / WireGuard)
+
+Latar belakang: notifier (push FCM), janitor (bersihkan file), sentinel (pantau + alert),
+link-preview (pratinjau link, aman SSRF), backup (WAL + backup penuh ──restic──▶ S3 di luar server)
 ```
 
-- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet; hanya Traefik, Edge Functions, dan notifier (push ke Google FCM) yang tersambung ke network `egress`. auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
+- Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet. Yang tersambung ke network `egress` hanya Traefik, Edge Functions, notifier (push ke Google FCM), sentinel (alert ke Telegram/SMTP), link-preview (mengambil halaman untuk pratinjau link), dan backup (S3). auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
 - Semua container read-only, non-root (kecuali entrypoint Postgres), `cap_drop: ALL`, `no-new-privileges`, dan punya batas CPU/memori/pids.
 - Rahasia hanya dari Docker secrets di `docker/secrets/`.
 
@@ -81,38 +86,38 @@ Catatan:
   Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
 - **Menu Komunitas** (postingan resmi, pengumuman, notifikasi, moderasi) tidak butuh konfigurasi server. Super Admin memberi izin per staf di **Pengaturan → Akun CS** dan membuat akun resmi pertama di **Komunitas → Akun resmi** (butuh izin "Kelola akun resmi"). Foto akun resmi memakai `SUPABASE_PUBLIC_URL`, jadi isi dengan domain API publik. Rinciannya ada di [docs/community](community/README.md).
 - **Push notification ke HP**: Super Admin mengunggah file kunci service account Firebase (`.json`) di web CS, **Pengaturan → Push notification → Kunci Firebase**. Kunci disimpan terenkripsi di Vault, notifier memuat dan memeriksanya ke Google dalam beberapa detik tanpa restart, lalu status menjadi Aktif. Sebelum itu semua notifikasi tetap masuk ke kotak notifikasi aplikasi. Panduan lengkap (APNs, rotasi kunci, restore, integrasi aplikasi): [docs/push](push/README.md).
+- **Upload media nasabah**: aplikasi mengunggah foto dan PDF lewat `/media/v1`, bukan langsung ke Storage. Layanan `media` memeriksa isi file (bukan nama atau header), membuang EXIF/GPS, XMP, dan metadata teks tanpa menurunkan kualitas gambar, serta menolak PDF terenkripsi atau berisi JavaScript. Storage menolak upload nasabah yang tidak lewat layanan ini (migrasi `0063`). Staf di web CS tetap mengunggah langsung. Tidak perlu konfigurasi. Detail: [services/media](../services/media/README.md).
+- **Dokumen hukum (S&K, Pedoman Komunitas, Kebijakan Privasi)** diterbitkan staf Kepatuhan dari web CS (**Kepatuhan → Dokumen hukum**) dengan persetujuan empat mata. Selama belum ada dokumen yang terbit, nasabah tidak diminta menyetujui apa pun. Detail: [kepatuhan.md](cs-chat/kepatuhan.md#dokumen-hukum).
+- **Kesehatan sistem dan alert**: Super Admin membuka **Kesehatan sistem** di web CS untuk melihat status semua layanan, disk, database, antrean, dan backup. Isi kanal alert Telegram dan/atau email di tab **Alert**, lalu tekan **Kirim uji**. Detail: [docs/system-health](system-health/README.md).
+- **Backup**: isi tujuan S3 dan password enkripsi di **Kesehatan sistem → Backup** segera setelah deploy. Sebelum itu muncul alert "Backup belum diatur". Simpan password enkripsi dan salinan `pgsodium_root.key` di luar server. Detail: [docs/backup](backup/README.md).
+- **Moderasi gambar**: layanan `classifier` (model NSFW MobileNetV4, Apache-2.0, CPU) dipanggil `media` untuk setiap gambar nasabah sebelum disimpan. Gambar porno ditolak, gambar meragukan ditahan (hanya terlihat pengunggah dan moderator) dan masuk antrean **Komunitas → Moderasi → Gambar ditahan**. Bila `classifier` mati, upload gambar ditolak (fail closed) dan Kesehatan sistem memberi alert. Ambang diatur Kepatuhan (**Kepatuhan → Kebijakan konten → Ambang gambar**). Detail: [services/classifier](../services/classifier/README.md).
+- **Keamanan konten & anti goreng saham**: filter kata ternormalisasi, domain/link, kontak dan frasa promosi, batasan akun baru, permintaan pesan DM, banding, deteksi manipulasi, dan slow mode room saham berjalan otomatis; kebijakannya diatur Kepatuhan dari web. Detail: [docs/content-safety.md](content-safety.md).
+- **Kill switch & versi minimum**: Super Admin dapat mematikan fitur sosial seketika (wajib alasan; chat CS tetap jalan), membuka fitur bertahap lewat feature flag, dan mewajibkan update aplikasi di **Pengaturan → Fitur & versi**. Detail: [docs/social](social/README.md).
+- **Gateway integrasi OLT** (`/integration/v1`, layanan `integration`): notifEngine OLT mengirim notifikasi transaksi per `cust_id`; server memetakan ke pemilik rekening dari klaim `accounts` di token sosial OLT. API key dibuat Super Admin di **Pengaturan → Integrasi OLT** (ditampilkan sekali). Batasi sumbernya dengan CIDR pada key. Spesifikasi untuk tim OLT: [docs/integration](integration/README.md).
+- **Pratinjau link**: layanan `link-preview` (satu-satunya yang mengambil URL internet sembarang, dengan proteksi SSRF) membuat pratinjau link di postingan dan chat. Detail: [services/link-preview](../services/link-preview/README.md).
 - **Pembersihan file storage**: layanan `janitor` menghapus file milik akun yang dihapus (avatar, lampiran postingan dan chat, dokumen CS) serta surat yang lewat masa simpan, dari antrean `private.storage_cleanup_queue`. Tidak perlu konfigurasi. Folder yang gagal dicoba ulang dengan jeda sampai 6 jam. Cek antrean: `select bucket_id, prefix, failures, error from private.storage_cleanup_queue where done_at is null;`. Detail: [services/janitor](../services/janitor/README.md).
 
 ## 3. Backup & restore
 
-> Tahap 6 menggantinya dengan WAL-G (point-in-time recovery) + restic terenkripsi di luar server. Lihat [production-audit.md](production-audit.md).
+Backup berkelanjutan dijalankan layanan `backup`, dan diatur Super Admin dari web CS (**Kesehatan sistem → Backup**). Prosesnya:
+- WAL dialirkan terus lewat replikasi.
+- Backup penuh harian dan file storage dibuat otomatis.
+- Semuanya dikirim ke repositori restic terenkripsi di S3 di luar server.
+- Uji restore berjalan otomatis setiap minggu.
 
-`make backup` melakukan dua hal:
-- **Database:** `pg_dump` format custom ke `backups/olt-<UTC>.dump`. Arsip diverifikasi bisa dibaca dengan `pg_restore --list`. Dump lebih tua dari `BACKUP_KEEP_DAYS` (default 14 hari) dihapus otomatis.
-- **File storage:** avatar dan lampiran diarsipkan ke `backups/storage-<UTC>.tar.gz`.
+Arsitektur, jadwal, retensi, alert, dan pemulihan ke titik waktu tertentu dijelaskan di [docs/backup](backup/README.md). Perintah teknisnya ada di [services/backup](../services/backup/README.md).
 
-Kunci enkripsi Vault (volume `db-config`) tidak ikut dump. Setelah restore ke server baru, unggah ulang kunci Firebase di **Pengaturan → Push notification** (lihat [docs/push](push/README.md)).
-
-Jadwal harian (`crontab -e` di VPS):
-
-```cron
-0 2 * * * cd /home/ubuntu/olt-social && make backup PROFILE=single >> backups/backup.log 2>&1
-30 2 * * * rclone sync /home/ubuntu/olt-social/backups remote:olt-social-backups   # salinan di luar VPS
-```
-
-Restore:
+`make backup` tetap ada untuk salinan sesaat (`pg_dump` + arsip file storage ke `backups/`), misalnya sebelum upgrade besar:
 
 ```bash
+make backup PROFILE=single
 make down PROFILE=single
 docker compose -f docker/compose.yml -f docker/compose.prod.yml up -d --wait db
 make restore PROFILE=single FILE=olt-20261029-020000.dump CONFIRM=yes
-# file storage (Storage berjalan sebagai uid 1000):
-docker run --rm -v olt-social_storage-data:/data -v "$PWD/backups:/backup" alpine:3.22.7 \
-  sh -c 'rm -rf /data/* && tar xzf /backup/storage-20261029-020000.tar.gz -C /data && chown -R 1000:1000 /data'
 make up PROFILE=single
 ```
 
-**Uji restore secara berkala**, minimal bulanan, di VPS staging.
+Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Setelah memulihkan ke server baru, isi ulang kunci Firebase, tujuan backup, dan kanal alert dari web, atau pulihkan salinan `pgsodium_root.key` yang disimpan di luar server.
 
 ## 4. Update versi
 
@@ -197,8 +202,8 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 
 ## 7. Monitoring & log
 
-> Prometheus, log terpusat, dan alert ditambahkan di Tahap 6.
-
+- **Kesehatan sistem** (web CS, Super Admin): status layanan, probe, disk, database, antrean, cron, dan backup. Alert dikirim ke Telegram/email. Bila database mati, sentinel tetap mengirim alert "API/database tidak bisa dihubungi". Detail: [docs/system-health](system-health/README.md).
+- **Pemantau dari luar server:** pasang Uptime Kuma atau layanan uptime lain di server berbeda untuk memeriksa `https://<PROXY_DOMAIN>/bridge/v1/health` (header `apikey`). Alert dari dalam server tidak bisa terkirim bila seluruh server mati.
 - **Log:** `make logs PROFILE=single s=auth-bridge`.
   - Log Traefik (akses) dan auth-bridge berupa JSON. Log auth-bridge memuat `request_id`, `user_id`, `status`, dan `duration_ms`.
   - Header, token, dan password tidak pernah ditulis ke log.
@@ -236,7 +241,10 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 - [ ] `retention.archive_days` (arsip regulator) sudah ditetapkan bersama tim legal. Default sementara: 5 tahun.
 
 **Data & operasional**
-- [ ] Cron backup aktif, salinan offsite tersedia, restore sudah diuji.
+- [ ] Tujuan backup S3 diatur di web (**Kesehatan sistem → Backup**), backup penuh pertama berhasil, dan uji restore berhasil. Password enkripsi dan salinan `pgsodium_root.key` disimpan di luar server.
+- [ ] Kanal alert (Telegram dan/atau email) diisi, dan **Kirim uji** sudah diterima tim operasional. Pemantau uptime dari luar server sudah dipasang.
+- [ ] Halaman **Kesehatan sistem** tidak menampilkan masalah kritis.
+- [ ] Dokumen hukum (S&K, Pedoman Komunitas, Kebijakan Privasi) diterbitkan Kepatuhan dari web, dan jenis dokumen yang wajib disetujui sudah ditentukan.
 - [ ] Daftar kata terlarang (web CS, Kepatuhan → Kata terlarang) dan rate limit sudah ditinjau tim compliance.
 - [ ] Prosedur moderasi (bagian 5) sudah disosialisasikan.
 - [ ] DNS dan sertifikat HTTPS valid (Traefik memperbarui otomatis).

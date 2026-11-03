@@ -20,19 +20,19 @@ select get_or_create_direct_room(:'sari') as dm \gset
 reset role;
 select room_id as room from cs.tickets where id = :'ticket' \gset
 
-select tests.authenticate_as(:'budi');
+select tests.authenticate_with(:'budi', '{"media_verified": true}');
 select lives_ok(format($$insert into storage.objects (bucket_id, name, owner_id) values ('cs-documents', 'rooms/%s/%s/bukti.pdf', %L)$$,
                        :'room', :'budi', :'budi'),
   'Nasabah boleh mengunggah PDF ke room layanan miliknya');
 reset role;
 insert into private.user_sanctions (user_id, kind, reason, ends_at) values (:'budi', 'ban', 'uji', null);
-select tests.authenticate_as(:'budi');
+select tests.authenticate_with(:'budi', '{"media_verified": true}');
 select lives_ok(format($$insert into storage.objects (bucket_id, name, owner_id) values ('cs-documents', 'rooms/%s/%s/ktp.pdf', %L)$$,
                        :'room', :'budi', :'budi'),
   'Nasabah yang di-ban dari fitur sosial tetap bisa mengirim dokumen ke CS');
 reset role;
 delete from private.user_sanctions where user_id = :'budi';
-select tests.authenticate_as(:'budi');
+select tests.authenticate_with(:'budi', '{"media_verified": true}');
 select throws_ok(format($$insert into storage.objects (bucket_id, name, owner_id) values ('cs-documents', 'rooms/%s/%s/x.pdf', %L)$$,
                         :'dm', :'budi', :'budi'),
   '42501', null, 'PDF tidak bisa diunggah ke chat global');

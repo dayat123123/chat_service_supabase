@@ -18,6 +18,11 @@ services:
     environment:
       SUPABASE_URL: https://${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN wajib diisi bila CS=1 (docker/.env)}
 
+  sentinel:
+    networks: [app, data, edge, egress]
+    environment:
+      PROBES_EXTRA: cs-console=http://cs-console:8080/healthz,nasabah-gateway=http://nasabah-gateway:8080/healthz
+
 configs:
   traefik-routes-cs:
     file: ./volumes/traefik/cs.yml

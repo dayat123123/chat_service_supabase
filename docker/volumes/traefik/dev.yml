@@ -16,6 +16,20 @@ http:
       middlewares: [rate-limit, body-upload, security-headers]
       priority: 95
 
+    media-upload:
+      entryPoints: [web]
+      rule: PathPrefix(`/media/v1`)
+      service: kong
+      middlewares: [rate-limit, body-upload, security-headers]
+      priority: 95
+
+    integration:
+      entryPoints: [web]
+      rule: PathPrefix(`/integration/v1`)
+      service: kong
+      middlewares: [rate-limit, body-integration, security-headers]
+      priority: 85
+
     storage:
       entryPoints: [web]
       rule: PathPrefix(`/storage/v1`)

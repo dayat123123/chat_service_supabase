@@ -6,6 +6,52 @@ part of 'chat_models.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_MessageReactionModel _$MessageReactionModelFromJson(Map<String, dynamic> json) => _MessageReactionModel(
+  emoji: json['emoji'] as String,
+  count: (json['count'] as num?)?.toInt() ?? 0,
+  me: json['me'] as bool? ?? false,
+);
+
+Map<String, dynamic> _$MessageReactionModelToJson(_MessageReactionModel instance) => <String, dynamic>{
+  'emoji': instance.emoji,
+  'count': instance.count,
+  'me': instance.me,
+};
+
+_SharedPostModel _$SharedPostModelFromJson(Map<String, dynamic> json) => _SharedPostModel(
+  postId: json['post_id'] as String,
+  available: json['available'] as bool? ?? false,
+  authorId: json['author_id'] as String?,
+  authorUsername: json['author_username'] as String?,
+  authorDisplayName: json['author_display_name'] as String?,
+  authorAvatarUrl: json['author_avatar_url'] as String?,
+  authorIsVerified: json['author_is_verified'] as bool? ?? false,
+  body: json['body'] as String?,
+  attachments: json['attachments'] == null ? const <AttachmentModel>[] : attachmentsFromJson(json['attachments']),
+  sentiment: json['sentiment'] as String?,
+  stockCodes: (json['stock_codes'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const <String>[],
+  likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
+  commentCount: (json['comment_count'] as num?)?.toInt() ?? 0,
+  createdAt: json['created_at'] == null ? null : DateTime.parse(json['created_at'] as String),
+);
+
+Map<String, dynamic> _$SharedPostModelToJson(_SharedPostModel instance) => <String, dynamic>{
+  'post_id': instance.postId,
+  'available': instance.available,
+  'author_id': instance.authorId,
+  'author_username': instance.authorUsername,
+  'author_display_name': instance.authorDisplayName,
+  'author_avatar_url': instance.authorAvatarUrl,
+  'author_is_verified': instance.authorIsVerified,
+  'body': instance.body,
+  'attachments': instance.attachments.map((e) => e.toJson()).toList(),
+  'sentiment': instance.sentiment,
+  'stock_codes': instance.stockCodes,
+  'like_count': instance.likeCount,
+  'comment_count': instance.commentCount,
+  'created_at': instance.createdAt?.toIso8601String(),
+};
+
 _ChatMessageModel _$ChatMessageModelFromJson(Map<String, dynamic> json) => _ChatMessageModel(
   id: json['id'] as String,
   roomId: json['room_id'] as String,
@@ -18,11 +64,8 @@ _ChatMessageModel _$ChatMessageModelFromJson(Map<String, dynamic> json) => _Chat
   replyToId: json['reply_to_id'] as String?,
   replyToBody: json['reply_to_body'] as String?,
   replyToSenderUsername: json['reply_to_sender_username'] as String?,
-  attachments:
-      (json['attachments'] as List<dynamic>?)
-          ?.map((e) => AttachmentModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const <AttachmentModel>[],
+  attachments: json['attachments'] == null ? const <AttachmentModel>[] : attachmentsFromJson(json['attachments']),
+  sharedPostId: sharedPostIdFromJson(readAttachments(json, 'shared_post_id')),
   clientId: json['client_id'] as String?,
   editedAt: json['edited_at'] == null ? null : DateTime.parse(json['edited_at'] as String),
   createdAt: DateTime.parse(json['created_at'] as String),
@@ -31,6 +74,13 @@ _ChatMessageModel _$ChatMessageModelFromJson(Map<String, dynamic> json) => _Chat
   senderRole: json['sender_role'] as String?,
   sessionId: json['session_id'] as String?,
   payload: json['payload'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+  reactions: (json['reactions'] as List<dynamic>?)
+      ?.map((e) => MessageReactionModel.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  sharedPost: json['shared_post'] == null
+      ? null
+      : SharedPostModel.fromJson(json['shared_post'] as Map<String, dynamic>),
+  moderationStatus: json['moderation_status'] as String?,
 );
 
 Map<String, dynamic> _$ChatMessageModelToJson(_ChatMessageModel instance) => <String, dynamic>{
@@ -54,6 +104,9 @@ Map<String, dynamic> _$ChatMessageModelToJson(_ChatMessageModel instance) => <St
   'sender_role': instance.senderRole,
   'session_id': instance.sessionId,
   'payload': instance.payload,
+  'reactions': instance.reactions?.map((e) => e.toJson()).toList(),
+  'shared_post': instance.sharedPost?.toJson(),
+  'moderation_status': instance.moderationStatus,
 };
 
 _MessageRowModel _$MessageRowModelFromJson(Map<String, dynamic> json) => _MessageRowModel(
@@ -62,11 +115,8 @@ _MessageRowModel _$MessageRowModelFromJson(Map<String, dynamic> json) => _Messag
   senderId: json['sender_id'] as String?,
   body: json['body'] as String? ?? '',
   replyToId: json['reply_to_id'] as String?,
-  attachments:
-      (json['attachments'] as List<dynamic>?)
-          ?.map((e) => AttachmentModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const <AttachmentModel>[],
+  attachments: json['attachments'] == null ? const <AttachmentModel>[] : attachmentsFromJson(json['attachments']),
+  sharedPostId: sharedPostIdFromJson(readAttachments(json, 'shared_post_id')),
   clientId: json['client_id'] as String?,
   editedAt: json['edited_at'] == null ? null : DateTime.parse(json['edited_at'] as String),
   deletedAt: json['deleted_at'] == null ? null : DateTime.parse(json['deleted_at'] as String),
@@ -75,6 +125,7 @@ _MessageRowModel _$MessageRowModelFromJson(Map<String, dynamic> json) => _Messag
   senderRole: json['sender_role'] as String?,
   sessionId: json['session_id'] as String?,
   payload: json['payload'] as Map<String, dynamic>? ?? const <String, dynamic>{},
+  moderationStatus: json['moderation_status'] as String?,
 );
 
 Map<String, dynamic> _$MessageRowModelToJson(_MessageRowModel instance) => <String, dynamic>{
@@ -92,6 +143,7 @@ Map<String, dynamic> _$MessageRowModelToJson(_MessageRowModel instance) => <Stri
   'sender_role': instance.senderRole,
   'session_id': instance.sessionId,
   'payload': instance.payload,
+  'moderation_status': instance.moderationStatus,
 };
 
 _RoomSummaryModel _$RoomSummaryModelFromJson(Map<String, dynamic> json) => _RoomSummaryModel(

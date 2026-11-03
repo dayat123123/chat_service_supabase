@@ -3,8 +3,11 @@ import 'dart:math' as math;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:rendezvous_community/src/features/bookmarks/domain/repositories/bookmark_repository.dart';
+import 'package:rendezvous_community/src/features/edit/domain/repositories/content_edit_repository.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
 import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
 import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -50,10 +53,20 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     this.maxLevels = 4,
     this.pageSize = 20,
     this.repliesPerBranch = 3,
+    this._consent,
+    this._bookmarks,
+    this._edits,
   }) : super(const ThreadState());
 
   final FeedRepository _feed;
   final CommentRepository _comments;
+  final ConsentGate? _consent;
+  final BookmarkRepository? _bookmarks;
+  final ContentEditRepository? _edits;
+
+  bool get canBookmark => _bookmarks != null;
+
+  bool get canEdit => _edits != null;
   final String postId;
   final String? rootCommentId;
 
@@ -153,7 +166,9 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     final parentId = state.replyTo?.id ?? state.root?.id;
     emit(state.copyWith(sending: true));
     try {
-      final created = await _comments.createComment(postId: postId, parentId: parentId, body: text);
+      final created = await _consent.guard(
+        () => _comments.createComment(postId: postId, parentId: parentId, body: text),
+      );
       if (isClosed) return true;
       var next = _merge(state, [created]);
       next = _bumpReplyCount(next, parentId, 1);
@@ -215,6 +230,60 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     } catch (e) {
       if (!isClosed) emit(state.copyWith(post: post));
       _fail(e);
+    }
+  }
+
+  Future<void> togglePostBookmark() async {
+    final post = state.post;
+    final bookmarks = _bookmarks;
+    if (post == null || bookmarks == null) return;
+    final next = !post.isBookmarked;
+    emit(state.copyWith(post: post.copyWith(isBookmarked: next)));
+    try {
+      final saved = await bookmarks.setBookmarked(post.id, bookmarked: next);
+      final current = state.post;
+      if (saved != next && current != null && !isClosed) {
+        emit(state.copyWith(post: current.copyWith(isBookmarked: saved)));
+      }
+    } catch (e) {
+      final current = state.post;
+      if (current != null && !isClosed) emit(state.copyWith(post: current.copyWith(isBookmarked: post.isBookmarked)));
+      _fail(e);
+    }
+  }
+
+  Future<bool> editPost(Post post, String body) async {
+    final edits = _edits;
+    final text = body.trim();
+    if (edits == null || text.isEmpty) return false;
+    try {
+      final updated = await edits.editPost(post.id, text);
+      if (!isClosed) emit(state.copyWith(post: updated));
+      return true;
+    } catch (e) {
+      _fail(e);
+      return false;
+    }
+  }
+
+  Future<bool> editComment(ThreadComment comment, String body) async {
+    final edits = _edits;
+    final text = body.trim();
+    if (edits == null || text.isEmpty) return false;
+    try {
+      final updated = await edits.editComment(comment.id, text);
+      final known = state.comments[comment.id] ?? comment;
+      _replace(
+        known.copyWith(
+          body: updated.body,
+          editedAt: updated.editedAt ?? DateTime.now().toUtc(),
+          moderationStatus: updated.moderationStatus,
+        ),
+      );
+      return true;
+    } catch (e) {
+      _fail(e);
+      return false;
     }
   }
 

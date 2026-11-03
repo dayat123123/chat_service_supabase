@@ -15,29 +15,31 @@ make down DUMMY_OLT=1      # kembali normal: make up (auth-bridge mode mock)
 
 Semua akun memakai password **`olt12345`**. Login bisa dengan username atau email.
 
-| id | username | email | Catatan |
-|---|---|---|---|
-| 1001 | `budi_santoso` | budi@olt.test | Sama dengan user seed (id sosial `72689cd3-…`) |
-| 1002 | `sari_invest` | sari@olt.test | user seed |
-| 1003 | `andi_trader` | andi@olt.test | user seed |
-| 1004 | `rina_saham` | rina@olt.test | user seed |
-| 1005 | `dewi_cuan` | dewi@olt.test | user seed |
-| 1006 | `olt_official` | official@olt.test | user seed (terverifikasi) |
-| 1007 | `joko_prasetyo` | joko@olt.test | Belum ada di seed: profil dibuat otomatis saat exchange pertama |
-| 1008 | `rudi.setiawan` | rudi@olt.test | Username bertitik: auth-bridge menyanitasi menjadi `rudi_setiawan` |
-| 1009 | `akun_suspend` | suspend@olt.test | **Ditangguhkan**: login dan permintaan token sosial ditolak (`ACCOUNT_SUSPENDED`) |
-| 1010 | `lambat_test` | lambat@olt.test | Login token WebSocket dijawab setelah **8 detik**, untuk menguji timeout di sisi app |
-| 1011 | `hidayat` | hidayatullah10070@gmail.com | Sama dengan LoginId `hidayat` di csAdmin uji, untuk menguji info Akun Nasabah di panel tiket |
-| 1012 | `hidayat2` | hidayatullah100702@gmail.com | User uji kedua; bila LoginId-nya tidak ada di csAdmin, bagian Akun Nasabah di panel tiket tidak tampil |
+| id | username | email | `accounts` | Catatan |
+|---|---|---|---|---|
+| 1001 | `budi_santoso` | budi@olt.test | `W137`, `C1626` | Sama dengan user seed (id sosial `72689cd3-…`) |
+| 1002 | `sari_invest` | sari@olt.test | `S2001` | user seed |
+| 1003 | `andi_trader` | andi@olt.test | – | user seed |
+| 1004 | `rina_saham` | rina@olt.test | – | user seed |
+| 1005 | `dewi_cuan` | dewi@olt.test | – | user seed |
+| 1006 | `olt_official` | official@olt.test | – | user seed (terverifikasi) |
+| 1007 | `joko_prasetyo` | joko@olt.test | – | Belum ada di seed: profil dibuat otomatis saat exchange pertama |
+| 1008 | `rudi.setiawan` | rudi@olt.test | – | Username bertitik: auth-bridge menyanitasi menjadi `rudi_setiawan` |
+| 1009 | `akun_suspend` | suspend@olt.test | – | **Ditangguhkan**: login dan permintaan token sosial ditolak (`ACCOUNT_SUSPENDED`) |
+| 1010 | `lambat_test` | lambat@olt.test | – | Login token WebSocket dijawab setelah **8 detik**, untuk menguji timeout di sisi app |
+| 1011 | `hidayat` | hidayatullah10070@gmail.com | – | Sama dengan LoginId `hidayat` di csAdmin uji, untuk menguji info Akun Nasabah di panel tiket |
+| 1012 | `hidayat2` | hidayatullah100702@gmail.com | – | User uji kedua; bila LoginId-nya tidak ada di csAdmin, bagian Akun Nasabah di panel tiket tidak tampil |
 
-Daftar ini juga tersedia lewat `GET http://localhost:8090/api/users`.
+Daftar ini juga tersedia lewat `GET http://localhost:8090/api/users` (termasuk `accounts`).
+
+**Klaim `accounts`.** Token sosial setiap akun di tabel membawa klaim `accounts`: daftar cust id rekening milik login itu, seperti aturan OLT asli (LoginType 1 nasabah → `TAccountLinked`, akun lain → `[]`). Akun bertanda – mendapat `[]`. auth-bridge menyimpannya agar notifikasi transaksi dari notifEngine (`POST /integration/v1/notify/messages` dengan `cust_id` `W137`) sampai ke HP budi. Token mock untuk user di luar tabel (mis. `mock:2001:uji_baru`) **tidak** membawa klaim ini, sama seperti OLT lama, sehingga tautan rekening tidak diubah. Spesifikasi: [docs/integration/README.md](../../docs/integration/README.md).
 
 ## Dua jenis token
 
 | Token | Bentuk | Dipakai untuk |
 |---|---|---|
 | **Token sesi OLT** | `olt_<base64url(JSON {uid, iat, exp, jti})>.<HMAC-SHA256>`, 24 jam (`DUMMY_OLT_TOKEN_TTL`) | Login ulang ke OLT dan meminta token sosial baru. **Ditolak auth-bridge** |
-| **Token sosial** | JWT `EdDSA`, `kid` `dev-olt-1`, `iss` `olt`, `aud` `olt-social`, 10 menit (`DUMMY_OLT_SOCIAL_TTL`) | Ditukar di `POST /bridge/v1/exchange`. Diberikan app lewat `tokenProvider` |
+| **Token sosial** | JWT `EdDSA`, `kid` `dev-olt-1`, `iss` `olt`, `aud` `olt-social`, 10 menit (`DUMMY_OLT_SOCIAL_TTL`), klaim `accounts` | Ditukar di `POST /bridge/v1/exchange`. Diberikan app lewat `tokenProvider` |
 
 - **Token sesi** stateless: tetap valid setelah restart selama `DUMMY_OLT_SECRET` tidak berubah. Token yang sudah logout dicatat di memori dan ditolak.
 - **Token sosial** tidak bisa dicabut. Pencabutan dilakukan dengan berhenti menerbitkannya: sesi yang logout atau akun yang ditangguhkan tidak mendapat token sosial baru.
@@ -51,6 +53,7 @@ Daftar ini juga tersedia lewat `GET http://localhost:8090/api/users`.
 | Token sosial baru dari sesi | `curl -X POST localhost:8090/api/social-token -H 'Content-Type: application/json' -d '{"token":"olt_..."}'` |
 | CLI, tanpa password | `make dummy-token U=sari_invest` (token sosial). Windows: `.\make.ps1 dummy-token -User sari_invest` |
 | Akun mana pun / kedaluwarsa / audience lain (khusus tes) | `curl -X POST localhost:8090/api/dev/token -d '{"user":"budi_santoso","kind":"social","ttl":"-1m","audience":"olt-trading"}'`. Tanpa `kind` = token sesi |
+| Rekening lain di klaim `accounts` (khusus tes) | `curl -X POST localhost:8090/api/dev/token -d '{"user":"budi_santoso","kind":"social","accounts":["X9"]}'`. `"accounts":null` = tanpa klaim (OLT lama), `[]` = lepas semua rekening. Tanpa `accounts` = rekening dari tabel |
 
 Token sosial ditukar ke JWT Supabase:
 
@@ -112,7 +115,7 @@ Kode error yang mungkin muncul: `BAD_REQUEST`, `INVALID_CREDENTIALS`, `ACCOUNT_S
 
 | Perintah | Isi |
 |---|---|
-| `make test-dummy-olt` | Unit test Go: token sesi, token sosial, login password/email/token, perpanjangan, logout, akun ditangguhkan, mock, lambat, dan heartbeat |
+| `make test-dummy-olt` | Unit test Go: token sesi, token sosial (termasuk klaim `accounts`), login password/email/token, perpanjangan, logout, akun ditangguhkan, mock, lambat, dan heartbeat |
 | `make smoke-dummy` | 22 skenario end-to-end lewat Kong + auth-bridge mode jwt |
 | `make smoke-cs` | 30 pemeriksaan CS chat end-to-end (nasabah, agen, supervisor, transfer, rating) |
 | `make test-flutter-it-dummy` | Package Flutter dengan token sosial hasil login WebSocket (password → token sosial → `RendezvousCommunity`) |

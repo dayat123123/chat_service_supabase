@@ -758,4 +758,675 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
 
   @override
   String get supportUnavailable => 'Support chat is unavailable. Please try again shortly.';
+
+  @override
+  String get errorUnsupportedType =>
+      'This file type is not supported. Use JPEG, PNG, WebP, or GIF images (no GIF for profile photos), or PDFs in support chat.';
+
+  @override
+  String get errorFileTooLarge =>
+      'The file is too large. Limits: 5 MB for images, 2 MB for profile photos, and 10 MB for PDFs.';
+
+  @override
+  String get errorEmptyFile => 'The file is empty. Choose another file.';
+
+  @override
+  String get errorInvalidImage => 'The image is damaged or cannot be read. Try another image.';
+
+  @override
+  String get errorImageTooLarge =>
+      'The image resolution is too high. The maximum is 10,000 pixels per side and 40 megapixels.';
+
+  @override
+  String get errorInvalidPdf => 'The PDF is damaged or cannot be read.';
+
+  @override
+  String get errorPdfEncrypted => 'Password-protected PDFs cannot be sent. Remove the password and send it again.';
+
+  @override
+  String get errorPdfActiveContent =>
+      'The PDF contains scripts, embedded files, or other active content. Save it again as a plain PDF (for example with Print to PDF) and send it again.';
+
+  @override
+  String get errorUploadForbidden => 'You are not allowed to upload files here.';
+
+  @override
+  String get errorTooManyUploads => 'You have reached the upload limit for today. Please try again tomorrow.';
+
+  @override
+  String get errorUploadBusy => 'The upload server is busy. Please try again shortly.';
+
+  @override
+  String get errorStorageUnavailable => 'File uploads are unavailable right now. Please try again later.';
+
+  @override
+  String get errorConsentRequired => 'Accept the latest Terms and Community Guidelines to post content.';
+
+  @override
+  String get consentDeclined => 'Not sent. Accept the latest documents to post; your draft has been kept.';
+
+  @override
+  String get consentTitle => 'Your agreement is needed';
+
+  @override
+  String get consentIntro => 'Before joining the discussion, please read and accept the following documents.';
+
+  @override
+  String consentAgree(String documents) {
+    return 'I have read and agree to $documents.';
+  }
+
+  @override
+  String get consentAccept => 'Agree';
+
+  @override
+  String get consentLater => 'Later';
+
+  @override
+  String get consentRead => 'Read';
+
+  @override
+  String get consentReview => 'Review';
+
+  @override
+  String get consentAccepted => 'Thank you. Your agreement has been saved.';
+
+  @override
+  String consentBannerUpdated(String documents) {
+    return '$documents updated — review and accept.';
+  }
+
+  @override
+  String consentBannerRequired(String documents) {
+    return 'Review and accept $documents to join the discussion.';
+  }
+
+  @override
+  String legalVersion(int version, String date) {
+    return 'Version $version · effective $date';
+  }
+
+  @override
+  String get legalChanges => 'What changed';
+
+  @override
+  String get listAnd => 'and';
+
+  @override
+  String get accountSettingsTitle => 'Privacy & account';
+
+  @override
+  String get accountLegalSection => 'Legal documents';
+
+  @override
+  String get accountDataSection => 'Your data';
+
+  @override
+  String get accountExport => 'Download my data';
+
+  @override
+  String get accountExportHint => 'A copy of your community data in JSON format. Available 3 times a day.';
+
+  @override
+  String get accountExportSaved => 'Your community data has been downloaded.';
+
+  @override
+  String get accountExportLimit => 'Data downloads are limited to 3 per day. Please try again tomorrow.';
+
+  @override
+  String get accountDelete => 'Delete community account';
+
+  @override
+  String get accountDeleteHint => 'Removes your community profile and content. Your trading account is not affected.';
+
+  @override
+  String get accountDeleteTitle => 'Delete your community account?';
+
+  @override
+  String get accountDeleteIntro => 'What happens when you delete your community account:';
+
+  @override
+  String get accountDeleteContent => 'Your posts, comments, and chat messages are removed for everyone.';
+
+  @override
+  String get accountDeleteArchive => 'A copy of the content is archived for the regulator as required by law.';
+
+  @override
+  String get accountDeleteRelations => 'Your followers, the accounts you follow, blocks, and mutes are removed.';
+
+  @override
+  String get accountDeleteSupport =>
+      'Customer service tickets stay on record for compliance, but support chat messages and attachments are deleted too.';
+
+  @override
+  String get accountDeleteTrading => 'Your OLT trading account is not affected.';
+
+  @override
+  String get accountDeleteFresh => 'When you open the community again, a new empty community profile is created.';
+
+  @override
+  String accountDeleteTypeToConfirm(String word) {
+    return 'Type $word to confirm';
+  }
+
+  @override
+  String get accountDeleteWord => 'DELETE';
+
+  @override
+  String get accountDeleteConfirm => 'Delete account';
+
+  @override
+  String get accountDeleteProgress => 'Deleting your community account…';
+
+  @override
+  String get accountDeleted => 'Your community account has been deleted.';
+
+  @override
+  String get errorNewAccountImage => 'New accounts cannot attach images yet. Please try again in a few days.';
+
+  @override
+  String get errorNewAccountLink => 'New accounts cannot share links yet. Please try again in a few days.';
+
+  @override
+  String get errorLinkBlocked => 'This link is not allowed.';
+
+  @override
+  String get errorContactBlocked => 'This content cannot be sent because it breaks the Community Guidelines.';
+
+  @override
+  String errorSlowMode(int seconds) {
+    return 'Slow mode is on. Wait $seconds seconds before sending again.';
+  }
+
+  @override
+  String get errorSlowModeShort => 'Slow mode is on. Wait a moment before sending again.';
+
+  @override
+  String get errorDmNotAllowed => 'This user does not accept direct messages from you.';
+
+  @override
+  String get errorDmRequestLimit =>
+      'Wait until the recipient accepts your message request before sending more messages.';
+
+  @override
+  String get errorSocialDisabled =>
+      'Community features are temporarily unavailable. Customer support chat still works.';
+
+  @override
+  String get errorEditWindowExpired => 'The edit window has passed.';
+
+  @override
+  String get errorPollNotEditable => 'Posts with a poll cannot be edited.';
+
+  @override
+  String get errorImageBlocked => 'This image cannot be uploaded because it breaks the Community Guidelines.';
+
+  @override
+  String get errorImageCheckUnavailable => 'Image checks are unavailable right now. Please try again shortly.';
+
+  @override
+  String get errorAppealExists => 'An appeal for this has already been filed.';
+
+  @override
+  String get errorAppealWindowClosed => 'The appeal window has closed.';
+
+  @override
+  String get errorAppealNotAllowed => 'This decision cannot be appealed.';
+
+  @override
+  String get errorAppealReason => 'The appeal reason must be 10–1000 characters.';
+
+  @override
+  String get errorQueryTooShort => 'The search term is too short.';
+
+  @override
+  String get errorQueryTooLong => 'The search term is too long.';
+
+  @override
+  String get errorShareNotAllowed => 'The post cannot be shared to this chat.';
+
+  @override
+  String get errorRequestNotFound => 'The message request no longer exists.';
+
+  @override
+  String get errorInvalidQuietHours => 'The quiet hours are not valid.';
+
+  @override
+  String get socialUnavailableTitle => 'Community is unavailable';
+
+  @override
+  String get socialUnavailableBody => 'Community features are under maintenance. Customer support chat still works.';
+
+  @override
+  String get featureUnavailable => 'This feature is not available right now.';
+
+  @override
+  String get updateRequiredTitle => 'Update the app';
+
+  @override
+  String get updateRequiredBody =>
+      'This app version is no longer supported by community features. Update the app to continue.';
+
+  @override
+  String get moderationHeld => 'Pending review';
+
+  @override
+  String get moderationHeldHint => 'Only you can see it until a moderator reviews it.';
+
+  @override
+  String get moderationHidden => 'Hidden by a moderator';
+
+  @override
+  String get moderationHiddenHint => 'Other people cannot see this content.';
+
+  @override
+  String get messageRequests => 'Message requests';
+
+  @override
+  String get messageRequestsEmpty => 'No message requests.';
+
+  @override
+  String messageRequestMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count messages', one: '1 message');
+    return '$_temp0';
+  }
+
+  @override
+  String messageRequestIntro(String name) {
+    return 'You don\'t follow $name. Accept to reply, or decline to hide this request.';
+  }
+
+  @override
+  String get messageRequestAccept => 'Accept';
+
+  @override
+  String get messageRequestDecline => 'Decline';
+
+  @override
+  String get messageRequestBlock => 'Block & report';
+
+  @override
+  String messageRequestBlockConfirm(String name) {
+    return 'Block $name and report this request as spam?';
+  }
+
+  @override
+  String get messageRequestAccepted => 'Request accepted.';
+
+  @override
+  String get messageRequestDeclined => 'Request declined.';
+
+  @override
+  String get messageRequestImageHidden => 'Images stay blurred until you accept the request.';
+
+  @override
+  String dmRequestSenderNotice(String name, int max) {
+    return 'If $name doesn\'t follow you, your messages arrive as a message request. You can send up to $max messages until it is accepted.';
+  }
+
+  @override
+  String dmRequestLimitNotice(String name, int max) {
+    return 'You have sent $max messages. Wait for $name to accept your message request.';
+  }
+
+  @override
+  String get accountMessagesSection => 'Direct messages';
+
+  @override
+  String get dmPolicyTitle => 'Who can send you direct messages';
+
+  @override
+  String get dmPolicyEveryone => 'Everyone';
+
+  @override
+  String get dmPolicyEveryoneHint => 'People you don\'t follow arrive in Message requests.';
+
+  @override
+  String get dmPolicyFollowing => 'Only people I follow';
+
+  @override
+  String get dmPolicyNone => 'No one';
+
+  @override
+  String get dmPolicyNoneHint => 'Existing conversations keep working.';
+
+  @override
+  String get dmPolicySaved => 'Message settings saved.';
+
+  @override
+  String get appealAction => 'Appeal';
+
+  @override
+  String get appealTitle => 'File an appeal';
+
+  @override
+  String get appealHint => 'Explain why you think this decision is wrong (10–1000 characters).';
+
+  @override
+  String get appealSubmit => 'Send appeal';
+
+  @override
+  String get appealSent => 'Appeal sent. We\'ll let you know the outcome.';
+
+  @override
+  String get myAppeals => 'My appeals';
+
+  @override
+  String get myAppealsEmpty => 'No appeals yet.';
+
+  @override
+  String get appealStatusPending => 'Under review';
+
+  @override
+  String get appealStatusAccepted => 'Accepted';
+
+  @override
+  String get appealStatusRejected => 'Rejected';
+
+  @override
+  String get appealTargetSanction => 'Account sanction';
+
+  @override
+  String get appealTargetPost => 'Post';
+
+  @override
+  String get appealTargetComment => 'Comment';
+
+  @override
+  String get appealTargetMessage => 'Message';
+
+  @override
+  String appealDecisionNote(String note) {
+    return 'Note: $note';
+  }
+
+  @override
+  String get activeSanctions => 'Active sanctions';
+
+  @override
+  String get noActiveSanctions => 'No active sanctions.';
+
+  @override
+  String get sanctionWarning => 'Warning';
+
+  @override
+  String get sanctionMute => 'Posting restricted';
+
+  @override
+  String get sanctionBan => 'Account banned';
+
+  @override
+  String sanctionUntil(String date) {
+    return 'Until $date';
+  }
+
+  @override
+  String get sanctionPermanent => 'No end date';
+
+  @override
+  String get accountAppealsSection => 'Appeals & sanctions';
+
+  @override
+  String get accountAppealsHint => 'See active sanctions and your appeal status.';
+
+  @override
+  String get notifAppealAccepted => 'Your appeal was accepted';
+
+  @override
+  String get notifAppealRejected => 'Your appeal was rejected';
+
+  @override
+  String get notificationSettings => 'Notifications';
+
+  @override
+  String get notificationSettingsHint => 'Choose in-app and push notifications per type, plus quiet hours.';
+
+  @override
+  String get notifTypeReply => 'Replies';
+
+  @override
+  String get notifTypeMention => 'Mentions';
+
+  @override
+  String get notifTypeLike => 'Likes';
+
+  @override
+  String get notifTypeFollow => 'New followers';
+
+  @override
+  String get notifTypeMessage => 'Chat messages';
+
+  @override
+  String get notifTypeAnnouncement => 'Announcements';
+
+  @override
+  String get notifTypeAppeal => 'Appeals';
+
+  @override
+  String get notifTypeTrade => 'OLT trades';
+
+  @override
+  String get notifInApp => 'In app';
+
+  @override
+  String get notifPush => 'Push';
+
+  @override
+  String get notifSupportAlwaysOn => 'Messages from official support are always delivered.';
+
+  @override
+  String get quietHours => 'Quiet hours';
+
+  @override
+  String get quietHoursHint => 'Push is delayed during quiet hours (WIB). In-app notifications still arrive.';
+
+  @override
+  String get quietHoursStart => 'Start';
+
+  @override
+  String get quietHoursEnd => 'End';
+
+  @override
+  String quietHoursRange(String start, String end) {
+    return '$start–$end WIB';
+  }
+
+  @override
+  String notifFollowMany(String name, int others) {
+    return '$name and $others others started following you';
+  }
+
+  @override
+  String get searchTitle => 'Search';
+
+  @override
+  String get searchHint => 'Search posts, users, \$CODE, #hashtag';
+
+  @override
+  String get searchTabAll => 'All';
+
+  @override
+  String get searchTabPosts => 'Posts';
+
+  @override
+  String get searchTabUsers => 'Users';
+
+  @override
+  String get searchTabStocks => 'Stocks';
+
+  @override
+  String get searchTabHashtags => 'Hashtags';
+
+  @override
+  String searchMinLength(int min) {
+    return 'Type at least $min characters.';
+  }
+
+  @override
+  String searchNoResults(String query) {
+    return 'No results for \"$query\".';
+  }
+
+  @override
+  String get searchSeeAll => 'See all';
+
+  @override
+  String postsLast7Days(int count) {
+    return '$count posts (7 days)';
+  }
+
+  @override
+  String get trendingHashtags => 'Trending hashtags';
+
+  @override
+  String hashtagFeedEmpty(String tag) {
+    return 'No posts with #$tag yet.';
+  }
+
+  @override
+  String get trendingTitle => 'Trending';
+
+  @override
+  String get trendingStocks => 'Stocks';
+
+  @override
+  String get trendingRising => 'Rising';
+
+  @override
+  String get trendingPosts => 'Popular';
+
+  @override
+  String get trendingWindowDay => '24 hours';
+
+  @override
+  String get trendingWindowWeek => '7 days';
+
+  @override
+  String get trendingEmpty => 'No trending data yet.';
+
+  @override
+  String trendingPostCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count posts', one: '1 post');
+    return '$_temp0';
+  }
+
+  @override
+  String trendingGrowth(String percent) {
+    return '+$percent%';
+  }
+
+  @override
+  String get sentimentTitle => 'Community sentiment';
+
+  @override
+  String get sentimentNoData => 'No posts with a sentiment label yet.';
+
+  @override
+  String sentimentBasedOn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'From $count posts', one: 'From 1 post');
+    return '$_temp0';
+  }
+
+  @override
+  String get editAction => 'Edit';
+
+  @override
+  String get editPostTitle => 'Edit post';
+
+  @override
+  String get editCommentTitle => 'Edit comment';
+
+  @override
+  String get editSaved => 'Changes saved.';
+
+  @override
+  String get bookmarkAdd => 'Save';
+
+  @override
+  String get bookmarkRemove => 'Remove from saved';
+
+  @override
+  String get bookmarksTitle => 'Saved';
+
+  @override
+  String get bookmarksEmpty => 'No saved posts yet.';
+
+  @override
+  String get bookmarkAdded => 'Post saved.';
+
+  @override
+  String get bookmarkRemoved => 'Removed from saved.';
+
+  @override
+  String get reactionAdd => 'React';
+
+  @override
+  String get shareToChat => 'Send to chat';
+
+  @override
+  String get sharePickRoom => 'Send to…';
+
+  @override
+  String get shareMessageHint => 'Add a message (optional)';
+
+  @override
+  String get shareSent => 'Post sent to the chat.';
+
+  @override
+  String get shareNoRooms => 'No chats yet. Start a conversation first.';
+
+  @override
+  String get sharedPostUnavailable => 'Post unavailable';
+
+  @override
+  String get sharedPostLabel => 'Post';
+
+  @override
+  String get linkOpenTitle => 'Open link?';
+
+  @override
+  String linkOpenBody(String domain) {
+    return 'You are about to open $domain outside the app. Make sure you trust this site.';
+  }
+
+  @override
+  String get linkOpenAction => 'Open';
+
+  @override
+  String get linkOpenFailed => 'The link could not be opened.';
+
+  @override
+  String get botLabel => 'Bot';
+
+  @override
+  String slowModeBanner(int seconds) {
+    return 'Slow mode: 1 message every $seconds seconds';
+  }
+
+  @override
+  String slowModeWait(int seconds) {
+    return 'Wait ${seconds}s';
+  }
+
+  @override
+  String get pinnedMessageLabel => 'Pinned message';
+
+  @override
+  String dmRequestPendingSender(String name, int sent, int max) {
+    return 'Your messages are still a request ($sent/$max). $name needs to accept it before you can send more.';
+  }
+
+  @override
+  String dmRequestPendingRecipient(String name) {
+    return '$name sent you a message request. Accept it to reply.';
+  }
+
+  @override
+  String get moderatedContent => 'Moderated content';
+
+  @override
+  String get moderatedContentEmpty => 'None of your content was moderated in the last 90 days.';
+
+  @override
+  String get moderationRemoved => 'Removed by a moderator';
 }

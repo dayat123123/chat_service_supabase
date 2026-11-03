@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AppNotification {
 
- String get id; NotificationType get type; UserSummary? get actor; Map<String, Object?> get payload; int get eventCount; DateTime? get readAt; DateTime get createdAt; String get cursor;
+ String get id; NotificationType get type; UserSummary? get actor; Map<String, Object?> get payload; int get eventCount; DateTime? get readAt; DateTime get createdAt; String get cursor; int get actorCount; List<UserSummary> get actors;
 /// Create a copy of AppNotification
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AppNotificationCopyWith<AppNotification> get copyWith => _$AppNotificationCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppNotification&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actor, actor) || other.actor == actor)&&const DeepCollectionEquality().equals(other.payload, payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AppNotification&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actor, actor) || other.actor == actor)&&const DeepCollectionEquality().equals(other.payload, payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.actorCount, actorCount) || other.actorCount == actorCount)&&const DeepCollectionEquality().equals(other.actors, actors));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,type,actor,const DeepCollectionEquality().hash(payload),eventCount,readAt,createdAt,cursor);
+int get hashCode => Object.hash(runtimeType,id,type,actor,const DeepCollectionEquality().hash(payload),eventCount,readAt,createdAt,cursor,actorCount,const DeepCollectionEquality().hash(actors));
 
 @override
 String toString() {
-  return 'AppNotification(id: $id, type: $type, actor: $actor, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'AppNotification(id: $id, type: $type, actor: $actor, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor, actorCount: $actorCount, actors: $actors)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AppNotificationCopyWith<$Res>  {
   factory $AppNotificationCopyWith(AppNotification value, $Res Function(AppNotification) _then) = _$AppNotificationCopyWithImpl;
 @useResult
 $Res call({
- String id, NotificationType type, UserSummary? actor, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor
+ String id, NotificationType type, UserSummary? actor, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor, int actorCount, List<UserSummary> actors
 });
 
 
@@ -62,7 +62,7 @@ class _$AppNotificationCopyWithImpl<$Res>
 
 /// Create a copy of AppNotification
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? actor = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? actor = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,Object? actorCount = null,Object? actors = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -72,7 +72,9 @@ as Map<String, Object?>,eventCount: null == eventCount ? _self.eventCount : even
 as int,readAt: freezed == readAt ? _self.readAt : readAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,actorCount: null == actorCount ? _self.actorCount : actorCount // ignore: cast_nullable_to_non_nullable
+as int,actors: null == actors ? _self.actors : actors // ignore: cast_nullable_to_non_nullable
+as List<UserSummary>,
   ));
 }
 /// Create a copy of AppNotification
@@ -169,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  NotificationType type,  UserSummary? actor,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  NotificationType type,  UserSummary? actor,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor,  int actorCount,  List<UserSummary> actors)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _AppNotification() when $default != null:
-return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor,_that.actorCount,_that.actors);case _:
   return orElse();
 
 }
@@ -190,10 +192,10 @@ return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  NotificationType type,  UserSummary? actor,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  NotificationType type,  UserSummary? actor,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor,  int actorCount,  List<UserSummary> actors)  $default,) {final _that = this;
 switch (_that) {
 case _AppNotification():
-return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor,_that.actorCount,_that.actors);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -210,10 +212,10 @@ return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  NotificationType type,  UserSummary? actor,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  NotificationType type,  UserSummary? actor,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor,  int actorCount,  List<UserSummary> actors)?  $default,) {final _that = this;
 switch (_that) {
 case _AppNotification() when $default != null:
-return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor,_that.actorCount,_that.actors);case _:
   return null;
 
 }
@@ -225,7 +227,7 @@ return $default(_that.id,_that.type,_that.actor,_that.payload,_that.eventCount,_
 
 
 class _AppNotification extends AppNotification {
-  const _AppNotification({required this.id, required this.type, this.actor, final  Map<String, Object?> payload = const <String, Object?>{}, this.eventCount = 1, this.readAt, required this.createdAt, required this.cursor}): _payload = payload,super._();
+  const _AppNotification({required this.id, required this.type, this.actor, final  Map<String, Object?> payload = const <String, Object?>{}, this.eventCount = 1, this.readAt, required this.createdAt, required this.cursor, this.actorCount = 1, final  List<UserSummary> actors = const <UserSummary>[]}): _payload = payload,_actors = actors,super._();
   
 
 @override final  String id;
@@ -242,6 +244,14 @@ class _AppNotification extends AppNotification {
 @override final  DateTime? readAt;
 @override final  DateTime createdAt;
 @override final  String cursor;
+@override@JsonKey() final  int actorCount;
+ final  List<UserSummary> _actors;
+@override@JsonKey() List<UserSummary> get actors {
+  if (_actors is EqualUnmodifiableListView) return _actors;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_actors);
+}
+
 
 /// Create a copy of AppNotification
 /// with the given fields replaced by the non-null parameter values.
@@ -253,16 +263,16 @@ _$AppNotificationCopyWith<_AppNotification> get copyWith => __$AppNotificationCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppNotification&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actor, actor) || other.actor == actor)&&const DeepCollectionEquality().equals(other._payload, _payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AppNotification&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actor, actor) || other.actor == actor)&&const DeepCollectionEquality().equals(other._payload, _payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.actorCount, actorCount) || other.actorCount == actorCount)&&const DeepCollectionEquality().equals(other._actors, _actors));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,type,actor,const DeepCollectionEquality().hash(_payload),eventCount,readAt,createdAt,cursor);
+int get hashCode => Object.hash(runtimeType,id,type,actor,const DeepCollectionEquality().hash(_payload),eventCount,readAt,createdAt,cursor,actorCount,const DeepCollectionEquality().hash(_actors));
 
 @override
 String toString() {
-  return 'AppNotification(id: $id, type: $type, actor: $actor, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'AppNotification(id: $id, type: $type, actor: $actor, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor, actorCount: $actorCount, actors: $actors)';
 }
 
 
@@ -273,7 +283,7 @@ abstract mixin class _$AppNotificationCopyWith<$Res> implements $AppNotification
   factory _$AppNotificationCopyWith(_AppNotification value, $Res Function(_AppNotification) _then) = __$AppNotificationCopyWithImpl;
 @override @useResult
 $Res call({
- String id, NotificationType type, UserSummary? actor, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor
+ String id, NotificationType type, UserSummary? actor, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor, int actorCount, List<UserSummary> actors
 });
 
 
@@ -290,7 +300,7 @@ class __$AppNotificationCopyWithImpl<$Res>
 
 /// Create a copy of AppNotification
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? actor = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? actor = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,Object? actorCount = null,Object? actors = null,}) {
   return _then(_AppNotification(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -300,7 +310,9 @@ as Map<String, Object?>,eventCount: null == eventCount ? _self.eventCount : even
 as int,readAt: freezed == readAt ? _self.readAt : readAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,actorCount: null == actorCount ? _self.actorCount : actorCount // ignore: cast_nullable_to_non_nullable
+as int,actors: null == actors ? _self._actors : actors // ignore: cast_nullable_to_non_nullable
+as List<UserSummary>,
   ));
 }
 

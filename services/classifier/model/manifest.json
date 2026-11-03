@@ -1,0 +1,15 @@
+{
+  "id": "mobilenetv4-conv-small-nsfw@504317a",
+  "file": "model.onnx",
+  "sha256": "46995c000cb285d0c0a0e5b58cc618012ed2e649d326d4fddae910951848fc40",
+  "input": "input",
+  "output": "output",
+  "shape": [3, 224, 224],
+  "crop_pct": 0.875,
+  "mean": [0, 0, 0],
+  "std": [1, 1, 1],
+  "activation": "softmax",
+  "labels": ["drawings", "hentai", "neutral", "porn", "sexy"],
+  "source": "https://huggingface.co/taufiqdp/mobilenetv4_conv_small.e2400_r224_in1k_nsfw_classifier/tree/504317ad62086f357c9c5f70cf983726ff47efdb",
+  "license": "Apache-2.0"
+}

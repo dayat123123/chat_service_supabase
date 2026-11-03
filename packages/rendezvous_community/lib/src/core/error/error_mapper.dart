@@ -14,8 +14,13 @@ CommunityException mapError(Object error) {
     final code = error.code ?? '';
     final detail = error.details?.toString();
     final stable = code.startsWith('PT') ? error.message : code;
-    CommunityException build(CommunityErrorKind kind) =>
-        CommunityException(kind, code: stable, message: detail ?? error.message, cause: error);
+    CommunityException build(CommunityErrorKind kind) => CommunityException(
+      kind,
+      code: stable,
+      message: detail ?? error.message,
+      cause: error,
+      retryAfter: kind == CommunityErrorKind.rateLimited ? parseRetryAfter(detail) : null,
+    );
 
     if (code == 'PT429') return build(CommunityErrorKind.rateLimited);
     if (code == 'PT422') return build(CommunityErrorKind.contentBlocked);
@@ -27,7 +32,7 @@ CommunityException mapError(Object error) {
     if (code.startsWith('PT4') || code == '23514' || code == '23505' || code == '22P02' || code == '23503') {
       return build(CommunityErrorKind.invalidInput);
     }
-    if (code == 'PGRST000' || code == 'PGRST001' || code == 'PGRST002' || code == '503') {
+    if (code == 'PGRST000' || code == 'PGRST001' || code == 'PGRST002' || code == '503' || code == 'PT503') {
       return build(CommunityErrorKind.unavailable);
     }
     return build(CommunityErrorKind.unknown);
@@ -56,4 +61,27 @@ CommunityException mapError(Object error) {
   }
 
   return CommunityException(CommunityErrorKind.unknown, message: error.toString(), cause: error);
+}
+
+Duration? parseRetryAfter(String? value) {
+  final seconds = int.tryParse(value?.trim() ?? '');
+  return seconds == null || seconds < 0 ? null : Duration(seconds: seconds);
+}
+
+CommunityException mapMediaError(int status, {String? code, String? message, String? retryAfter}) {
+  final kind = switch (status) {
+    401 => CommunityErrorKind.unauthenticated,
+    403 => CommunityErrorKind.forbidden,
+    404 => code == null ? CommunityErrorKind.unavailable : CommunityErrorKind.notFound,
+    429 => CommunityErrorKind.rateLimited,
+    400 || 409 || 413 || 415 || 422 => CommunityErrorKind.invalidInput,
+    502 || 503 || 504 => CommunityErrorKind.unavailable,
+    _ => CommunityErrorKind.unknown,
+  };
+  return CommunityException(
+    kind,
+    code: code ?? (status == 404 ? 'media_unavailable' : null),
+    message: message ?? 'Media gateway returned status $status',
+    retryAfter: parseRetryAfter(retryAfter),
+  );
 }

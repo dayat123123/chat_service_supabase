@@ -525,6 +525,48 @@ services:
             - admin
             - anon
 
+  ## Upload media nasabah: /media/v1/* -> layanan media (cek isi file, buang EXIF/GPS, lalu ke Storage)
+  - name: media-v1
+    _comment: 'Media: /media/v1/* -> http://media:8080/*'
+    url: http://media:8080/
+    routes:
+      - name: media-v1-all
+        strip_path: true
+        paths:
+          - /media/v1/
+    plugins:
+      - name: cors
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
+  ## Gateway integrasi OLT: /integration/v1/* -> layanan integration (API key integrasi di header
+  ## Authorization diverifikasi layanan itu; apikey anon tetap wajib di Kong).
+  - name: integration-v1
+    _comment: 'Integrasi OLT: /integration/v1/* -> http://integration:8080/*'
+    url: http://integration:8080/
+    routes:
+      - name: integration-v1-all
+        strip_path: true
+        paths:
+          - /integration/v1/
+    plugins:
+      - name: key-auth
+        config:
+          hide_credentials: true
+      - name: acl
+        config:
+          hide_groups_header: true
+          allow:
+            - admin
+            - anon
+
   ## Protected Dashboard - catch all remaining routes
   - name: dashboard
     _comment: 'Studio: /* -> http://studio:3000/*'

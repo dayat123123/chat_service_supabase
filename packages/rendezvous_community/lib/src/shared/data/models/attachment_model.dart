@@ -4,6 +4,20 @@ import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart'
 part 'attachment_model.freezed.dart';
 part 'attachment_model.g.dart';
 
+List<AttachmentModel> attachmentsFromJson(Object? value) => [
+  if (value is List)
+    for (final item in value)
+      if (item is Map && item['path'] is String) AttachmentModel.fromJson(Map<String, dynamic>.from(item)),
+];
+
+String? sharedPostIdFromJson(Object? value) {
+  if (value is! List) return null;
+  for (final item in value) {
+    if (item is Map && item['type'] == 'post' && item['post_id'] is String) return item['post_id'] as String;
+  }
+  return null;
+}
+
 @freezed
 abstract class AttachmentModel with _$AttachmentModel {
   const factory AttachmentModel({

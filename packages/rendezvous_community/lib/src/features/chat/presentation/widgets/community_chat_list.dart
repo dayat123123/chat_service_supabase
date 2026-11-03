@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
@@ -8,6 +9,9 @@ import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_l
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/community_chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/new_group_dialog.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_tile.dart';
+import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
+import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
+import 'package:rendezvous_community/src/features/message_requests/presentation/widgets/community_message_requests.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/community_support_chat.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -119,6 +123,8 @@ class _ChatListLayoutState extends State<_ChatListLayout> {
   }
 }
 
+final _defaultConfig = ValueNotifier(const ClientConfig());
+
 class _RoomList extends StatefulWidget {
   const _RoomList({required this.selectedRoomId, required this.onOpen});
 
@@ -131,6 +137,12 @@ class _RoomList extends StatefulWidget {
 
 class _RoomListState extends State<_RoomList> {
   final _scroll = ScrollController();
+  int _requestsToken = 0;
+
+  Future<void> _refresh(ChatListCubit cubit) async {
+    setState(() => _requestsToken++);
+    await cubit.refresh();
+  }
 
   @override
   void initState() {
@@ -158,78 +170,96 @@ class _RoomListState extends State<_RoomList> {
 
   @override
   Widget build(BuildContext context) {
+    final features = context.communityFeatures;
+    return ValueListenableBuilder<ClientConfig>(
+      valueListenable: features?.configService.listenable ?? _defaultConfig,
+      builder: (context, config, _) => BlocBuilder<ChatListCubit, ChatListState>(
+        builder: (context, state) => _build(context, state, social: config.socialEnabled),
+      ),
+    );
+  }
+
+  Widget _build(BuildContext context, ChatListState state, {required bool social}) {
+    final features = context.communityFeatures;
     final l10n = context.communityL10n;
     final builders = CommunityChatBuilders.of(context);
-    return BlocBuilder<ChatListCubit, ChatListState>(
-      builder: (context, state) {
-        final cubit = context.read<ChatListCubit>();
-        final Widget body = switch (state.status) {
-          LoadStatus.initial || LoadStatus.loading => buildChatPart(
-            builders.loading,
-            context,
-            const CommunityLoadingDetails(CommunityChatLoad.rooms),
-            const CommunitySkeleton(itemCount: 6),
-          ),
-          LoadStatus.failure => buildChatPart(
-            builders.error,
-            context,
-            CommunityErrorDetails(error: state.error!, message: l10n.errorMessage(state.error!), onRetry: cubit.load),
-            CommunityErrorView(error: state.error!, onRetry: cubit.load),
-          ),
-          LoadStatus.ready when state.rooms.isEmpty => buildChatPart(
-            builders.empty,
-            context,
-            CommunityEmptyDetails(kind: CommunityChatEmpty.rooms, message: l10n.noChats),
-            CommunityEmptyView(message: l10n.noChats, icon: Icons.chat_bubble_outline),
-          ),
-          LoadStatus.ready => RefreshIndicator(
-            onRefresh: cubit.refresh,
-            child: ListView.builder(
-              controller: _scroll,
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: state.rooms.length + (state.loadingMore ? 1 : 0),
-              itemBuilder: (context, i) {
-                if (i == state.rooms.length) {
-                  return buildChatPart(
-                    builders.loading,
-                    context,
-                    const CommunityLoadingDetails(CommunityChatLoad.moreRooms),
-                    const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
-                  );
-                }
-                final room = state.rooms[i];
-                return RoomTile(
-                  room: room,
-                  me: state.me,
-                  online: state.isOnline(room),
-                  typing: state.typingIn(room.id),
-                  selected: room.id == widget.selectedRoomId,
-                  onTap: () => widget.onOpen(room),
-                );
-              },
-            ),
-          ),
-        };
-        if (state.status == LoadStatus.ready && state.rooms.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) _loadMoreNearEnd();
-          });
-        }
-        final header = CommunityChatListHeaderDetails(
-          title: l10n.chats,
-          onNewGroup: () => _newGroup(context, cubit),
-          onRefresh: cubit.refresh,
-        );
-        return Column(
-          children: [
-            buildChatPart(builders.listHeader, context, header, _DefaultListHeader(details: header)),
-            Expanded(child: body),
-          ],
-        );
-      },
+    final cubit = context.read<ChatListCubit>();
+    final rooms = social
+        ? state.rooms
+        : [
+            for (final r in state.rooms)
+              if (r.type == RoomType.support) r,
+          ];
+    final Widget body = switch (state.status) {
+      LoadStatus.initial || LoadStatus.loading => buildChatPart(
+        builders.loading,
+        context,
+        const CommunityLoadingDetails(CommunityChatLoad.rooms),
+        const CommunitySkeleton(itemCount: 6),
+      ),
+      LoadStatus.failure => buildChatPart(
+        builders.error,
+        context,
+        CommunityErrorDetails(error: state.error!, message: l10n.errorMessage(state.error!), onRetry: cubit.load),
+        CommunityErrorView(error: state.error!, onRetry: cubit.load),
+      ),
+      LoadStatus.ready when rooms.isEmpty && !social => const CommunityUnavailableView(),
+      LoadStatus.ready when rooms.isEmpty => buildChatPart(
+        builders.empty,
+        context,
+        CommunityEmptyDetails(kind: CommunityChatEmpty.rooms, message: l10n.noChats),
+        CommunityEmptyView(message: l10n.noChats, icon: Icons.chat_bubble_outline),
+      ),
+      LoadStatus.ready => RefreshIndicator(
+        onRefresh: () => _refresh(cubit),
+        child: ListView.builder(
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          itemCount: rooms.length + (state.loadingMore && social ? 1 : 0) + (social ? 0 : 1),
+          itemBuilder: (context, i) {
+            if (!social && i == rooms.length) {
+              return const SizedBox(height: 280, child: CommunityUnavailableView());
+            }
+            if (i == rooms.length) {
+              return buildChatPart(
+                builders.loading,
+                context,
+                const CommunityLoadingDetails(CommunityChatLoad.moreRooms),
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+              );
+            }
+            final room = rooms[i];
+            return RoomTile(
+              room: room,
+              me: state.me,
+              online: state.isOnline(room),
+              typing: state.typingIn(room.id),
+              selected: room.id == widget.selectedRoomId,
+              onTap: () => widget.onOpen(room),
+            );
+          },
+        ),
+      ),
+    };
+    if (social && state.status == LoadStatus.ready && state.rooms.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadMoreNearEnd();
+      });
+    }
+    final header = CommunityChatListHeaderDetails(
+      title: l10n.chats,
+      onNewGroup: () => _newGroup(context, cubit),
+      onRefresh: () => _refresh(cubit),
+    );
+    return Column(
+      children: [
+        buildChatPart(builders.listHeader, context, header, _DefaultListHeader(details: header)),
+        if (social && features != null) MessageRequestsEntry(refreshToken: _requestsToken),
+        Expanded(child: body),
+      ],
     );
   }
 }

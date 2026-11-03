@@ -9,23 +9,28 @@ import { cn } from '@/lib/utils'
 
 import { useCommunityOverview } from '../hooks'
 import { communityTabsFor } from '../logic'
-import type { CommunityTab } from '../types'
+import type { CommunityTab, ModerationQueue } from '../types'
 import { AccountsTab } from './accounts-tab'
 import { CampaignsTab } from './campaigns-tab'
 import { ModerationTab } from './moderation-tab'
+import { RoomsTab } from './rooms-tab'
 import { StreamTab } from './stream-tab'
 
 export function CommunityPage() {
   const { t } = useTranslation()
   const agent = useAgent()
   const navigate = useNavigate()
-  const search: { tab?: CommunityTab } = useSearch({ strict: false })
+  const search: { tab?: CommunityTab; queue?: ModerationQueue; stock?: string } = useSearch({ strict: false })
   const overview = useCommunityOverview()
   const tabs = communityTabsFor(agent.community_permissions)
   const tab = search.tab && tabs.includes(search.tab) ? search.tab : tabs[0]
   const data = overview.data
 
   if (!tab) return <EmptyState className="h-full" title={t('community.noAccess')} />
+
+  const openQueue = (queue: ModerationQueue) =>
+    void navigate({ to: '/community', search: { tab: 'moderation', queue } })
+  const openRoom = (stock: string) => void navigate({ to: '/community', search: { tab: 'rooms', stock } })
 
   return (
     <div className="h-full overflow-y-auto">
@@ -86,7 +91,21 @@ export function CommunityPage() {
         <div role="tabpanel" id={`community-panel-${tab}`} aria-labelledby={`community-tab-${tab}`}>
           {tab === 'stream' ? <StreamTab /> : null}
           {tab === 'notifications' ? <CampaignsTab /> : null}
-          {tab === 'moderation' ? <ModerationTab /> : null}
+          {tab === 'moderation' ? (
+            <ModerationTab
+              queue={search.queue}
+              onQueue={openQueue}
+              onOpenRoom={tabs.includes('rooms') ? openRoom : undefined}
+            />
+          ) : null}
+          {tab === 'rooms' ? (
+            <RoomsTab
+              key={search.stock ?? 'none'}
+              stock={search.stock}
+              onStock={openRoom}
+              onOpenAlerts={() => openQueue('alerts')}
+            />
+          ) : null}
           {tab === 'accounts' ? <AccountsTab /> : null}
         </div>
       </div>

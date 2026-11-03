@@ -4,11 +4,12 @@ import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_official_badge.dart';
 
 class CommunityUserName extends StatelessWidget {
-  const CommunityUserName({super.key, required this.user, this.showUsername = true, this.style});
+  const CommunityUserName({super.key, required this.user, this.showUsername = true, this.style, this.official = false});
 
   final UserSummary user;
   final bool showUsername;
   final TextStyle? style;
+  final bool official;
 
   static final _none = ValueNotifier<Set<String>>(const <String>{});
 
@@ -17,7 +18,7 @@ class CommunityUserName extends StatelessWidget {
     final official = CommunityOfficialScope.maybeOf(context)?..ensureLoaded();
     return ValueListenableBuilder<Set<String>>(
       valueListenable: official ?? _none,
-      builder: (context, ids, _) => _name(context, ids.contains(user.id)),
+      builder: (context, ids, _) => _name(context, this.official || ids.contains(user.id)),
     );
   }
 

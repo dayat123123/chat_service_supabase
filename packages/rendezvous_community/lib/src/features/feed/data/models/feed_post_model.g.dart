@@ -15,11 +15,7 @@ _FeedPostModel _$FeedPostModelFromJson(Map<String, dynamic> json) => _FeedPostMo
   authorIsVerified: json['author_is_verified'] as bool? ?? false,
   body: json['body'] as String,
   sentiment: json['sentiment'] as String?,
-  attachments:
-      (json['attachments'] as List<dynamic>?)
-          ?.map((e) => AttachmentModel.fromJson(e as Map<String, dynamic>))
-          .toList() ??
-      const <AttachmentModel>[],
+  attachments: json['attachments'] == null ? const <AttachmentModel>[] : attachmentsFromJson(json['attachments']),
   likeCount: (json['like_count'] as num?)?.toInt() ?? 0,
   commentCount: (json['comment_count'] as num?)?.toInt() ?? 0,
   stockCodes: (json['stock_codes'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const <String>[],
@@ -27,7 +23,12 @@ _FeedPostModel _$FeedPostModelFromJson(Map<String, dynamic> json) => _FeedPostMo
   poll: json['poll'] == null ? null : PollModel.fromJson(json['poll'] as Map<String, dynamic>),
   editedAt: json['edited_at'] == null ? null : DateTime.parse(json['edited_at'] as String),
   createdAt: DateTime.parse(json['created_at'] as String),
-  cursor: json['cursor'] as String,
+  cursor: json['cursor'] as String? ?? '',
+  isBookmarked: json['is_bookmarked'] as bool?,
+  hashtags: (json['hashtags'] as List<dynamic>?)?.map((e) => e as String).toList(),
+  isBot: json['is_bot'] as bool?,
+  authorIsOfficial: json['author_is_official'] as bool?,
+  moderationStatus: json['moderation_status'] as String?,
 );
 
 Map<String, dynamic> _$FeedPostModelToJson(_FeedPostModel instance) => <String, dynamic>{
@@ -48,6 +49,11 @@ Map<String, dynamic> _$FeedPostModelToJson(_FeedPostModel instance) => <String, 
   'edited_at': instance.editedAt?.toIso8601String(),
   'created_at': instance.createdAt.toIso8601String(),
   'cursor': instance.cursor,
+  'is_bookmarked': instance.isBookmarked,
+  'hashtags': instance.hashtags,
+  'is_bot': instance.isBot,
+  'author_is_official': instance.authorIsOfficial,
+  'moderation_status': instance.moderationStatus,
 };
 
 _PostRowModel _$PostRowModelFromJson(Map<String, dynamic> json) => _PostRowModel(

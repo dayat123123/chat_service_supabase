@@ -139,12 +139,16 @@ func toUserJSON(u *users.User) userJSON {
 	return userJSON{ID: u.ID, Username: u.Username, Email: u.Email, FullName: u.FullName}
 }
 
-func socialIdentity(u userJSON) social.Identity {
-	return social.Identity{ID: fmt.Sprint(u.ID), Username: u.Username, Name: u.FullName, Email: u.Email}
+func (s *Server) socialIdentity(u userJSON) social.Identity {
+	id := social.Identity{ID: fmt.Sprint(u.ID), Username: u.Username, Name: u.FullName, Email: u.Email}
+	if known, ok := s.users.Find(id.ID); ok && strconv.FormatInt(known.ID, 10) == id.ID {
+		id.Accounts = append([]string{}, known.Accounts...)
+	}
+	return id
 }
 
 func (s *Server) withSocialToken(login *loginData) (*loginData, *apiError) {
-	token, exp, err := s.social.Sign(socialIdentity(login.User), s.cfg.SocialTTL)
+	token, exp, err := s.social.Sign(s.socialIdentity(login.User), s.cfg.SocialTTL)
 	if err != nil {
 		return nil, &apiError{CodeBadRequest, "gagal membuat token sosial"}
 	}
@@ -158,7 +162,7 @@ func (s *Server) socialToken(sessionToken string) (*socialTokenData, *apiError) 
 	if e != nil {
 		return nil, e
 	}
-	token, exp, err := s.social.Sign(socialIdentity(login.User), s.cfg.SocialTTL)
+	token, exp, err := s.social.Sign(s.socialIdentity(login.User), s.cfg.SocialTTL)
 	if err != nil {
 		return nil, &apiError{CodeBadRequest, "gagal membuat token sosial"}
 	}
@@ -405,10 +409,11 @@ func (s *Server) handleHTTPLogout(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		User     string `json:"user"`
-		TTL      string `json:"ttl"`
-		Kind     string `json:"kind"`
-		Audience string `json:"audience"`
+		User     string          `json:"user"`
+		TTL      string          `json:"ttl"`
+		Kind     string          `json:"kind"`
+		Audience string          `json:"audience"`
+		Accounts json.RawMessage `json:"accounts"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body harus JSON"}})
@@ -436,7 +441,17 @@ func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 		if audience == "" {
 			audience = s.cfg.SocialAudience
 		}
-		token, exp, err := s.social.SignFor(socialIdentity(toUserJSON(u)), ttl, audience)
+		identity := s.socialIdentity(toUserJSON(u))
+		if len(body.Accounts) > 0 {
+			identity.Accounts = nil
+			if string(body.Accounts) != "null" {
+				if err := json.Unmarshal(body.Accounts, &identity.Accounts); err != nil || identity.Accounts == nil {
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "accounts harus array string atau null"}})
+					return
+				}
+			}
+		}
+		token, exp, err := s.social.SignFor(identity, ttl, audience)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": apiError{CodeBadRequest, err.Error()}})
 			return
@@ -457,10 +472,11 @@ func (s *Server) handleUsers(w http.ResponseWriter, _ *http.Request) {
 		userJSON
 		Status    users.Status `json:"status"`
 		SlowLogin bool         `json:"slow_login"`
+		Accounts  []string     `json:"accounts"`
 	}
 	var rows []row
 	for _, u := range s.users.All() {
-		rows = append(rows, row{userJSON: toUserJSON(&u), Status: u.Status, SlowLogin: u.SlowLogin})
+		rows = append(rows, row{userJSON: toUserJSON(&u), Status: u.Status, SlowLogin: u.SlowLogin, Accounts: u.Accounts})
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"password": users.DefaultPassword, "users": rows})
 }

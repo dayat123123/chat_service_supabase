@@ -110,12 +110,15 @@ abstract final class CommunityLoggers {
   static const rootName = 'RendezvousCommunity';
 
   static final Logger root = Logger(rootName);
+  static final Logger account = Logger('$rootName.Account');
   static final Logger auth = Logger('$rootName.Auth');
   static final Logger chat = Logger('$rootName.Chat');
   static final Logger feed = Logger('$rootName.Feed');
   static final Logger realtime = Logger('$rootName.Realtime');
   static final Logger support = Logger('$rootName.Support');
   static final Logger push = Logger('$rootName.Push');
+  static final Logger config = Logger('$rootName.Config');
+  static final Logger analytics = Logger('$rootName.Analytics');
 
   static StreamSubscription<LogRecord>? _subscription;
 

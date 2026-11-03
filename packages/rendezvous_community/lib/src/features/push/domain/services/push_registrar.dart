@@ -38,6 +38,8 @@ class PushRegistrar {
     }
   }
 
+  void release() => _boundTo = null;
+
   void onUserChanged(String? userId) {
     final registration = _registration;
     if (registration == null || userId == null || userId == _boundTo) return;

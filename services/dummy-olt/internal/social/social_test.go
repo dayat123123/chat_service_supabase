@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -121,5 +122,37 @@ func TestParsePrivateKeyReadsOpenSSLEd25519Keys(t *testing.T) {
 	}
 	if _, err := ParsePrivateKey([]byte("bukan pem")); err == nil {
 		t.Fatal("PEM rusak harus ditolak")
+	}
+}
+
+func TestSignIncludesAccountsOnlyWhenKnown(t *testing.T) {
+	s, _ := newSigner(t)
+	cases := map[string]struct {
+		accounts []string
+		want     any
+	}{
+		"rekening nasabah": {[]string{"W137", "C1626"}, []any{"W137", "C1626"}},
+		"bukan nasabah":    {[]string{}, []any{}},
+		"tidak diketahui":  {nil, nil},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			token, _, err := s.Sign(Identity{ID: "1001", Username: "budi_santoso", Accounts: tc.accounts}, time.Minute)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var claims map[string]any
+			decode(t, strings.Split(token, ".")[1], &claims)
+			got, present := claims["accounts"]
+			if tc.want == nil {
+				if present {
+					t.Fatalf("klaim accounts harus tidak ada, claims = %v", claims)
+				}
+				return
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("accounts = %#v, want %#v", got, tc.want)
+			}
+		})
 	}
 }

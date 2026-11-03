@@ -750,4 +750,674 @@ class CommunityLocalizationsId extends CommunityLocalizations {
 
   @override
   String get supportUnavailable => 'Chat CS belum tersedia. Coba lagi sebentar lagi.';
+
+  @override
+  String get errorUnsupportedType =>
+      'Jenis file tidak didukung. Gunakan gambar JPEG, PNG, WebP, atau GIF (foto profil tanpa GIF), atau PDF di chat CS.';
+
+  @override
+  String get errorFileTooLarge =>
+      'File terlalu besar. Batasnya 5 MB untuk gambar, 2 MB untuk foto profil, dan 10 MB untuk PDF.';
+
+  @override
+  String get errorEmptyFile => 'File kosong. Pilih file lain.';
+
+  @override
+  String get errorInvalidImage => 'Gambar rusak atau tidak bisa dibaca. Coba gambar lain.';
+
+  @override
+  String get errorImageTooLarge => 'Resolusi gambar terlalu besar. Maksimal 10.000 piksel per sisi dan 40 megapiksel.';
+
+  @override
+  String get errorInvalidPdf => 'PDF rusak atau tidak bisa dibaca.';
+
+  @override
+  String get errorPdfEncrypted =>
+      'PDF yang dikunci kata sandi tidak bisa dikirim. Buka kuncinya dulu, lalu kirim ulang.';
+
+  @override
+  String get errorPdfActiveContent =>
+      'PDF berisi skrip, file tersemat, atau konten aktif lain. Simpan ulang sebagai PDF biasa (misalnya lewat Cetak ke PDF), lalu kirim ulang.';
+
+  @override
+  String get errorUploadForbidden => 'Anda tidak diizinkan mengunggah file ke sini.';
+
+  @override
+  String get errorTooManyUploads => 'Batas unggahan hari ini sudah tercapai. Coba lagi besok.';
+
+  @override
+  String get errorUploadBusy => 'Server unggahan sedang sibuk. Coba lagi sebentar lagi.';
+
+  @override
+  String get errorStorageUnavailable => 'Unggahan file sedang tidak tersedia. Coba lagi nanti.';
+
+  @override
+  String get errorConsentRequired => 'Setujui Syarat & Ketentuan dan Pedoman Komunitas terbaru untuk mengirim konten.';
+
+  @override
+  String get consentDeclined => 'Belum terkirim. Setujui dokumen terbaru untuk mengirim; tulisan Anda tetap tersimpan.';
+
+  @override
+  String get consentTitle => 'Persetujuan diperlukan';
+
+  @override
+  String get consentIntro => 'Sebelum ikut berdiskusi, baca dan setujui dokumen berikut.';
+
+  @override
+  String consentAgree(String documents) {
+    return 'Saya telah membaca dan menyetujui $documents.';
+  }
+
+  @override
+  String get consentAccept => 'Setuju';
+
+  @override
+  String get consentLater => 'Nanti';
+
+  @override
+  String get consentRead => 'Baca';
+
+  @override
+  String get consentReview => 'Tinjau';
+
+  @override
+  String get consentAccepted => 'Terima kasih. Persetujuan Anda sudah tersimpan.';
+
+  @override
+  String consentBannerUpdated(String documents) {
+    return '$documents diperbarui — tinjau dan setujui.';
+  }
+
+  @override
+  String consentBannerRequired(String documents) {
+    return 'Tinjau dan setujui $documents untuk ikut berdiskusi.';
+  }
+
+  @override
+  String legalVersion(int version, String date) {
+    return 'Versi $version · berlaku $date';
+  }
+
+  @override
+  String get legalChanges => 'Yang berubah';
+
+  @override
+  String get listAnd => 'dan';
+
+  @override
+  String get accountSettingsTitle => 'Privasi & akun';
+
+  @override
+  String get accountLegalSection => 'Dokumen hukum';
+
+  @override
+  String get accountDataSection => 'Data Anda';
+
+  @override
+  String get accountExport => 'Unduh data saya';
+
+  @override
+  String get accountExportHint => 'Salinan data komunitas Anda dalam format JSON. Bisa diunduh 3 kali sehari.';
+
+  @override
+  String get accountExportSaved => 'Data komunitas Anda sudah diunduh.';
+
+  @override
+  String get accountExportLimit => 'Unduh data dibatasi 3 kali sehari. Coba lagi besok.';
+
+  @override
+  String get accountDelete => 'Hapus akun komunitas';
+
+  @override
+  String get accountDeleteHint => 'Menghapus profil dan konten komunitas Anda. Akun trading tidak terpengaruh.';
+
+  @override
+  String get accountDeleteTitle => 'Hapus akun komunitas?';
+
+  @override
+  String get accountDeleteIntro => 'Yang terjadi bila akun komunitas dihapus:';
+
+  @override
+  String get accountDeleteContent => 'Postingan, komentar, dan pesan chat Anda dihapus dari tampilan semua orang.';
+
+  @override
+  String get accountDeleteArchive => 'Salinan konten tetap diarsipkan untuk regulator sesuai ketentuan hukum.';
+
+  @override
+  String get accountDeleteRelations => 'Pengikut, akun yang Anda ikuti, blokir, dan bisukan dihapus.';
+
+  @override
+  String get accountDeleteSupport =>
+      'Tiket layanan CS tetap tercatat untuk keperluan kepatuhan, tetapi pesan dan lampiran chat CS ikut dihapus.';
+
+  @override
+  String get accountDeleteTrading => 'Akun trading OLT Anda tidak terpengaruh.';
+
+  @override
+  String get accountDeleteFresh => 'Saat membuka komunitas lagi, profil komunitas baru yang kosong akan dibuat.';
+
+  @override
+  String accountDeleteTypeToConfirm(String word) {
+    return 'Ketik $word untuk konfirmasi';
+  }
+
+  @override
+  String get accountDeleteWord => 'HAPUS';
+
+  @override
+  String get accountDeleteConfirm => 'Hapus akun';
+
+  @override
+  String get accountDeleteProgress => 'Menghapus akun komunitas…';
+
+  @override
+  String get accountDeleted => 'Akun komunitas Anda sudah dihapus.';
+
+  @override
+  String get errorNewAccountImage => 'Akun baru belum bisa melampirkan gambar. Coba lagi beberapa hari lagi.';
+
+  @override
+  String get errorNewAccountLink => 'Akun baru belum bisa membagikan tautan. Coba lagi beberapa hari lagi.';
+
+  @override
+  String get errorLinkBlocked => 'Tautan ini tidak diizinkan.';
+
+  @override
+  String get errorContactBlocked => 'Konten ini tidak bisa dikirim karena melanggar Pedoman Komunitas.';
+
+  @override
+  String errorSlowMode(int seconds) {
+    return 'Slow mode aktif. Tunggu $seconds detik sebelum mengirim lagi.';
+  }
+
+  @override
+  String get errorSlowModeShort => 'Slow mode aktif. Tunggu sebentar sebelum mengirim lagi.';
+
+  @override
+  String get errorDmNotAllowed => 'Pengguna ini tidak menerima pesan langsung dari Anda.';
+
+  @override
+  String get errorDmRequestLimit =>
+      'Tunggu sampai penerima menerima permintaan pesan Anda sebelum mengirim pesan lagi.';
+
+  @override
+  String get errorSocialDisabled => 'Fitur komunitas sementara tidak tersedia. Chat CS tetap bisa dipakai.';
+
+  @override
+  String get errorEditWindowExpired => 'Batas waktu edit sudah lewat.';
+
+  @override
+  String get errorPollNotEditable => 'Post dengan polling tidak bisa diedit.';
+
+  @override
+  String get errorImageBlocked => 'Gambar ini tidak bisa diunggah karena melanggar Pedoman Komunitas.';
+
+  @override
+  String get errorImageCheckUnavailable => 'Pemeriksaan gambar sedang tidak tersedia. Coba lagi sebentar lagi.';
+
+  @override
+  String get errorAppealExists => 'Banding untuk ini sudah pernah diajukan.';
+
+  @override
+  String get errorAppealWindowClosed => 'Batas waktu pengajuan banding sudah lewat.';
+
+  @override
+  String get errorAppealNotAllowed => 'Keputusan ini tidak bisa diajukan banding.';
+
+  @override
+  String get errorAppealReason => 'Alasan banding 10–1000 karakter.';
+
+  @override
+  String get errorQueryTooShort => 'Kata kunci terlalu pendek.';
+
+  @override
+  String get errorQueryTooLong => 'Kata kunci terlalu panjang.';
+
+  @override
+  String get errorShareNotAllowed => 'Post tidak bisa dibagikan ke chat ini.';
+
+  @override
+  String get errorRequestNotFound => 'Permintaan pesan sudah tidak ada.';
+
+  @override
+  String get errorInvalidQuietHours => 'Jam tenang tidak valid.';
+
+  @override
+  String get socialUnavailableTitle => 'Komunitas sedang tidak tersedia';
+
+  @override
+  String get socialUnavailableBody => 'Fitur komunitas sedang dalam pemeliharaan. Chat CS tetap bisa dipakai.';
+
+  @override
+  String get featureUnavailable => 'Fitur ini sedang tidak tersedia.';
+
+  @override
+  String get updateRequiredTitle => 'Perbarui aplikasi';
+
+  @override
+  String get updateRequiredBody =>
+      'Versi aplikasi ini tidak lagi didukung fitur komunitas. Perbarui aplikasi untuk melanjutkan.';
+
+  @override
+  String get moderationHeld => 'Menunggu tinjauan';
+
+  @override
+  String get moderationHeldHint => 'Hanya Anda yang bisa melihatnya sampai ditinjau moderator.';
+
+  @override
+  String get moderationHidden => 'Disembunyikan moderator';
+
+  @override
+  String get moderationHiddenHint => 'Konten ini tidak terlihat oleh orang lain.';
+
+  @override
+  String get messageRequests => 'Permintaan pesan';
+
+  @override
+  String get messageRequestsEmpty => 'Tidak ada permintaan pesan.';
+
+  @override
+  String messageRequestMessages(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count pesan', one: '1 pesan');
+    return '$_temp0';
+  }
+
+  @override
+  String messageRequestIntro(String name) {
+    return '$name belum Anda ikuti. Terima untuk membalas, atau tolak untuk menyembunyikan permintaan ini.';
+  }
+
+  @override
+  String get messageRequestAccept => 'Terima';
+
+  @override
+  String get messageRequestDecline => 'Tolak';
+
+  @override
+  String get messageRequestBlock => 'Blokir & laporkan';
+
+  @override
+  String messageRequestBlockConfirm(String name) {
+    return 'Blokir $name dan laporkan permintaan ini sebagai spam?';
+  }
+
+  @override
+  String get messageRequestAccepted => 'Permintaan diterima.';
+
+  @override
+  String get messageRequestDeclined => 'Permintaan ditolak.';
+
+  @override
+  String get messageRequestImageHidden => 'Gambar diburamkan sampai Anda menerima permintaan.';
+
+  @override
+  String dmRequestSenderNotice(String name, int max) {
+    return 'Bila $name belum mengikuti Anda, pesan Anda masuk sebagai permintaan pesan. Anda bisa mengirim hingga $max pesan sampai permintaan diterima.';
+  }
+
+  @override
+  String dmRequestLimitNotice(String name, int max) {
+    return 'Anda sudah mengirim $max pesan. Tunggu $name menerima permintaan pesan Anda.';
+  }
+
+  @override
+  String get accountMessagesSection => 'Pesan langsung';
+
+  @override
+  String get dmPolicyTitle => 'Siapa yang bisa mengirim pesan langsung';
+
+  @override
+  String get dmPolicyEveryone => 'Semua orang';
+
+  @override
+  String get dmPolicyEveryoneHint => 'Orang yang tidak Anda ikuti masuk ke Permintaan pesan.';
+
+  @override
+  String get dmPolicyFollowing => 'Hanya yang saya ikuti';
+
+  @override
+  String get dmPolicyNone => 'Tidak ada';
+
+  @override
+  String get dmPolicyNoneHint => 'Percakapan yang sudah ada tetap berjalan.';
+
+  @override
+  String get dmPolicySaved => 'Pengaturan pesan disimpan.';
+
+  @override
+  String get appealAction => 'Ajukan banding';
+
+  @override
+  String get appealTitle => 'Ajukan banding';
+
+  @override
+  String get appealHint => 'Jelaskan mengapa menurut Anda keputusan ini keliru (10–1000 karakter).';
+
+  @override
+  String get appealSubmit => 'Kirim banding';
+
+  @override
+  String get appealSent => 'Banding terkirim. Kami akan memberi tahu hasilnya.';
+
+  @override
+  String get myAppeals => 'Banding saya';
+
+  @override
+  String get myAppealsEmpty => 'Belum ada banding.';
+
+  @override
+  String get appealStatusPending => 'Sedang ditinjau';
+
+  @override
+  String get appealStatusAccepted => 'Diterima';
+
+  @override
+  String get appealStatusRejected => 'Ditolak';
+
+  @override
+  String get appealTargetSanction => 'Sanksi akun';
+
+  @override
+  String get appealTargetPost => 'Post';
+
+  @override
+  String get appealTargetComment => 'Komentar';
+
+  @override
+  String get appealTargetMessage => 'Pesan';
+
+  @override
+  String appealDecisionNote(String note) {
+    return 'Catatan: $note';
+  }
+
+  @override
+  String get activeSanctions => 'Sanksi aktif';
+
+  @override
+  String get noActiveSanctions => 'Tidak ada sanksi aktif.';
+
+  @override
+  String get sanctionWarning => 'Peringatan';
+
+  @override
+  String get sanctionMute => 'Dibatasi mengirim konten';
+
+  @override
+  String get sanctionBan => 'Akun diblokir';
+
+  @override
+  String sanctionUntil(String date) {
+    return 'Sampai $date';
+  }
+
+  @override
+  String get sanctionPermanent => 'Tanpa batas waktu';
+
+  @override
+  String get accountAppealsSection => 'Banding & sanksi';
+
+  @override
+  String get accountAppealsHint => 'Lihat sanksi aktif dan status banding Anda.';
+
+  @override
+  String get notifAppealAccepted => 'Banding Anda diterima';
+
+  @override
+  String get notifAppealRejected => 'Banding Anda ditolak';
+
+  @override
+  String get notificationSettings => 'Notifikasi';
+
+  @override
+  String get notificationSettingsHint => 'Atur notifikasi di aplikasi dan push per jenis, serta jam tenang.';
+
+  @override
+  String get notifTypeReply => 'Balasan';
+
+  @override
+  String get notifTypeMention => 'Mention';
+
+  @override
+  String get notifTypeLike => 'Suka';
+
+  @override
+  String get notifTypeFollow => 'Pengikut baru';
+
+  @override
+  String get notifTypeMessage => 'Pesan chat';
+
+  @override
+  String get notifTypeAnnouncement => 'Pengumuman';
+
+  @override
+  String get notifTypeAppeal => 'Banding';
+
+  @override
+  String get notifTypeTrade => 'Transaksi OLT';
+
+  @override
+  String get notifInApp => 'Di aplikasi';
+
+  @override
+  String get notifPush => 'Push';
+
+  @override
+  String get notifSupportAlwaysOn => 'Pesan dari CS resmi selalu dikirim.';
+
+  @override
+  String get quietHours => 'Jam tenang';
+
+  @override
+  String get quietHoursHint => 'Push ditunda selama jam tenang (WIB). Notifikasi di aplikasi tetap masuk.';
+
+  @override
+  String get quietHoursStart => 'Mulai';
+
+  @override
+  String get quietHoursEnd => 'Selesai';
+
+  @override
+  String quietHoursRange(String start, String end) {
+    return '$start–$end WIB';
+  }
+
+  @override
+  String notifFollowMany(String name, int others) {
+    return '$name dan $others lainnya mulai mengikuti Anda';
+  }
+
+  @override
+  String get searchTitle => 'Cari';
+
+  @override
+  String get searchHint => 'Cari post, pengguna, \$KODE, #hashtag';
+
+  @override
+  String get searchTabAll => 'Semua';
+
+  @override
+  String get searchTabPosts => 'Post';
+
+  @override
+  String get searchTabUsers => 'Pengguna';
+
+  @override
+  String get searchTabStocks => 'Saham';
+
+  @override
+  String get searchTabHashtags => 'Hashtag';
+
+  @override
+  String searchMinLength(int min) {
+    return 'Ketik minimal $min karakter.';
+  }
+
+  @override
+  String searchNoResults(String query) {
+    return 'Tidak ada hasil untuk \"$query\".';
+  }
+
+  @override
+  String get searchSeeAll => 'Lihat semua';
+
+  @override
+  String postsLast7Days(int count) {
+    return '$count post (7 hari)';
+  }
+
+  @override
+  String get trendingHashtags => 'Hashtag trending';
+
+  @override
+  String hashtagFeedEmpty(String tag) {
+    return 'Belum ada post dengan #$tag.';
+  }
+
+  @override
+  String get trendingTitle => 'Trending';
+
+  @override
+  String get trendingStocks => 'Saham';
+
+  @override
+  String get trendingRising => 'Naik daun';
+
+  @override
+  String get trendingPosts => 'Populer';
+
+  @override
+  String get trendingWindowDay => '24 jam';
+
+  @override
+  String get trendingWindowWeek => '7 hari';
+
+  @override
+  String get trendingEmpty => 'Belum ada data trending.';
+
+  @override
+  String trendingPostCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: '$count post', one: '1 post');
+    return '$_temp0';
+  }
+
+  @override
+  String trendingGrowth(String percent) {
+    return '+$percent%';
+  }
+
+  @override
+  String get sentimentTitle => 'Sentimen komunitas';
+
+  @override
+  String get sentimentNoData => 'Belum ada post berlabel sentimen.';
+
+  @override
+  String sentimentBasedOn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(count, locale: localeName, other: 'Dari $count post', one: 'Dari 1 post');
+    return '$_temp0';
+  }
+
+  @override
+  String get editAction => 'Edit';
+
+  @override
+  String get editPostTitle => 'Edit post';
+
+  @override
+  String get editCommentTitle => 'Edit komentar';
+
+  @override
+  String get editSaved => 'Perubahan disimpan.';
+
+  @override
+  String get bookmarkAdd => 'Simpan';
+
+  @override
+  String get bookmarkRemove => 'Hapus dari simpanan';
+
+  @override
+  String get bookmarksTitle => 'Disimpan';
+
+  @override
+  String get bookmarksEmpty => 'Belum ada post yang disimpan.';
+
+  @override
+  String get bookmarkAdded => 'Post disimpan.';
+
+  @override
+  String get bookmarkRemoved => 'Dihapus dari simpanan.';
+
+  @override
+  String get reactionAdd => 'Beri reaksi';
+
+  @override
+  String get shareToChat => 'Kirim ke chat';
+
+  @override
+  String get sharePickRoom => 'Kirim ke…';
+
+  @override
+  String get shareMessageHint => 'Tambahkan pesan (opsional)';
+
+  @override
+  String get shareSent => 'Post dikirim ke chat.';
+
+  @override
+  String get shareNoRooms => 'Belum ada chat. Mulai percakapan dulu.';
+
+  @override
+  String get sharedPostUnavailable => 'Post tidak tersedia';
+
+  @override
+  String get sharedPostLabel => 'Post';
+
+  @override
+  String get linkOpenTitle => 'Buka tautan?';
+
+  @override
+  String linkOpenBody(String domain) {
+    return 'Anda akan membuka $domain di luar aplikasi. Pastikan Anda mempercayai situs ini.';
+  }
+
+  @override
+  String get linkOpenAction => 'Buka';
+
+  @override
+  String get linkOpenFailed => 'Tautan tidak bisa dibuka.';
+
+  @override
+  String get botLabel => 'Bot';
+
+  @override
+  String slowModeBanner(int seconds) {
+    return 'Slow mode: 1 pesan tiap $seconds detik';
+  }
+
+  @override
+  String slowModeWait(int seconds) {
+    return 'Tunggu $seconds dtk';
+  }
+
+  @override
+  String get pinnedMessageLabel => 'Pesan disematkan';
+
+  @override
+  String dmRequestPendingSender(String name, int sent, int max) {
+    return 'Pesan Anda masih berupa permintaan ($sent/$max). $name perlu menerimanya sebelum Anda bisa mengirim lebih banyak.';
+  }
+
+  @override
+  String dmRequestPendingRecipient(String name) {
+    return '$name mengirim permintaan pesan. Terima untuk membalas.';
+  }
+
+  @override
+  String get moderatedContent => 'Konten yang dimoderasi';
+
+  @override
+  String get moderatedContentEmpty => 'Tidak ada konten Anda yang dimoderasi dalam 90 hari terakhir.';
+
+  @override
+  String get moderationRemoved => 'Dihapus moderator';
 }

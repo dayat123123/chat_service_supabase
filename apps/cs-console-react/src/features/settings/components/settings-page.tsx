@@ -1,6 +1,8 @@
 import {
   BellRingIcon,
   CalendarClockIcon,
+  FlagIcon,
+  KeyRoundIcon,
   MegaphoneIcon,
   MessageSquareTextIcon,
   MessagesSquareIcon,
@@ -14,6 +16,8 @@ import { useTranslation } from 'react-i18next'
 
 import { SectionBoundary } from '@/components/states'
 import { useAgent } from '@/features/auth/hooks'
+import { FeaturesSection } from '@/features/client-config/components/features-section'
+import { IntegrationKeysSection } from '@/features/integration-keys/components/keys-section'
 import { PushSection } from '@/features/push/components/push-section'
 import { PushInactiveBadge } from '@/features/push/components/push-state'
 import { cn } from '@/lib/utils'
@@ -38,6 +42,8 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
   { id: 'community', icon: MegaphoneIcon },
   { id: 'push', icon: BellRingIcon },
   { id: 'integration', icon: PlugZapIcon },
+  { id: 'apiKeys', icon: KeyRoundIcon },
+  { id: 'features', icon: FlagIcon },
 ]
 
 const content: Record<SettingsSection, () => React.ReactNode> = {
@@ -50,6 +56,8 @@ const content: Record<SettingsSection, () => React.ReactNode> = {
   community: () => <CommunitySection />,
   push: () => <PushSection />,
   integration: () => <IntegrationSection />,
+  apiKeys: () => <IntegrationKeysSection />,
+  features: () => <FeaturesSection />,
 }
 
 export function SettingsPage() {

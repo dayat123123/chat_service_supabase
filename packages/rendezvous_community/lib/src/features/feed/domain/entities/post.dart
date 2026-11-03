@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'post.freezed.dart';
@@ -23,7 +24,18 @@ abstract class Post with _$Post {
     DateTime? editedAt,
     required DateTime createdAt,
     required String cursor,
+    @Default(false) bool isBookmarked,
+    @Default(<String>[]) List<String> hashtags,
+    @Default(false) bool isBot,
+    @Default(false) bool authorIsOfficial,
+    ModerationStatus? moderationStatus,
   }) = _Post;
+
+  const Post._();
+
+  bool get isHeld => moderationStatus == ModerationStatus.held;
+
+  bool get isHidden => moderationStatus == ModerationStatus.hidden;
 }
 
 @freezed

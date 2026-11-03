@@ -13,9 +13,592 @@ part of 'chat_models.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$MessageReactionModel {
+
+ String get emoji; int get count; bool get me;
+/// Create a copy of MessageReactionModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$MessageReactionModelCopyWith<MessageReactionModel> get copyWith => _$MessageReactionModelCopyWithImpl<MessageReactionModel>(this as MessageReactionModel, _$identity);
+
+  /// Serializes this MessageReactionModel to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageReactionModel&&(identical(other.emoji, emoji) || other.emoji == emoji)&&(identical(other.count, count) || other.count == count)&&(identical(other.me, me) || other.me == me));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,emoji,count,me);
+
+@override
+String toString() {
+  return 'MessageReactionModel(emoji: $emoji, count: $count, me: $me)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $MessageReactionModelCopyWith<$Res>  {
+  factory $MessageReactionModelCopyWith(MessageReactionModel value, $Res Function(MessageReactionModel) _then) = _$MessageReactionModelCopyWithImpl;
+@useResult
+$Res call({
+ String emoji, int count, bool me
+});
+
+
+
+
+}
+/// @nodoc
+class _$MessageReactionModelCopyWithImpl<$Res>
+    implements $MessageReactionModelCopyWith<$Res> {
+  _$MessageReactionModelCopyWithImpl(this._self, this._then);
+
+  final MessageReactionModel _self;
+  final $Res Function(MessageReactionModel) _then;
+
+/// Create a copy of MessageReactionModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? emoji = null,Object? count = null,Object? me = null,}) {
+  return _then(_self.copyWith(
+emoji: null == emoji ? _self.emoji : emoji // ignore: cast_nullable_to_non_nullable
+as String,count: null == count ? _self.count : count // ignore: cast_nullable_to_non_nullable
+as int,me: null == me ? _self.me : me // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [MessageReactionModel].
+extension MessageReactionModelPatterns on MessageReactionModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _MessageReactionModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _MessageReactionModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _MessageReactionModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _MessageReactionModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _MessageReactionModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _MessageReactionModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String emoji,  int count,  bool me)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _MessageReactionModel() when $default != null:
+return $default(_that.emoji,_that.count,_that.me);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String emoji,  int count,  bool me)  $default,) {final _that = this;
+switch (_that) {
+case _MessageReactionModel():
+return $default(_that.emoji,_that.count,_that.me);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String emoji,  int count,  bool me)?  $default,) {final _that = this;
+switch (_that) {
+case _MessageReactionModel() when $default != null:
+return $default(_that.emoji,_that.count,_that.me);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _MessageReactionModel extends MessageReactionModel {
+  const _MessageReactionModel({required this.emoji, this.count = 0, this.me = false}): super._();
+  factory _MessageReactionModel.fromJson(Map<String, dynamic> json) => _$MessageReactionModelFromJson(json);
+
+@override final  String emoji;
+@override@JsonKey() final  int count;
+@override@JsonKey() final  bool me;
+
+/// Create a copy of MessageReactionModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$MessageReactionModelCopyWith<_MessageReactionModel> get copyWith => __$MessageReactionModelCopyWithImpl<_MessageReactionModel>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$MessageReactionModelToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageReactionModel&&(identical(other.emoji, emoji) || other.emoji == emoji)&&(identical(other.count, count) || other.count == count)&&(identical(other.me, me) || other.me == me));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,emoji,count,me);
+
+@override
+String toString() {
+  return 'MessageReactionModel(emoji: $emoji, count: $count, me: $me)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$MessageReactionModelCopyWith<$Res> implements $MessageReactionModelCopyWith<$Res> {
+  factory _$MessageReactionModelCopyWith(_MessageReactionModel value, $Res Function(_MessageReactionModel) _then) = __$MessageReactionModelCopyWithImpl;
+@override @useResult
+$Res call({
+ String emoji, int count, bool me
+});
+
+
+
+
+}
+/// @nodoc
+class __$MessageReactionModelCopyWithImpl<$Res>
+    implements _$MessageReactionModelCopyWith<$Res> {
+  __$MessageReactionModelCopyWithImpl(this._self, this._then);
+
+  final _MessageReactionModel _self;
+  final $Res Function(_MessageReactionModel) _then;
+
+/// Create a copy of MessageReactionModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? emoji = null,Object? count = null,Object? me = null,}) {
+  return _then(_MessageReactionModel(
+emoji: null == emoji ? _self.emoji : emoji // ignore: cast_nullable_to_non_nullable
+as String,count: null == count ? _self.count : count // ignore: cast_nullable_to_non_nullable
+as int,me: null == me ? _self.me : me // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$SharedPostModel {
+
+ String get postId; bool get available; String? get authorId; String? get authorUsername; String? get authorDisplayName; String? get authorAvatarUrl; bool get authorIsVerified; String? get body;@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments; String? get sentiment; List<String> get stockCodes; int get likeCount; int get commentCount; DateTime? get createdAt;
+/// Create a copy of SharedPostModel
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SharedPostModelCopyWith<SharedPostModel> get copyWith => _$SharedPostModelCopyWithImpl<SharedPostModel>(this as SharedPostModel, _$identity);
+
+  /// Serializes this SharedPostModel to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SharedPostModel&&(identical(other.postId, postId) || other.postId == postId)&&(identical(other.available, available) || other.available == available)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.sentiment, sentiment) || other.sentiment == sentiment)&&const DeepCollectionEquality().equals(other.stockCodes, stockCodes)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,postId,available,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,const DeepCollectionEquality().hash(attachments),sentiment,const DeepCollectionEquality().hash(stockCodes),likeCount,commentCount,createdAt);
+
+@override
+String toString() {
+  return 'SharedPostModel(postId: $postId, available: $available, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, attachments: $attachments, sentiment: $sentiment, stockCodes: $stockCodes, likeCount: $likeCount, commentCount: $commentCount, createdAt: $createdAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SharedPostModelCopyWith<$Res>  {
+  factory $SharedPostModelCopyWith(SharedPostModel value, $Res Function(SharedPostModel) _then) = _$SharedPostModelCopyWithImpl;
+@useResult
+$Res call({
+ String postId, bool available, String? authorId, String? authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String? body,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments, String? sentiment, List<String> stockCodes, int likeCount, int commentCount, DateTime? createdAt
+});
+
+
+
+
+}
+/// @nodoc
+class _$SharedPostModelCopyWithImpl<$Res>
+    implements $SharedPostModelCopyWith<$Res> {
+  _$SharedPostModelCopyWithImpl(this._self, this._then);
+
+  final SharedPostModel _self;
+  final $Res Function(SharedPostModel) _then;
+
+/// Create a copy of SharedPostModel
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? postId = null,Object? available = null,Object? authorId = freezed,Object? authorUsername = freezed,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = freezed,Object? attachments = null,Object? sentiment = freezed,Object? stockCodes = null,Object? likeCount = null,Object? commentCount = null,Object? createdAt = freezed,}) {
+  return _then(_self.copyWith(
+postId: null == postId ? _self.postId : postId // ignore: cast_nullable_to_non_nullable
+as String,available: null == available ? _self.available : available // ignore: cast_nullable_to_non_nullable
+as bool,authorId: freezed == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
+as String?,authorUsername: freezed == authorUsername ? _self.authorUsername : authorUsername // ignore: cast_nullable_to_non_nullable
+as String?,authorDisplayName: freezed == authorDisplayName ? _self.authorDisplayName : authorDisplayName // ignore: cast_nullable_to_non_nullable
+as String?,authorAvatarUrl: freezed == authorAvatarUrl ? _self.authorAvatarUrl : authorAvatarUrl // ignore: cast_nullable_to_non_nullable
+as String?,authorIsVerified: null == authorIsVerified ? _self.authorIsVerified : authorIsVerified // ignore: cast_nullable_to_non_nullable
+as bool,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<AttachmentModel>,sentiment: freezed == sentiment ? _self.sentiment : sentiment // ignore: cast_nullable_to_non_nullable
+as String?,stockCodes: null == stockCodes ? _self.stockCodes : stockCodes // ignore: cast_nullable_to_non_nullable
+as List<String>,likeCount: null == likeCount ? _self.likeCount : likeCount // ignore: cast_nullable_to_non_nullable
+as int,commentCount: null == commentCount ? _self.commentCount : commentCount // ignore: cast_nullable_to_non_nullable
+as int,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [SharedPostModel].
+extension SharedPostModelPatterns on SharedPostModel {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _SharedPostModel value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _SharedPostModel() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _SharedPostModel value)  $default,){
+final _that = this;
+switch (_that) {
+case _SharedPostModel():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _SharedPostModel value)?  $default,){
+final _that = this;
+switch (_that) {
+case _SharedPostModel() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String postId,  bool available,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments,  String? sentiment,  List<String> stockCodes,  int likeCount,  int commentCount,  DateTime? createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _SharedPostModel() when $default != null:
+return $default(_that.postId,_that.available,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.attachments,_that.sentiment,_that.stockCodes,_that.likeCount,_that.commentCount,_that.createdAt);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String postId,  bool available,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments,  String? sentiment,  List<String> stockCodes,  int likeCount,  int commentCount,  DateTime? createdAt)  $default,) {final _that = this;
+switch (_that) {
+case _SharedPostModel():
+return $default(_that.postId,_that.available,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.attachments,_that.sentiment,_that.stockCodes,_that.likeCount,_that.commentCount,_that.createdAt);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String postId,  bool available,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments,  String? sentiment,  List<String> stockCodes,  int likeCount,  int commentCount,  DateTime? createdAt)?  $default,) {final _that = this;
+switch (_that) {
+case _SharedPostModel() when $default != null:
+return $default(_that.postId,_that.available,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.attachments,_that.sentiment,_that.stockCodes,_that.likeCount,_that.commentCount,_that.createdAt);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _SharedPostModel extends SharedPostModel {
+  const _SharedPostModel({required this.postId, this.available = false, this.authorId, this.authorUsername, this.authorDisplayName, this.authorAvatarUrl, this.authorIsVerified = false, this.body, @JsonKey(fromJson: attachmentsFromJson) final  List<AttachmentModel> attachments = const <AttachmentModel>[], this.sentiment, final  List<String> stockCodes = const <String>[], this.likeCount = 0, this.commentCount = 0, this.createdAt}): _attachments = attachments,_stockCodes = stockCodes,super._();
+  factory _SharedPostModel.fromJson(Map<String, dynamic> json) => _$SharedPostModelFromJson(json);
+
+@override final  String postId;
+@override@JsonKey() final  bool available;
+@override final  String? authorId;
+@override final  String? authorUsername;
+@override final  String? authorDisplayName;
+@override final  String? authorAvatarUrl;
+@override@JsonKey() final  bool authorIsVerified;
+@override final  String? body;
+ final  List<AttachmentModel> _attachments;
+@override@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments {
+  if (_attachments is EqualUnmodifiableListView) return _attachments;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_attachments);
+}
+
+@override final  String? sentiment;
+ final  List<String> _stockCodes;
+@override@JsonKey() List<String> get stockCodes {
+  if (_stockCodes is EqualUnmodifiableListView) return _stockCodes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_stockCodes);
+}
+
+@override@JsonKey() final  int likeCount;
+@override@JsonKey() final  int commentCount;
+@override final  DateTime? createdAt;
+
+/// Create a copy of SharedPostModel
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SharedPostModelCopyWith<_SharedPostModel> get copyWith => __$SharedPostModelCopyWithImpl<_SharedPostModel>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SharedPostModelToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SharedPostModel&&(identical(other.postId, postId) || other.postId == postId)&&(identical(other.available, available) || other.available == available)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.sentiment, sentiment) || other.sentiment == sentiment)&&const DeepCollectionEquality().equals(other._stockCodes, _stockCodes)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,postId,available,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,const DeepCollectionEquality().hash(_attachments),sentiment,const DeepCollectionEquality().hash(_stockCodes),likeCount,commentCount,createdAt);
+
+@override
+String toString() {
+  return 'SharedPostModel(postId: $postId, available: $available, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, attachments: $attachments, sentiment: $sentiment, stockCodes: $stockCodes, likeCount: $likeCount, commentCount: $commentCount, createdAt: $createdAt)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SharedPostModelCopyWith<$Res> implements $SharedPostModelCopyWith<$Res> {
+  factory _$SharedPostModelCopyWith(_SharedPostModel value, $Res Function(_SharedPostModel) _then) = __$SharedPostModelCopyWithImpl;
+@override @useResult
+$Res call({
+ String postId, bool available, String? authorId, String? authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String? body,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments, String? sentiment, List<String> stockCodes, int likeCount, int commentCount, DateTime? createdAt
+});
+
+
+
+
+}
+/// @nodoc
+class __$SharedPostModelCopyWithImpl<$Res>
+    implements _$SharedPostModelCopyWith<$Res> {
+  __$SharedPostModelCopyWithImpl(this._self, this._then);
+
+  final _SharedPostModel _self;
+  final $Res Function(_SharedPostModel) _then;
+
+/// Create a copy of SharedPostModel
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? postId = null,Object? available = null,Object? authorId = freezed,Object? authorUsername = freezed,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = freezed,Object? attachments = null,Object? sentiment = freezed,Object? stockCodes = null,Object? likeCount = null,Object? commentCount = null,Object? createdAt = freezed,}) {
+  return _then(_SharedPostModel(
+postId: null == postId ? _self.postId : postId // ignore: cast_nullable_to_non_nullable
+as String,available: null == available ? _self.available : available // ignore: cast_nullable_to_non_nullable
+as bool,authorId: freezed == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
+as String?,authorUsername: freezed == authorUsername ? _self.authorUsername : authorUsername // ignore: cast_nullable_to_non_nullable
+as String?,authorDisplayName: freezed == authorDisplayName ? _self.authorDisplayName : authorDisplayName // ignore: cast_nullable_to_non_nullable
+as String?,authorAvatarUrl: freezed == authorAvatarUrl ? _self.authorAvatarUrl : authorAvatarUrl // ignore: cast_nullable_to_non_nullable
+as String?,authorIsVerified: null == authorIsVerified ? _self.authorIsVerified : authorIsVerified // ignore: cast_nullable_to_non_nullable
+as bool,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
+as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
+as List<AttachmentModel>,sentiment: freezed == sentiment ? _self.sentiment : sentiment // ignore: cast_nullable_to_non_nullable
+as String?,stockCodes: null == stockCodes ? _self._stockCodes : stockCodes // ignore: cast_nullable_to_non_nullable
+as List<String>,likeCount: null == likeCount ? _self.likeCount : likeCount // ignore: cast_nullable_to_non_nullable
+as int,commentCount: null == commentCount ? _self.commentCount : commentCount // ignore: cast_nullable_to_non_nullable
+as int,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as DateTime?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$ChatMessageModel {
 
- String get id; String get roomId; String? get senderId; String? get senderUsername; String? get senderDisplayName; String? get senderAvatarUrl; String? get body; bool get isDeleted; String? get replyToId; String? get replyToBody; String? get replyToSenderUsername; List<AttachmentModel> get attachments; String? get clientId; DateTime? get editedAt; DateTime get createdAt; String? get cursor; String? get kind; String? get senderRole; String? get sessionId; Map<String, dynamic> get payload;
+ String get id; String get roomId; String? get senderId; String? get senderUsername; String? get senderDisplayName; String? get senderAvatarUrl; String? get body; bool get isDeleted; String? get replyToId; String? get replyToBody; String? get replyToSenderUsername;@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments;@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? get sharedPostId; String? get clientId; DateTime? get editedAt; DateTime get createdAt; String? get cursor; String? get kind; String? get senderRole; String? get sessionId; Map<String, dynamic> get payload; List<MessageReactionModel>? get reactions; SharedPostModel? get sharedPost; String? get moderationStatus;
 /// Create a copy of ChatMessageModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +611,16 @@ $ChatMessageModelCopyWith<ChatMessageModel> get copyWith => _$ChatMessageModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessageModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.senderUsername, senderUsername) || other.senderUsername == senderUsername)&&(identical(other.senderDisplayName, senderDisplayName) || other.senderDisplayName == senderDisplayName)&&(identical(other.senderAvatarUrl, senderAvatarUrl) || other.senderAvatarUrl == senderAvatarUrl)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.payload, payload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessageModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.senderUsername, senderUsername) || other.senderUsername == senderUsername)&&(identical(other.senderDisplayName, senderDisplayName) || other.senderDisplayName == senderDisplayName)&&(identical(other.senderAvatarUrl, senderAvatarUrl) || other.senderAvatarUrl == senderAvatarUrl)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.sharedPostId, sharedPostId) || other.sharedPostId == sharedPostId)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.payload, payload)&&const DeepCollectionEquality().equals(other.reactions, reactions)&&(identical(other.sharedPost, sharedPost) || other.sharedPost == sharedPost)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,senderUsername,senderDisplayName,senderAvatarUrl,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(attachments),clientId,editedAt,createdAt,cursor,kind,senderRole,sessionId,const DeepCollectionEquality().hash(payload)]);
+int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,senderUsername,senderDisplayName,senderAvatarUrl,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(attachments),sharedPostId,clientId,editedAt,createdAt,cursor,kind,senderRole,sessionId,const DeepCollectionEquality().hash(payload),const DeepCollectionEquality().hash(reactions),sharedPost,moderationStatus]);
 
 @override
 String toString() {
-  return 'ChatMessageModel(id: $id, roomId: $roomId, senderId: $senderId, senderUsername: $senderUsername, senderDisplayName: $senderDisplayName, senderAvatarUrl: $senderAvatarUrl, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload)';
+  return 'ChatMessageModel(id: $id, roomId: $roomId, senderId: $senderId, senderUsername: $senderUsername, senderDisplayName: $senderDisplayName, senderAvatarUrl: $senderAvatarUrl, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, sharedPostId: $sharedPostId, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload, reactions: $reactions, sharedPost: $sharedPost, moderationStatus: $moderationStatus)';
 }
 
 
@@ -48,11 +631,11 @@ abstract mixin class $ChatMessageModelCopyWith<$Res>  {
   factory $ChatMessageModelCopyWith(ChatMessageModel value, $Res Function(ChatMessageModel) _then) = _$ChatMessageModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String roomId, String? senderId, String? senderUsername, String? senderDisplayName, String? senderAvatarUrl, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername, List<AttachmentModel> attachments, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload
+ String id, String roomId, String? senderId, String? senderUsername, String? senderDisplayName, String? senderAvatarUrl, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments,@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload, List<MessageReactionModel>? reactions, SharedPostModel? sharedPost, String? moderationStatus
 });
 
 
-
+$SharedPostModelCopyWith<$Res>? get sharedPost;
 
 }
 /// @nodoc
@@ -65,7 +648,7 @@ class _$ChatMessageModelCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessageModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? senderUsername = freezed,Object? senderDisplayName = freezed,Object? senderAvatarUrl = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? senderUsername = freezed,Object? senderDisplayName = freezed,Object? senderAvatarUrl = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? sharedPostId = freezed,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,Object? reactions = freezed,Object? sharedPost = freezed,Object? moderationStatus = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -79,7 +662,8 @@ as bool,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore:
 as String?,replyToBody: freezed == replyToBody ? _self.replyToBody : replyToBody // ignore: cast_nullable_to_non_nullable
 as String?,replyToSenderUsername: freezed == replyToSenderUsername ? _self.replyToSenderUsername : replyToSenderUsername // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
-as List<AttachmentModel>,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
+as List<AttachmentModel>,sharedPostId: freezed == sharedPostId ? _self.sharedPostId : sharedPostId // ignore: cast_nullable_to_non_nullable
+as String?,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
 as String?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: freezed == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
@@ -87,10 +671,25 @@ as String?,kind: freezed == kind ? _self.kind : kind // ignore: cast_nullable_to
 as String?,senderRole: freezed == senderRole ? _self.senderRole : senderRole // ignore: cast_nullable_to_non_nullable
 as String?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,payload: null == payload ? _self.payload : payload // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>,
+as Map<String, dynamic>,reactions: freezed == reactions ? _self.reactions : reactions // ignore: cast_nullable_to_non_nullable
+as List<MessageReactionModel>?,sharedPost: freezed == sharedPost ? _self.sharedPost : sharedPost // ignore: cast_nullable_to_non_nullable
+as SharedPostModel?,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
+/// Create a copy of ChatMessageModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SharedPostModelCopyWith<$Res>? get sharedPost {
+    if (_self.sharedPost == null) {
+    return null;
+  }
 
+  return $SharedPostModelCopyWith<$Res>(_self.sharedPost!, (value) {
+    return _then(_self.copyWith(sharedPost: value));
+  });
+}
 }
 
 
@@ -172,10 +771,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String? senderUsername,  String? senderDisplayName,  String? senderAvatarUrl,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<AttachmentModel> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String? senderUsername,  String? senderDisplayName,  String? senderAvatarUrl,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments, @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false)  String? sharedPostId,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload,  List<MessageReactionModel>? reactions,  SharedPostModel? sharedPost,  String? moderationStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChatMessageModel() when $default != null:
-return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.senderDisplayName,_that.senderAvatarUrl,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.kind,_that.senderRole,_that.sessionId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.senderDisplayName,_that.senderAvatarUrl,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.sharedPostId,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.kind,_that.senderRole,_that.sessionId,_that.payload,_that.reactions,_that.sharedPost,_that.moderationStatus);case _:
   return orElse();
 
 }
@@ -193,10 +792,10 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String? senderUsername,  String? senderDisplayName,  String? senderAvatarUrl,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<AttachmentModel> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String? senderUsername,  String? senderDisplayName,  String? senderAvatarUrl,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments, @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false)  String? sharedPostId,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload,  List<MessageReactionModel>? reactions,  SharedPostModel? sharedPost,  String? moderationStatus)  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessageModel():
-return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.senderDisplayName,_that.senderAvatarUrl,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.kind,_that.senderRole,_that.sessionId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.senderDisplayName,_that.senderAvatarUrl,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.sharedPostId,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.kind,_that.senderRole,_that.sessionId,_that.payload,_that.reactions,_that.sharedPost,_that.moderationStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -213,10 +812,10 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String roomId,  String? senderId,  String? senderUsername,  String? senderDisplayName,  String? senderAvatarUrl,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<AttachmentModel> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String roomId,  String? senderId,  String? senderUsername,  String? senderDisplayName,  String? senderAvatarUrl,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments, @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false)  String? sharedPostId,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload,  List<MessageReactionModel>? reactions,  SharedPostModel? sharedPost,  String? moderationStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessageModel() when $default != null:
-return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.senderDisplayName,_that.senderAvatarUrl,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.kind,_that.senderRole,_that.sessionId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.senderDisplayName,_that.senderAvatarUrl,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.sharedPostId,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.kind,_that.senderRole,_that.sessionId,_that.payload,_that.reactions,_that.sharedPost,_that.moderationStatus);case _:
   return null;
 
 }
@@ -228,7 +827,7 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.senderUsername,_that.
 @JsonSerializable()
 
 class _ChatMessageModel extends ChatMessageModel {
-  const _ChatMessageModel({required this.id, required this.roomId, this.senderId, this.senderUsername, this.senderDisplayName, this.senderAvatarUrl, this.body, this.isDeleted = false, this.replyToId, this.replyToBody, this.replyToSenderUsername, final  List<AttachmentModel> attachments = const <AttachmentModel>[], this.clientId, this.editedAt, required this.createdAt, this.cursor, this.kind, this.senderRole, this.sessionId, final  Map<String, dynamic> payload = const <String, dynamic>{}}): _attachments = attachments,_payload = payload,super._();
+  const _ChatMessageModel({required this.id, required this.roomId, this.senderId, this.senderUsername, this.senderDisplayName, this.senderAvatarUrl, this.body, this.isDeleted = false, this.replyToId, this.replyToBody, this.replyToSenderUsername, @JsonKey(fromJson: attachmentsFromJson) final  List<AttachmentModel> attachments = const <AttachmentModel>[], @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) this.sharedPostId, this.clientId, this.editedAt, required this.createdAt, this.cursor, this.kind, this.senderRole, this.sessionId, final  Map<String, dynamic> payload = const <String, dynamic>{}, final  List<MessageReactionModel>? reactions, this.sharedPost, this.moderationStatus}): _attachments = attachments,_payload = payload,_reactions = reactions,super._();
   factory _ChatMessageModel.fromJson(Map<String, dynamic> json) => _$ChatMessageModelFromJson(json);
 
 @override final  String id;
@@ -243,12 +842,13 @@ class _ChatMessageModel extends ChatMessageModel {
 @override final  String? replyToBody;
 @override final  String? replyToSenderUsername;
  final  List<AttachmentModel> _attachments;
-@override@JsonKey() List<AttachmentModel> get attachments {
+@override@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments {
   if (_attachments is EqualUnmodifiableListView) return _attachments;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_attachments);
 }
 
+@override@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) final  String? sharedPostId;
 @override final  String? clientId;
 @override final  DateTime? editedAt;
 @override final  DateTime createdAt;
@@ -263,6 +863,17 @@ class _ChatMessageModel extends ChatMessageModel {
   return EqualUnmodifiableMapView(_payload);
 }
 
+ final  List<MessageReactionModel>? _reactions;
+@override List<MessageReactionModel>? get reactions {
+  final value = _reactions;
+  if (value == null) return null;
+  if (_reactions is EqualUnmodifiableListView) return _reactions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+@override final  SharedPostModel? sharedPost;
+@override final  String? moderationStatus;
 
 /// Create a copy of ChatMessageModel
 /// with the given fields replaced by the non-null parameter values.
@@ -277,16 +888,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessageModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.senderUsername, senderUsername) || other.senderUsername == senderUsername)&&(identical(other.senderDisplayName, senderDisplayName) || other.senderDisplayName == senderDisplayName)&&(identical(other.senderAvatarUrl, senderAvatarUrl) || other.senderAvatarUrl == senderAvatarUrl)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._payload, _payload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessageModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.senderUsername, senderUsername) || other.senderUsername == senderUsername)&&(identical(other.senderDisplayName, senderDisplayName) || other.senderDisplayName == senderDisplayName)&&(identical(other.senderAvatarUrl, senderAvatarUrl) || other.senderAvatarUrl == senderAvatarUrl)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.sharedPostId, sharedPostId) || other.sharedPostId == sharedPostId)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._payload, _payload)&&const DeepCollectionEquality().equals(other._reactions, _reactions)&&(identical(other.sharedPost, sharedPost) || other.sharedPost == sharedPost)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,senderUsername,senderDisplayName,senderAvatarUrl,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(_attachments),clientId,editedAt,createdAt,cursor,kind,senderRole,sessionId,const DeepCollectionEquality().hash(_payload)]);
+int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,senderUsername,senderDisplayName,senderAvatarUrl,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(_attachments),sharedPostId,clientId,editedAt,createdAt,cursor,kind,senderRole,sessionId,const DeepCollectionEquality().hash(_payload),const DeepCollectionEquality().hash(_reactions),sharedPost,moderationStatus]);
 
 @override
 String toString() {
-  return 'ChatMessageModel(id: $id, roomId: $roomId, senderId: $senderId, senderUsername: $senderUsername, senderDisplayName: $senderDisplayName, senderAvatarUrl: $senderAvatarUrl, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload)';
+  return 'ChatMessageModel(id: $id, roomId: $roomId, senderId: $senderId, senderUsername: $senderUsername, senderDisplayName: $senderDisplayName, senderAvatarUrl: $senderAvatarUrl, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, sharedPostId: $sharedPostId, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload, reactions: $reactions, sharedPost: $sharedPost, moderationStatus: $moderationStatus)';
 }
 
 
@@ -297,11 +908,11 @@ abstract mixin class _$ChatMessageModelCopyWith<$Res> implements $ChatMessageMod
   factory _$ChatMessageModelCopyWith(_ChatMessageModel value, $Res Function(_ChatMessageModel) _then) = __$ChatMessageModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String roomId, String? senderId, String? senderUsername, String? senderDisplayName, String? senderAvatarUrl, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername, List<AttachmentModel> attachments, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload
+ String id, String roomId, String? senderId, String? senderUsername, String? senderDisplayName, String? senderAvatarUrl, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments,@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload, List<MessageReactionModel>? reactions, SharedPostModel? sharedPost, String? moderationStatus
 });
 
 
-
+@override $SharedPostModelCopyWith<$Res>? get sharedPost;
 
 }
 /// @nodoc
@@ -314,7 +925,7 @@ class __$ChatMessageModelCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessageModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? senderUsername = freezed,Object? senderDisplayName = freezed,Object? senderAvatarUrl = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? senderUsername = freezed,Object? senderDisplayName = freezed,Object? senderAvatarUrl = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? sharedPostId = freezed,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,Object? reactions = freezed,Object? sharedPost = freezed,Object? moderationStatus = freezed,}) {
   return _then(_ChatMessageModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -328,7 +939,8 @@ as bool,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore:
 as String?,replyToBody: freezed == replyToBody ? _self.replyToBody : replyToBody // ignore: cast_nullable_to_non_nullable
 as String?,replyToSenderUsername: freezed == replyToSenderUsername ? _self.replyToSenderUsername : replyToSenderUsername // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
-as List<AttachmentModel>,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
+as List<AttachmentModel>,sharedPostId: freezed == sharedPostId ? _self.sharedPostId : sharedPostId // ignore: cast_nullable_to_non_nullable
+as String?,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
 as String?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: freezed == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
@@ -336,18 +948,33 @@ as String?,kind: freezed == kind ? _self.kind : kind // ignore: cast_nullable_to
 as String?,senderRole: freezed == senderRole ? _self.senderRole : senderRole // ignore: cast_nullable_to_non_nullable
 as String?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,payload: null == payload ? _self._payload : payload // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>,
+as Map<String, dynamic>,reactions: freezed == reactions ? _self._reactions : reactions // ignore: cast_nullable_to_non_nullable
+as List<MessageReactionModel>?,sharedPost: freezed == sharedPost ? _self.sharedPost : sharedPost // ignore: cast_nullable_to_non_nullable
+as SharedPostModel?,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
+/// Create a copy of ChatMessageModel
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SharedPostModelCopyWith<$Res>? get sharedPost {
+    if (_self.sharedPost == null) {
+    return null;
+  }
 
+  return $SharedPostModelCopyWith<$Res>(_self.sharedPost!, (value) {
+    return _then(_self.copyWith(sharedPost: value));
+  });
+}
 }
 
 
 /// @nodoc
 mixin _$MessageRowModel {
 
- String get id; String get roomId; String? get senderId; String get body; String? get replyToId; List<AttachmentModel> get attachments; String? get clientId; DateTime? get editedAt; DateTime? get deletedAt; DateTime get createdAt; String? get kind; String? get senderRole; String? get sessionId; Map<String, dynamic> get payload;
+ String get id; String get roomId; String? get senderId; String get body; String? get replyToId;@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments;@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? get sharedPostId; String? get clientId; DateTime? get editedAt; DateTime? get deletedAt; DateTime get createdAt; String? get kind; String? get senderRole; String? get sessionId; Map<String, dynamic> get payload; String? get moderationStatus;
 /// Create a copy of MessageRowModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -360,16 +987,16 @@ $MessageRowModelCopyWith<MessageRowModel> get copyWith => _$MessageRowModelCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageRowModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.body, body) || other.body == body)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.payload, payload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageRowModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.body, body) || other.body == body)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.sharedPostId, sharedPostId) || other.sharedPostId == sharedPostId)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other.payload, payload)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,roomId,senderId,body,replyToId,const DeepCollectionEquality().hash(attachments),clientId,editedAt,deletedAt,createdAt,kind,senderRole,sessionId,const DeepCollectionEquality().hash(payload));
+int get hashCode => Object.hash(runtimeType,id,roomId,senderId,body,replyToId,const DeepCollectionEquality().hash(attachments),sharedPostId,clientId,editedAt,deletedAt,createdAt,kind,senderRole,sessionId,const DeepCollectionEquality().hash(payload),moderationStatus);
 
 @override
 String toString() {
-  return 'MessageRowModel(id: $id, roomId: $roomId, senderId: $senderId, body: $body, replyToId: $replyToId, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, deletedAt: $deletedAt, createdAt: $createdAt, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload)';
+  return 'MessageRowModel(id: $id, roomId: $roomId, senderId: $senderId, body: $body, replyToId: $replyToId, attachments: $attachments, sharedPostId: $sharedPostId, clientId: $clientId, editedAt: $editedAt, deletedAt: $deletedAt, createdAt: $createdAt, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload, moderationStatus: $moderationStatus)';
 }
 
 
@@ -380,7 +1007,7 @@ abstract mixin class $MessageRowModelCopyWith<$Res>  {
   factory $MessageRowModelCopyWith(MessageRowModel value, $Res Function(MessageRowModel) _then) = _$MessageRowModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String roomId, String? senderId, String body, String? replyToId, List<AttachmentModel> attachments, String? clientId, DateTime? editedAt, DateTime? deletedAt, DateTime createdAt, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload
+ String id, String roomId, String? senderId, String body, String? replyToId,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments,@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId, String? clientId, DateTime? editedAt, DateTime? deletedAt, DateTime createdAt, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload, String? moderationStatus
 });
 
 
@@ -397,7 +1024,7 @@ class _$MessageRowModelCopyWithImpl<$Res>
 
 /// Create a copy of MessageRowModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? body = null,Object? replyToId = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? deletedAt = freezed,Object? createdAt = null,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? body = null,Object? replyToId = freezed,Object? attachments = null,Object? sharedPostId = freezed,Object? clientId = freezed,Object? editedAt = freezed,Object? deletedAt = freezed,Object? createdAt = null,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,Object? moderationStatus = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -405,7 +1032,8 @@ as String,senderId: freezed == senderId ? _self.senderId : senderId // ignore: c
 as String?,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
-as List<AttachmentModel>,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
+as List<AttachmentModel>,sharedPostId: freezed == sharedPostId ? _self.sharedPostId : sharedPostId // ignore: cast_nullable_to_non_nullable
+as String?,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
 as String?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
@@ -413,7 +1041,8 @@ as DateTime,kind: freezed == kind ? _self.kind : kind // ignore: cast_nullable_t
 as String?,senderRole: freezed == senderRole ? _self.senderRole : senderRole // ignore: cast_nullable_to_non_nullable
 as String?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,payload: null == payload ? _self.payload : payload // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>,
+as Map<String, dynamic>,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -498,10 +1127,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String body,  String? replyToId,  List<AttachmentModel> attachments,  String? clientId,  DateTime? editedAt,  DateTime? deletedAt,  DateTime createdAt,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String body,  String? replyToId, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments, @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false)  String? sharedPostId,  String? clientId,  DateTime? editedAt,  DateTime? deletedAt,  DateTime createdAt,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload,  String? moderationStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _MessageRowModel() when $default != null:
-return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,_that.attachments,_that.clientId,_that.editedAt,_that.deletedAt,_that.createdAt,_that.kind,_that.senderRole,_that.sessionId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,_that.attachments,_that.sharedPostId,_that.clientId,_that.editedAt,_that.deletedAt,_that.createdAt,_that.kind,_that.senderRole,_that.sessionId,_that.payload,_that.moderationStatus);case _:
   return orElse();
 
 }
@@ -519,10 +1148,10 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String body,  String? replyToId,  List<AttachmentModel> attachments,  String? clientId,  DateTime? editedAt,  DateTime? deletedAt,  DateTime createdAt,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  String body,  String? replyToId, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments, @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false)  String? sharedPostId,  String? clientId,  DateTime? editedAt,  DateTime? deletedAt,  DateTime createdAt,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload,  String? moderationStatus)  $default,) {final _that = this;
 switch (_that) {
 case _MessageRowModel():
-return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,_that.attachments,_that.clientId,_that.editedAt,_that.deletedAt,_that.createdAt,_that.kind,_that.senderRole,_that.sessionId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,_that.attachments,_that.sharedPostId,_that.clientId,_that.editedAt,_that.deletedAt,_that.createdAt,_that.kind,_that.senderRole,_that.sessionId,_that.payload,_that.moderationStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -539,10 +1168,10 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String roomId,  String? senderId,  String body,  String? replyToId,  List<AttachmentModel> attachments,  String? clientId,  DateTime? editedAt,  DateTime? deletedAt,  DateTime createdAt,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String roomId,  String? senderId,  String body,  String? replyToId, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments, @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false)  String? sharedPostId,  String? clientId,  DateTime? editedAt,  DateTime? deletedAt,  DateTime createdAt,  String? kind,  String? senderRole,  String? sessionId,  Map<String, dynamic> payload,  String? moderationStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _MessageRowModel() when $default != null:
-return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,_that.attachments,_that.clientId,_that.editedAt,_that.deletedAt,_that.createdAt,_that.kind,_that.senderRole,_that.sessionId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,_that.attachments,_that.sharedPostId,_that.clientId,_that.editedAt,_that.deletedAt,_that.createdAt,_that.kind,_that.senderRole,_that.sessionId,_that.payload,_that.moderationStatus);case _:
   return null;
 
 }
@@ -554,7 +1183,7 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.body,_that.replyToId,
 @JsonSerializable()
 
 class _MessageRowModel extends MessageRowModel {
-  const _MessageRowModel({required this.id, required this.roomId, this.senderId, this.body = '', this.replyToId, final  List<AttachmentModel> attachments = const <AttachmentModel>[], this.clientId, this.editedAt, this.deletedAt, required this.createdAt, this.kind, this.senderRole, this.sessionId, final  Map<String, dynamic> payload = const <String, dynamic>{}}): _attachments = attachments,_payload = payload,super._();
+  const _MessageRowModel({required this.id, required this.roomId, this.senderId, this.body = '', this.replyToId, @JsonKey(fromJson: attachmentsFromJson) final  List<AttachmentModel> attachments = const <AttachmentModel>[], @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) this.sharedPostId, this.clientId, this.editedAt, this.deletedAt, required this.createdAt, this.kind, this.senderRole, this.sessionId, final  Map<String, dynamic> payload = const <String, dynamic>{}, this.moderationStatus}): _attachments = attachments,_payload = payload,super._();
   factory _MessageRowModel.fromJson(Map<String, dynamic> json) => _$MessageRowModelFromJson(json);
 
 @override final  String id;
@@ -563,12 +1192,13 @@ class _MessageRowModel extends MessageRowModel {
 @override@JsonKey() final  String body;
 @override final  String? replyToId;
  final  List<AttachmentModel> _attachments;
-@override@JsonKey() List<AttachmentModel> get attachments {
+@override@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments {
   if (_attachments is EqualUnmodifiableListView) return _attachments;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_attachments);
 }
 
+@override@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) final  String? sharedPostId;
 @override final  String? clientId;
 @override final  DateTime? editedAt;
 @override final  DateTime? deletedAt;
@@ -583,6 +1213,7 @@ class _MessageRowModel extends MessageRowModel {
   return EqualUnmodifiableMapView(_payload);
 }
 
+@override final  String? moderationStatus;
 
 /// Create a copy of MessageRowModel
 /// with the given fields replaced by the non-null parameter values.
@@ -597,16 +1228,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageRowModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.body, body) || other.body == body)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._payload, _payload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageRowModel&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.body, body) || other.body == body)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.sharedPostId, sharedPostId) || other.sharedPostId == sharedPostId)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.deletedAt, deletedAt) || other.deletedAt == deletedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&const DeepCollectionEquality().equals(other._payload, _payload)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,roomId,senderId,body,replyToId,const DeepCollectionEquality().hash(_attachments),clientId,editedAt,deletedAt,createdAt,kind,senderRole,sessionId,const DeepCollectionEquality().hash(_payload));
+int get hashCode => Object.hash(runtimeType,id,roomId,senderId,body,replyToId,const DeepCollectionEquality().hash(_attachments),sharedPostId,clientId,editedAt,deletedAt,createdAt,kind,senderRole,sessionId,const DeepCollectionEquality().hash(_payload),moderationStatus);
 
 @override
 String toString() {
-  return 'MessageRowModel(id: $id, roomId: $roomId, senderId: $senderId, body: $body, replyToId: $replyToId, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, deletedAt: $deletedAt, createdAt: $createdAt, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload)';
+  return 'MessageRowModel(id: $id, roomId: $roomId, senderId: $senderId, body: $body, replyToId: $replyToId, attachments: $attachments, sharedPostId: $sharedPostId, clientId: $clientId, editedAt: $editedAt, deletedAt: $deletedAt, createdAt: $createdAt, kind: $kind, senderRole: $senderRole, sessionId: $sessionId, payload: $payload, moderationStatus: $moderationStatus)';
 }
 
 
@@ -617,7 +1248,7 @@ abstract mixin class _$MessageRowModelCopyWith<$Res> implements $MessageRowModel
   factory _$MessageRowModelCopyWith(_MessageRowModel value, $Res Function(_MessageRowModel) _then) = __$MessageRowModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String roomId, String? senderId, String body, String? replyToId, List<AttachmentModel> attachments, String? clientId, DateTime? editedAt, DateTime? deletedAt, DateTime createdAt, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload
+ String id, String roomId, String? senderId, String body, String? replyToId,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments,@JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId, String? clientId, DateTime? editedAt, DateTime? deletedAt, DateTime createdAt, String? kind, String? senderRole, String? sessionId, Map<String, dynamic> payload, String? moderationStatus
 });
 
 
@@ -634,7 +1265,7 @@ class __$MessageRowModelCopyWithImpl<$Res>
 
 /// Create a copy of MessageRowModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? body = null,Object? replyToId = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? deletedAt = freezed,Object? createdAt = null,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? body = null,Object? replyToId = freezed,Object? attachments = null,Object? sharedPostId = freezed,Object? clientId = freezed,Object? editedAt = freezed,Object? deletedAt = freezed,Object? createdAt = null,Object? kind = freezed,Object? senderRole = freezed,Object? sessionId = freezed,Object? payload = null,Object? moderationStatus = freezed,}) {
   return _then(_MessageRowModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -642,7 +1273,8 @@ as String,senderId: freezed == senderId ? _self.senderId : senderId // ignore: c
 as String?,body: null == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
 as String,replyToId: freezed == replyToId ? _self.replyToId : replyToId // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
-as List<AttachmentModel>,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
+as List<AttachmentModel>,sharedPostId: freezed == sharedPostId ? _self.sharedPostId : sharedPostId // ignore: cast_nullable_to_non_nullable
+as String?,clientId: freezed == clientId ? _self.clientId : clientId // ignore: cast_nullable_to_non_nullable
 as String?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,deletedAt: freezed == deletedAt ? _self.deletedAt : deletedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
@@ -650,7 +1282,8 @@ as DateTime,kind: freezed == kind ? _self.kind : kind // ignore: cast_nullable_t
 as String?,senderRole: freezed == senderRole ? _self.senderRole : senderRole // ignore: cast_nullable_to_non_nullable
 as String?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,payload: null == payload ? _self._payload : payload // ignore: cast_nullable_to_non_nullable
-as Map<String, dynamic>,
+as Map<String, dynamic>,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

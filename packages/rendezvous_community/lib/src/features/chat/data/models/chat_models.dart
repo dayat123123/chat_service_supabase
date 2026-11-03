@@ -1,8 +1,12 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/stock_room_state.dart';
+import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'chat_models.freezed.dart';
@@ -25,6 +29,76 @@ MessageKind parseMessageKind(String? value) => _messageKinds[value] ?? MessageKi
 
 SenderRole? parseSenderRole(String? value) => value == null ? null : SenderRole.values.asNameMap()[value];
 
+Object? readAttachments(Map<dynamic, dynamic> json, String key) => json['attachments'];
+
+@freezed
+abstract class MessageReactionModel with _$MessageReactionModel {
+  const factory MessageReactionModel({required String emoji, @Default(0) int count, @Default(false) bool me}) =
+      _MessageReactionModel;
+
+  const MessageReactionModel._();
+
+  factory MessageReactionModel.fromJson(Map<String, dynamic> json) => _$MessageReactionModelFromJson(json);
+
+  MessageReaction toEntity() => MessageReaction(emoji: emoji, count: count, mine: me);
+}
+
+List<MessageReaction> reactionsFromJson(Object? value, {String? mine}) => [
+  if (value is List)
+    for (final item in value)
+      if (item is Map && item['emoji'] is String)
+        MessageReaction(
+          emoji: item['emoji'] as String,
+          count: (item['count'] as num?)?.toInt() ?? 0,
+          mine: mine == null ? item['me'] == true : item['emoji'] == mine,
+        ),
+];
+
+@freezed
+abstract class SharedPostModel with _$SharedPostModel {
+  const factory SharedPostModel({
+    required String postId,
+    @Default(false) bool available,
+    String? authorId,
+    String? authorUsername,
+    String? authorDisplayName,
+    String? authorAvatarUrl,
+    @Default(false) bool authorIsVerified,
+    String? body,
+    @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
+    String? sentiment,
+    @Default(<String>[]) List<String> stockCodes,
+    @Default(0) int likeCount,
+    @Default(0) int commentCount,
+    DateTime? createdAt,
+  }) = _SharedPostModel;
+
+  const SharedPostModel._();
+
+  factory SharedPostModel.fromJson(Map<String, dynamic> json) => _$SharedPostModelFromJson(json);
+
+  SharedPost toEntity() => SharedPost(
+    postId: postId,
+    available: available,
+    author: authorId == null || authorUsername == null
+        ? null
+        : UserSummary(
+            id: authorId!,
+            username: authorUsername!,
+            displayName: authorDisplayName,
+            avatarUrl: authorAvatarUrl,
+            isVerified: authorIsVerified,
+          ),
+    body: body,
+    attachments: [for (final a in attachments) a.toEntity()],
+    sentiment: sentiment == null ? null : Sentiment.values.asNameMap()[sentiment],
+    stockCodes: stockCodes,
+    likeCount: likeCount,
+    commentCount: commentCount,
+    createdAt: createdAt,
+  );
+}
+
 @freezed
 abstract class ChatMessageModel with _$ChatMessageModel {
   const factory ChatMessageModel({
@@ -39,7 +113,8 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     String? replyToId,
     String? replyToBody,
     String? replyToSenderUsername,
-    @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
+    @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
+    @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId,
     String? clientId,
     DateTime? editedAt,
     required DateTime createdAt,
@@ -48,6 +123,9 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     String? senderRole,
     String? sessionId,
     @Default(<String, dynamic>{}) Map<String, dynamic> payload,
+    List<MessageReactionModel>? reactions,
+    SharedPostModel? sharedPost,
+    String? moderationStatus,
   }) = _ChatMessageModel;
 
   const ChatMessageModel._();
@@ -80,6 +158,10 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     senderRole: parseSenderRole(senderRole),
     ticketId: sessionId,
     payload: payload,
+    reactions: isDeleted ? const [] : [for (final r in reactions ?? const <MessageReactionModel>[]) r.toEntity()],
+    sharedPostId: isDeleted ? null : sharedPost?.postId ?? sharedPostId,
+    sharedPost: isDeleted ? null : sharedPost?.toEntity(),
+    moderationStatus: parseModerationStatus(moderationStatus),
   );
 }
 
@@ -91,7 +173,8 @@ abstract class MessageRowModel with _$MessageRowModel {
     String? senderId,
     @Default('') String body,
     String? replyToId,
-    @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
+    @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
+    @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId,
     String? clientId,
     DateTime? editedAt,
     DateTime? deletedAt,
@@ -100,6 +183,7 @@ abstract class MessageRowModel with _$MessageRowModel {
     String? senderRole,
     String? sessionId,
     @Default(<String, dynamic>{}) Map<String, dynamic> payload,
+    String? moderationStatus,
   }) = _MessageRowModel;
 
   const MessageRowModel._();
@@ -115,6 +199,7 @@ abstract class MessageRowModel with _$MessageRowModel {
     isDeleted: deletedAt != null,
     replyToId: replyToId,
     attachments: deletedAt == null ? [for (final a in attachments) a.toEntity()] : const [],
+    sharedPostId: deletedAt == null ? sharedPostId : null,
     clientId: clientId,
     editedAt: editedAt,
     createdAt: createdAt,
@@ -122,6 +207,7 @@ abstract class MessageRowModel with _$MessageRowModel {
     senderRole: parseSenderRole(senderRole),
     ticketId: sessionId,
     payload: payload,
+    moderationStatus: parseModerationStatus(moderationStatus),
   );
 }
 
@@ -220,4 +306,20 @@ MemberReceipt? parseReceipt(Map<String, dynamic> json) {
   final read = DateTime.tryParse(json['last_read_at'] as String? ?? '');
   if (userId == null || delivered == null || read == null) return null;
   return MemberReceipt(userId: userId, lastDeliveredAt: delivered, lastReadAt: read);
+}
+
+StockRoomState parseStockRoomState(Map<String, dynamic> json) {
+  final slow = json['slow_mode'];
+  final slowMode = slow is Map ? Map<String, dynamic>.from(slow) : const <String, dynamic>{};
+  final pinned = json['pinned_message'];
+  return StockRoomState(
+    roomId: json['room_id'] as String?,
+    stockCode: json['stock_code'] as String?,
+    slowModeSeconds: (slowMode['seconds'] as num?)?.toInt() ?? 0,
+    slowModeUntil: DateTime.tryParse(slowMode['until'] as String? ?? ''),
+    slowModeSource: slowMode['source'] as String?,
+    waitSeconds: (json['wait_seconds'] as num?)?.toInt() ?? 0,
+    pinnedMessage: pinned is Map ? ChatMessageModel.fromJson(Map<String, dynamic>.from(pinned)).toEntity() : null,
+    pinnedAt: DateTime.tryParse(json['pinned_at'] as String? ?? ''),
+  );
 }

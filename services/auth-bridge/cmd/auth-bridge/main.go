@@ -25,6 +25,8 @@ import (
 	"olt-social/auth-bridge/internal/token"
 )
 
+const version = "0.5.0"
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		os.Exit(healthcheck())
@@ -108,7 +110,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 		})
 	}
 
-	log.Info("auth-bridge berjalan",
+	log.Info("auth-bridge berjalan", "version", version,
 		"port", cfg.Port, "ops_port", cfg.OpsPort, "app_env", cfg.AppEnv, "olt_mode", cfg.OLT.Mode,
 		"jwt_ttl_s", cfg.JWTTTL.Seconds(), "cache_ttl_s", cfg.VerifyCacheTTL.Seconds(),
 		"valkey", cfg.ValkeyAddr != "")

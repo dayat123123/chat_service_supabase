@@ -5,6 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
@@ -40,10 +41,11 @@ abstract class ComposeState with _$ComposeState {
 }
 
 class ComposeCubit extends Cubit<ComposeState> {
-  ComposeCubit({required this._feed, required this._media}) : super(const ComposeState());
+  ComposeCubit({required this._feed, required this._media, this._consent}) : super(const ComposeState());
 
   final FeedRepository _feed;
   final MediaRepository _media;
+  final ConsentGate? _consent;
   String _clientId = _uuid.v4();
 
   void setSentiment(Sentiment? sentiment) => emit(state.copyWith(sentiment: sentiment));
@@ -53,7 +55,7 @@ class ComposeCubit extends Cubit<ComposeState> {
       return _fail(const CommunityException(CommunityErrorKind.invalidInput, code: 'too_many_images'));
     }
     if (bytes.length > maxImageBytes) {
-      return _fail(const CommunityException(CommunityErrorKind.invalidInput, code: 'image_too_large'));
+      return _fail(const CommunityException(CommunityErrorKind.invalidInput, code: 'file_too_large'));
     }
     emit(state.copyWith(uploading: true));
     try {
@@ -113,16 +115,23 @@ class ComposeCubit extends Cubit<ComposeState> {
     }
     emit(state.copyWith(submitting: true));
     try {
-      final post = await _feed.createPost(
-        body: text,
-        sentiment: state.sentiment,
-        attachments: state.attachments,
-        poll: poll,
-        clientId: _clientId,
+      final post = await _consent.guard(
+        () => _feed.createPost(
+          body: text,
+          sentiment: state.sentiment,
+          attachments: state.attachments,
+          poll: poll,
+          clientId: _clientId,
+        ),
       );
       _clientId = _uuid.v4();
+      final held = {for (final a in state.attachments.where((a) => a.held)) a.path};
       if (!isClosed) emit(const ComposeState());
-      return post;
+      return held.isEmpty
+          ? post
+          : post.copyWith(
+              attachments: [for (final a in post.attachments) held.contains(a.path) ? a.copyWith(held: true) : a],
+            );
     } catch (e) {
       if (!isClosed) emit(state.copyWith(submitting: false));
       _fail(e);

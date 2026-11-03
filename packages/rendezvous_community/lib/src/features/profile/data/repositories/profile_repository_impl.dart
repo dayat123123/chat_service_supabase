@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:rendezvous_community/src/core/media/image_mime.dart';
 import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
 import 'package:rendezvous_community/src/features/profile/data/models/profile_model.dart';
@@ -35,10 +36,13 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<String> uploadAvatar(Uint8List bytes, {required String mimeType}) async {
+    if (mimeType == gifMimeType) {
+      throw const CommunityException(CommunityErrorKind.invalidInput, code: 'unsupported_type');
+    }
     final me = await _api.requireUserId();
     final path = '$me/avatar-${DateTime.now().millisecondsSinceEpoch}.${imageExtension(mimeType)}';
-    await _api.upload('avatars', path, bytes, contentType: mimeType, upsert: true);
-    final url = _api.publicUrl('avatars', path);
+    final object = await _api.upload(avatarBucket, path, bytes, contentType: mimeType, upsert: true);
+    final url = _api.publicUrl(avatarBucket, object.path);
     await updateMyProfile(avatarUrl: url);
     return url;
   }

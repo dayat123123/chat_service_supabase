@@ -1,0 +1,94 @@
+name: backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - services/**
+      - supabase/**
+      - docker/**
+      - scripts/**
+      - Makefile
+      - .gitleaks.toml
+      - .github/workflows/backend.yml
+  pull_request:
+    paths:
+      - services/**
+      - supabase/**
+      - docker/**
+      - scripts/**
+      - Makefile
+      - .gitleaks.toml
+      - .github/workflows/backend.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_IMG: golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb
+  GITLEAKS_IMG: ghcr.io/gitleaks/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
+
+jobs:
+  go:
+    name: Go ${{ matrix.service }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [auth-bridge, dummy-olt, nasabah-gateway, notifier, janitor, media, sentinel, backup, integration, link-preview, classifier]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: gofmt, vet, test -race, tanpa komentar
+        run: |
+          docker run --rm -v "$PWD:/repo" -w "/repo/services/${{ matrix.service }}" "$GO_IMG" sh -euc '
+            apk add --no-cache gcc musl-dev >/dev/null
+            unformatted="$(gofmt -l .)"
+            if [ -n "$unformatted" ]; then echo "Belum gofmt:"; echo "$unformatted"; exit 1; fi
+            go vet ./...
+            CGO_ENABLED=1 go test -race -count=1 ./...
+            cd /repo/scripts/check-go-comments && go run . "/repo/services/${{ matrix.service }}"
+          '
+      - name: Build image
+        run: docker build -t "olt-social/${{ matrix.service }}:ci" "services/${{ matrix.service }}"
+      - name: Trivy image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: olt-social/${{ matrix.service }}:ci
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+  database:
+    name: pgTAP + smoke vs stack dev
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Secret dev sekali pakai
+        run: make gen-secrets
+      - name: Stack dev + OLT dummy
+        run: make up DUMMY_OLT=1
+      - name: Tes pgTAP
+        run: make test-db
+      - name: Smoke auth-bridge, upload media
+        run: make smoke-dummy
+      - name: Log stack bila gagal
+        if: failure()
+        run: docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs logs --no-color --tail 200
+
+  secrets:
+    name: gitleaks (riwayat git)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo" "$GITLEAKS_IMG" git /repo --config /repo/.gitleaks.toml --redact --no-banner

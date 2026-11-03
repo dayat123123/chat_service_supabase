@@ -72,6 +72,26 @@ SQL
   applied=$((applied + 1))
 done
 
+# Password role replikasi layanan backup dari Docker secret (tidak pernah ditulis di migrasi).
+backup_password_file="${BACKUP_DB_PASSWORD_FILE:-/run/secrets/backup_db_password}"
+if [ -s "$backup_password_file" ]; then
+  backup_password="$(tr -d '\r\n' < "$backup_password_file")"
+  if ! [[ "$backup_password" =~ ^[0-9a-f]{32,}$ ]]; then
+    echo "migrate: GAGAL - secret backup_db_password harus hex minimal 32 karakter (make gen-secrets)." >&2
+    exit 1
+  fi
+  # Dikirim sebagai opsi koneksi (bukan teks statement) agar tidak tercatat di log statement/pgaudit.
+  PGUSER=supabase_admin PGOPTIONS="-c olt.backup_password=$backup_password" psql_q <<'SQL'
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'olt_backup') then
+    execute format('alter role olt_backup with login password %L', current_setting('olt.backup_password'));
+  end if;
+end;
+$$;
+SQL
+fi
+
 if [ "$applied" -gt 0 ]; then
   # PostgREST juga memantau DDL lewat event trigger; ini hanya untuk memastikan.
   psql_q -c "notify pgrst, 'reload schema';"

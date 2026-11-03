@@ -1,12 +1,21 @@
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:rendezvous_community/src/features/push/domain/entities/community_push_message.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/community_support_chat.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+bool isCommunityPush(Map<String, Object?> data) => CommunityPushMessage.tryParse(data) != null;
+
+bool isOltPush(Map<String, Object?> data) {
+  final kind = data['kind'];
+  return data['source'] == 'olt' || (kind is String && kind.startsWith('olt.'));
+}
 
 bool openCommunityPush(BuildContext context, Map<String, Object?> data) {
   final message = CommunityPushMessage.tryParse(data);
@@ -20,6 +29,8 @@ bool openCommunityPush(BuildContext context, Map<String, Object?> data) {
   final link = message.link;
   if (message.isSupport) {
     unawaited(openCommunitySupport(context));
+  } else if (message.type == 'appeal' && context.communityFeatures != null) {
+    unawaited(openCommunityAppeals(context));
   } else if (message.type == 'message' && roomId != null) {
     CommunityNavigator.openRoom(context, roomId);
   } else if (message.type == 'follow' && actorId != null) {

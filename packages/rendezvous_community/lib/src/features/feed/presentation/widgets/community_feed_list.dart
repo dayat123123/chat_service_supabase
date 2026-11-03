@@ -1,15 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/analytics/domain/entities/analytics_event.dart';
+import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/cubit/feed_cubit.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/pinned_post_card.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_actions.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
+import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_banner.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
+
+String feedScopeName(FeedScope scope) => switch (scope) {
+  GlobalFeedScope() => 'global',
+  FollowingFeedScope() => 'following',
+  StockFeedScope() => 'stock',
+  UserFeedScope() => 'user',
+};
 
 class CommunityFeedList extends StatelessWidget {
   const CommunityFeedList({super.key, required this.scope, required this.emptyMessage, this.header});
@@ -22,24 +34,47 @@ class CommunityFeedList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
-    return BlocProvider(
-      create: (_) => FeedCubit(feed: deps.feed, scope: scope, currentUserId: () => deps.currentUser?.id)..load(),
-      child: _FeedListView(emptyMessage: emptyMessage, header: header),
+    final features = context.communityFeatures;
+    return CommunitySocialGate(
+      child: BlocProvider(
+        create: (_) {
+          context.trackCommunityEvent(CommunityAnalyticsEvent.feedOpen, {
+            'scope': feedScopeName(scope),
+            if (scope is StockFeedScope) 'stock_code': (scope as StockFeedScope).code,
+          });
+          return FeedCubit(
+            feed: deps.feed,
+            scope: scope,
+            currentUserId: () => deps.currentUser?.id,
+            bookmarks: features?.bookmarks,
+            edits: features?.edits,
+          )..load();
+        },
+        child: FeedPostList(emptyMessage: emptyMessage, header: header),
+      ),
     );
   }
 }
 
-class _FeedListView extends StatefulWidget {
-  const _FeedListView({required this.emptyMessage, this.header});
+class FeedPostList extends StatefulWidget {
+  const FeedPostList({
+    super.key,
+    required this.emptyMessage,
+    this.header,
+    this.showConsentBanner = true,
+    this.source = 'feed',
+  });
 
   final String emptyMessage;
   final Widget? header;
+  final bool showConsentBanner;
+  final String source;
 
   @override
-  State<_FeedListView> createState() => _FeedListViewState();
+  State<FeedPostList> createState() => _FeedPostListState();
 }
 
-class _FeedListViewState extends State<_FeedListView> {
+class _FeedPostListState extends State<FeedPostList> {
   final _scroll = ScrollController();
 
   @override
@@ -89,12 +124,14 @@ class _FeedListViewState extends State<_FeedListView> {
                 if (index == 0) {
                   return Column(
                     children: [
+                      if (widget.showConsentBanner) const CommunityConsentBanner(),
                       ?widget.header,
                       for (final pin in state.pinned)
                         PinnedPostCard(
                           pinned: pin,
                           onLike: () => cubit.toggleLike(pin.post),
                           onOpen: () => CommunityNavigator.openPost(context, pin.post.id),
+                          onToggleBookmark: cubit.canBookmark ? () => cubit.toggleBookmark(pin.post) : null,
                         ),
                       if (posts.isEmpty && state.pinned.isEmpty) CommunityEmptyView(message: widget.emptyMessage),
                     ],
@@ -111,13 +148,7 @@ class _FeedListViewState extends State<_FeedListView> {
                 final post = posts[index - 1];
                 return Column(
                   children: [
-                    PostCard(
-                      post: post,
-                      onLike: () => cubit.toggleLike(post),
-                      onOpen: () => CommunityNavigator.openPost(context, post.id),
-                      onDelete: () => cubit.delete(post),
-                      onAuthorBlocked: () => cubit.hideAuthor(post.author.id),
-                    ),
+                    FeedPostCard(post: post, cubit: cubit, source: widget.source),
                     const Divider(height: 1),
                   ],
                 );
@@ -152,4 +183,26 @@ class _FeedListViewState extends State<_FeedListView> {
       },
     );
   }
+}
+
+class FeedPostCard extends StatelessWidget {
+  const FeedPostCard({super.key, required this.post, required this.cubit, this.source = 'feed'});
+
+  final Post post;
+  final FeedCubit cubit;
+  final String source;
+
+  @override
+  Widget build(BuildContext context) => PostCard(
+    post: post,
+    source: source,
+    onLike: () => cubit.toggleLike(post),
+    onOpen: () => CommunityNavigator.openPost(context, post.id),
+    onDelete: () => cubit.delete(post),
+    onAuthorBlocked: () => cubit.hideAuthor(post.author.id),
+    onEdit: editPostAction(context, post, cubit.canEdit ? cubit.editPost : null),
+    onToggleBookmark: bookmarkPostAction(context, cubit.canBookmark ? () => cubit.toggleBookmark(post) : null),
+    onShare: sharePostAction(context, post),
+    onAppeal: appealPostAction(context, post),
+  );
 }

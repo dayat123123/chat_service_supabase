@@ -84,6 +84,14 @@ Yang terjadi di belakang layar:
 - Kode apa pun yang berformat `$KODE` (huruf di depan, 2–12 huruf/angka) diterima sebagai label untuk feed, pantau, dan room saham. Validasi kode yang benar-benar ada adalah tugas app OLT.
 - Nama saham di header `CommunityStockFeed` datang dari parameter `stockName`. Harga dan grafik tetap di halaman saham OLT.
 
+### Klaim `accounts` dan notifikasi transaksi
+
+Server OLT menambahkan klaim `accounts` (cust id rekening **milik** login: LoginType 1 → `TAccountLinked`; sales/cabang/pusat → `[]`) ke token sosial. Aplikasi tidak perlu mengirim daftar rekening; cukup `registerPushToken(...)` seperti biasa. notifEngine lalu mengirim notifikasi per cust id ke `/integration/v1/notify/messages`. Push transaksi (`kind` berawalan `olt.`) tidak dibuka paket: `openCommunityPush` mengembalikan `false` (`isOltPush(data)`), jadi aplikasi OLT memakai `data.screen`/`data.custId` untuk membuka layarnya sendiri. Spesifikasi lengkap: [docs/integration](integration/README.md).
+
+### Konfigurasi klien (1.3.0)
+
+Isi `appVersion` dan `platform` saat `initialize(...)` (termasuk `windows`), plus `onUpdateRequired` untuk mengarahkan ke mekanisme update OLT. Saat kill switch aktif, widget sosial menampilkan placeholder (bisa diganti lewat `CommunityAvailabilityScope`), chat CS tetap jalan. Panggil `RendezvousCommunity.instance.trackOrderTap()` saat nasabah berpindah dari fitur komunitas ke layar order. Fitur 1.3.0 lengkap: [docs/rendezvous-community](rendezvous-community/README.md).
+
 ## 4. Lokalisasi & tema
 
 ```dart
@@ -123,6 +131,7 @@ Semua widget adalah konten tanpa `Scaffold`, sehingga OLT tetap memegang AppBar,
 | Ikon menu "Bantuan" | `CommunitySupportBadge(child: Icon(Icons.support_agent_outlined))` (balasan CS yang belum dibaca) |
 | Tombol bantuan di layar order / dana / portofolio | `openCommunitySupport(context, topic: 'orders', screen: 'order_detail')` atau `CommunitySupportChat(topic: ..., screen: ...)` di panel samping. Topik dan asal layar ikut tercatat di tiket; detail order tidak dikirim ke server |
 | Riwayat tiket | `CommunitySupportTickets()` (juga ada di menu "⋯" room CS) |
+| Menu "Pengaturan → Privasi & akun komunitas" | `openCommunityAccountSettings(context, onAccountDeleted: ...)` atau `CommunityAccountSettings(...)`: baca S&K/Pedoman/Kebijakan Privasi, unduh data saya, hapus akun komunitas (akun trading tidak terpengaruh) |
 
 Contoh tab Diskusi di halaman saham OLT:
 
@@ -133,6 +142,13 @@ TabBarView(children: [
   CommunityStockFeed(stockCode: code, showHeader: false),
 ]);
 ```
+
+**Persetujuan dokumen hukum.** Dokumen diterbitkan staf Kepatuhan dari web CS. Paket menanganinya sendiri:
+- Feed menampilkan `CommunityConsentBanner` bila ada dokumen wajib yang belum disetujui.
+- Membuat postingan, komentar, atau pesan sebelum menyetujui memunculkan `showCommunityConsent`, lalu aksinya diulang otomatis. Chat CS tidak butuh persetujuan.
+- OLT juga bisa memanggil `showCommunityConsent(context)` sendiri, misalnya saat pertama membuka menu komunitas.
+
+**Upload foto dan PDF** dikirim paket ke `/media/v1` (layanan `media` di server memeriksa isi file dan membuang EXIF/GPS). Server lama tanpa layanan ini menolak upload ("upload belum tersedia").
 
 Navigasi dari dalam widget sosial memakai callback dari langkah 3. Contohnya, mengetuk `$TLKM` di sebuah post memanggil `onStockTap(context, 'TLKM')`, sehingga OLT bisa membuka halaman sahamnya sendiri.
 
@@ -205,4 +221,6 @@ Bungkus widget sosial dengan `CommunityScope` dan berikan implementasi palsu `Co
 | Log auth-bridge: `masa berlaku token melebihi batas` / `token kedaluwarsa` | OLT menerbitkan token lebih dari `OLT_JWT_MAX_TTL` (15 menit), atau jam server OLT/sosial selisih lebih dari 30 detik (cek NTP) |
 | Log auth-bridge: `audience` / `issuer` | Klaim `aud` harus memuat `olt-social` dan `iss` harus `olt` (atau sesuai `OLT_JWT_AUDIENCE` / `OLT_JWT_ISSUER`) |
 | Realtime tidak masuk | Pastikan port 443/8000 meneruskan WebSocket (Traefik sudah). Cek `docker compose logs realtime` |
+| Upload foto gagal "Jenis file tidak didukung" | Server memeriksa isi file, bukan ekstensinya. HEIC dari iPhone belum didukung; konversi ke JPEG di sisi OLT (mis. `image_picker` dengan `imageQuality`) |
+| "Upload belum tersedia" | Server belum menjalankan layanan `media` (`/media/v1` 404). Update server ke versi yang memuat `services/media` |
 | "Terlalu cepat" | Rate limit server (post 5/menit, komentar 20/menit, pesan 30/menit). Ubah lewat `private.rate_limits` |

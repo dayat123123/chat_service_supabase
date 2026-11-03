@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/appeals/domain/entities/appeal.dart';
+import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/receipt_icon.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/shared_post_card.dart';
+import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
+import 'package:rendezvous_community/src/features/link_preview/presentation/widgets/link_preview_card.dart';
 import 'package:rendezvous_community/src/features/media/presentation/widgets/attachment_grid.dart';
 import 'package:rendezvous_community/src/features/media/presentation/widgets/document_attachments.dart';
 import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
@@ -15,6 +22,7 @@ import 'package:rendezvous_community/src/features/support/presentation/widgets/s
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/moderation_notice.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/social_text.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -46,6 +54,13 @@ class MessageBubble extends StatelessWidget {
     final sender = m.sender;
     final support = m.senderRole != null;
     final sent = m.status == MessageStatus.sent && !m.isDeleted && !m.isSystem;
+    final reacting =
+        sent &&
+        !support &&
+        !m.isLocal &&
+        cubit.state.supportsReactions &&
+        context.communityFeature(CommunityFlags.messageReactions);
+    final sharedPostId = m.sharedPostId;
     late final CommunityMessageDetails details;
     details = CommunityMessageDetails(
       message: m,
@@ -62,6 +77,13 @@ class MessageBubble extends StatelessWidget {
       onRetry: m.status == MessageStatus.failed ? () => cubit.retry(m) : null,
       onSenderTap: sender != null && !support && !mine ? () => CommunityNavigator.openUser(context, sender) : null,
       onShowActions: sent ? () => _showActions(context, details) : null,
+      reactions: m.reactions,
+      reactionChoices: reacting ? context.communityConfig.messageReactions : const [],
+      onReact: reacting ? (emoji) => cubit.react(m, emoji) : null,
+      onAppeal: mine && m.isHidden && context.communityFeatures != null
+          ? () => showCommunityAppealDialog(context, targetType: AppealTargetType.message, targetId: m.id)
+          : null,
+      onOpenSharedPost: sharedPostId == null ? null : () => CommunityNavigator.openPost(context, sharedPostId),
     );
     return details;
   }
@@ -74,12 +96,22 @@ class MessageBubble extends StatelessWidget {
 
   Future<void> _showActions(BuildContext context, CommunityMessageDetails details) async {
     final l10n = context.communityL10n;
+    final onReact = details.onReact;
     final action = await showModalBottomSheet<VoidCallback>(
       context: context,
       builder: (sheetContext) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (onReact != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                child: ReactionPicker(
+                  choices: details.reactionChoices,
+                  selected: myReaction(details.reactions),
+                  onSelected: (emoji) => Navigator.pop(sheetContext, () => onReact(emoji)),
+                ),
+              ),
             for (final (handler, icon, label) in [
               (details.onReply, Icons.reply, l10n.replyToMessage),
               (details.onDelete, Icons.delete_outline, l10n.delete),
@@ -186,13 +218,23 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
                 ],
                 color: fg,
               ),
+            if (m.sharedPostId != null)
+              SharedPostCard(postId: m.sharedPostId!, sharedPost: m.sharedPost, color: fg, onOpen: d.onOpenSharedPost),
             if ((m.body ?? '').isNotEmpty)
               support
                   ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))
-                  : SocialText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg)),
+                  : SocialText(
+                      m.body!,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: fg),
+                      source: 'chat',
+                    ),
+            if (!support && (m.body ?? '').isNotEmpty)
+              LinkPreviewCard(text: m.body!, margin: const EdgeInsets.only(top: 6)),
             if (m.kind == MessageKind.quickReply || m.kind == MessageKind.helpLink)
               SupportMessageExtras(message: m, color: fg, mine: d.isMine),
           ],
+          if (d.isMine && !m.isDeleted)
+            ModerationNotice(status: m.moderationStatus, compact: true, color: fg, onAppeal: d.onAppeal),
           const SizedBox(height: 2),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -209,10 +251,30 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
       ),
     );
 
-    final actions = _hovered && (d.onReply != null || d.onDelete != null)
+    final actions = _hovered && (d.onReply != null || d.onDelete != null || d.onReact != null)
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (d.onReact != null)
+                PopupMenuButton<String>(
+                  tooltip: l10n.reactionAdd,
+                  iconSize: 18,
+                  icon: const Icon(Icons.add_reaction_outlined),
+                  onSelected: d.onReact,
+                  itemBuilder: (_) => [
+                    PopupMenuItem<String>(
+                      enabled: false,
+                      child: ReactionPicker(
+                        choices: d.reactionChoices,
+                        selected: myReaction(d.reactions),
+                        onSelected: (emoji) {
+                          Navigator.pop(context);
+                          d.onReact!(emoji);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               if (d.onReply != null)
                 IconButton(
                   tooltip: l10n.replyToMessage,
@@ -231,7 +293,7 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
                 ),
             ],
           )
-        : const SizedBox(width: 72);
+        : const SizedBox(width: 108);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -250,6 +312,7 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
                   crossAxisAlignment: d.isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                   children: [
                     bubble,
+                    if (d.reactions.isNotEmpty) ReactionChips(reactions: d.reactions, onReact: d.onReact),
                     if (m.status == MessageStatus.failed)
                       Text(
                         l10n.messageFailed,
@@ -262,6 +325,73 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
             if (!d.isMine) actions,
           ],
         ),
+      ),
+    );
+  }
+}
+
+class ReactionPicker extends StatelessWidget {
+  const ReactionPicker({super.key, required this.choices, required this.onSelected, this.selected});
+
+  final List<String> choices;
+  final String? selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Wrap(
+      spacing: 4,
+      alignment: WrapAlignment.center,
+      children: [
+        for (final emoji in choices)
+          InkResponse(
+            radius: 24,
+            onTap: () => onSelected(emoji),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: emoji == selected ? scheme.primaryContainer : null,
+              ),
+              child: Text(emoji, style: const TextStyle(fontSize: 24)),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class ReactionChips extends StatelessWidget {
+  const ReactionChips({super.key, required this.reactions, this.onReact});
+
+  final List<MessageReaction> reactions;
+  final ValueChanged<String>? onReact;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: [
+          for (final r in reactions)
+            Material(
+              color: r.mine ? scheme.primaryContainer : scheme.surfaceContainerHighest,
+              shape: StadiumBorder(side: BorderSide(color: r.mine ? scheme.primary : scheme.outlineVariant)),
+              child: InkWell(
+                customBorder: const StadiumBorder(),
+                onTap: onReact == null ? null : () => onReact!(r.emoji),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  child: Text('${r.emoji} ${r.count}', style: theme.textTheme.labelMedium),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

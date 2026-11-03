@@ -136,6 +136,7 @@ type claims struct {
 	IssuedAt          *int64          `json:"iat"`
 	ExpiresAt         *int64          `json:"exp"`
 	NotBefore         *int64          `json:"nbf"`
+	Accounts          json.RawMessage `json:"accounts"`
 }
 
 func invalid(reason string) error {
@@ -233,7 +234,8 @@ func (v *JWTVerifier) userFrom(c claims) (User, error) {
 	if c.PreferredUsername == "" {
 		return User{}, invalid("preferred_username wajib diisi")
 	}
-	return User{ID: subject, Username: c.PreferredUsername, Email: c.Email, DisplayName: c.Name}, nil
+	return User{ID: subject, Username: c.PreferredUsername, Email: c.Email, DisplayName: c.Name,
+		Accounts: ParseAccounts(c.Accounts)}, nil
 }
 
 func hasAudience(raw json.RawMessage, want string) bool {

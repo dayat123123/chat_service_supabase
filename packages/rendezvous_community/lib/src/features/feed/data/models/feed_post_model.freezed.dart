@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$FeedPostModel {
 
- String get id; String get authorId; String get authorUsername; String? get authorDisplayName; String? get authorAvatarUrl; bool get authorIsVerified; String get body; String? get sentiment; List<AttachmentModel> get attachments; int get likeCount; int get commentCount; List<String> get stockCodes; bool get likedByMe; PollModel? get poll; DateTime? get editedAt; DateTime get createdAt; String get cursor;
+ String get id; String get authorId; String get authorUsername; String? get authorDisplayName; String? get authorAvatarUrl; bool get authorIsVerified; String get body; String? get sentiment;@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments; int get likeCount; int get commentCount; List<String> get stockCodes; bool get likedByMe; PollModel? get poll; DateTime? get editedAt; DateTime get createdAt; String get cursor; bool? get isBookmarked; List<String>? get hashtags; bool? get isBot; bool? get authorIsOfficial; String? get moderationStatus;
 /// Create a copy of FeedPostModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $FeedPostModelCopyWith<FeedPostModel> get copyWith => _$FeedPostModelCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedPostModel&&(identical(other.id, id) || other.id == id)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.sentiment, sentiment) || other.sentiment == sentiment)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&const DeepCollectionEquality().equals(other.stockCodes, stockCodes)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.poll, poll) || other.poll == poll)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedPostModel&&(identical(other.id, id) || other.id == id)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.sentiment, sentiment) || other.sentiment == sentiment)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&const DeepCollectionEquality().equals(other.stockCodes, stockCodes)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.poll, poll) || other.poll == poll)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.isBookmarked, isBookmarked) || other.isBookmarked == isBookmarked)&&const DeepCollectionEquality().equals(other.hashtags, hashtags)&&(identical(other.isBot, isBot) || other.isBot == isBot)&&(identical(other.authorIsOfficial, authorIsOfficial) || other.authorIsOfficial == authorIsOfficial)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,sentiment,const DeepCollectionEquality().hash(attachments),likeCount,commentCount,const DeepCollectionEquality().hash(stockCodes),likedByMe,poll,editedAt,createdAt,cursor);
+int get hashCode => Object.hashAll([runtimeType,id,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,sentiment,const DeepCollectionEquality().hash(attachments),likeCount,commentCount,const DeepCollectionEquality().hash(stockCodes),likedByMe,poll,editedAt,createdAt,cursor,isBookmarked,const DeepCollectionEquality().hash(hashtags),isBot,authorIsOfficial,moderationStatus]);
 
 @override
 String toString() {
-  return 'FeedPostModel(id: $id, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, sentiment: $sentiment, attachments: $attachments, likeCount: $likeCount, commentCount: $commentCount, stockCodes: $stockCodes, likedByMe: $likedByMe, poll: $poll, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'FeedPostModel(id: $id, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, sentiment: $sentiment, attachments: $attachments, likeCount: $likeCount, commentCount: $commentCount, stockCodes: $stockCodes, likedByMe: $likedByMe, poll: $poll, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, isBookmarked: $isBookmarked, hashtags: $hashtags, isBot: $isBot, authorIsOfficial: $authorIsOfficial, moderationStatus: $moderationStatus)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $FeedPostModelCopyWith<$Res>  {
   factory $FeedPostModelCopyWith(FeedPostModel value, $Res Function(FeedPostModel) _then) = _$FeedPostModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String authorId, String authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String body, String? sentiment, List<AttachmentModel> attachments, int likeCount, int commentCount, List<String> stockCodes, bool likedByMe, PollModel? poll, DateTime? editedAt, DateTime createdAt, String cursor
+ String id, String authorId, String authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String body, String? sentiment,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments, int likeCount, int commentCount, List<String> stockCodes, bool likedByMe, PollModel? poll, DateTime? editedAt, DateTime createdAt, String cursor, bool? isBookmarked, List<String>? hashtags, bool? isBot, bool? authorIsOfficial, String? moderationStatus
 });
 
 
@@ -65,7 +65,7 @@ class _$FeedPostModelCopyWithImpl<$Res>
 
 /// Create a copy of FeedPostModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? authorId = null,Object? authorUsername = null,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = null,Object? sentiment = freezed,Object? attachments = null,Object? likeCount = null,Object? commentCount = null,Object? stockCodes = null,Object? likedByMe = null,Object? poll = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? authorId = null,Object? authorUsername = null,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = null,Object? sentiment = freezed,Object? attachments = null,Object? likeCount = null,Object? commentCount = null,Object? stockCodes = null,Object? likedByMe = null,Object? poll = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,Object? isBookmarked = freezed,Object? hashtags = freezed,Object? isBot = freezed,Object? authorIsOfficial = freezed,Object? moderationStatus = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,authorId: null == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
@@ -84,7 +84,12 @@ as bool,poll: freezed == poll ? _self.poll : poll // ignore: cast_nullable_to_no
 as PollModel?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,isBookmarked: freezed == isBookmarked ? _self.isBookmarked : isBookmarked // ignore: cast_nullable_to_non_nullable
+as bool?,hashtags: freezed == hashtags ? _self.hashtags : hashtags // ignore: cast_nullable_to_non_nullable
+as List<String>?,isBot: freezed == isBot ? _self.isBot : isBot // ignore: cast_nullable_to_non_nullable
+as bool?,authorIsOfficial: freezed == authorIsOfficial ? _self.authorIsOfficial : authorIsOfficial // ignore: cast_nullable_to_non_nullable
+as bool?,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 /// Create a copy of FeedPostModel
@@ -181,10 +186,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String authorId,  String authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String body,  String? sentiment,  List<AttachmentModel> attachments,  int likeCount,  int commentCount,  List<String> stockCodes,  bool likedByMe,  PollModel? poll,  DateTime? editedAt,  DateTime createdAt,  String cursor)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String authorId,  String authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String body,  String? sentiment, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments,  int likeCount,  int commentCount,  List<String> stockCodes,  bool likedByMe,  PollModel? poll,  DateTime? editedAt,  DateTime createdAt,  String cursor,  bool? isBookmarked,  List<String>? hashtags,  bool? isBot,  bool? authorIsOfficial,  String? moderationStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _FeedPostModel() when $default != null:
-return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.sentiment,_that.attachments,_that.likeCount,_that.commentCount,_that.stockCodes,_that.likedByMe,_that.poll,_that.editedAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.sentiment,_that.attachments,_that.likeCount,_that.commentCount,_that.stockCodes,_that.likedByMe,_that.poll,_that.editedAt,_that.createdAt,_that.cursor,_that.isBookmarked,_that.hashtags,_that.isBot,_that.authorIsOfficial,_that.moderationStatus);case _:
   return orElse();
 
 }
@@ -202,10 +207,10 @@ return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplay
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String authorId,  String authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String body,  String? sentiment,  List<AttachmentModel> attachments,  int likeCount,  int commentCount,  List<String> stockCodes,  bool likedByMe,  PollModel? poll,  DateTime? editedAt,  DateTime createdAt,  String cursor)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String authorId,  String authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String body,  String? sentiment, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments,  int likeCount,  int commentCount,  List<String> stockCodes,  bool likedByMe,  PollModel? poll,  DateTime? editedAt,  DateTime createdAt,  String cursor,  bool? isBookmarked,  List<String>? hashtags,  bool? isBot,  bool? authorIsOfficial,  String? moderationStatus)  $default,) {final _that = this;
 switch (_that) {
 case _FeedPostModel():
-return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.sentiment,_that.attachments,_that.likeCount,_that.commentCount,_that.stockCodes,_that.likedByMe,_that.poll,_that.editedAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.sentiment,_that.attachments,_that.likeCount,_that.commentCount,_that.stockCodes,_that.likedByMe,_that.poll,_that.editedAt,_that.createdAt,_that.cursor,_that.isBookmarked,_that.hashtags,_that.isBot,_that.authorIsOfficial,_that.moderationStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -222,10 +227,10 @@ return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplay
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String authorId,  String authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String body,  String? sentiment,  List<AttachmentModel> attachments,  int likeCount,  int commentCount,  List<String> stockCodes,  bool likedByMe,  PollModel? poll,  DateTime? editedAt,  DateTime createdAt,  String cursor)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String authorId,  String authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String body,  String? sentiment, @JsonKey(fromJson: attachmentsFromJson)  List<AttachmentModel> attachments,  int likeCount,  int commentCount,  List<String> stockCodes,  bool likedByMe,  PollModel? poll,  DateTime? editedAt,  DateTime createdAt,  String cursor,  bool? isBookmarked,  List<String>? hashtags,  bool? isBot,  bool? authorIsOfficial,  String? moderationStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _FeedPostModel() when $default != null:
-return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.sentiment,_that.attachments,_that.likeCount,_that.commentCount,_that.stockCodes,_that.likedByMe,_that.poll,_that.editedAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.sentiment,_that.attachments,_that.likeCount,_that.commentCount,_that.stockCodes,_that.likedByMe,_that.poll,_that.editedAt,_that.createdAt,_that.cursor,_that.isBookmarked,_that.hashtags,_that.isBot,_that.authorIsOfficial,_that.moderationStatus);case _:
   return null;
 
 }
@@ -237,7 +242,7 @@ return $default(_that.id,_that.authorId,_that.authorUsername,_that.authorDisplay
 @JsonSerializable()
 
 class _FeedPostModel extends FeedPostModel {
-  const _FeedPostModel({required this.id, required this.authorId, required this.authorUsername, this.authorDisplayName, this.authorAvatarUrl, this.authorIsVerified = false, required this.body, this.sentiment, final  List<AttachmentModel> attachments = const <AttachmentModel>[], this.likeCount = 0, this.commentCount = 0, final  List<String> stockCodes = const <String>[], this.likedByMe = false, this.poll, this.editedAt, required this.createdAt, required this.cursor}): _attachments = attachments,_stockCodes = stockCodes,super._();
+  const _FeedPostModel({required this.id, required this.authorId, required this.authorUsername, this.authorDisplayName, this.authorAvatarUrl, this.authorIsVerified = false, required this.body, this.sentiment, @JsonKey(fromJson: attachmentsFromJson) final  List<AttachmentModel> attachments = const <AttachmentModel>[], this.likeCount = 0, this.commentCount = 0, final  List<String> stockCodes = const <String>[], this.likedByMe = false, this.poll, this.editedAt, required this.createdAt, this.cursor = '', this.isBookmarked, final  List<String>? hashtags, this.isBot, this.authorIsOfficial, this.moderationStatus}): _attachments = attachments,_stockCodes = stockCodes,_hashtags = hashtags,super._();
   factory _FeedPostModel.fromJson(Map<String, dynamic> json) => _$FeedPostModelFromJson(json);
 
 @override final  String id;
@@ -249,7 +254,7 @@ class _FeedPostModel extends FeedPostModel {
 @override final  String body;
 @override final  String? sentiment;
  final  List<AttachmentModel> _attachments;
-@override@JsonKey() List<AttachmentModel> get attachments {
+@override@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> get attachments {
   if (_attachments is EqualUnmodifiableListView) return _attachments;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_attachments);
@@ -268,7 +273,20 @@ class _FeedPostModel extends FeedPostModel {
 @override final  PollModel? poll;
 @override final  DateTime? editedAt;
 @override final  DateTime createdAt;
-@override final  String cursor;
+@override@JsonKey() final  String cursor;
+@override final  bool? isBookmarked;
+ final  List<String>? _hashtags;
+@override List<String>? get hashtags {
+  final value = _hashtags;
+  if (value == null) return null;
+  if (_hashtags is EqualUnmodifiableListView) return _hashtags;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
+@override final  bool? isBot;
+@override final  bool? authorIsOfficial;
+@override final  String? moderationStatus;
 
 /// Create a copy of FeedPostModel
 /// with the given fields replaced by the non-null parameter values.
@@ -283,16 +301,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeedPostModel&&(identical(other.id, id) || other.id == id)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.sentiment, sentiment) || other.sentiment == sentiment)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&const DeepCollectionEquality().equals(other._stockCodes, _stockCodes)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.poll, poll) || other.poll == poll)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FeedPostModel&&(identical(other.id, id) || other.id == id)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.sentiment, sentiment) || other.sentiment == sentiment)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.commentCount, commentCount) || other.commentCount == commentCount)&&const DeepCollectionEquality().equals(other._stockCodes, _stockCodes)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.poll, poll) || other.poll == poll)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.isBookmarked, isBookmarked) || other.isBookmarked == isBookmarked)&&const DeepCollectionEquality().equals(other._hashtags, _hashtags)&&(identical(other.isBot, isBot) || other.isBot == isBot)&&(identical(other.authorIsOfficial, authorIsOfficial) || other.authorIsOfficial == authorIsOfficial)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,sentiment,const DeepCollectionEquality().hash(_attachments),likeCount,commentCount,const DeepCollectionEquality().hash(_stockCodes),likedByMe,poll,editedAt,createdAt,cursor);
+int get hashCode => Object.hashAll([runtimeType,id,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,sentiment,const DeepCollectionEquality().hash(_attachments),likeCount,commentCount,const DeepCollectionEquality().hash(_stockCodes),likedByMe,poll,editedAt,createdAt,cursor,isBookmarked,const DeepCollectionEquality().hash(_hashtags),isBot,authorIsOfficial,moderationStatus]);
 
 @override
 String toString() {
-  return 'FeedPostModel(id: $id, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, sentiment: $sentiment, attachments: $attachments, likeCount: $likeCount, commentCount: $commentCount, stockCodes: $stockCodes, likedByMe: $likedByMe, poll: $poll, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'FeedPostModel(id: $id, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, sentiment: $sentiment, attachments: $attachments, likeCount: $likeCount, commentCount: $commentCount, stockCodes: $stockCodes, likedByMe: $likedByMe, poll: $poll, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, isBookmarked: $isBookmarked, hashtags: $hashtags, isBot: $isBot, authorIsOfficial: $authorIsOfficial, moderationStatus: $moderationStatus)';
 }
 
 
@@ -303,7 +321,7 @@ abstract mixin class _$FeedPostModelCopyWith<$Res> implements $FeedPostModelCopy
   factory _$FeedPostModelCopyWith(_FeedPostModel value, $Res Function(_FeedPostModel) _then) = __$FeedPostModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String authorId, String authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String body, String? sentiment, List<AttachmentModel> attachments, int likeCount, int commentCount, List<String> stockCodes, bool likedByMe, PollModel? poll, DateTime? editedAt, DateTime createdAt, String cursor
+ String id, String authorId, String authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String body, String? sentiment,@JsonKey(fromJson: attachmentsFromJson) List<AttachmentModel> attachments, int likeCount, int commentCount, List<String> stockCodes, bool likedByMe, PollModel? poll, DateTime? editedAt, DateTime createdAt, String cursor, bool? isBookmarked, List<String>? hashtags, bool? isBot, bool? authorIsOfficial, String? moderationStatus
 });
 
 
@@ -320,7 +338,7 @@ class __$FeedPostModelCopyWithImpl<$Res>
 
 /// Create a copy of FeedPostModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? authorId = null,Object? authorUsername = null,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = null,Object? sentiment = freezed,Object? attachments = null,Object? likeCount = null,Object? commentCount = null,Object? stockCodes = null,Object? likedByMe = null,Object? poll = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? authorId = null,Object? authorUsername = null,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = null,Object? sentiment = freezed,Object? attachments = null,Object? likeCount = null,Object? commentCount = null,Object? stockCodes = null,Object? likedByMe = null,Object? poll = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,Object? isBookmarked = freezed,Object? hashtags = freezed,Object? isBot = freezed,Object? authorIsOfficial = freezed,Object? moderationStatus = freezed,}) {
   return _then(_FeedPostModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,authorId: null == authorId ? _self.authorId : authorId // ignore: cast_nullable_to_non_nullable
@@ -339,7 +357,12 @@ as bool,poll: freezed == poll ? _self.poll : poll // ignore: cast_nullable_to_no
 as PollModel?,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,isBookmarked: freezed == isBookmarked ? _self.isBookmarked : isBookmarked // ignore: cast_nullable_to_non_nullable
+as bool?,hashtags: freezed == hashtags ? _self._hashtags : hashtags // ignore: cast_nullable_to_non_nullable
+as List<String>?,isBot: freezed == isBot ? _self.isBot : isBot // ignore: cast_nullable_to_non_nullable
+as bool?,authorIsOfficial: freezed == authorIsOfficial ? _self.authorIsOfficial : authorIsOfficial // ignore: cast_nullable_to_non_nullable
+as bool?,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

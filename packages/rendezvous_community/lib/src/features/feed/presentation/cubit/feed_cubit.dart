@@ -5,13 +5,18 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logging/logging.dart';
 import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/logging/community_logger.dart';
+import 'package:rendezvous_community/src/core/paging/paged.dart';
 import 'package:rendezvous_community/src/core/text/social_text_parser.dart';
+import 'package:rendezvous_community/src/features/bookmarks/domain/repositories/bookmark_repository.dart';
+import 'package:rendezvous_community/src/features/edit/domain/repositories/content_edit_repository.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/pinned_post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
 part 'feed_cubit.freezed.dart';
+
+typedef PostPageLoader = Future<Paged<Post>> Function(String? cursor, int limit);
 
 @freezed
 abstract class FeedState with _$FeedState {
@@ -29,19 +34,42 @@ abstract class FeedState with _$FeedState {
 }
 
 class FeedCubit extends Cubit<FeedState> {
-  FeedCubit({required this._feed, required this.scope, this.currentUserId, this.pageSize = 20})
-    : super(const FeedState());
+  FeedCubit({
+    required this._feed,
+    required this.scope,
+    this.currentUserId,
+    this.pageSize = 20,
+    this._loader,
+    this._bookmarks,
+    this._edits,
+    this.removeOnUnbookmark = false,
+  }) : super(const FeedState());
 
   final FeedRepository _feed;
   final FeedScope scope;
   final String? Function()? currentUserId;
   final int pageSize;
+  final PostPageLoader? _loader;
+  final BookmarkRepository? _bookmarks;
+  final ContentEditRepository? _edits;
+  final bool removeOnUnbookmark;
   StreamSubscription<PostChange>? _changes;
+
+  bool get isCustomSource => _loader != null;
+
+  bool get canBookmark => _bookmarks != null;
+
+  bool get canEdit => _edits != null;
+
+  Future<Paged<Post>> _page({String? cursor}) {
+    final loader = _loader;
+    return loader == null ? _feed.getFeed(scope, cursor: cursor, limit: pageSize) : loader(cursor, pageSize);
+  }
 
   Future<void> load() async {
     emit(state.copyWith(status: LoadStatus.loading, error: null));
     try {
-      final (page, pinned) = await (_feed.getFeed(scope, limit: pageSize), _pinned()).wait;
+      final (page, pinned) = await (_page(), _pinned()).wait;
       if (isClosed) return;
       emit(
         state.copyWith(
@@ -67,7 +95,7 @@ class FeedCubit extends Cubit<FeedState> {
   Future<void> refresh() async {
     if (state.status != LoadStatus.ready) return load();
     try {
-      final page = await _feed.getFeed(scope, limit: pageSize);
+      final page = await _page();
       final pinned = await _pinned();
       if (!isClosed) {
         emit(state.copyWith(posts: page.items, nextCursor: page.nextCursor, pinned: pinned, newPosts: 0));
@@ -78,6 +106,7 @@ class FeedCubit extends Cubit<FeedState> {
   }
 
   Future<List<PinnedPost>> _pinned() async {
+    if (isCustomSource) return const [];
     try {
       return await _feed.getPinned(scope);
     } catch (_) {
@@ -90,7 +119,7 @@ class FeedCubit extends Cubit<FeedState> {
     if (cursor == null || state.loadingMore || state.status != LoadStatus.ready) return;
     emit(state.copyWith(loadingMore: true));
     try {
-      final page = await _feed.getFeed(scope, cursor: cursor, limit: pageSize);
+      final page = await _page(cursor: cursor);
       if (isClosed) return;
       final known = {for (final p in state.posts) p.id};
       emit(
@@ -140,7 +169,60 @@ class FeedCubit extends Cubit<FeedState> {
     }
   }
 
+  Future<void> toggleBookmark(Post post) async {
+    final bookmarks = _bookmarks;
+    if (bookmarks == null) return;
+    final current = _find(post);
+    final next = !current.isBookmarked;
+    final before = state.posts;
+    if (!next && removeOnUnbookmark) {
+      emit(
+        state.copyWith(
+          posts: [
+            for (final p in state.posts)
+              if (p.id != post.id) p,
+          ],
+        ),
+      );
+    } else {
+      _replace(current.copyWith(isBookmarked: next));
+    }
+    try {
+      final saved = await bookmarks.setBookmarked(post.id, bookmarked: next);
+      if (saved != next && !isClosed) {
+        emit(state.copyWith(posts: before));
+        _replace(current.copyWith(isBookmarked: saved));
+      }
+    } catch (e) {
+      if (!isClosed) emit(state.copyWith(posts: before));
+      _replace(current);
+      _actionError(e);
+    }
+  }
+
+  Future<bool> editPost(Post post, String body) async {
+    final edits = _edits;
+    final text = body.trim();
+    if (edits == null || text.isEmpty) return false;
+    try {
+      final updated = await edits.editPost(post.id, text);
+      replacePost(updated.copyWith(cursor: _find(post).cursor));
+      return true;
+    } catch (e) {
+      _actionError(e);
+      return false;
+    }
+  }
+
+  void replacePost(Post post) => _replace(post);
+
+  Post _find(Post post) => state.posts.firstWhere(
+    (p) => p.id == post.id,
+    orElse: () => state.pinned.map((pin) => pin.post).firstWhere((p) => p.id == post.id, orElse: () => post),
+  );
+
   void insertOwnPost(Post post) {
+    if (isCustomSource) return;
     if (!_matchesScope(authorId: post.author.id, body: post.body)) return;
     if (state.posts.any((p) => p.id == post.id)) return;
     emit(state.copyWith(posts: [post, ...state.posts]));
@@ -160,6 +242,7 @@ class FeedCubit extends Cubit<FeedState> {
       if (isClosed) return;
       switch (change) {
         case PostInserted():
+          if (isCustomSource) return;
           final mine = change.authorId == currentUserId?.call();
           final known = state.posts.any((p) => p.id == change.postId);
           if (mine || known || scope is FollowingFeedScope) return;

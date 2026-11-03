@@ -9,7 +9,9 @@ App contoh yang meniru cara OLT memasang `rendezvous_community`:
    - **Windows** dan **web** (layar lebar): NavigationRail, dengan stream dan detail post berdampingan.
    - **Android**: NavigationBar di bawah.
 
-Menu yang tersedia: Stream, Saham, Chat, Notifikasi, dan Profil. Ada juga tombol untuk mengganti tema terang/gelap, bahasa ID/EN, dan gaya chat bawaan/kustom. Tombol gaya chat (ikon palet) memasang contoh builder dari `lib/custom_chat_style.dart` lewat `CommunityChatBuildersScope`: gelembung pesan, composer, tile daftar chat, dan pemisah hari versi host, dengan logika tetap dari package.
+Menu yang tersedia: Stream, Saham, Chat, Notifikasi, dan Profil. Ada juga tombol untuk mengganti tema terang/gelap, bahasa ID/EN, dan gaya chat bawaan/kustom.
+
+Fitur 1.3.0 bisa dicoba dari tombol **Jelajah** (ikon kompas): Cari, Trending, Disimpan, Permintaan pesan, Notifikasi (preferensi & jam tenang), Banding saya, dan **Bagikan chart** (membuat gambar chart contoh dengan `dart:ui` lalu membuka `showCommunityComposer(initialStock:, initialImage:)`). Halaman Saham menampilkan `CommunityStockSentiment`, tombol "Bagikan chart", dan tombol "Beli" yang memanggil `trackOrderTap()`. Permintaan pesan muncul di atas daftar Chat bila ada; pengaturan pesan langsung, notifikasi, dan banding ada di Privasi & akun. App memasang `CommunityUpdateListener` yang menampilkan dialog bila server mewajibkan update (`appVersion: '1.3.0'`). Tombol gaya chat (ikon palet) memasang contoh builder dari `lib/custom_chat_style.dart` lewat `CommunityChatBuildersScope`: gelembung pesan, composer, tile daftar chat, dan pemisah hari versi host, dengan logika tetap dari package.
 
 ## Menjalankan
 

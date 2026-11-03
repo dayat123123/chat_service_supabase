@@ -20,6 +20,8 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
+                 'test-media', 'test-sentinel', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
+                 'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
@@ -38,7 +40,9 @@ param(
     [string]$User = 'budi_santoso',
     [string]$Email = '',
     [string]$Name = '',
-    [string]$Ttl = ''
+    [string]$Ttl = '',
+    # restore-pitr: waktu target (RFC3339) atau 'latest'.
+    [string]$At = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -49,8 +53,9 @@ $SecretsDir = 'docker/secrets'
 $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
                  'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
                  's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri',
-                 'olt_jwks')
+                 'olt_jwks', 'backup_db_password')
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
+$GitleaksImage = 'ghcr.io/gitleaks/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854'
 $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
 $ToolsImage = 'olt-social/tools:0.1.0'
 $NodeImage = 'node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85'
@@ -182,6 +187,16 @@ switch ($Target) {
   test-nasabah-gateway  Unit test gateway menu Nasabah (Go, di container)
   test-notifier  Unit test layanan push notifier (Go, di container)
   test-janitor   Unit test pembersih file storage (Go, di container)
+  test-media     Unit test pintu upload media nasabah (Go, di container)
+  test-sentinel  Unit test pemantau sistem + alert (Go, di container)
+  test-backup    Unit test layanan backup (Go, di container)
+  test-integration  Unit test gateway integrasi OLT (Go, di container)
+  test-link-preview  Unit test pratinjau link (Go, di container)
+  test-classifier  Unit test classifier NSFW (Go + cgo, di container)
+  check-go-comments  Pastikan kode Go tanpa komentar (selain directive)
+  secrets-scan   Pindai riwayat git dengan gitleaks (.gitleaks.toml)
+  backup-snapshots  Daftar snapshot backup (restic) + rentang waktu PITR
+  restore-pitr   Pulihkan DB ke waktu tertentu: -At 2026-11-03T10:15:00+07:00 -Yes (env RESTIC_*, AWS_*; docs/backup)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
@@ -232,6 +247,13 @@ switch ($Target) {
         & $PSCommandPath test-nasabah-gateway
         & $PSCommandPath test-notifier
         & $PSCommandPath test-janitor
+        & $PSCommandPath test-media
+        & $PSCommandPath test-sentinel
+        & $PSCommandPath test-backup
+        & $PSCommandPath test-integration
+        & $PSCommandPath test-link-preview
+        & $PSCommandPath test-classifier
+        & $PSCommandPath check-go-comments
     }
     'test-flutter' {
         Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
@@ -375,6 +397,55 @@ switch ($Target) {
     'test-janitor' {
         $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    { $_ -in 'test-media', 'test-sentinel', 'test-backup', 'test-integration', 'test-link-preview' } {
+        $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    'backup-snapshots' { Assert-Config; Invoke-Compose @('run', '--rm', '--no-deps', '-T', 'backup', 'snapshots') }
+    'restore-pitr' {
+        Assert-Config
+        if (-not $At) { throw 'Sebutkan waktu: .\make.ps1 restore-pitr -At 2026-11-03T10:15:00+07:00 -Yes (atau -At latest)' }
+        if (-not $Yes) { throw 'Isi database diganti hasil restore. Ulangi dengan -Yes' }
+        if (-not $env:RESTIC_REPOSITORY) { throw 'Set $env:RESTIC_REPOSITORY, $env:RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE), $env:AWS_ACCESS_KEY_ID, $env:AWS_SECRET_ACCESS_KEY' }
+        Invoke-Compose @('build', 'backup')
+        Invoke-Compose @('stop')
+        $runArgs = @('run', '--rm', '--user', '0:0', '--network', "${Stack}_egress",
+                     '-e', 'RESTIC_REPOSITORY', '-e', 'RESTIC_PASSWORD', '-e', 'AWS_ACCESS_KEY_ID',
+                     '-e', 'AWS_SECRET_ACCESS_KEY', '-e', 'AWS_DEFAULT_REGION', '-v', "${Stack}_db-data:/restore")
+        if ($env:RESTIC_PASSWORD_FILE) {
+            $pw = (Resolve-Path -LiteralPath $env:RESTIC_PASSWORD_FILE).Path
+            $runArgs += @('-v', "${pw}:/run/secrets/restic_password:ro", '-e', 'RESTIC_PASSWORD_FILE=/run/secrets/restic_password')
+        }
+        $runArgs += @('olt-social/backup:0.1.0', 'restore', '--target-time', $At, '--data-dir', '/restore', '--wipe')
+        Invoke-Docker $runArgs
+        Invoke-Compose @('up', '-d', 'db')
+        Write-Host 'Menunggu recovery selesai (pantau: .\make.ps1 logs -Service db)...'
+        $ready = $false
+        for ($i = 0; $i -lt 720 -and -not $ready; $i++) {
+            & docker @($Compose + @('exec', '-T', 'db', 'pg_isready', '-U', 'postgres', '-h', 'localhost', '-q')) 2>$null
+            if ($LASTEXITCODE -eq 0) { $ready = $true } else { Start-Sleep -Seconds 5 }
+        }
+        if (-not $ready) { throw 'Database belum siap; lihat .\make.ps1 logs -Service db' }
+        Invoke-Compose @('exec', '-T', 'db', 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1',
+                         '-c', 'ALTER SYSTEM RESET restore_command', '-c', 'ALTER SYSTEM RESET recovery_target_time',
+                         '-c', 'ALTER SYSTEM RESET recovery_target_action', '-c', 'ALTER SYSTEM RESET recovery_target_timeline',
+                         '-c', 'SELECT pg_reload_conf()')
+        Invoke-Compose @('exec', '-T', '-u', 'postgres', 'db', 'rm', '-rf', '/var/lib/postgresql/data/restore_wal')
+        Write-Host "Database dipulihkan ke $At. Periksa data, lalu: .\make.ps1 up"
+    }
+    'test-classifier' {
+        $src = Join-Path $PSScriptRoot 'services/classifier'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'sh', '-c',
+                        'apk add --no-cache gcc musl-dev >/dev/null && CGO_ENABLED=1 go test ./...')
+    }
+    'check-go-comments' {
+        Invoke-Docker @('run', '--rm', '-v', "${PSScriptRoot}:/repo", '-w', '/repo/scripts/check-go-comments', $GoImage,
+                        'go', 'run', '.', '/repo/services')
+    }
+    'secrets-scan' {
+        Invoke-Docker @('run', '--rm', '-v', "${PSScriptRoot}:/repo", $GitleaksImage, 'git', '/repo',
+                        '--config', '/repo/.gitleaks.toml', '--redact', '--no-banner')
     }
     'test-flutter-it-dummy' {
         Assert-Config

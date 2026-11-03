@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ThreadCommentModel {
 
- String get id; String get postId; String? get parentId; String? get authorId; String? get authorUsername; String? get authorDisplayName; String? get authorAvatarUrl; bool get authorIsVerified; String? get body; bool get isDeleted; int get depth; String get path; int get likeCount; int get replyCount; bool get likedByMe; DateTime? get editedAt; DateTime get createdAt; String get cursor;
+ String get id; String get postId; String? get parentId; String? get authorId; String? get authorUsername; String? get authorDisplayName; String? get authorAvatarUrl; bool get authorIsVerified; String? get body; bool get isDeleted; int get depth; String get path; int get likeCount; int get replyCount; bool get likedByMe; DateTime? get editedAt; DateTime get createdAt; String get cursor; String? get moderationStatus;
 /// Create a copy of ThreadCommentModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $ThreadCommentModelCopyWith<ThreadCommentModel> get copyWith => _$ThreadCommentM
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ThreadCommentModel&&(identical(other.id, id) || other.id == id)&&(identical(other.postId, postId) || other.postId == postId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.depth, depth) || other.depth == depth)&&(identical(other.path, path) || other.path == path)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ThreadCommentModel&&(identical(other.id, id) || other.id == id)&&(identical(other.postId, postId) || other.postId == postId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.depth, depth) || other.depth == depth)&&(identical(other.path, path) || other.path == path)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,postId,parentId,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,isDeleted,depth,path,likeCount,replyCount,likedByMe,editedAt,createdAt,cursor);
+int get hashCode => Object.hashAll([runtimeType,id,postId,parentId,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,isDeleted,depth,path,likeCount,replyCount,likedByMe,editedAt,createdAt,cursor,moderationStatus]);
 
 @override
 String toString() {
-  return 'ThreadCommentModel(id: $id, postId: $postId, parentId: $parentId, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, isDeleted: $isDeleted, depth: $depth, path: $path, likeCount: $likeCount, replyCount: $replyCount, likedByMe: $likedByMe, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'ThreadCommentModel(id: $id, postId: $postId, parentId: $parentId, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, isDeleted: $isDeleted, depth: $depth, path: $path, likeCount: $likeCount, replyCount: $replyCount, likedByMe: $likedByMe, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, moderationStatus: $moderationStatus)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $ThreadCommentModelCopyWith<$Res>  {
   factory $ThreadCommentModelCopyWith(ThreadCommentModel value, $Res Function(ThreadCommentModel) _then) = _$ThreadCommentModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String postId, String? parentId, String? authorId, String? authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String? body, bool isDeleted, int depth, String path, int likeCount, int replyCount, bool likedByMe, DateTime? editedAt, DateTime createdAt, String cursor
+ String id, String postId, String? parentId, String? authorId, String? authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String? body, bool isDeleted, int depth, String path, int likeCount, int replyCount, bool likedByMe, DateTime? editedAt, DateTime createdAt, String cursor, String? moderationStatus
 });
 
 
@@ -65,7 +65,7 @@ class _$ThreadCommentModelCopyWithImpl<$Res>
 
 /// Create a copy of ThreadCommentModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? postId = null,Object? parentId = freezed,Object? authorId = freezed,Object? authorUsername = freezed,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = freezed,Object? isDeleted = null,Object? depth = null,Object? path = null,Object? likeCount = null,Object? replyCount = null,Object? likedByMe = null,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? postId = null,Object? parentId = freezed,Object? authorId = freezed,Object? authorUsername = freezed,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = freezed,Object? isDeleted = null,Object? depth = null,Object? path = null,Object? likeCount = null,Object? replyCount = null,Object? likedByMe = null,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,Object? moderationStatus = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,postId: null == postId ? _self.postId : postId // ignore: cast_nullable_to_non_nullable
@@ -85,7 +85,8 @@ as int,likedByMe: null == likedByMe ? _self.likedByMe : likedByMe // ignore: cas
 as bool,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -170,10 +171,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String postId,  String? parentId,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body,  bool isDeleted,  int depth,  String path,  int likeCount,  int replyCount,  bool likedByMe,  DateTime? editedAt,  DateTime createdAt,  String cursor)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String postId,  String? parentId,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body,  bool isDeleted,  int depth,  String path,  int likeCount,  int replyCount,  bool likedByMe,  DateTime? editedAt,  DateTime createdAt,  String cursor,  String? moderationStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ThreadCommentModel() when $default != null:
-return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.isDeleted,_that.depth,_that.path,_that.likeCount,_that.replyCount,_that.likedByMe,_that.editedAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.isDeleted,_that.depth,_that.path,_that.likeCount,_that.replyCount,_that.likedByMe,_that.editedAt,_that.createdAt,_that.cursor,_that.moderationStatus);case _:
   return orElse();
 
 }
@@ -191,10 +192,10 @@ return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.author
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String postId,  String? parentId,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body,  bool isDeleted,  int depth,  String path,  int likeCount,  int replyCount,  bool likedByMe,  DateTime? editedAt,  DateTime createdAt,  String cursor)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String postId,  String? parentId,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body,  bool isDeleted,  int depth,  String path,  int likeCount,  int replyCount,  bool likedByMe,  DateTime? editedAt,  DateTime createdAt,  String cursor,  String? moderationStatus)  $default,) {final _that = this;
 switch (_that) {
 case _ThreadCommentModel():
-return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.isDeleted,_that.depth,_that.path,_that.likeCount,_that.replyCount,_that.likedByMe,_that.editedAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.isDeleted,_that.depth,_that.path,_that.likeCount,_that.replyCount,_that.likedByMe,_that.editedAt,_that.createdAt,_that.cursor,_that.moderationStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -211,10 +212,10 @@ return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.author
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String postId,  String? parentId,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body,  bool isDeleted,  int depth,  String path,  int likeCount,  int replyCount,  bool likedByMe,  DateTime? editedAt,  DateTime createdAt,  String cursor)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String postId,  String? parentId,  String? authorId,  String? authorUsername,  String? authorDisplayName,  String? authorAvatarUrl,  bool authorIsVerified,  String? body,  bool isDeleted,  int depth,  String path,  int likeCount,  int replyCount,  bool likedByMe,  DateTime? editedAt,  DateTime createdAt,  String cursor,  String? moderationStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _ThreadCommentModel() when $default != null:
-return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.isDeleted,_that.depth,_that.path,_that.likeCount,_that.replyCount,_that.likedByMe,_that.editedAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.authorUsername,_that.authorDisplayName,_that.authorAvatarUrl,_that.authorIsVerified,_that.body,_that.isDeleted,_that.depth,_that.path,_that.likeCount,_that.replyCount,_that.likedByMe,_that.editedAt,_that.createdAt,_that.cursor,_that.moderationStatus);case _:
   return null;
 
 }
@@ -226,7 +227,7 @@ return $default(_that.id,_that.postId,_that.parentId,_that.authorId,_that.author
 @JsonSerializable()
 
 class _ThreadCommentModel extends ThreadCommentModel {
-  const _ThreadCommentModel({required this.id, required this.postId, this.parentId, this.authorId, this.authorUsername, this.authorDisplayName, this.authorAvatarUrl, this.authorIsVerified = false, this.body, this.isDeleted = false, required this.depth, required this.path, this.likeCount = 0, this.replyCount = 0, this.likedByMe = false, this.editedAt, required this.createdAt, required this.cursor}): super._();
+  const _ThreadCommentModel({required this.id, required this.postId, this.parentId, this.authorId, this.authorUsername, this.authorDisplayName, this.authorAvatarUrl, this.authorIsVerified = false, this.body, this.isDeleted = false, required this.depth, required this.path, this.likeCount = 0, this.replyCount = 0, this.likedByMe = false, this.editedAt, required this.createdAt, required this.cursor, this.moderationStatus}): super._();
   factory _ThreadCommentModel.fromJson(Map<String, dynamic> json) => _$ThreadCommentModelFromJson(json);
 
 @override final  String id;
@@ -247,6 +248,7 @@ class _ThreadCommentModel extends ThreadCommentModel {
 @override final  DateTime? editedAt;
 @override final  DateTime createdAt;
 @override final  String cursor;
+@override final  String? moderationStatus;
 
 /// Create a copy of ThreadCommentModel
 /// with the given fields replaced by the non-null parameter values.
@@ -261,16 +263,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ThreadCommentModel&&(identical(other.id, id) || other.id == id)&&(identical(other.postId, postId) || other.postId == postId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.depth, depth) || other.depth == depth)&&(identical(other.path, path) || other.path == path)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ThreadCommentModel&&(identical(other.id, id) || other.id == id)&&(identical(other.postId, postId) || other.postId == postId)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.authorId, authorId) || other.authorId == authorId)&&(identical(other.authorUsername, authorUsername) || other.authorUsername == authorUsername)&&(identical(other.authorDisplayName, authorDisplayName) || other.authorDisplayName == authorDisplayName)&&(identical(other.authorAvatarUrl, authorAvatarUrl) || other.authorAvatarUrl == authorAvatarUrl)&&(identical(other.authorIsVerified, authorIsVerified) || other.authorIsVerified == authorIsVerified)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.depth, depth) || other.depth == depth)&&(identical(other.path, path) || other.path == path)&&(identical(other.likeCount, likeCount) || other.likeCount == likeCount)&&(identical(other.replyCount, replyCount) || other.replyCount == replyCount)&&(identical(other.likedByMe, likedByMe) || other.likedByMe == likedByMe)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,postId,parentId,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,isDeleted,depth,path,likeCount,replyCount,likedByMe,editedAt,createdAt,cursor);
+int get hashCode => Object.hashAll([runtimeType,id,postId,parentId,authorId,authorUsername,authorDisplayName,authorAvatarUrl,authorIsVerified,body,isDeleted,depth,path,likeCount,replyCount,likedByMe,editedAt,createdAt,cursor,moderationStatus]);
 
 @override
 String toString() {
-  return 'ThreadCommentModel(id: $id, postId: $postId, parentId: $parentId, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, isDeleted: $isDeleted, depth: $depth, path: $path, likeCount: $likeCount, replyCount: $replyCount, likedByMe: $likedByMe, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'ThreadCommentModel(id: $id, postId: $postId, parentId: $parentId, authorId: $authorId, authorUsername: $authorUsername, authorDisplayName: $authorDisplayName, authorAvatarUrl: $authorAvatarUrl, authorIsVerified: $authorIsVerified, body: $body, isDeleted: $isDeleted, depth: $depth, path: $path, likeCount: $likeCount, replyCount: $replyCount, likedByMe: $likedByMe, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, moderationStatus: $moderationStatus)';
 }
 
 
@@ -281,7 +283,7 @@ abstract mixin class _$ThreadCommentModelCopyWith<$Res> implements $ThreadCommen
   factory _$ThreadCommentModelCopyWith(_ThreadCommentModel value, $Res Function(_ThreadCommentModel) _then) = __$ThreadCommentModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String postId, String? parentId, String? authorId, String? authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String? body, bool isDeleted, int depth, String path, int likeCount, int replyCount, bool likedByMe, DateTime? editedAt, DateTime createdAt, String cursor
+ String id, String postId, String? parentId, String? authorId, String? authorUsername, String? authorDisplayName, String? authorAvatarUrl, bool authorIsVerified, String? body, bool isDeleted, int depth, String path, int likeCount, int replyCount, bool likedByMe, DateTime? editedAt, DateTime createdAt, String cursor, String? moderationStatus
 });
 
 
@@ -298,7 +300,7 @@ class __$ThreadCommentModelCopyWithImpl<$Res>
 
 /// Create a copy of ThreadCommentModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? postId = null,Object? parentId = freezed,Object? authorId = freezed,Object? authorUsername = freezed,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = freezed,Object? isDeleted = null,Object? depth = null,Object? path = null,Object? likeCount = null,Object? replyCount = null,Object? likedByMe = null,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? postId = null,Object? parentId = freezed,Object? authorId = freezed,Object? authorUsername = freezed,Object? authorDisplayName = freezed,Object? authorAvatarUrl = freezed,Object? authorIsVerified = null,Object? body = freezed,Object? isDeleted = null,Object? depth = null,Object? path = null,Object? likeCount = null,Object? replyCount = null,Object? likedByMe = null,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = null,Object? moderationStatus = freezed,}) {
   return _then(_ThreadCommentModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,postId: null == postId ? _self.postId : postId // ignore: cast_nullable_to_non_nullable
@@ -318,7 +320,8 @@ as int,likedByMe: null == likedByMe ? _self.likedByMe : likedByMe // ignore: cas
 as bool,editedAt: freezed == editedAt ? _self.editedAt : editedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

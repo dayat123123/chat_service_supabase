@@ -6,6 +6,7 @@ select plan(28);
 select tests.create_user('alice') as alice \gset
 select tests.create_user('bob_user') as bob \gset
 select tests.create_user('carol') as carol \gset
+insert into follows (follower_id, following_id) values (:'bob', :'alice');
 
 -- DM
 select tests.authenticate_as(:'alice');

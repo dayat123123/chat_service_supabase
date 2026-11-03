@@ -38,32 +38,41 @@ import {
   worksTickets,
 } from '@/features/presence/types'
 import { isStaffRole } from '@/features/settings/types'
+import { useHealthBadge } from '@/features/system/hooks'
+import { badgeView } from '@/features/system/logic'
 import { notificationPermission, playSound, requestNotificationPermission } from '@/lib/alerts'
 import { usePreferences, type Density, type Theme, type TicketAlerts } from '@/lib/preferences'
+import { cn } from '@/lib/utils'
 
 type NavTarget =
   | '/'
   | '/dashboard'
   | '/reports'
+  | '/analytics'
   | '/settings'
   | '/compliance'
   | '/compliance/cases'
   | '/compliance/audit'
   | '/compliance/policy'
   | '/compliance/words'
+  | '/compliance/content'
+  | '/compliance/legal'
   | '/nasabah'
   | '/community'
+  | '/system'
 
 function NavLink({
   to,
   label,
   count,
   countLabel,
+  tone = 'danger',
 }: {
   to: NavTarget
   label: string
   count?: number
   countLabel?: string
+  tone?: 'danger' | 'warning'
 }) {
   return (
     <Link
@@ -73,7 +82,10 @@ function NavLink({
     >
       {label}
       {count ? (
-        <span className="tabular text-xs font-medium text-danger" aria-label={countLabel}>
+        <span
+          className={cn('tabular text-xs font-medium', tone === 'warning' ? 'text-warning' : 'text-danger')}
+          aria-label={countLabel}
+        >
           {count}
         </span>
       ) : null}
@@ -200,6 +212,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
   const superAdmin = isSuperAdmin(agent)
   const compliance = isCompliance(agent)
   const communityCount = useCommunityBadge()
+  const health = badgeView(useHealthBadge(superAdmin).data)
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3 lg:px-4">
       <Logo className="mr-2 hidden sm:flex" />
@@ -209,6 +222,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
           <>
             <NavLink to="/dashboard" label={t('nav.dashboard')} count={attention || undefined} />
             <NavLink to="/reports" label={t('nav.reports')} />
+            <NavLink to="/analytics" label={t('nav.analytics')} />
           </>
         ) : null}
         {hasNasabah(agent) ? <NavLink to="/nasabah" label={t('nav.nasabah')} /> : null}
@@ -220,7 +234,24 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
             countLabel={t('nav.communityAttention', { count: communityCount })}
           />
         ) : null}
-        {superAdmin ? <NavLink to="/settings" label={t('nav.settings')} /> : null}
+        {superAdmin ? (
+          <>
+            <NavLink to="/settings" label={t('nav.settings')} />
+            <NavLink
+              to="/system"
+              label={t('nav.system')}
+              count={health?.count}
+              tone={health?.tone === 'warn' ? 'warning' : 'danger'}
+              countLabel={
+                health
+                  ? t(health.severity === 'critical' ? 'nav.systemCritical' : 'nav.systemWarning', {
+                      count: health.count,
+                    })
+                  : undefined
+              }
+            />
+          </>
+        ) : null}
         {compliance ? (
           <>
             <NavLink to="/compliance" label={t('nav.overview')} />
@@ -233,6 +264,8 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
             <NavLink to="/compliance/audit" label={t('nav.audit')} />
             <NavLink to="/compliance/policy" label={t('nav.policy')} />
             <NavLink to="/compliance/words" label={t('nav.words')} />
+            <NavLink to="/compliance/content" label={t('nav.contentPolicy')} />
+            <NavLink to="/compliance/legal" label={t('nav.legal')} />
           </>
         ) : null}
       </nav>

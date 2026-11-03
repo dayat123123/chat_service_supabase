@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ChatMessage {
 
- String get id; String get roomId; String? get senderId; UserSummary? get sender; String? get body; bool get isDeleted; String? get replyToId; String? get replyToBody; String? get replyToSenderUsername; List<Attachment> get attachments; String? get clientId; DateTime? get editedAt; DateTime get createdAt; String? get cursor; MessageStatus get status; MessageKind get kind; SenderRole? get senderRole; String? get ticketId; Map<String, Object?> get payload;
+ String get id; String get roomId; String? get senderId; UserSummary? get sender; String? get body; bool get isDeleted; String? get replyToId; String? get replyToBody; String? get replyToSenderUsername; List<Attachment> get attachments; String? get clientId; DateTime? get editedAt; DateTime get createdAt; String? get cursor; MessageStatus get status; MessageKind get kind; SenderRole? get senderRole; String? get ticketId; Map<String, Object?> get payload; List<MessageReaction> get reactions; String? get sharedPostId; SharedPost? get sharedPost; ModerationStatus? get moderationStatus;
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $ChatMessageCopyWith<ChatMessage> get copyWith => _$ChatMessageCopyWithImpl<Chat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.status, status) || other.status == status)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.ticketId, ticketId) || other.ticketId == ticketId)&&const DeepCollectionEquality().equals(other.payload, payload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other.attachments, attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.status, status) || other.status == status)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.ticketId, ticketId) || other.ticketId == ticketId)&&const DeepCollectionEquality().equals(other.payload, payload)&&const DeepCollectionEquality().equals(other.reactions, reactions)&&(identical(other.sharedPostId, sharedPostId) || other.sharedPostId == sharedPostId)&&(identical(other.sharedPost, sharedPost) || other.sharedPost == sharedPost)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,sender,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(attachments),clientId,editedAt,createdAt,cursor,status,kind,senderRole,ticketId,const DeepCollectionEquality().hash(payload)]);
+int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,sender,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(attachments),clientId,editedAt,createdAt,cursor,status,kind,senderRole,ticketId,const DeepCollectionEquality().hash(payload),const DeepCollectionEquality().hash(reactions),sharedPostId,sharedPost,moderationStatus]);
 
 @override
 String toString() {
-  return 'ChatMessage(id: $id, roomId: $roomId, senderId: $senderId, sender: $sender, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, status: $status, kind: $kind, senderRole: $senderRole, ticketId: $ticketId, payload: $payload)';
+  return 'ChatMessage(id: $id, roomId: $roomId, senderId: $senderId, sender: $sender, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, status: $status, kind: $kind, senderRole: $senderRole, ticketId: $ticketId, payload: $payload, reactions: $reactions, sharedPostId: $sharedPostId, sharedPost: $sharedPost, moderationStatus: $moderationStatus)';
 }
 
 
@@ -45,11 +45,11 @@ abstract mixin class $ChatMessageCopyWith<$Res>  {
   factory $ChatMessageCopyWith(ChatMessage value, $Res Function(ChatMessage) _then) = _$ChatMessageCopyWithImpl;
 @useResult
 $Res call({
- String id, String roomId, String? senderId, UserSummary? sender, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername, List<Attachment> attachments, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, MessageStatus status, MessageKind kind, SenderRole? senderRole, String? ticketId, Map<String, Object?> payload
+ String id, String roomId, String? senderId, UserSummary? sender, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername, List<Attachment> attachments, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, MessageStatus status, MessageKind kind, SenderRole? senderRole, String? ticketId, Map<String, Object?> payload, List<MessageReaction> reactions, String? sharedPostId, SharedPost? sharedPost, ModerationStatus? moderationStatus
 });
 
 
-$UserSummaryCopyWith<$Res>? get sender;
+$UserSummaryCopyWith<$Res>? get sender;$SharedPostCopyWith<$Res>? get sharedPost;
 
 }
 /// @nodoc
@@ -62,7 +62,7 @@ class _$ChatMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? sender = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? status = null,Object? kind = null,Object? senderRole = freezed,Object? ticketId = freezed,Object? payload = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? sender = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? status = null,Object? kind = null,Object? senderRole = freezed,Object? ticketId = freezed,Object? payload = null,Object? reactions = null,Object? sharedPostId = freezed,Object? sharedPost = freezed,Object? moderationStatus = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -83,7 +83,11 @@ as MessageStatus,kind: null == kind ? _self.kind : kind // ignore: cast_nullable
 as MessageKind,senderRole: freezed == senderRole ? _self.senderRole : senderRole // ignore: cast_nullable_to_non_nullable
 as SenderRole?,ticketId: freezed == ticketId ? _self.ticketId : ticketId // ignore: cast_nullable_to_non_nullable
 as String?,payload: null == payload ? _self.payload : payload // ignore: cast_nullable_to_non_nullable
-as Map<String, Object?>,
+as Map<String, Object?>,reactions: null == reactions ? _self.reactions : reactions // ignore: cast_nullable_to_non_nullable
+as List<MessageReaction>,sharedPostId: freezed == sharedPostId ? _self.sharedPostId : sharedPostId // ignore: cast_nullable_to_non_nullable
+as String?,sharedPost: freezed == sharedPost ? _self.sharedPost : sharedPost // ignore: cast_nullable_to_non_nullable
+as SharedPost?,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as ModerationStatus?,
   ));
 }
 /// Create a copy of ChatMessage
@@ -97,6 +101,18 @@ $UserSummaryCopyWith<$Res>? get sender {
 
   return $UserSummaryCopyWith<$Res>(_self.sender!, (value) {
     return _then(_self.copyWith(sender: value));
+  });
+}/// Create a copy of ChatMessage
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SharedPostCopyWith<$Res>? get sharedPost {
+    if (_self.sharedPost == null) {
+    return null;
+  }
+
+  return $SharedPostCopyWith<$Res>(_self.sharedPost!, (value) {
+    return _then(_self.copyWith(sharedPost: value));
   });
 }
 }
@@ -180,10 +196,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  UserSummary? sender,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<Attachment> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  MessageStatus status,  MessageKind kind,  SenderRole? senderRole,  String? ticketId,  Map<String, Object?> payload)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  UserSummary? sender,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<Attachment> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  MessageStatus status,  MessageKind kind,  SenderRole? senderRole,  String? ticketId,  Map<String, Object?> payload,  List<MessageReaction> reactions,  String? sharedPostId,  SharedPost? sharedPost,  ModerationStatus? moderationStatus)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _ChatMessage() when $default != null:
-return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.status,_that.kind,_that.senderRole,_that.ticketId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.status,_that.kind,_that.senderRole,_that.ticketId,_that.payload,_that.reactions,_that.sharedPostId,_that.sharedPost,_that.moderationStatus);case _:
   return orElse();
 
 }
@@ -201,10 +217,10 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  UserSummary? sender,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<Attachment> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  MessageStatus status,  MessageKind kind,  SenderRole? senderRole,  String? ticketId,  Map<String, Object?> payload)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String roomId,  String? senderId,  UserSummary? sender,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<Attachment> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  MessageStatus status,  MessageKind kind,  SenderRole? senderRole,  String? ticketId,  Map<String, Object?> payload,  List<MessageReaction> reactions,  String? sharedPostId,  SharedPost? sharedPost,  ModerationStatus? moderationStatus)  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessage():
-return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.status,_that.kind,_that.senderRole,_that.ticketId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.status,_that.kind,_that.senderRole,_that.ticketId,_that.payload,_that.reactions,_that.sharedPostId,_that.sharedPost,_that.moderationStatus);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -221,10 +237,10 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_th
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String roomId,  String? senderId,  UserSummary? sender,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<Attachment> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  MessageStatus status,  MessageKind kind,  SenderRole? senderRole,  String? ticketId,  Map<String, Object?> payload)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String roomId,  String? senderId,  UserSummary? sender,  String? body,  bool isDeleted,  String? replyToId,  String? replyToBody,  String? replyToSenderUsername,  List<Attachment> attachments,  String? clientId,  DateTime? editedAt,  DateTime createdAt,  String? cursor,  MessageStatus status,  MessageKind kind,  SenderRole? senderRole,  String? ticketId,  Map<String, Object?> payload,  List<MessageReaction> reactions,  String? sharedPostId,  SharedPost? sharedPost,  ModerationStatus? moderationStatus)?  $default,) {final _that = this;
 switch (_that) {
 case _ChatMessage() when $default != null:
-return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.status,_that.kind,_that.senderRole,_that.ticketId,_that.payload);case _:
+return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_that.isDeleted,_that.replyToId,_that.replyToBody,_that.replyToSenderUsername,_that.attachments,_that.clientId,_that.editedAt,_that.createdAt,_that.cursor,_that.status,_that.kind,_that.senderRole,_that.ticketId,_that.payload,_that.reactions,_that.sharedPostId,_that.sharedPost,_that.moderationStatus);case _:
   return null;
 
 }
@@ -236,7 +252,7 @@ return $default(_that.id,_that.roomId,_that.senderId,_that.sender,_that.body,_th
 
 
 class _ChatMessage extends ChatMessage {
-  const _ChatMessage({required this.id, required this.roomId, this.senderId, this.sender, this.body, this.isDeleted = false, this.replyToId, this.replyToBody, this.replyToSenderUsername, final  List<Attachment> attachments = const <Attachment>[], this.clientId, this.editedAt, required this.createdAt, this.cursor, this.status = MessageStatus.sent, this.kind = MessageKind.text, this.senderRole, this.ticketId, final  Map<String, Object?> payload = const <String, Object?>{}}): _attachments = attachments,_payload = payload,super._();
+  const _ChatMessage({required this.id, required this.roomId, this.senderId, this.sender, this.body, this.isDeleted = false, this.replyToId, this.replyToBody, this.replyToSenderUsername, final  List<Attachment> attachments = const <Attachment>[], this.clientId, this.editedAt, required this.createdAt, this.cursor, this.status = MessageStatus.sent, this.kind = MessageKind.text, this.senderRole, this.ticketId, final  Map<String, Object?> payload = const <String, Object?>{}, final  List<MessageReaction> reactions = const <MessageReaction>[], this.sharedPostId, this.sharedPost, this.moderationStatus}): _attachments = attachments,_payload = payload,_reactions = reactions,super._();
   
 
 @override final  String id;
@@ -270,6 +286,16 @@ class _ChatMessage extends ChatMessage {
   return EqualUnmodifiableMapView(_payload);
 }
 
+ final  List<MessageReaction> _reactions;
+@override@JsonKey() List<MessageReaction> get reactions {
+  if (_reactions is EqualUnmodifiableListView) return _reactions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_reactions);
+}
+
+@override final  String? sharedPostId;
+@override final  SharedPost? sharedPost;
+@override final  ModerationStatus? moderationStatus;
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
@@ -281,16 +307,16 @@ _$ChatMessageCopyWith<_ChatMessage> get copyWith => __$ChatMessageCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.status, status) || other.status == status)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.ticketId, ticketId) || other.ticketId == ticketId)&&const DeepCollectionEquality().equals(other._payload, _payload));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ChatMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.roomId, roomId) || other.roomId == roomId)&&(identical(other.senderId, senderId) || other.senderId == senderId)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.body, body) || other.body == body)&&(identical(other.isDeleted, isDeleted) || other.isDeleted == isDeleted)&&(identical(other.replyToId, replyToId) || other.replyToId == replyToId)&&(identical(other.replyToBody, replyToBody) || other.replyToBody == replyToBody)&&(identical(other.replyToSenderUsername, replyToSenderUsername) || other.replyToSenderUsername == replyToSenderUsername)&&const DeepCollectionEquality().equals(other._attachments, _attachments)&&(identical(other.clientId, clientId) || other.clientId == clientId)&&(identical(other.editedAt, editedAt) || other.editedAt == editedAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.status, status) || other.status == status)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.senderRole, senderRole) || other.senderRole == senderRole)&&(identical(other.ticketId, ticketId) || other.ticketId == ticketId)&&const DeepCollectionEquality().equals(other._payload, _payload)&&const DeepCollectionEquality().equals(other._reactions, _reactions)&&(identical(other.sharedPostId, sharedPostId) || other.sharedPostId == sharedPostId)&&(identical(other.sharedPost, sharedPost) || other.sharedPost == sharedPost)&&(identical(other.moderationStatus, moderationStatus) || other.moderationStatus == moderationStatus));
 }
 
 
 @override
-int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,sender,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(_attachments),clientId,editedAt,createdAt,cursor,status,kind,senderRole,ticketId,const DeepCollectionEquality().hash(_payload)]);
+int get hashCode => Object.hashAll([runtimeType,id,roomId,senderId,sender,body,isDeleted,replyToId,replyToBody,replyToSenderUsername,const DeepCollectionEquality().hash(_attachments),clientId,editedAt,createdAt,cursor,status,kind,senderRole,ticketId,const DeepCollectionEquality().hash(_payload),const DeepCollectionEquality().hash(_reactions),sharedPostId,sharedPost,moderationStatus]);
 
 @override
 String toString() {
-  return 'ChatMessage(id: $id, roomId: $roomId, senderId: $senderId, sender: $sender, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, status: $status, kind: $kind, senderRole: $senderRole, ticketId: $ticketId, payload: $payload)';
+  return 'ChatMessage(id: $id, roomId: $roomId, senderId: $senderId, sender: $sender, body: $body, isDeleted: $isDeleted, replyToId: $replyToId, replyToBody: $replyToBody, replyToSenderUsername: $replyToSenderUsername, attachments: $attachments, clientId: $clientId, editedAt: $editedAt, createdAt: $createdAt, cursor: $cursor, status: $status, kind: $kind, senderRole: $senderRole, ticketId: $ticketId, payload: $payload, reactions: $reactions, sharedPostId: $sharedPostId, sharedPost: $sharedPost, moderationStatus: $moderationStatus)';
 }
 
 
@@ -301,11 +327,11 @@ abstract mixin class _$ChatMessageCopyWith<$Res> implements $ChatMessageCopyWith
   factory _$ChatMessageCopyWith(_ChatMessage value, $Res Function(_ChatMessage) _then) = __$ChatMessageCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String roomId, String? senderId, UserSummary? sender, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername, List<Attachment> attachments, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, MessageStatus status, MessageKind kind, SenderRole? senderRole, String? ticketId, Map<String, Object?> payload
+ String id, String roomId, String? senderId, UserSummary? sender, String? body, bool isDeleted, String? replyToId, String? replyToBody, String? replyToSenderUsername, List<Attachment> attachments, String? clientId, DateTime? editedAt, DateTime createdAt, String? cursor, MessageStatus status, MessageKind kind, SenderRole? senderRole, String? ticketId, Map<String, Object?> payload, List<MessageReaction> reactions, String? sharedPostId, SharedPost? sharedPost, ModerationStatus? moderationStatus
 });
 
 
-@override $UserSummaryCopyWith<$Res>? get sender;
+@override $UserSummaryCopyWith<$Res>? get sender;@override $SharedPostCopyWith<$Res>? get sharedPost;
 
 }
 /// @nodoc
@@ -318,7 +344,7 @@ class __$ChatMessageCopyWithImpl<$Res>
 
 /// Create a copy of ChatMessage
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? sender = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? status = null,Object? kind = null,Object? senderRole = freezed,Object? ticketId = freezed,Object? payload = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? roomId = null,Object? senderId = freezed,Object? sender = freezed,Object? body = freezed,Object? isDeleted = null,Object? replyToId = freezed,Object? replyToBody = freezed,Object? replyToSenderUsername = freezed,Object? attachments = null,Object? clientId = freezed,Object? editedAt = freezed,Object? createdAt = null,Object? cursor = freezed,Object? status = null,Object? kind = null,Object? senderRole = freezed,Object? ticketId = freezed,Object? payload = null,Object? reactions = null,Object? sharedPostId = freezed,Object? sharedPost = freezed,Object? moderationStatus = freezed,}) {
   return _then(_ChatMessage(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,roomId: null == roomId ? _self.roomId : roomId // ignore: cast_nullable_to_non_nullable
@@ -339,7 +365,11 @@ as MessageStatus,kind: null == kind ? _self.kind : kind // ignore: cast_nullable
 as MessageKind,senderRole: freezed == senderRole ? _self.senderRole : senderRole // ignore: cast_nullable_to_non_nullable
 as SenderRole?,ticketId: freezed == ticketId ? _self.ticketId : ticketId // ignore: cast_nullable_to_non_nullable
 as String?,payload: null == payload ? _self._payload : payload // ignore: cast_nullable_to_non_nullable
-as Map<String, Object?>,
+as Map<String, Object?>,reactions: null == reactions ? _self._reactions : reactions // ignore: cast_nullable_to_non_nullable
+as List<MessageReaction>,sharedPostId: freezed == sharedPostId ? _self.sharedPostId : sharedPostId // ignore: cast_nullable_to_non_nullable
+as String?,sharedPost: freezed == sharedPost ? _self.sharedPost : sharedPost // ignore: cast_nullable_to_non_nullable
+as SharedPost?,moderationStatus: freezed == moderationStatus ? _self.moderationStatus : moderationStatus // ignore: cast_nullable_to_non_nullable
+as ModerationStatus?,
   ));
 }
 
@@ -354,6 +384,18 @@ $UserSummaryCopyWith<$Res>? get sender {
 
   return $UserSummaryCopyWith<$Res>(_self.sender!, (value) {
     return _then(_self.copyWith(sender: value));
+  });
+}/// Create a copy of ChatMessage
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SharedPostCopyWith<$Res>? get sharedPost {
+    if (_self.sharedPost == null) {
+    return null;
+  }
+
+  return $SharedPostCopyWith<$Res>(_self.sharedPost!, (value) {
+    return _then(_self.copyWith(sharedPost: value));
   });
 }
 }

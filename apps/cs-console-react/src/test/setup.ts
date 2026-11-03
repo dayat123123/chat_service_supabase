@@ -2,7 +2,9 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { afterEach, vi } from 'vitest'
 
-import '@/i18n'
+import { loadStrings } from '@/i18n'
+
+await loadStrings('platform', 'policy', 'moderation')
 
 class ResizeObserverStub {
   observe() {}

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
-import i18n, { type Language } from '@/i18n'
+import i18n, { switchLanguage, type Language } from '@/i18n'
+import { logger } from '@/lib/logger'
 import { readLocal, writeLocal } from '@/lib/storage'
 
 export type Theme = 'system' | 'light' | 'dark'
@@ -60,8 +61,12 @@ export const usePreferences = create<Preferences>((set) => ({
   },
   setLanguage: (language) => {
     writeLocal('language', language)
-    void i18n.changeLanguage(language)
     set({ language })
+    switchLanguage(language).catch((error: unknown) => {
+      logger.warn('Bahasa gagal diganti', error)
+      writeLocal('language', asLanguage(i18n.language))
+      set({ language: asLanguage(i18n.language) })
+    })
   },
   setTicketAlerts: (ticketAlerts) => {
     writeLocal('ticket-alerts', ticketAlerts)
@@ -72,6 +77,14 @@ export const usePreferences = create<Preferences>((set) => ({
     set({ infoPanelOpen })
   },
 }))
+
+const asLanguage = (value: string): Language => (value === 'en' ? 'en' : 'id')
+
+i18n.on('languageChanged', (language) => {
+  if (usePreferences.getState().language !== asLanguage(language)) {
+    usePreferences.setState({ language: asLanguage(language) })
+  }
+})
 
 export function watchSystemTheme() {
   const query = media()

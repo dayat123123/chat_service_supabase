@@ -1,0 +1,18 @@
+title = "olt-social"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Kunci, token, dan JWT palsu di data uji"
+paths = [
+  '''(^|/)supabase/tests/''',
+  '''_test\.go$''',
+  '''\.test\.tsx?$''',
+  '''(^|/)test/.*\.dart$''',
+]
+
+[[allowlists]]
+description = "Alfabet karakter pembuat password sementara, bukan rahasia"
+regexTarget = "line"
+regexes = ['''passwordAlphabet\s*=''']

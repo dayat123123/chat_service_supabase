@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
 import 'package:rendezvous_community/src/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
@@ -81,7 +83,9 @@ class CommunityNotificationList extends StatelessWidget {
     final postId = n.postId;
     final roomId = n.roomId;
     final url = Uri.tryParse(n.url ?? '');
-    if (n.type == NotificationType.announcement && postId == null && url != null && url.scheme == 'https') {
+    if (n.type == NotificationType.appeal) {
+      if (context.communityFeatures != null) unawaited(openCommunityAppeals(context));
+    } else if (n.type == NotificationType.announcement && postId == null && url != null && url.scheme == 'https') {
       unawaited(launchUrl(url, mode: LaunchMode.externalApplication));
     } else if (n.type == NotificationType.message && roomId != null) {
       CommunityNavigator.openRoom(context, roomId);
@@ -108,10 +112,11 @@ class _NotificationTile extends StatelessWidget {
     final title = switch (n.type) {
       NotificationType.reply => l10n.notifReply(name),
       NotificationType.mention => l10n.notifMention(name),
-      NotificationType.like => l10n.notifLike(name, n.eventCount, n.eventCount - 1),
-      NotificationType.follow => l10n.notifFollow(name),
+      NotificationType.like => l10n.notifLike(name, n.actorCount < 1 ? 1 : n.actorCount, n.otherActors),
+      NotificationType.follow => n.otherActors > 0 ? l10n.notifFollowMany(name, n.otherActors) : l10n.notifFollow(name),
       NotificationType.message => l10n.notifMessage(name, n.eventCount),
       NotificationType.announcement => n.title ?? l10n.notifAnnouncement(name),
+      NotificationType.appeal => n.appealStatus == 'accepted' ? l10n.notifAppealAccepted : l10n.notifAppealRejected,
     };
     final icon = switch (n.type) {
       NotificationType.reply => Icons.reply,
@@ -120,8 +125,13 @@ class _NotificationTile extends StatelessWidget {
       NotificationType.follow => Icons.person_add_alt,
       NotificationType.message => Icons.chat_bubble,
       NotificationType.announcement => Icons.campaign,
+      NotificationType.appeal => Icons.gavel_outlined,
     };
-    final snippet = n.type == NotificationType.announcement ? n.body : n.snippet;
+    final snippet = switch (n.type) {
+      NotificationType.announcement => n.body,
+      NotificationType.appeal => n.note ?? n.body,
+      _ => n.snippet,
+    };
     return ListTile(
       tileColor: n.isRead ? null : theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
       onTap: onTap,

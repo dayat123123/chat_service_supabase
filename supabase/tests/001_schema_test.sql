@@ -1,12 +1,12 @@
 -- Struktur skema & hak akses dasar.
 begin;
-select plan(11);
+select plan(12);
 
 select tables_are('public', array[
-  'banned_words', 'blocks', 'chat_members', 'chat_rooms', 'comments', 'follows',
-  'legal_documents', 'messages', 'muted_keywords', 'muted_stocks', 'mutes', 'notifications',
-  'post_mentions', 'post_poll_options', 'post_poll_votes', 'post_polls', 'post_stocks', 'posts',
-  'profiles', 'reactions', 'reports',
+  'appeals', 'banned_words', 'blocks', 'bookmarks', 'chat_members', 'chat_rooms', 'comments', 'follows',
+  'legal_documents', 'link_previews', 'message_reactions', 'messages', 'muted_keywords', 'muted_stocks',
+  'mutes', 'notifications', 'post_hashtags', 'post_mentions', 'post_poll_options', 'post_poll_votes',
+  'post_polls', 'post_stocks', 'posts', 'profiles', 'reactions', 'reports',
   'stock_watchers', 'user_consents'
 ], 'Tabel public sesuai skema');
 
@@ -29,8 +29,12 @@ select is(
 select is(
   (select count(*)::int
    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')),
-  0, 'anon tidak bisa memanggil RPC apa pun');
+   where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')
+     and p.oid <> 'public.get_client_config(text,text)'::regprocedure),
+  0, 'anon tidak bisa memanggil RPC apa pun selain konfigurasi klien');
+select ok(
+  has_function_privilege('anon', 'public.get_client_config(text,text)', 'EXECUTE'),
+  'Konfigurasi klien (kill switch, versi minimum) bisa dibaca sebelum login');
 
 select ok(
   not has_function_privilege('authenticated', 'public.upsert_olt_profile(uuid,text,text,text,text)', 'EXECUTE'),

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/appeals/domain/entities/appeal.dart';
+import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
+import 'package:rendezvous_community/src/features/edit/presentation/widgets/edit_content_dialog.dart';
+import 'package:rendezvous_community/src/features/link_preview/presentation/widgets/link_preview_card.dart';
 import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
 import 'package:rendezvous_community/src/features/moderation/presentation/widgets/moderation_actions.dart';
 import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
@@ -10,6 +15,7 @@ import 'package:rendezvous_community/src/shared/presentation/theme/community_the
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_user_name.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/moderation_notice.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/social_text.dart';
 
 class ThreadLinesPainter extends CustomPainter {
@@ -121,6 +127,21 @@ class CommentTile extends StatefulWidget {
 class _CommentTileState extends State<CommentTile> {
   bool _hovered = false;
 
+  bool _canEdit(ThreadComment c, bool isMine, CommentThreadCubit cubit) =>
+      isMine && !c.isDeleted && cubit.canEdit && context.communityConfig.canEdit(c.createdAt);
+
+  Future<void> _edit(ThreadComment c, CommentThreadCubit cubit) async {
+    final l10n = context.communityL10n;
+    final body = await showEditContentDialog(
+      context,
+      title: l10n.editCommentTitle,
+      initial: c.body ?? '',
+      maxLength: 1000,
+    );
+    if (body == null || !mounted) return;
+    if (await cubit.editComment(c, body) && mounted) showCommunityMessage(context, l10n.editSaved);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.comment;
@@ -167,12 +188,21 @@ class _CommentTileState extends State<CommentTile> {
                   ),
               ],
             ),
+            if (isMine && !c.isDeleted)
+              ModerationNotice(
+                status: c.moderationStatus,
+                compact: true,
+                onAppeal: c.isHidden && context.communityFeatures != null
+                    ? () => showCommunityAppealDialog(context, targetType: AppealTargetType.comment, targetId: c.id)
+                    : null,
+              ),
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: c.isDeleted
                   ? Text(l10n.commentDeleted, style: muted?.copyWith(fontStyle: FontStyle.italic))
-                  : SocialText(c.body ?? ''),
+                  : SocialText(c.body ?? '', source: 'comment'),
             ),
+            if (!c.isDeleted && (c.body ?? '').isNotEmpty) LinkPreviewCard(text: c.body!),
             if (widget.collapsed)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
@@ -204,6 +234,8 @@ class _CommentTileState extends State<CommentTile> {
                     tooltip: '',
                     onSelected: (action) async {
                       switch (action) {
+                        case 'edit':
+                          await _edit(c, cubit);
                         case 'delete':
                           if (await confirmCommunityAction(context, l10n.deleteCommentConfirm)) {
                             await cubit.deleteComment(c);
@@ -215,6 +247,7 @@ class _CommentTileState extends State<CommentTile> {
                       }
                     },
                     itemBuilder: (_) => [
+                      if (_canEdit(c, isMine, cubit)) PopupMenuItem(value: 'edit', child: Text(l10n.editAction)),
                       if (isMine) PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
                       if (!isMine) ...[
                         PopupMenuItem(value: 'report', child: Text(l10n.report)),

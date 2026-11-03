@@ -1369,6 +1369,1218 @@ abstract class CommunityLocalizations {
   /// In id, this message translates to:
   /// **'Chat CS belum tersedia. Coba lagi sebentar lagi.'**
   String get supportUnavailable;
+
+  /// No description provided for @errorUnsupportedType.
+  ///
+  /// In id, this message translates to:
+  /// **'Jenis file tidak didukung. Gunakan gambar JPEG, PNG, WebP, atau GIF (foto profil tanpa GIF), atau PDF di chat CS.'**
+  String get errorUnsupportedType;
+
+  /// No description provided for @errorFileTooLarge.
+  ///
+  /// In id, this message translates to:
+  /// **'File terlalu besar. Batasnya 5 MB untuk gambar, 2 MB untuk foto profil, dan 10 MB untuk PDF.'**
+  String get errorFileTooLarge;
+
+  /// No description provided for @errorEmptyFile.
+  ///
+  /// In id, this message translates to:
+  /// **'File kosong. Pilih file lain.'**
+  String get errorEmptyFile;
+
+  /// No description provided for @errorInvalidImage.
+  ///
+  /// In id, this message translates to:
+  /// **'Gambar rusak atau tidak bisa dibaca. Coba gambar lain.'**
+  String get errorInvalidImage;
+
+  /// No description provided for @errorImageTooLarge.
+  ///
+  /// In id, this message translates to:
+  /// **'Resolusi gambar terlalu besar. Maksimal 10.000 piksel per sisi dan 40 megapiksel.'**
+  String get errorImageTooLarge;
+
+  /// No description provided for @errorInvalidPdf.
+  ///
+  /// In id, this message translates to:
+  /// **'PDF rusak atau tidak bisa dibaca.'**
+  String get errorInvalidPdf;
+
+  /// No description provided for @errorPdfEncrypted.
+  ///
+  /// In id, this message translates to:
+  /// **'PDF yang dikunci kata sandi tidak bisa dikirim. Buka kuncinya dulu, lalu kirim ulang.'**
+  String get errorPdfEncrypted;
+
+  /// No description provided for @errorPdfActiveContent.
+  ///
+  /// In id, this message translates to:
+  /// **'PDF berisi skrip, file tersemat, atau konten aktif lain. Simpan ulang sebagai PDF biasa (misalnya lewat Cetak ke PDF), lalu kirim ulang.'**
+  String get errorPdfActiveContent;
+
+  /// No description provided for @errorUploadForbidden.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda tidak diizinkan mengunggah file ke sini.'**
+  String get errorUploadForbidden;
+
+  /// No description provided for @errorTooManyUploads.
+  ///
+  /// In id, this message translates to:
+  /// **'Batas unggahan hari ini sudah tercapai. Coba lagi besok.'**
+  String get errorTooManyUploads;
+
+  /// No description provided for @errorUploadBusy.
+  ///
+  /// In id, this message translates to:
+  /// **'Server unggahan sedang sibuk. Coba lagi sebentar lagi.'**
+  String get errorUploadBusy;
+
+  /// No description provided for @errorStorageUnavailable.
+  ///
+  /// In id, this message translates to:
+  /// **'Unggahan file sedang tidak tersedia. Coba lagi nanti.'**
+  String get errorStorageUnavailable;
+
+  /// No description provided for @errorConsentRequired.
+  ///
+  /// In id, this message translates to:
+  /// **'Setujui Syarat & Ketentuan dan Pedoman Komunitas terbaru untuk mengirim konten.'**
+  String get errorConsentRequired;
+
+  /// No description provided for @consentDeclined.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum terkirim. Setujui dokumen terbaru untuk mengirim; tulisan Anda tetap tersimpan.'**
+  String get consentDeclined;
+
+  /// No description provided for @consentTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Persetujuan diperlukan'**
+  String get consentTitle;
+
+  /// No description provided for @consentIntro.
+  ///
+  /// In id, this message translates to:
+  /// **'Sebelum ikut berdiskusi, baca dan setujui dokumen berikut.'**
+  String get consentIntro;
+
+  /// No description provided for @consentAgree.
+  ///
+  /// In id, this message translates to:
+  /// **'Saya telah membaca dan menyetujui {documents}.'**
+  String consentAgree(String documents);
+
+  /// No description provided for @consentAccept.
+  ///
+  /// In id, this message translates to:
+  /// **'Setuju'**
+  String get consentAccept;
+
+  /// No description provided for @consentLater.
+  ///
+  /// In id, this message translates to:
+  /// **'Nanti'**
+  String get consentLater;
+
+  /// No description provided for @consentRead.
+  ///
+  /// In id, this message translates to:
+  /// **'Baca'**
+  String get consentRead;
+
+  /// No description provided for @consentReview.
+  ///
+  /// In id, this message translates to:
+  /// **'Tinjau'**
+  String get consentReview;
+
+  /// No description provided for @consentAccepted.
+  ///
+  /// In id, this message translates to:
+  /// **'Terima kasih. Persetujuan Anda sudah tersimpan.'**
+  String get consentAccepted;
+
+  /// No description provided for @consentBannerUpdated.
+  ///
+  /// In id, this message translates to:
+  /// **'{documents} diperbarui — tinjau dan setujui.'**
+  String consentBannerUpdated(String documents);
+
+  /// No description provided for @consentBannerRequired.
+  ///
+  /// In id, this message translates to:
+  /// **'Tinjau dan setujui {documents} untuk ikut berdiskusi.'**
+  String consentBannerRequired(String documents);
+
+  /// No description provided for @legalVersion.
+  ///
+  /// In id, this message translates to:
+  /// **'Versi {version} · berlaku {date}'**
+  String legalVersion(int version, String date);
+
+  /// No description provided for @legalChanges.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang berubah'**
+  String get legalChanges;
+
+  /// No description provided for @listAnd.
+  ///
+  /// In id, this message translates to:
+  /// **'dan'**
+  String get listAnd;
+
+  /// No description provided for @accountSettingsTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Privasi & akun'**
+  String get accountSettingsTitle;
+
+  /// No description provided for @accountLegalSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Dokumen hukum'**
+  String get accountLegalSection;
+
+  /// No description provided for @accountDataSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Data Anda'**
+  String get accountDataSection;
+
+  /// No description provided for @accountExport.
+  ///
+  /// In id, this message translates to:
+  /// **'Unduh data saya'**
+  String get accountExport;
+
+  /// No description provided for @accountExportHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Salinan data komunitas Anda dalam format JSON. Bisa diunduh 3 kali sehari.'**
+  String get accountExportHint;
+
+  /// No description provided for @accountExportSaved.
+  ///
+  /// In id, this message translates to:
+  /// **'Data komunitas Anda sudah diunduh.'**
+  String get accountExportSaved;
+
+  /// No description provided for @accountExportLimit.
+  ///
+  /// In id, this message translates to:
+  /// **'Unduh data dibatasi 3 kali sehari. Coba lagi besok.'**
+  String get accountExportLimit;
+
+  /// No description provided for @accountDelete.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus akun komunitas'**
+  String get accountDelete;
+
+  /// No description provided for @accountDeleteHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Menghapus profil dan konten komunitas Anda. Akun trading tidak terpengaruh.'**
+  String get accountDeleteHint;
+
+  /// No description provided for @accountDeleteTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus akun komunitas?'**
+  String get accountDeleteTitle;
+
+  /// No description provided for @accountDeleteIntro.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang terjadi bila akun komunitas dihapus:'**
+  String get accountDeleteIntro;
+
+  /// No description provided for @accountDeleteContent.
+  ///
+  /// In id, this message translates to:
+  /// **'Postingan, komentar, dan pesan chat Anda dihapus dari tampilan semua orang.'**
+  String get accountDeleteContent;
+
+  /// No description provided for @accountDeleteArchive.
+  ///
+  /// In id, this message translates to:
+  /// **'Salinan konten tetap diarsipkan untuk regulator sesuai ketentuan hukum.'**
+  String get accountDeleteArchive;
+
+  /// No description provided for @accountDeleteRelations.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengikut, akun yang Anda ikuti, blokir, dan bisukan dihapus.'**
+  String get accountDeleteRelations;
+
+  /// No description provided for @accountDeleteSupport.
+  ///
+  /// In id, this message translates to:
+  /// **'Tiket layanan CS tetap tercatat untuk keperluan kepatuhan, tetapi pesan dan lampiran chat CS ikut dihapus.'**
+  String get accountDeleteSupport;
+
+  /// No description provided for @accountDeleteTrading.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun trading OLT Anda tidak terpengaruh.'**
+  String get accountDeleteTrading;
+
+  /// No description provided for @accountDeleteFresh.
+  ///
+  /// In id, this message translates to:
+  /// **'Saat membuka komunitas lagi, profil komunitas baru yang kosong akan dibuat.'**
+  String get accountDeleteFresh;
+
+  /// No description provided for @accountDeleteTypeToConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Ketik {word} untuk konfirmasi'**
+  String accountDeleteTypeToConfirm(String word);
+
+  /// No description provided for @accountDeleteWord.
+  ///
+  /// In id, this message translates to:
+  /// **'HAPUS'**
+  String get accountDeleteWord;
+
+  /// No description provided for @accountDeleteConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus akun'**
+  String get accountDeleteConfirm;
+
+  /// No description provided for @accountDeleteProgress.
+  ///
+  /// In id, this message translates to:
+  /// **'Menghapus akun komunitas…'**
+  String get accountDeleteProgress;
+
+  /// No description provided for @accountDeleted.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun komunitas Anda sudah dihapus.'**
+  String get accountDeleted;
+
+  /// No description provided for @errorNewAccountImage.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun baru belum bisa melampirkan gambar. Coba lagi beberapa hari lagi.'**
+  String get errorNewAccountImage;
+
+  /// No description provided for @errorNewAccountLink.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun baru belum bisa membagikan tautan. Coba lagi beberapa hari lagi.'**
+  String get errorNewAccountLink;
+
+  /// No description provided for @errorLinkBlocked.
+  ///
+  /// In id, this message translates to:
+  /// **'Tautan ini tidak diizinkan.'**
+  String get errorLinkBlocked;
+
+  /// No description provided for @errorContactBlocked.
+  ///
+  /// In id, this message translates to:
+  /// **'Konten ini tidak bisa dikirim karena melanggar Pedoman Komunitas.'**
+  String get errorContactBlocked;
+
+  /// No description provided for @errorSlowMode.
+  ///
+  /// In id, this message translates to:
+  /// **'Slow mode aktif. Tunggu {seconds} detik sebelum mengirim lagi.'**
+  String errorSlowMode(int seconds);
+
+  /// No description provided for @errorSlowModeShort.
+  ///
+  /// In id, this message translates to:
+  /// **'Slow mode aktif. Tunggu sebentar sebelum mengirim lagi.'**
+  String get errorSlowModeShort;
+
+  /// No description provided for @errorDmNotAllowed.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengguna ini tidak menerima pesan langsung dari Anda.'**
+  String get errorDmNotAllowed;
+
+  /// No description provided for @errorDmRequestLimit.
+  ///
+  /// In id, this message translates to:
+  /// **'Tunggu sampai penerima menerima permintaan pesan Anda sebelum mengirim pesan lagi.'**
+  String get errorDmRequestLimit;
+
+  /// No description provided for @errorSocialDisabled.
+  ///
+  /// In id, this message translates to:
+  /// **'Fitur komunitas sementara tidak tersedia. Chat CS tetap bisa dipakai.'**
+  String get errorSocialDisabled;
+
+  /// No description provided for @errorEditWindowExpired.
+  ///
+  /// In id, this message translates to:
+  /// **'Batas waktu edit sudah lewat.'**
+  String get errorEditWindowExpired;
+
+  /// No description provided for @errorPollNotEditable.
+  ///
+  /// In id, this message translates to:
+  /// **'Post dengan polling tidak bisa diedit.'**
+  String get errorPollNotEditable;
+
+  /// No description provided for @errorImageBlocked.
+  ///
+  /// In id, this message translates to:
+  /// **'Gambar ini tidak bisa diunggah karena melanggar Pedoman Komunitas.'**
+  String get errorImageBlocked;
+
+  /// No description provided for @errorImageCheckUnavailable.
+  ///
+  /// In id, this message translates to:
+  /// **'Pemeriksaan gambar sedang tidak tersedia. Coba lagi sebentar lagi.'**
+  String get errorImageCheckUnavailable;
+
+  /// No description provided for @errorAppealExists.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding untuk ini sudah pernah diajukan.'**
+  String get errorAppealExists;
+
+  /// No description provided for @errorAppealWindowClosed.
+  ///
+  /// In id, this message translates to:
+  /// **'Batas waktu pengajuan banding sudah lewat.'**
+  String get errorAppealWindowClosed;
+
+  /// No description provided for @errorAppealNotAllowed.
+  ///
+  /// In id, this message translates to:
+  /// **'Keputusan ini tidak bisa diajukan banding.'**
+  String get errorAppealNotAllowed;
+
+  /// No description provided for @errorAppealReason.
+  ///
+  /// In id, this message translates to:
+  /// **'Alasan banding 10–1000 karakter.'**
+  String get errorAppealReason;
+
+  /// No description provided for @errorQueryTooShort.
+  ///
+  /// In id, this message translates to:
+  /// **'Kata kunci terlalu pendek.'**
+  String get errorQueryTooShort;
+
+  /// No description provided for @errorQueryTooLong.
+  ///
+  /// In id, this message translates to:
+  /// **'Kata kunci terlalu panjang.'**
+  String get errorQueryTooLong;
+
+  /// No description provided for @errorShareNotAllowed.
+  ///
+  /// In id, this message translates to:
+  /// **'Post tidak bisa dibagikan ke chat ini.'**
+  String get errorShareNotAllowed;
+
+  /// No description provided for @errorRequestNotFound.
+  ///
+  /// In id, this message translates to:
+  /// **'Permintaan pesan sudah tidak ada.'**
+  String get errorRequestNotFound;
+
+  /// No description provided for @errorInvalidQuietHours.
+  ///
+  /// In id, this message translates to:
+  /// **'Jam tenang tidak valid.'**
+  String get errorInvalidQuietHours;
+
+  /// No description provided for @socialUnavailableTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Komunitas sedang tidak tersedia'**
+  String get socialUnavailableTitle;
+
+  /// No description provided for @socialUnavailableBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Fitur komunitas sedang dalam pemeliharaan. Chat CS tetap bisa dipakai.'**
+  String get socialUnavailableBody;
+
+  /// No description provided for @featureUnavailable.
+  ///
+  /// In id, this message translates to:
+  /// **'Fitur ini sedang tidak tersedia.'**
+  String get featureUnavailable;
+
+  /// No description provided for @updateRequiredTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Perbarui aplikasi'**
+  String get updateRequiredTitle;
+
+  /// No description provided for @updateRequiredBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Versi aplikasi ini tidak lagi didukung fitur komunitas. Perbarui aplikasi untuk melanjutkan.'**
+  String get updateRequiredBody;
+
+  /// No description provided for @moderationHeld.
+  ///
+  /// In id, this message translates to:
+  /// **'Menunggu tinjauan'**
+  String get moderationHeld;
+
+  /// No description provided for @moderationHeldHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Hanya Anda yang bisa melihatnya sampai ditinjau moderator.'**
+  String get moderationHeldHint;
+
+  /// No description provided for @moderationHidden.
+  ///
+  /// In id, this message translates to:
+  /// **'Disembunyikan moderator'**
+  String get moderationHidden;
+
+  /// No description provided for @moderationHiddenHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Konten ini tidak terlihat oleh orang lain.'**
+  String get moderationHiddenHint;
+
+  /// No description provided for @messageRequests.
+  ///
+  /// In id, this message translates to:
+  /// **'Permintaan pesan'**
+  String get messageRequests;
+
+  /// No description provided for @messageRequestsEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada permintaan pesan.'**
+  String get messageRequestsEmpty;
+
+  /// No description provided for @messageRequestMessages.
+  ///
+  /// In id, this message translates to:
+  /// **'{count, plural, =1{1 pesan} other{{count} pesan}}'**
+  String messageRequestMessages(int count);
+
+  /// No description provided for @messageRequestIntro.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} belum Anda ikuti. Terima untuk membalas, atau tolak untuk menyembunyikan permintaan ini.'**
+  String messageRequestIntro(String name);
+
+  /// No description provided for @messageRequestAccept.
+  ///
+  /// In id, this message translates to:
+  /// **'Terima'**
+  String get messageRequestAccept;
+
+  /// No description provided for @messageRequestDecline.
+  ///
+  /// In id, this message translates to:
+  /// **'Tolak'**
+  String get messageRequestDecline;
+
+  /// No description provided for @messageRequestBlock.
+  ///
+  /// In id, this message translates to:
+  /// **'Blokir & laporkan'**
+  String get messageRequestBlock;
+
+  /// No description provided for @messageRequestBlockConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Blokir {name} dan laporkan permintaan ini sebagai spam?'**
+  String messageRequestBlockConfirm(String name);
+
+  /// No description provided for @messageRequestAccepted.
+  ///
+  /// In id, this message translates to:
+  /// **'Permintaan diterima.'**
+  String get messageRequestAccepted;
+
+  /// No description provided for @messageRequestDeclined.
+  ///
+  /// In id, this message translates to:
+  /// **'Permintaan ditolak.'**
+  String get messageRequestDeclined;
+
+  /// No description provided for @messageRequestImageHidden.
+  ///
+  /// In id, this message translates to:
+  /// **'Gambar diburamkan sampai Anda menerima permintaan.'**
+  String get messageRequestImageHidden;
+
+  /// No description provided for @dmRequestSenderNotice.
+  ///
+  /// In id, this message translates to:
+  /// **'Bila {name} belum mengikuti Anda, pesan Anda masuk sebagai permintaan pesan. Anda bisa mengirim hingga {max} pesan sampai permintaan diterima.'**
+  String dmRequestSenderNotice(String name, int max);
+
+  /// No description provided for @dmRequestLimitNotice.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda sudah mengirim {max} pesan. Tunggu {name} menerima permintaan pesan Anda.'**
+  String dmRequestLimitNotice(String name, int max);
+
+  /// No description provided for @accountMessagesSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan langsung'**
+  String get accountMessagesSection;
+
+  /// No description provided for @dmPolicyTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Siapa yang bisa mengirim pesan langsung'**
+  String get dmPolicyTitle;
+
+  /// No description provided for @dmPolicyEveryone.
+  ///
+  /// In id, this message translates to:
+  /// **'Semua orang'**
+  String get dmPolicyEveryone;
+
+  /// No description provided for @dmPolicyEveryoneHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Orang yang tidak Anda ikuti masuk ke Permintaan pesan.'**
+  String get dmPolicyEveryoneHint;
+
+  /// No description provided for @dmPolicyFollowing.
+  ///
+  /// In id, this message translates to:
+  /// **'Hanya yang saya ikuti'**
+  String get dmPolicyFollowing;
+
+  /// No description provided for @dmPolicyNone.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada'**
+  String get dmPolicyNone;
+
+  /// No description provided for @dmPolicyNoneHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Percakapan yang sudah ada tetap berjalan.'**
+  String get dmPolicyNoneHint;
+
+  /// No description provided for @dmPolicySaved.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengaturan pesan disimpan.'**
+  String get dmPolicySaved;
+
+  /// No description provided for @appealAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Ajukan banding'**
+  String get appealAction;
+
+  /// No description provided for @appealTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Ajukan banding'**
+  String get appealTitle;
+
+  /// No description provided for @appealHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Jelaskan mengapa menurut Anda keputusan ini keliru (10–1000 karakter).'**
+  String get appealHint;
+
+  /// No description provided for @appealSubmit.
+  ///
+  /// In id, this message translates to:
+  /// **'Kirim banding'**
+  String get appealSubmit;
+
+  /// No description provided for @appealSent.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding terkirim. Kami akan memberi tahu hasilnya.'**
+  String get appealSent;
+
+  /// No description provided for @myAppeals.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding saya'**
+  String get myAppeals;
+
+  /// No description provided for @myAppealsEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada banding.'**
+  String get myAppealsEmpty;
+
+  /// No description provided for @appealStatusPending.
+  ///
+  /// In id, this message translates to:
+  /// **'Sedang ditinjau'**
+  String get appealStatusPending;
+
+  /// No description provided for @appealStatusAccepted.
+  ///
+  /// In id, this message translates to:
+  /// **'Diterima'**
+  String get appealStatusAccepted;
+
+  /// No description provided for @appealStatusRejected.
+  ///
+  /// In id, this message translates to:
+  /// **'Ditolak'**
+  String get appealStatusRejected;
+
+  /// No description provided for @appealTargetSanction.
+  ///
+  /// In id, this message translates to:
+  /// **'Sanksi akun'**
+  String get appealTargetSanction;
+
+  /// No description provided for @appealTargetPost.
+  ///
+  /// In id, this message translates to:
+  /// **'Post'**
+  String get appealTargetPost;
+
+  /// No description provided for @appealTargetComment.
+  ///
+  /// In id, this message translates to:
+  /// **'Komentar'**
+  String get appealTargetComment;
+
+  /// No description provided for @appealTargetMessage.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan'**
+  String get appealTargetMessage;
+
+  /// No description provided for @appealDecisionNote.
+  ///
+  /// In id, this message translates to:
+  /// **'Catatan: {note}'**
+  String appealDecisionNote(String note);
+
+  /// No description provided for @activeSanctions.
+  ///
+  /// In id, this message translates to:
+  /// **'Sanksi aktif'**
+  String get activeSanctions;
+
+  /// No description provided for @noActiveSanctions.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada sanksi aktif.'**
+  String get noActiveSanctions;
+
+  /// No description provided for @sanctionWarning.
+  ///
+  /// In id, this message translates to:
+  /// **'Peringatan'**
+  String get sanctionWarning;
+
+  /// No description provided for @sanctionMute.
+  ///
+  /// In id, this message translates to:
+  /// **'Dibatasi mengirim konten'**
+  String get sanctionMute;
+
+  /// No description provided for @sanctionBan.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun diblokir'**
+  String get sanctionBan;
+
+  /// No description provided for @sanctionUntil.
+  ///
+  /// In id, this message translates to:
+  /// **'Sampai {date}'**
+  String sanctionUntil(String date);
+
+  /// No description provided for @sanctionPermanent.
+  ///
+  /// In id, this message translates to:
+  /// **'Tanpa batas waktu'**
+  String get sanctionPermanent;
+
+  /// No description provided for @accountAppealsSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding & sanksi'**
+  String get accountAppealsSection;
+
+  /// No description provided for @accountAppealsHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Lihat sanksi aktif dan status banding Anda.'**
+  String get accountAppealsHint;
+
+  /// No description provided for @notifAppealAccepted.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding Anda diterima'**
+  String get notifAppealAccepted;
+
+  /// No description provided for @notifAppealRejected.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding Anda ditolak'**
+  String get notifAppealRejected;
+
+  /// No description provided for @notificationSettings.
+  ///
+  /// In id, this message translates to:
+  /// **'Notifikasi'**
+  String get notificationSettings;
+
+  /// No description provided for @notificationSettingsHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Atur notifikasi di aplikasi dan push per jenis, serta jam tenang.'**
+  String get notificationSettingsHint;
+
+  /// No description provided for @notifTypeReply.
+  ///
+  /// In id, this message translates to:
+  /// **'Balasan'**
+  String get notifTypeReply;
+
+  /// No description provided for @notifTypeMention.
+  ///
+  /// In id, this message translates to:
+  /// **'Mention'**
+  String get notifTypeMention;
+
+  /// No description provided for @notifTypeLike.
+  ///
+  /// In id, this message translates to:
+  /// **'Suka'**
+  String get notifTypeLike;
+
+  /// No description provided for @notifTypeFollow.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengikut baru'**
+  String get notifTypeFollow;
+
+  /// No description provided for @notifTypeMessage.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan chat'**
+  String get notifTypeMessage;
+
+  /// No description provided for @notifTypeAnnouncement.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengumuman'**
+  String get notifTypeAnnouncement;
+
+  /// No description provided for @notifTypeAppeal.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding'**
+  String get notifTypeAppeal;
+
+  /// No description provided for @notifTypeTrade.
+  ///
+  /// In id, this message translates to:
+  /// **'Transaksi OLT'**
+  String get notifTypeTrade;
+
+  /// No description provided for @notifInApp.
+  ///
+  /// In id, this message translates to:
+  /// **'Di aplikasi'**
+  String get notifInApp;
+
+  /// No description provided for @notifPush.
+  ///
+  /// In id, this message translates to:
+  /// **'Push'**
+  String get notifPush;
+
+  /// No description provided for @notifSupportAlwaysOn.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan dari CS resmi selalu dikirim.'**
+  String get notifSupportAlwaysOn;
+
+  /// No description provided for @quietHours.
+  ///
+  /// In id, this message translates to:
+  /// **'Jam tenang'**
+  String get quietHours;
+
+  /// No description provided for @quietHoursHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Push ditunda selama jam tenang (WIB). Notifikasi di aplikasi tetap masuk.'**
+  String get quietHoursHint;
+
+  /// No description provided for @quietHoursStart.
+  ///
+  /// In id, this message translates to:
+  /// **'Mulai'**
+  String get quietHoursStart;
+
+  /// No description provided for @quietHoursEnd.
+  ///
+  /// In id, this message translates to:
+  /// **'Selesai'**
+  String get quietHoursEnd;
+
+  /// No description provided for @quietHoursRange.
+  ///
+  /// In id, this message translates to:
+  /// **'{start}–{end} WIB'**
+  String quietHoursRange(String start, String end);
+
+  /// No description provided for @notifFollowMany.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} dan {others} lainnya mulai mengikuti Anda'**
+  String notifFollowMany(String name, int others);
+
+  /// No description provided for @searchTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Cari'**
+  String get searchTitle;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Cari post, pengguna, \$KODE, #hashtag'**
+  String get searchHint;
+
+  /// No description provided for @searchTabAll.
+  ///
+  /// In id, this message translates to:
+  /// **'Semua'**
+  String get searchTabAll;
+
+  /// No description provided for @searchTabPosts.
+  ///
+  /// In id, this message translates to:
+  /// **'Post'**
+  String get searchTabPosts;
+
+  /// No description provided for @searchTabUsers.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengguna'**
+  String get searchTabUsers;
+
+  /// No description provided for @searchTabStocks.
+  ///
+  /// In id, this message translates to:
+  /// **'Saham'**
+  String get searchTabStocks;
+
+  /// No description provided for @searchTabHashtags.
+  ///
+  /// In id, this message translates to:
+  /// **'Hashtag'**
+  String get searchTabHashtags;
+
+  /// No description provided for @searchMinLength.
+  ///
+  /// In id, this message translates to:
+  /// **'Ketik minimal {min} karakter.'**
+  String searchMinLength(int min);
+
+  /// No description provided for @searchNoResults.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada hasil untuk \"{query}\".'**
+  String searchNoResults(String query);
+
+  /// No description provided for @searchSeeAll.
+  ///
+  /// In id, this message translates to:
+  /// **'Lihat semua'**
+  String get searchSeeAll;
+
+  /// No description provided for @postsLast7Days.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} post (7 hari)'**
+  String postsLast7Days(int count);
+
+  /// No description provided for @trendingHashtags.
+  ///
+  /// In id, this message translates to:
+  /// **'Hashtag trending'**
+  String get trendingHashtags;
+
+  /// No description provided for @hashtagFeedEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada post dengan #{tag}.'**
+  String hashtagFeedEmpty(String tag);
+
+  /// No description provided for @trendingTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Trending'**
+  String get trendingTitle;
+
+  /// No description provided for @trendingStocks.
+  ///
+  /// In id, this message translates to:
+  /// **'Saham'**
+  String get trendingStocks;
+
+  /// No description provided for @trendingRising.
+  ///
+  /// In id, this message translates to:
+  /// **'Naik daun'**
+  String get trendingRising;
+
+  /// No description provided for @trendingPosts.
+  ///
+  /// In id, this message translates to:
+  /// **'Populer'**
+  String get trendingPosts;
+
+  /// No description provided for @trendingWindowDay.
+  ///
+  /// In id, this message translates to:
+  /// **'24 jam'**
+  String get trendingWindowDay;
+
+  /// No description provided for @trendingWindowWeek.
+  ///
+  /// In id, this message translates to:
+  /// **'7 hari'**
+  String get trendingWindowWeek;
+
+  /// No description provided for @trendingEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada data trending.'**
+  String get trendingEmpty;
+
+  /// No description provided for @trendingPostCount.
+  ///
+  /// In id, this message translates to:
+  /// **'{count, plural, =1{1 post} other{{count} post}}'**
+  String trendingPostCount(int count);
+
+  /// No description provided for @trendingGrowth.
+  ///
+  /// In id, this message translates to:
+  /// **'+{percent}%'**
+  String trendingGrowth(String percent);
+
+  /// No description provided for @sentimentTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Sentimen komunitas'**
+  String get sentimentTitle;
+
+  /// No description provided for @sentimentNoData.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada post berlabel sentimen.'**
+  String get sentimentNoData;
+
+  /// No description provided for @sentimentBasedOn.
+  ///
+  /// In id, this message translates to:
+  /// **'{count, plural, =1{Dari 1 post} other{Dari {count} post}}'**
+  String sentimentBasedOn(int count);
+
+  /// No description provided for @editAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Edit'**
+  String get editAction;
+
+  /// No description provided for @editPostTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Edit post'**
+  String get editPostTitle;
+
+  /// No description provided for @editCommentTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Edit komentar'**
+  String get editCommentTitle;
+
+  /// No description provided for @editSaved.
+  ///
+  /// In id, this message translates to:
+  /// **'Perubahan disimpan.'**
+  String get editSaved;
+
+  /// No description provided for @bookmarkAdd.
+  ///
+  /// In id, this message translates to:
+  /// **'Simpan'**
+  String get bookmarkAdd;
+
+  /// No description provided for @bookmarkRemove.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus dari simpanan'**
+  String get bookmarkRemove;
+
+  /// No description provided for @bookmarksTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Disimpan'**
+  String get bookmarksTitle;
+
+  /// No description provided for @bookmarksEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada post yang disimpan.'**
+  String get bookmarksEmpty;
+
+  /// No description provided for @bookmarkAdded.
+  ///
+  /// In id, this message translates to:
+  /// **'Post disimpan.'**
+  String get bookmarkAdded;
+
+  /// No description provided for @bookmarkRemoved.
+  ///
+  /// In id, this message translates to:
+  /// **'Dihapus dari simpanan.'**
+  String get bookmarkRemoved;
+
+  /// No description provided for @reactionAdd.
+  ///
+  /// In id, this message translates to:
+  /// **'Beri reaksi'**
+  String get reactionAdd;
+
+  /// No description provided for @shareToChat.
+  ///
+  /// In id, this message translates to:
+  /// **'Kirim ke chat'**
+  String get shareToChat;
+
+  /// No description provided for @sharePickRoom.
+  ///
+  /// In id, this message translates to:
+  /// **'Kirim ke…'**
+  String get sharePickRoom;
+
+  /// No description provided for @shareMessageHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Tambahkan pesan (opsional)'**
+  String get shareMessageHint;
+
+  /// No description provided for @shareSent.
+  ///
+  /// In id, this message translates to:
+  /// **'Post dikirim ke chat.'**
+  String get shareSent;
+
+  /// No description provided for @shareNoRooms.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada chat. Mulai percakapan dulu.'**
+  String get shareNoRooms;
+
+  /// No description provided for @sharedPostUnavailable.
+  ///
+  /// In id, this message translates to:
+  /// **'Post tidak tersedia'**
+  String get sharedPostUnavailable;
+
+  /// No description provided for @sharedPostLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Post'**
+  String get sharedPostLabel;
+
+  /// No description provided for @linkOpenTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Buka tautan?'**
+  String get linkOpenTitle;
+
+  /// No description provided for @linkOpenBody.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda akan membuka {domain} di luar aplikasi. Pastikan Anda mempercayai situs ini.'**
+  String linkOpenBody(String domain);
+
+  /// No description provided for @linkOpenAction.
+  ///
+  /// In id, this message translates to:
+  /// **'Buka'**
+  String get linkOpenAction;
+
+  /// No description provided for @linkOpenFailed.
+  ///
+  /// In id, this message translates to:
+  /// **'Tautan tidak bisa dibuka.'**
+  String get linkOpenFailed;
+
+  /// No description provided for @botLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Bot'**
+  String get botLabel;
+
+  /// No description provided for @slowModeBanner.
+  ///
+  /// In id, this message translates to:
+  /// **'Slow mode: 1 pesan tiap {seconds} detik'**
+  String slowModeBanner(int seconds);
+
+  /// No description provided for @slowModeWait.
+  ///
+  /// In id, this message translates to:
+  /// **'Tunggu {seconds} dtk'**
+  String slowModeWait(int seconds);
+
+  /// No description provided for @pinnedMessageLabel.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan disematkan'**
+  String get pinnedMessageLabel;
+
+  /// No description provided for @dmRequestPendingSender.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan Anda masih berupa permintaan ({sent}/{max}). {name} perlu menerimanya sebelum Anda bisa mengirim lebih banyak.'**
+  String dmRequestPendingSender(String name, int sent, int max);
+
+  /// No description provided for @dmRequestPendingRecipient.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} mengirim permintaan pesan. Terima untuk membalas.'**
+  String dmRequestPendingRecipient(String name);
+
+  /// No description provided for @moderatedContent.
+  ///
+  /// In id, this message translates to:
+  /// **'Konten yang dimoderasi'**
+  String get moderatedContent;
+
+  /// No description provided for @moderatedContentEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Tidak ada konten Anda yang dimoderasi dalam 90 hari terakhir.'**
+  String get moderatedContentEmpty;
+
+  /// No description provided for @moderationRemoved.
+  ///
+  /// In id, this message translates to:
+  /// **'Dihapus moderator'**
+  String get moderationRemoved;
 }
 
 class _CommunityLocalizationsDelegate extends LocalizationsDelegate<CommunityLocalizations> {

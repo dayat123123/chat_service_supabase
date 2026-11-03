@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Attachment {
 
- String get path; String? get bucket; String? get mime; String? get name; int? get size; int? get width; int? get height;
+ String get path; String? get bucket; String? get mime; String? get name; int? get size; int? get width; int? get height; bool get held;
 /// Create a copy of Attachment
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $AttachmentCopyWith<Attachment> get copyWith => _$AttachmentCopyWithImpl<Attachm
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Attachment&&(identical(other.path, path) || other.path == path)&&(identical(other.bucket, bucket) || other.bucket == bucket)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.name, name) || other.name == name)&&(identical(other.size, size) || other.size == size)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Attachment&&(identical(other.path, path) || other.path == path)&&(identical(other.bucket, bucket) || other.bucket == bucket)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.name, name) || other.name == name)&&(identical(other.size, size) || other.size == size)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height)&&(identical(other.held, held) || other.held == held));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,path,bucket,mime,name,size,width,height);
+int get hashCode => Object.hash(runtimeType,path,bucket,mime,name,size,width,height,held);
 
 @override
 String toString() {
-  return 'Attachment(path: $path, bucket: $bucket, mime: $mime, name: $name, size: $size, width: $width, height: $height)';
+  return 'Attachment(path: $path, bucket: $bucket, mime: $mime, name: $name, size: $size, width: $width, height: $height, held: $held)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $AttachmentCopyWith<$Res>  {
   factory $AttachmentCopyWith(Attachment value, $Res Function(Attachment) _then) = _$AttachmentCopyWithImpl;
 @useResult
 $Res call({
- String path, String? bucket, String? mime, String? name, int? size, int? width, int? height
+ String path, String? bucket, String? mime, String? name, int? size, int? width, int? height, bool held
 });
 
 
@@ -62,7 +62,7 @@ class _$AttachmentCopyWithImpl<$Res>
 
 /// Create a copy of Attachment
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? bucket = freezed,Object? mime = freezed,Object? name = freezed,Object? size = freezed,Object? width = freezed,Object? height = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? path = null,Object? bucket = freezed,Object? mime = freezed,Object? name = freezed,Object? size = freezed,Object? width = freezed,Object? height = freezed,Object? held = null,}) {
   return _then(_self.copyWith(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,bucket: freezed == bucket ? _self.bucket : bucket // ignore: cast_nullable_to_non_nullable
@@ -71,7 +71,8 @@ as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to
 as String?,size: freezed == size ? _self.size : size // ignore: cast_nullable_to_non_nullable
 as int?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
 as int?,height: freezed == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,held: null == held ? _self.held : held // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -156,10 +157,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String path,  String? bucket,  String? mime,  String? name,  int? size,  int? width,  int? height)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String path,  String? bucket,  String? mime,  String? name,  int? size,  int? width,  int? height,  bool held)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Attachment() when $default != null:
-return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height);case _:
+return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height,_that.held);case _:
   return orElse();
 
 }
@@ -177,10 +178,10 @@ return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.w
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String path,  String? bucket,  String? mime,  String? name,  int? size,  int? width,  int? height)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String path,  String? bucket,  String? mime,  String? name,  int? size,  int? width,  int? height,  bool held)  $default,) {final _that = this;
 switch (_that) {
 case _Attachment():
-return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height);case _:
+return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height,_that.held);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +198,10 @@ return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.w
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String path,  String? bucket,  String? mime,  String? name,  int? size,  int? width,  int? height)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String path,  String? bucket,  String? mime,  String? name,  int? size,  int? width,  int? height,  bool held)?  $default,) {final _that = this;
 switch (_that) {
 case _Attachment() when $default != null:
-return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height);case _:
+return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.width,_that.height,_that.held);case _:
   return null;
 
 }
@@ -212,7 +213,7 @@ return $default(_that.path,_that.bucket,_that.mime,_that.name,_that.size,_that.w
 
 
 class _Attachment extends Attachment {
-  const _Attachment({required this.path, this.bucket, this.mime, this.name, this.size, this.width, this.height}): super._();
+  const _Attachment({required this.path, this.bucket, this.mime, this.name, this.size, this.width, this.height, this.held = false}): super._();
   
 
 @override final  String path;
@@ -222,6 +223,7 @@ class _Attachment extends Attachment {
 @override final  int? size;
 @override final  int? width;
 @override final  int? height;
+@override@JsonKey() final  bool held;
 
 /// Create a copy of Attachment
 /// with the given fields replaced by the non-null parameter values.
@@ -233,16 +235,16 @@ _$AttachmentCopyWith<_Attachment> get copyWith => __$AttachmentCopyWithImpl<_Att
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Attachment&&(identical(other.path, path) || other.path == path)&&(identical(other.bucket, bucket) || other.bucket == bucket)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.name, name) || other.name == name)&&(identical(other.size, size) || other.size == size)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Attachment&&(identical(other.path, path) || other.path == path)&&(identical(other.bucket, bucket) || other.bucket == bucket)&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.name, name) || other.name == name)&&(identical(other.size, size) || other.size == size)&&(identical(other.width, width) || other.width == width)&&(identical(other.height, height) || other.height == height)&&(identical(other.held, held) || other.held == held));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,path,bucket,mime,name,size,width,height);
+int get hashCode => Object.hash(runtimeType,path,bucket,mime,name,size,width,height,held);
 
 @override
 String toString() {
-  return 'Attachment(path: $path, bucket: $bucket, mime: $mime, name: $name, size: $size, width: $width, height: $height)';
+  return 'Attachment(path: $path, bucket: $bucket, mime: $mime, name: $name, size: $size, width: $width, height: $height, held: $held)';
 }
 
 
@@ -253,7 +255,7 @@ abstract mixin class _$AttachmentCopyWith<$Res> implements $AttachmentCopyWith<$
   factory _$AttachmentCopyWith(_Attachment value, $Res Function(_Attachment) _then) = __$AttachmentCopyWithImpl;
 @override @useResult
 $Res call({
- String path, String? bucket, String? mime, String? name, int? size, int? width, int? height
+ String path, String? bucket, String? mime, String? name, int? size, int? width, int? height, bool held
 });
 
 
@@ -270,7 +272,7 @@ class __$AttachmentCopyWithImpl<$Res>
 
 /// Create a copy of Attachment
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? bucket = freezed,Object? mime = freezed,Object? name = freezed,Object? size = freezed,Object? width = freezed,Object? height = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? path = null,Object? bucket = freezed,Object? mime = freezed,Object? name = freezed,Object? size = freezed,Object? width = freezed,Object? height = freezed,Object? held = null,}) {
   return _then(_Attachment(
 path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,bucket: freezed == bucket ? _self.bucket : bucket // ignore: cast_nullable_to_non_nullable
@@ -279,7 +281,8 @@ as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to
 as String?,size: freezed == size ? _self.size : size // ignore: cast_nullable_to_non_nullable
 as int?,width: freezed == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
 as int?,height: freezed == height ? _self.height : height // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,held: null == held ? _self.held : held // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

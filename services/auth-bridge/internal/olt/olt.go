@@ -11,6 +11,13 @@ type User struct {
 	Username    string
 	Email       string
 	DisplayName string
+	Accounts    *AccountClaim
+}
+
+type AccountClaim struct {
+	IDs       []string
+	Ignored   int
+	Malformed bool
 }
 
 var (

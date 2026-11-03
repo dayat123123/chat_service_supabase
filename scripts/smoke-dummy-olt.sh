@@ -114,6 +114,40 @@ code=$(renew "mock:1001:budi_santoso")
 code=$(exchange "$(json .token)")
 check "token mock -> token sosial dummy -> exchange 200" '[ "$code" = 200 ] && [ "$(json .user.username)" = budi_santoso ]'
 
+# --- upload media lewat /media/v1 (cek isi file, buang EXIF/GPS) --------------------
+BUDI_ID=72689cd3-ea55-584f-9e84-c257af0564e0
+PHOTO=/tmp/smoke-photo.jpg
+STORED=/tmp/smoke-stored.jpg
+base64 -d > "$PHOTO" <<'B64'
+/9j/4QA0RXhpZgAASUkqAAgAAAABACWIBAABAAAAGgAAAAAAAAABAAEAAgACAAAAUwAAAAAAAAD/
+/gAgR1BTTUFSS0VSLU9MVCAtNi4yMDg4LDEwNi44NDU2/9sAhAAGBAUGBQQGBgUGBwcGCAoQCgoJ
+CQoUDg8MEBcUGBgXFBYWGh0lHxobIxwWFiAsICMmJykqKRkfLTAtKDAlKCkoAQcHBwoIChMKChMo
+GhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAAR
+CAAIABADASIAAhEBAxEB/8QBogAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoLEAACAQMDAgQD
+BQUEBAAAAX0BAgMABBEFEiExQQYTUWEHInEUMoGRoQgjQrHBFVLR8CQzYnKCCQoWFxgZGiUmJygp
+KjQ1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoOEhYaHiImKkpOUlZaXmJma
+oqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4eLj5OXm5+jp6vHy8/T19vf4+foB
+AAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKCxEAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJB
+UQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RV
+VldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6
+wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDjtL+H/T91
++ldhpfw/6fuf0rotL7V2Gl9q4sbm+J11PJ4Yz7F+77x//9k=
+B64
+NAME="smoke-$(date +%s)-$RANDOM"
+upload() { curl -sS -o "$BODY" -w '%{http_code}' -X POST "$BASE/$1" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $JWT"   -H 'Content-Type: image/jpeg' --data-binary "@$2"; }
+
+code=$(upload "storage/v1/object/attachments/posts/$BUDI_ID/$NAME-direct.jpg" "$PHOTO")
+check "upload langsung ke Storage tanpa layanan media ditolak" '[ "$code" != 200 ]'
+code=$(upload "media/v1/object/attachments/posts/$BUDI_ID/$NAME.png" "$PHOTO")
+MEDIA_PATH=$(json .path)
+check "foto lewat /media/v1 -> 200, jenis dari isi file, ekstensi dibetulkan"   '[ "$code" = 200 ] && [ "$(json .mime)" = image/jpeg ] && [ "$MEDIA_PATH" = "posts/$BUDI_ID/$NAME.jpg" ]'
+curl -sS -o "$STORED" "$BASE/storage/v1/object/authenticated/attachments/$MEDIA_PATH"   -H "apikey: $ANON_KEY" -H "Authorization: Bearer $JWT"
+check "file tersimpan tanpa EXIF/GPS dan komentar"   '[ -s "$STORED" ] && grep -qF GPSMARKER "$PHOTO" && ! grep -qF Exif "$STORED" && ! grep -qF GPSMARKER "$STORED"'
+printf 'bukan gambar' > /tmp/smoke-fake.jpg
+code=$(upload "media/v1/object/attachments/posts/$BUDI_ID/$NAME-palsu.jpg" /tmp/smoke-fake.jpg)
+check "file palsu berekstensi .jpg ditolak 415 unsupported_type" '[ "$code" = 415 ] && [ "$(json .code)" = unsupported_type ]'
+curl -sS -o /dev/null -X DELETE "$BASE/storage/v1/object/attachments/$MEDIA_PATH"   -H "apikey: $ANON_KEY" -H "Authorization: Bearer $JWT"
+
 echo
 echo "smoke-dummy: $pass ok, $fail gagal"
 [ "$fail" -eq 0 ]
