@@ -6,6 +6,7 @@ import {
   canReview,
   canSubmit,
   cleanStock,
+  communityPageTabs,
   communityTabsFor,
   fromJakartaInput,
   jakartaInput,
@@ -28,6 +29,20 @@ describe('communityTabsFor', () => {
       'accounts',
     ])
     expect(communityTabsFor([])).toEqual([])
+  })
+})
+
+describe('communityPageTabs', () => {
+  it('adds Analitik only for Super Admins, after the tabs their permissions allow', () => {
+    expect(communityPageTabs({ roles: ['cs_super_admin'], community_permissions: [] })).toEqual(['analytics'])
+    expect(
+      communityPageTabs({ roles: ['cs_super_admin'], community_permissions: ['community.moderate'] }),
+    ).toEqual(['moderation', 'rooms', 'analytics'])
+    expect(communityPageTabs({ roles: ['community'], community_permissions: ['community.post'] })).toEqual([
+      'stream',
+      'notifications',
+    ])
+    expect(communityPageTabs({ roles: ['cs_agent'], community_permissions: [] })).toEqual([])
   })
 })
 

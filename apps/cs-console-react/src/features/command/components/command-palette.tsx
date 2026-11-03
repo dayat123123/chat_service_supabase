@@ -56,6 +56,7 @@ import { useTicketLists, useTicketSearch, useTicketUi, useTopicName } from '@/fe
 import { byPriorityThenWait, ticketTabs } from '@/features/tickets/logic'
 import { customerName, tabLabelKeys, type Ticket } from '@/features/tickets/types'
 import { useDebounced } from '@/hooks/use-now'
+import { SHOW_SYSTEM_HEALTH_NAV } from '@/lib/nav-config'
 import { usePreferences } from '@/lib/preferences'
 
 import { hasCommand, runCommand, useCommandRegistry, useOverlays, type ConsoleCommand } from '../bus'
@@ -108,7 +109,7 @@ function Section({
 type SectionTarget =
   | '/dashboard'
   | '/reports'
-  | '/analytics'
+  | '/community'
   | '/settings'
   | '/compliance'
   | '/compliance/cases'
@@ -170,20 +171,23 @@ function PaletteBody({
     }))
 
   const tabs = ticketTabs(agent).map((tab) => ({ tab, label: t(tabLabelKeys[tab]) }))
-  const sections: { label: string; icon: Icon; to: SectionTarget }[] = [
+  const sections: { label: string; icon: Icon; to: SectionTarget; search?: { tab: 'analytics' } }[] = [
     ...(superAdmin
       ? [
           { label: t('nav.dashboard'), icon: LayoutDashboardIcon, to: '/dashboard' as const },
           { label: t('nav.reports'), icon: BarChart3Icon, to: '/reports' as const },
-          { label: t('nav.analytics'), icon: LineChartIcon, to: '/analytics' as const },
+          {
+            label: t('nav.analytics'),
+            icon: LineChartIcon,
+            to: '/community' as const,
+            search: { tab: 'analytics' as const },
+          },
         ]
       : []),
     ...(hasNasabah(agent) ? [{ label: t('nav.nasabah'), icon: UsersIcon, to: '/nasabah' as const }] : []),
-    ...(superAdmin
-      ? [
-          { label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const },
-          { label: t('nav.system'), icon: ActivityIcon, to: '/system' as const },
-        ]
+    ...(superAdmin ? [{ label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const }] : []),
+    ...(superAdmin && SHOW_SYSTEM_HEALTH_NAV
+      ? [{ label: t('nav.system'), icon: ActivityIcon, to: '/system' as const }]
       : []),
     ...(compliance
       ? [
@@ -208,10 +212,10 @@ function PaletteBody({
       },
     })),
     ...sections.map((section) => ({
-      id: `nav:${section.to}`,
+      id: `nav:${section.to}${section.search ? `:${section.search.tab}` : ''}`,
       label: t('command.goTo', { section: section.label }),
       icon: section.icon,
-      run: () => void navigate({ to: section.to }),
+      run: () => void navigate({ to: section.to, search: section.search }),
     })),
   ]
 

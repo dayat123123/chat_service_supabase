@@ -29,8 +29,8 @@ import {
 } from '@/features/presence/components/status-menu'
 import { useCommunityBadge } from '@/features/community/hooks'
 import {
+  canOpenCommunity,
   canViewTickets,
-  hasCommunityAccess,
   hasNasabah,
   isCompliance,
   isMonitor,
@@ -41,6 +41,7 @@ import { isStaffRole } from '@/features/settings/types'
 import { useHealthBadge } from '@/features/system/hooks'
 import { badgeView } from '@/features/system/logic'
 import { notificationPermission, playSound, requestNotificationPermission } from '@/lib/alerts'
+import { SHOW_SYSTEM_HEALTH_NAV } from '@/lib/nav-config'
 import { usePreferences, type Density, type Theme, type TicketAlerts } from '@/lib/preferences'
 import { cn } from '@/lib/utils'
 
@@ -48,7 +49,6 @@ type NavTarget =
   | '/'
   | '/dashboard'
   | '/reports'
-  | '/analytics'
   | '/settings'
   | '/compliance'
   | '/compliance/cases'
@@ -211,8 +211,9 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
   const monitor = isMonitor(agent)
   const superAdmin = isSuperAdmin(agent)
   const compliance = isCompliance(agent)
+  const showSystem = superAdmin && SHOW_SYSTEM_HEALTH_NAV
   const communityCount = useCommunityBadge()
-  const health = badgeView(useHealthBadge(superAdmin).data)
+  const health = badgeView(useHealthBadge(showSystem).data)
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3 lg:px-4">
       <Logo className="mr-2 hidden sm:flex" />
@@ -222,11 +223,10 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
           <>
             <NavLink to="/dashboard" label={t('nav.dashboard')} count={attention || undefined} />
             <NavLink to="/reports" label={t('nav.reports')} />
-            <NavLink to="/analytics" label={t('nav.analytics')} />
           </>
         ) : null}
         {hasNasabah(agent) ? <NavLink to="/nasabah" label={t('nav.nasabah')} /> : null}
-        {hasCommunityAccess(agent) ? (
+        {canOpenCommunity(agent) ? (
           <NavLink
             to="/community"
             label={t('nav.community')}
@@ -234,23 +234,21 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
             countLabel={t('nav.communityAttention', { count: communityCount })}
           />
         ) : null}
-        {superAdmin ? (
-          <>
-            <NavLink to="/settings" label={t('nav.settings')} />
-            <NavLink
-              to="/system"
-              label={t('nav.system')}
-              count={health?.count}
-              tone={health?.tone === 'warn' ? 'warning' : 'danger'}
-              countLabel={
-                health
-                  ? t(health.severity === 'critical' ? 'nav.systemCritical' : 'nav.systemWarning', {
-                      count: health.count,
-                    })
-                  : undefined
-              }
-            />
-          </>
+        {superAdmin ? <NavLink to="/settings" label={t('nav.settings')} /> : null}
+        {showSystem ? (
+          <NavLink
+            to="/system"
+            label={t('nav.system')}
+            count={health?.count}
+            tone={health?.tone === 'warn' ? 'warning' : 'danger'}
+            countLabel={
+              health
+                ? t(health.severity === 'critical' ? 'nav.systemCritical' : 'nav.systemWarning', {
+                    count: health.count,
+                  })
+                : undefined
+            }
+          />
         ) : null}
         {compliance ? (
           <>

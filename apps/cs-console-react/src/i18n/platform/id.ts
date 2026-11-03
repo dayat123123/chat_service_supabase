@@ -284,7 +284,6 @@ export const platform = {
     clearBody: 'Semua versi aplikasi di platform ini bisa dipakai lagi tanpa wajib memperbarui.',
   },
   analytics: {
-    title: 'Analitik komunitas',
     rangeLabel: 'Rentang analitik',
     presets: { week: '7 hari', month: '30 hari', quarter: '90 hari' },
     avgDau: 'Rata-rata DAU',
