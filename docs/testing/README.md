@@ -9,6 +9,7 @@ Alat uji untuk Poin 14: sebelum produksi, sistem diuji keamanan, beban, dan keta
 | Perintah (Linux/macOS/WSL) | Windows | Isi | Lama |
 |---|---|---|---|
 | `make test-security` | `.\make.ps1 test-security` | Probe otorisasi (±1.050 probe), review statis edge produksi, uji dinamis routing produksi | ±1 menit |
+| `make test-zap` | `.\make.ps1 test-zap` | OWASP ZAP baseline pasif (opsional, image ±1,2 GB) ke web CS `:8085` dan API dev `:8000` | ±2 menit |
 | `make scan-deps` | `.\make.ps1 scan-deps` (butuh Git Bash) | govulncheck, `npm audit --omit=dev`, osv-scanner, Trivy HIGH/CRITICAL | ±4 menit |
 | `make load-test P=smoke` | `.\make.ps1 load-test -Load smoke` | Uji beban singkat 10 VU (cek alat) | ±1,5 menit |
 | `make load-test P=step` | `.\make.ps1 load-test -Load step` | Bertahap 50 → 100 → 200 → 300 → 400 VU, berhenti otomatis bila error > 1% atau p95 realtime melonjak | ±20 menit |
