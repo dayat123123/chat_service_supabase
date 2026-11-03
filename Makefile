@@ -172,14 +172,14 @@ e2e-windows: check-config ## E2E app example di Windows (butuh Flutter SDK + Vis
 	cd $(PKG)/example && flutter test integration_test/app_test.dart -d windows \
 	  --dart-define=OLT_SOCIAL_ANON_KEY=$(ANON_KEY)
 
-web-example: check-config ## App example versi web di http://localhost:8081 (?user=sari_invest), butuh Flutter SDK
+web-example: check-config ## App example versi web di http://localhost:8086 (?user=sari_invest), butuh Flutter SDK
 	cd $(PKG)/example && flutter build web --release --no-web-resources-cdn --pwa-strategy=none \
 	  --dart-define=OLT_SOCIAL_ANON_KEY=$(ANON_KEY)
 	@# Server statis untuk build/web; container lama diganti. Stop: docker rm -f olt-web-example
 	@docker rm -f olt-web-example >/dev/null 2>&1 || true
-	docker run -d --name olt-web-example --restart unless-stopped -p 127.0.0.1:8081:8081 \
-	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8081
-	@echo "App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)"
+	docker run -d --name olt-web-example --restart unless-stopped -p 127.0.0.1:8086:8086 \
+	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8086
+	@echo "App web: http://localhost:8086  (langsung login: http://localhost:8086/?user=sari_invest)"
 
 license-audit: ## Audit lisensi dependensi runtime Flutter rendezvous_community (tolak GPL/AGPL)
 	cd $(PKG) && dart run tool/license_audit.dart

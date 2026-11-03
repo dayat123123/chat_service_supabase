@@ -2,7 +2,7 @@
 #
 # - Traefik HTTP di http://localhost:8000 (EDGE_HTTP_BIND / EDGE_HTTP_PORT).
 #   Semua path diteruskan, termasuk Studio (login basic-auth Kong).
-# - CORS semua origin (app contoh versi web di http://localhost:8081).
+# - CORS semua origin (app contoh versi web di http://localhost:8086).
 # - auth-bridge mode mock (token mock:<olt_user_id>:<username>) dan log debug.
 # - Seed data: make seed. OLT dummy: make up DUMMY_OLT=1 (compose.dummy-olt.yml).
 

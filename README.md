@@ -141,7 +141,7 @@ make anon-key        # ANON_KEY untuk app Flutter
 | Studio | `http://localhost:8000`, login `DASHBOARD_USERNAME` (`docker/.env`) + password di `docker/secrets/dashboard_password` |
 | Emulator Android | `http://10.0.2.2:8000` |
 | HP fisik di LAN | Set `EDGE_HTTP_BIND=0.0.0.0`, lalu pakai `http://<IP-PC>:8000` |
-| App contoh versi web (`make web-example`) | `http://localhost:8081` |
+| App contoh versi web (`make web-example`) | `http://localhost:8086` |
 
 Jalankan app contoh: lihat [packages/rendezvous_community/example/README.md](packages/rendezvous_community/example/README.md).
 
@@ -150,7 +150,7 @@ cd packages/rendezvous_community/example
 flutter run -d windows --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY: make anon-key>
 ```
 
-Untuk testing beberapa user sekaligus, jalankan juga versi web: `make web-example` (Windows: `.\make.ps1 web-example`). Buka `http://localhost:8081/?user=sari_invest` untuk langsung masuk sebagai Sari. Tiap tab browser bisa menjadi user berbeda, jadi chat dan notifikasi realtime bisa dicoba antara tab dengan tab, atau tab dengan app Windows.
+Untuk testing beberapa user sekaligus, jalankan juga versi web: `make web-example` (Windows: `.\make.ps1 web-example`). Buka `http://localhost:8086/?user=sari_invest` untuk langsung masuk sebagai Sari. Tiap tab browser bisa menjadi user berbeda, jadi chat dan notifikasi realtime bisa dicoba antara tab dengan tab, atau tab dengan app Windows.
 
 Login dev memakai **token mock**. Contohnya `mock:1001:budi_santoso`, yang sama dengan user seed Budi. User lain: `1002 sari_invest`, `1003 andi_trader`, `1004 rina_saham`, `1005 dewi_cuan`, dan `1006 olt_official`.
 
@@ -186,7 +186,7 @@ Di app contoh tersedia form **"Login OLT dummy"**: username/email + password →
 | `test-flutter` | `flutter analyze` + unit/widget test package |
 | `test-flutter-it` | Integration test Flutter ke stack: realtime, channel private, presence, rate limit |
 | `e2e-windows` | E2E app contoh di Windows (login → feed → thread → komentar/chat dengan Enter) |
-| `web-example` | Build app contoh untuk web, sajikan di `http://localhost:8081` (`?user=<username>` langsung login) |
+| `web-example` | Build app contoh untuk web, sajikan di `http://localhost:8086` (`?user=<username>` langsung login) |
 | `license-audit` | Audit lisensi dependensi runtime Flutter (tolak GPL/AGPL/LGPL/MPL) |
 | `backup` / `restore` | Backup DB + file storage ke `backups/`; restore: `make restore FILE=... CONFIRM=yes` |
 | `gen-secrets` | Buat `docker/secrets/` + `docker/.env`. Idempoten; `FORCE=1` / `-Force` membuat ulang semua rahasia. `gen-keys` = alias lama |

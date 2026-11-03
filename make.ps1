@@ -169,7 +169,7 @@ switch ($Target) {
   test-flutter  Analyze + unit/widget test package Flutter (butuh Flutter SDK)
   test-flutter-it  Integration test package Flutter ke stack lokal
   e2e-windows   E2E app example di Windows (butuh Visual Studio)
-  web-example   App example versi web di http://localhost:8081 (?user=sari_invest)
+  web-example   App example versi web di http://localhost:8086 (?user=sari_invest)
   license-audit Audit lisensi dependensi runtime Flutter (tolak GPL/AGPL)
   smoke         Smoke test end-to-end lewat Kong (butuh seed + mode mock)
   backup        Backup DB (+ file storage) ke folder backups/
@@ -288,9 +288,9 @@ switch ($Target) {
         # Server statis untuk build/web; container lama diganti. Stop: docker rm -f olt-web-example
         if (& docker ps -aq --filter 'name=^olt-web-example$') { Invoke-Docker @('rm', '-f', 'olt-web-example') }
         Invoke-Docker @('run', '-d', '--name', 'olt-web-example', '--restart', 'unless-stopped',
-                        '-p', '127.0.0.1:8081:8081', '-v', "$(Join-Path $example 'build/web'):/srv:ro",
-                        $WebImage, 'caddy', 'file-server', '--root', '/srv', '--listen', ':8081')
-        Write-Host 'App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)'
+                        '-p', '127.0.0.1:8086:8086', '-v', "$(Join-Path $example 'build/web'):/srv:ro",
+                        $WebImage, 'caddy', 'file-server', '--root', '/srv', '--listen', ':8086')
+        Write-Host 'App web: http://localhost:8086  (langsung login: http://localhost:8086/?user=sari_invest)'
     }
     'license-audit' {
         Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
