@@ -9,11 +9,11 @@ select tests.create_user('np_dodi') as dodi \gset
 select tests.authenticate_as(:'ani');
 select ok(public.register_push_device('np-token-ani-00000000000000001', 'android') is not null, 'Perangkat push terdaftar');
 select public.get_notification_prefs() as prefs \gset
-select is(jsonb_array_length(:'prefs'::jsonb -> 'types'), 12, 'Preferensi memuat dua belas jenis notifikasi');
+select is(jsonb_array_length(:'prefs'::jsonb -> 'types'), 15, 'Preferensi memuat lima belas jenis notifikasi');
 select ok(not exists (select 1 from jsonb_array_elements(:'prefs'::jsonb -> 'types') e
-                      where e ->> 'type' <> 'olt.promo'
+                      where e ->> 'type' not in ('olt.promo', 'followed_post')
                         and ((e ->> 'push')::boolean is false or (e ->> 'in_app')::boolean is false)),
-  'Tanpa pengaturan semua notifikasi aktif kecuali push promo OLT');
+  'Tanpa pengaturan semua notifikasi aktif kecuali push promo OLT dan postingan akun yang diikuti');
 select is((select e -> 'in_app' from jsonb_array_elements(:'prefs'::jsonb -> 'types') e where e ->> 'type' = 'olt.trade'),
   'true'::jsonb, 'Notifikasi transaksi OLT bisa masuk kotak notifikasi');
 select is(:'prefs'::jsonb -> 'quiet_hours' ->> 'enabled', 'false', 'Jam tenang mati secara default');
@@ -31,7 +31,7 @@ select throws_ok($$select public.set_notification_prefs('{"quiet_hours": {"enabl
 
 select is(public.set_notification_prefs('{"types": {"like": {"push": false}, "follow": {"in_app": false},
                                           "mention": {"in_app": false, "push": false}, "olt.trade": {"push": false}}}')
-          -> 'types' -> 2, '{"type": "like", "in_app": true, "push": false}'::jsonb,
+          -> 'types' -> 2, '{"type": "like", "in_app": true, "push": false, "in_app_locked": false}'::jsonb,
   'Preferensi disimpan sebagian per jenis');
 reset role;
 

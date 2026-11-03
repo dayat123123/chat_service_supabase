@@ -8,4 +8,6 @@ abstract interface class ChatExtrasRepository {
   Future<ChatMessage> sharePost(String roomId, String postId, {String? body, String? clientId});
 
   Future<StockRoomState> stockRoomState(String stockCode);
+
+  Future<ChatMessage> sendStockCards(String roomId, List<String> codes, {required String clientId, String? body});
 }

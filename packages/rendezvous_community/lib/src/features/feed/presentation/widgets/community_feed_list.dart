@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rendezvous_community/src/app/community_feature_scope.dart';
+import 'package:rendezvous_community/src/app/community_offline_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/analytics/domain/entities/analytics_event.dart';
+import 'package:rendezvous_community/src/features/config/presentation/widgets/community_banner_host.dart';
 import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/cubit/feed_cubit.dart';
@@ -10,6 +12,7 @@ import 'package:rendezvous_community/src/features/feed/presentation/widgets/pinn
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_actions.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_banner.dart';
+import 'package:rendezvous_community/src/features/offline/presentation/widgets/community_offline_banner.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
@@ -35,6 +38,7 @@ class CommunityFeedList extends StatelessWidget {
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
     final features = context.communityFeatures;
+    final offline = CommunityOfflineScope.maybeOf(context);
     return CommunitySocialGate(
       child: BlocProvider(
         create: (_) {
@@ -48,9 +52,15 @@ class CommunityFeedList extends StatelessWidget {
             currentUserId: () => deps.currentUser?.id,
             bookmarks: features?.bookmarks,
             edits: features?.edits,
+            cache: offline?.feedCache,
+            connectivity: offline?.connectivity,
           )..load();
         },
-        child: FeedPostList(emptyMessage: emptyMessage, header: header),
+        child: FeedPostList(
+          emptyMessage: emptyMessage,
+          header: header,
+          showBanners: scope is GlobalFeedScope || scope is FollowingFeedScope,
+        ),
       ),
     );
   }
@@ -63,12 +73,14 @@ class FeedPostList extends StatefulWidget {
     this.header,
     this.showConsentBanner = true,
     this.source = 'feed',
+    this.showBanners = false,
   });
 
   final String emptyMessage;
   final Widget? header;
   final bool showConsentBanner;
   final String source;
+  final bool showBanners;
 
   @override
   State<FeedPostList> createState() => _FeedPostListState();
@@ -124,6 +136,7 @@ class _FeedPostListState extends State<FeedPostList> {
                 if (index == 0) {
                   return Column(
                     children: [
+                      if (widget.showBanners) const CommunityBannerHost(),
                       if (widget.showConsentBanner) const CommunityConsentBanner(),
                       ?widget.header,
                       for (final pin in state.pinned)
@@ -157,27 +170,34 @@ class _FeedPostListState extends State<FeedPostList> {
           ),
         };
 
-        return Stack(
+        return Column(
           children: [
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: CommunityBreakpoints.contentMaxWidth),
-                child: body,
+            const CommunityOfflineBanner(),
+            Expanded(
+              child: Stack(
+                children: [
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: CommunityBreakpoints.contentMaxWidth),
+                      child: body,
+                    ),
+                  ),
+                  if (state.newPosts > 0)
+                    Positioned(
+                      top: 12,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: FilledButton.icon(
+                          onPressed: _showNewPosts,
+                          icon: const Icon(Icons.arrow_upward, size: 18),
+                          label: Text(l10n.newPosts(state.newPosts)),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
-            if (state.newPosts > 0)
-              Positioned(
-                top: 12,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: FilledButton.icon(
-                    onPressed: _showNewPosts,
-                    icon: const Icon(Icons.arrow_upward, size: 18),
-                    label: Text(l10n.newPosts(state.newPosts)),
-                  ),
-                ),
-              ),
           ],
         );
       },

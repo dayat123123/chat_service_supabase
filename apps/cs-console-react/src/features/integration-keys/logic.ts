@@ -157,8 +157,8 @@ export const curlExample = (baseUrl: string) =>
   [
     `curl -sS -X POST "${baseUrl}/integration/v1/notify/messages" \\`,
     '  -H "apikey: $ANON_KEY" \\',
-    '  -H "Authorization: Bearer $OLT_INTEGRATION_KEY" \\',
+    '  -H "Authorization: Bearer $INTEGRATION_KEY" \\',
     '  -H "Content-Type: application/json" \\',
-    '  -H "X-Request-Id: notif-batch-000123" \\',
-    `  -d '{"messages":[{"id":"trade-20261103-000123","cust_id":"W137","title":"Order BBCA match","body":"Beli 10 lot BBCA @ 9.250","ttl_seconds":3600}]}'`,
+    '  -H "X-Request-Id: batch-000123" \\',
+    `  -d '{"messages":[{"id":"event-20261103-000123","cust_id":"W137","title":"Dana masuk","body":"Dana Rp1.000.000 masuk ke rekening Anda","ttl_seconds":3600}]}'`,
   ].join('\n')

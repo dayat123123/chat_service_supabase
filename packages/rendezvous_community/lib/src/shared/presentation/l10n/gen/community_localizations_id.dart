@@ -420,6 +420,18 @@ class CommunityLocalizationsId extends CommunityLocalizations {
   String get messageSending => 'Mengirim…';
 
   @override
+  String get messagePending => 'Menunggu dikirim';
+
+  @override
+  String get offlineBanner => 'Anda sedang offline. Menampilkan data tersimpan.';
+
+  @override
+  String get offlineChatBanner => 'Anda sedang offline. Pesan teks dikirim otomatis saat tersambung kembali.';
+
+  @override
+  String get errorAttachmentOffline => 'Gambar dan dokumen hanya bisa dikirim saat online.';
+
+  @override
   String get reconnecting => 'Menyambungkan ulang…';
 
   @override
@@ -1453,4 +1465,117 @@ class CommunityLocalizationsId extends CommunityLocalizations {
 
   @override
   String get moderationRemoved => 'Dihapus moderator';
+
+  @override
+  String get stockCardSend => 'Kirim kartu saham';
+
+  @override
+  String get stockCardHint => 'Kode saham, mis. BBCA, TLKM';
+
+  @override
+  String get stockCardAdd => 'Tambah';
+
+  @override
+  String get stockCardInvalid => 'Kode saham tidak valid';
+
+  @override
+  String stockCardLimit(int count) {
+    return 'Maksimal $count saham per pesan';
+  }
+
+  @override
+  String get bannerOpen => 'Selengkapnya';
+
+  @override
+  String get bannerDismiss => 'Tutup';
+
+  @override
+  String get draftsTitle => 'Draf postingan';
+
+  @override
+  String get draftsEmpty => 'Belum ada draf.';
+
+  @override
+  String get draftNoText => '(tanpa teks)';
+
+  @override
+  String get draftSaved => 'Draf tersimpan';
+
+  @override
+  String get draftSavedLocally => 'Draf tersimpan di perangkat ini';
+
+  @override
+  String get draftReplaced => 'Draf ini diperbarui di perangkat lain; versi terbaru dimuat.';
+
+  @override
+  String draftLimit(int count) {
+    return 'Batas $count draf tercapai. Draf ini hanya tersimpan di perangkat ini.';
+  }
+
+  @override
+  String notifMentionRoom(String name, String room) {
+    return '$name menyebut Anda di $room';
+  }
+
+  @override
+  String notifFollowedPost(String name) {
+    return '$name membuat postingan baru';
+  }
+
+  @override
+  String notifFollowedPostMany(String name, int count) {
+    return '$name membuat $count postingan baru';
+  }
+
+  @override
+  String get notifWatchlistDigest => 'Ringkasan saham pantauan';
+
+  @override
+  String notifWatchlistDigestBody(int count, String stocks, int others) {
+    String _temp0 = intl.Intl.pluralLogic(others, locale: localeName, other: ', dan $others saham lainnya', zero: '');
+    return '$count postingan baru tentang $stocks$_temp0';
+  }
+
+  @override
+  String get notifTargetPost => 'Postingan';
+
+  @override
+  String get notifTargetComment => 'Komentar';
+
+  @override
+  String get notifTargetMessage => 'Pesan';
+
+  @override
+  String notifModerationHidden(String target) {
+    return '$target Anda disembunyikan moderator';
+  }
+
+  @override
+  String notifModerationRemoved(String target) {
+    return '$target Anda dihapus moderator';
+  }
+
+  @override
+  String get notifModerationAppealable => 'Ketuk untuk melihat detail dan mengajukan banding';
+
+  @override
+  String get notifModerationAppealed => 'Banding untuk konten ini sudah diajukan';
+
+  @override
+  String get notifTypeFollowedPost => 'Postingan akun yang diikuti';
+
+  @override
+  String get notifTypeFollowedPostHint => 'Push bawaan mati';
+
+  @override
+  String get notifTypeWatchlistDigest => 'Ringkasan saham pantauan';
+
+  @override
+  String get notifTypeWatchlistDigestHint => 'Setiap hari pukul 17.05 WIB';
+
+  @override
+  String get notifTypeModeration => 'Moderasi';
+
+  @override
+  String get notifTypeModerationHint => 'Selalu tampil di aplikasi';
 }

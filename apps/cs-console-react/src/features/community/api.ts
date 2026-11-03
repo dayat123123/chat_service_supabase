@@ -10,6 +10,7 @@ import type {
   Appeal,
   AlertStatus,
   AppealStatus,
+  AudienceQuery,
   Campaign,
   CampaignDraft,
   CommunityOverview,
@@ -125,8 +126,14 @@ export const communityApi = {
     post(await rpc<CommunityPost>('community_delete_post', { p_id: id, p_reason: reason })),
 
   campaigns: () => rpc<Campaign[]>('community_campaigns', { p_status: null }),
-  audienceSize: (audience: string, stock: string | null) =>
-    rpc<number>('community_audience_size', { p_audience: audience, p_stock: stock }),
+  audienceSize: (query: AudienceQuery) =>
+    rpc<number>('community_audience_size', {
+      p_audience: query.audience,
+      p_stock: query.stock,
+      p_days: query.days,
+      p_platform: query.platform,
+      p_account_id: query.account_id,
+    }),
   saveCampaign: (id: string | null, draft: CampaignDraft, version: number | null) =>
     rpc<Campaign>('community_save_campaign', {
       p_id: id,
@@ -139,6 +146,9 @@ export const communityApi = {
       p_audience_stock: draft.audience_stock,
       p_send_at: draft.send_at,
       p_version: version,
+      p_audience_days: draft.audience_days,
+      p_audience_platform: draft.audience_platform,
+      p_audience_account_id: draft.audience_account_id,
     }),
   submitCampaign: (id: string, version: number) =>
     rpc<Campaign>('community_submit_campaign', { p_id: id, p_version: version }),

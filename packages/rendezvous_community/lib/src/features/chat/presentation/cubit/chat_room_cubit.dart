@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/logging/community_logger.dart';
+import 'package:rendezvous_community/src/core/network/community_connectivity.dart';
 import 'package:rendezvous_community/src/core/network/realtime_status.dart';
 import 'package:rendezvous_community/src/core/paging/paged.dart';
 import 'package:rendezvous_community/src/features/analytics/domain/entities/analytics_event.dart';
@@ -15,10 +16,14 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_even
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/outbox_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/stock_card.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/stock_room_state.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_cache_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_extras_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/chat/domain/services/message_outbox.dart';
 import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/features/message_requests/domain/entities/message_request.dart';
@@ -31,6 +36,8 @@ import 'package:uuid/uuid.dart';
 part 'chat_room_cubit.freezed.dart';
 
 const _uuid = Uuid();
+
+const attachmentOfflineError = CommunityException(CommunityErrorKind.network, code: 'attachment_offline');
 
 @freezed
 abstract class ChatRoomState with _$ChatRoomState {
@@ -54,6 +61,7 @@ abstract class ChatRoomState with _$ChatRoomState {
     DateTime? cooldownUntil,
     @Default(false) bool dmRequestLimited,
     DmRequestState? dmRequest,
+    @Default(false) bool stale,
   }) = _ChatRoomState;
 
   const ChatRoomState._();
@@ -106,6 +114,9 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     this._extras,
     this._analytics,
     this._requests,
+    this._cache,
+    this._outbox,
+    this._connectivity,
     DateTime Function()? clock,
   }) : _meProvider = me,
        _clock = clock ?? DateTime.now,
@@ -117,11 +128,19 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   final ChatExtrasRepository? _extras;
   final CommunityAnalytics? _analytics;
   final MessageRequestRepository? _requests;
+  final ChatCacheRepository? _cache;
+  final MessageOutbox? _outbox;
+  final CommunityConnectivity? _connectivity;
+  StreamSubscription<OutboxEvent>? _outboxEvents;
+  StreamSubscription<bool>? _onlineChanges;
+  List<OutboxMessage> _queued = const [];
   final DateTime Function() _clock;
   final Future<UserSummary> Function() _meProvider;
   final String roomId;
   final int pageSize;
   final int maxGapPages;
+
+  bool get queuesOffline => _outbox != null;
 
   ChatRoomConnection? _connection;
   StreamSubscription<ChatRoomEvent>? _events;
@@ -133,7 +152,12 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   RealtimeStatus? _signals;
 
   Future<void> load() async {
-    emit(state.copyWith(status: LoadStatus.loading, error: null));
+    final showingCache = state.status == LoadStatus.ready && state.stale;
+    if (!showingCache) {
+      emit(state.copyWith(status: LoadStatus.loading, error: null));
+      _watchOffline();
+      await _showCached();
+    }
     try {
       final me = await _meProvider();
       final results = await Future.wait([
@@ -151,17 +175,88 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
           me: me,
           room: room,
           members: {for (final m in members) m.user.id: m},
-          messages: List<ChatMessage>.of(page.items),
+          messages: _withLocal(page.items, me),
           nextCursor: page.nextCursor,
+          stale: false,
         ),
       );
-      _connect(me);
+      _queued = const [];
+      if (_connection == null) _connect(me);
       _scheduleMarkRead();
       unawaited(loadStockRoomState());
       unawaited(loadDmRequestState());
     } catch (e) {
-      if (!isClosed) emit(state.copyWith(status: LoadStatus.failure, error: e));
+      if (isClosed || (state.status == LoadStatus.ready && state.stale)) return;
+      emit(state.copyWith(status: LoadStatus.failure, error: e));
     }
+  }
+
+  Future<void> _showCached() async {
+    _queued = await _outbox?.messages(roomId) ?? const [];
+    final cache = _cache;
+    if (cache == null) return;
+    final messages = await cache.cachedMessages(roomId);
+    final room = (await cache.cachedRooms()).where((r) => r.id == roomId).firstOrNull;
+    if (isClosed || (messages.isEmpty && room == null)) return;
+    final me = await cache.cachedUser();
+    if (isClosed || state.status == LoadStatus.ready) return;
+    emit(
+      state.copyWith(
+        status: LoadStatus.ready,
+        stale: true,
+        me: me,
+        room: room,
+        messages: _withLocal(messages, me),
+        nextCursor: messages.length >= pageSize ? messages.last.cursor : null,
+      ),
+    );
+  }
+
+  void _watchOffline() {
+    _outboxEvents ??= _outbox?.eventsFor(roomId).listen(_onOutbox);
+    _onlineChanges ??= _connectivity?.changes.listen((online) {
+      if (online && state.stale && !isClosed) unawaited(load());
+    });
+  }
+
+  List<ChatMessage> _withLocal(List<ChatMessage> server, UserSummary? me) {
+    final delivered = {
+      for (final m in server)
+        if (m.clientId != null) m.clientId,
+    };
+    final local = <String, ChatMessage>{
+      for (final queued in _queued) queued.clientId: queued.toMessage(me),
+      for (final m in state.messages)
+        if (m.isLocal && m.clientId != null) m.clientId!: m,
+    };
+    return [
+      ...server,
+      for (final m in local.values)
+        if (!delivered.contains(m.clientId)) m,
+    ]..sort(_newestFirst);
+  }
+
+  void _onOutbox(OutboxEvent event) {
+    if (isClosed) return;
+    switch (event) {
+      case OutboxChanged(:final message):
+        _updateLocal(message.toMessage(state.me));
+      case OutboxDelivered(:final message):
+        _upsert(_resolve(message));
+      case OutboxRemoved(:final clientId):
+        _removeLocal(clientId);
+    }
+  }
+
+  void _updateLocal(ChatMessage local) {
+    final index = state.messages.indexWhere((m) => m.isLocal && m.clientId == local.clientId);
+    if (index < 0) return;
+    final old = state.messages[index];
+    emit(
+      state.copyWith(
+        messages: [...state.messages]..[index] = old.copyWith(status: local.status, sendError: local.sendError),
+      ),
+    );
   }
 
   Future<void> loadStockRoomState() async {
@@ -269,7 +364,10 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       case ConnectionChanged(:final status):
         final reconnected =
             status == RealtimeStatus.connected && _wasConnected && state.connection != RealtimeStatus.connected;
-        if (status == RealtimeStatus.connected) _wasConnected = true;
+        if (status == RealtimeStatus.connected) {
+          _wasConnected = true;
+          _connectivity?.report(reachable: true);
+        }
         emit(state.copyWith(connection: status));
         if (reconnected) {
           unawaited(_fillGap());
@@ -455,11 +553,38 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     await _deliver(local);
   }
 
+  bool get canSendStockCards => _extras != null && state.room != null && state.room!.type != RoomType.support;
+
+  Future<void> sendStockCards(Iterable<String> codes) async {
+    final me = state.me;
+    final clean = normalizeStockCardCodes(codes);
+    if (!canSendStockCards || me == null || clean.isEmpty) return;
+    final clientId = _uuid.v4();
+    final local = ChatMessage(
+      id: 'local-$clientId',
+      roomId: roomId,
+      senderId: me.id,
+      sender: me,
+      body: '',
+      stockCodes: clean,
+      clientId: clientId,
+      createdAt: DateTime.now().toUtc(),
+      status: MessageStatus.sending,
+    );
+    emit(state.copyWith(messages: [local, ...state.messages]));
+    await _deliver(local);
+  }
+
   Future<void> _resendFailed() async {
+    unawaited(_outbox?.flush(force: true));
     for (final message in [...state.messages.reversed]) {
-      if (message.isLocal && message.status == MessageStatus.failed) await _retry(message, askConsent: false);
+      if (message.isLocal && message.status == MessageStatus.failed && _queueable(message) == null) {
+        await _retry(message, askConsent: false);
+      }
     }
   }
+
+  OutboxMessage? _queueable(ChatMessage message) => _outbox == null ? null : OutboxMessage.fromLocal(message);
 
   Future<void> retry(ChatMessage message) => _retry(message, askConsent: true);
 
@@ -469,49 +594,79 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     await _deliver(message, askConsent: askConsent);
   }
 
+  Future<void> discard(ChatMessage message) async {
+    final clientId = message.clientId;
+    if (!message.isLocal || clientId == null || message.status == MessageStatus.sending) return;
+    _removeLocal(clientId);
+    await _outbox?.discard(clientId);
+  }
+
   Future<void> _deliver(ChatMessage local, {bool askConsent = true}) async {
     final gate = askConsent && state.room?.type != RoomType.support ? _consent : null;
+    final outbox = _outbox;
+    final queued = _queueable(local);
+    if (outbox != null && queued != null) {
+      final result = await outbox.send(queued, guard: gate == null ? null : gate.run);
+      switch (result) {
+        case OutboxSent(:final message):
+          _upsert(message);
+          _afterSent(local);
+        case OutboxQueued():
+          _setStatus(local.clientId, MessageStatus.pending);
+        case OutboxFailed(:final error):
+          _sendFailed(local, error, keep: true);
+        case OutboxBusy():
+          return;
+      }
+      return;
+    }
+    final extras = _extras;
     try {
       final sent = await gate.guard(
-        () => _chat.sendMessage(
-          roomId,
-          body: local.body ?? '',
-          clientId: local.clientId!,
-          replyToId: local.replyToId,
-          attachments: local.attachments,
-        ),
+        () => local.stockCodes.isNotEmpty && extras != null
+            ? extras.sendStockCards(roomId, local.stockCodes, clientId: local.clientId!, body: local.body)
+            : _chat.sendMessage(
+                roomId,
+                body: local.body ?? '',
+                clientId: local.clientId!,
+                replyToId: local.replyToId,
+                attachments: local.attachments,
+              ),
       );
       _upsert(sent);
       _afterSent(local);
     } catch (e) {
-      final mapped = mapError(e);
-      CommunityLoggers.chat.event(
-        Level.SEVERE,
-        'Failed to send message',
-        fields: {'roomId': roomId, 'clientId': local.clientId, 'kind': mapped.kind, 'code': mapped.code},
-      );
-      if (mapped.kind == CommunityErrorKind.contentBlocked) {
-        _removeLocal(local.clientId);
-      } else {
-        _setStatus(local.clientId, MessageStatus.failed);
-      }
-      if (mapped.code == 'slow_mode' && !isClosed) {
-        final wait = mapped.retryAfter ?? Duration(seconds: state.stockRoom?.slowModeSeconds ?? 0);
-        if (wait > Duration.zero) emit(state.copyWith(cooldownUntil: _now().add(wait)));
-      }
-      if (mapped.code == 'dm_request_limit' && !isClosed) {
-        final dmRequest = state.dmRequest;
-        emit(
-          state.copyWith(
-            dmRequestLimited: true,
-            dmRequest: dmRequest != null && dmRequest.pendingAsSender
-                ? dmRequest.copyWith(sent: dmRequest.maxMessages)
-                : dmRequest,
-          ),
-        );
-      }
-      _fail(e);
+      _sendFailed(local, mapError(e), keep: false);
     }
+  }
+
+  void _sendFailed(ChatMessage local, CommunityException mapped, {required bool keep}) {
+    CommunityLoggers.chat.event(
+      Level.SEVERE,
+      'Failed to send message',
+      fields: {'roomId': roomId, 'clientId': local.clientId, 'kind': mapped.kind, 'code': mapped.code},
+    );
+    if (mapped.kind == CommunityErrorKind.contentBlocked && !keep) {
+      _removeLocal(local.clientId);
+    } else {
+      _setStatus(local.clientId, MessageStatus.failed, error: mapped);
+    }
+    if (mapped.code == 'slow_mode' && !isClosed) {
+      final wait = mapped.retryAfter ?? Duration(seconds: state.stockRoom?.slowModeSeconds ?? 0);
+      if (wait > Duration.zero) emit(state.copyWith(cooldownUntil: _now().add(wait)));
+    }
+    if (mapped.code == 'dm_request_limit' && !isClosed) {
+      final dmRequest = state.dmRequest;
+      emit(
+        state.copyWith(
+          dmRequestLimited: true,
+          dmRequest: dmRequest != null && dmRequest.pendingAsSender
+              ? dmRequest.copyWith(sent: dmRequest.maxMessages)
+              : dmRequest,
+        ),
+      );
+    }
+    _fail(mapped);
   }
 
   void _afterSent(ChatMessage local) {
@@ -548,38 +703,35 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     );
   }
 
-  void _setStatus(String? clientId, MessageStatus status) {
+  void _setStatus(String? clientId, MessageStatus status, {CommunityException? error}) {
     if (isClosed || clientId == null) return;
     emit(
       state.copyWith(
         messages: [
-          for (final m in state.messages) m.clientId == clientId && m.isLocal ? m.copyWith(status: status) : m,
+          for (final m in state.messages)
+            m.clientId == clientId && m.isLocal ? m.copyWith(status: status, sendError: error) : m,
         ],
       ),
     );
   }
 
-  Future<void> sendImage(Uint8List bytes, String mimeType) async {
-    emit(state.copyWith(uploading: true));
-    try {
-      final attachment = await _media.uploadChatImage(roomId, bytes, mimeType: mimeType);
-      if (!isClosed) emit(state.copyWith(uploading: false));
-      await send('', attachments: [attachment]);
-    } catch (e) {
-      if (!isClosed) emit(state.copyWith(uploading: false));
-      _fail(e);
-    }
-  }
+  Future<void> sendImage(Uint8List bytes, String mimeType) =>
+      _sendAttachment(() => _media.uploadChatImage(roomId, bytes, mimeType: mimeType));
 
-  Future<void> sendDocument(Uint8List bytes, String name) async {
+  Future<void> sendDocument(Uint8List bytes, String name) =>
+      _sendAttachment(() => _media.uploadSupportDocument(roomId, bytes, name: name));
+
+  Future<void> _sendAttachment(Future<Attachment> Function() upload) async {
+    if (_connectivity?.isOnline == false) return _fail(attachmentOfflineError);
     emit(state.copyWith(uploading: true));
     try {
-      final attachment = await _media.uploadSupportDocument(roomId, bytes, name: name);
+      final attachment = await upload();
       if (!isClosed) emit(state.copyWith(uploading: false));
       await send('', attachments: [attachment]);
     } catch (e) {
       if (!isClosed) emit(state.copyWith(uploading: false));
-      _fail(e);
+      final mapped = mapError(e);
+      _fail(mapped.kind == CommunityErrorKind.network && _outbox != null ? attachmentOfflineError : e);
     }
   }
 
@@ -678,6 +830,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     }
     if (_typingSent) unawaited(_connection?.sendTyping(isTyping: false));
     await _events?.cancel();
+    await _outboxEvents?.cancel();
+    await _onlineChanges?.cancel();
     await _connection?.close();
     return super.close();
   }

@@ -41,6 +41,12 @@ export const en: Translation = {
     weakPassword: 'Password is too weak, use a longer combination.',
     staleTicket: 'The ticket has changed. Reloaded the latest data.',
   },
+  notificationStats: {
+    opened: 'Opened',
+    tapped: 'Tapped',
+    summary: 'Opened {{opened}} · tapped {{tapped}}',
+    hint: 'Unique users; percentage of recipients.',
+  },
   time: {
     today: 'Today',
     yesterday: 'Yesterday',
@@ -606,8 +612,9 @@ export const en: Translation = {
     alertUnclaimed: 'Ticket unclaimed for more than (minutes)',
     alertP1: 'P1 ticket unclaimed for more than (minutes)',
     integration: 'Customer API integration',
-    apiKeys: 'OLT integration',
+    apiKeys: 'Notification API',
     features: 'Features & versions',
+    banners: 'App banners',
     community: 'Community',
     communityDescription: 'Approval rules for official posts and notifications.',
     fourEyes: 'Four-eyes rule',
@@ -1033,6 +1040,8 @@ export const en: Translation = {
       integration_key_revoke: 'Integration API key revoked',
       feature_flag_set: 'Feature flag saved',
       feature_flag_delete: 'Feature flag deleted',
+      banner_save: 'App banner saved',
+      banner_delete: 'App banner deleted',
       kill_switch_set: 'Social kill switch changed',
       client_min_version_set: 'Minimum app version changed',
       content_rule_update: 'Content category action changed',
@@ -1942,6 +1951,8 @@ export const en: Translation = {
       no_push_devices: 'This user has no device registered for push yet.',
       invalid_avatar: 'Account photos must be uploaded through the CS console.',
       account_not_found: 'Official account not found. Reload and try again.',
+      invalid_audience:
+        'Invalid audience segment. Check the stock code, number of days (1–365), platform, or active official account.',
     },
   },
   push: {

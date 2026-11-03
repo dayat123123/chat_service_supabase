@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rendezvous_community/src/app/community_feature_scope.dart';
+import 'package:rendezvous_community/src/app/community_offline_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
@@ -12,6 +13,7 @@ import 'package:rendezvous_community/src/features/chat/presentation/widgets/room
 import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
 import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
 import 'package:rendezvous_community/src/features/message_requests/presentation/widgets/community_message_requests.dart';
+import 'package:rendezvous_community/src/features/offline/presentation/widgets/community_offline_banner.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/community_support_chat.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -27,11 +29,17 @@ class CommunityChatList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
+    final offline = CommunityOfflineScope.maybeOf(context);
     return withChatBuilders(
       context,
       builders,
       BlocProvider(
-        create: (_) => ChatListCubit(chat: deps.chat, me: deps.ensureSignedIn)..load(),
+        create: (_) => ChatListCubit(
+          chat: deps.chat,
+          me: deps.ensureSignedIn,
+          cache: offline?.chatCache,
+          connectivity: offline?.connectivity,
+        )..load(),
         child: _ChatListLayout(initialRoomId: initialRoomId),
       ),
     );
@@ -257,6 +265,7 @@ class _RoomListState extends State<_RoomList> {
     return Column(
       children: [
         buildChatPart(builders.listHeader, context, header, _DefaultListHeader(details: header)),
+        const CommunityOfflineBanner(),
         if (social && features != null) MessageRequestsEntry(refreshToken: _requestsToken),
         Expanded(child: body),
       ],

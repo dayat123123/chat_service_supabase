@@ -6,6 +6,7 @@ import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_event.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_preferences.dart';
 import 'package:rendezvous_community/src/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:rendezvous_community/src/features/notifications/presentation/widgets/community_notification_settings.dart';
@@ -65,8 +66,12 @@ class CommunityNotificationList extends StatelessWidget {
                                 notification: n,
                                 onTap: () {
                                   cubit.markRead(n);
+                                  final reporter = context.communityFeatures?.notificationReporter;
+                                  final source = NotificationSource(notificationId: n.id);
+                                  unawaited(reporter?.opened(source));
                                   final custom = onNotificationTap;
-                                  custom != null ? custom(context, n) : _openDefault(context, n);
+                                  if (custom != null) return custom(context, n);
+                                  if (openCommunityNotification(context, n)) unawaited(reporter?.tapped(source));
                                 },
                               );
                             },
@@ -80,29 +85,36 @@ class CommunityNotificationList extends StatelessWidget {
       ),
     );
   }
+}
 
-  static void _openDefault(BuildContext context, AppNotification n) {
-    if (n.isOlt) {
-      CommunityScope.of(
-        context,
-      ).callbacks.onOltNotificationTap?.call(context, Map.unmodifiable({...n.payload, 'notification_id': n.id}));
-      return;
-    }
-    final postId = n.postId;
-    final roomId = n.roomId;
-    final url = Uri.tryParse(n.url ?? '');
-    if (n.type == NotificationType.appeal) {
-      if (context.communityFeatures != null) unawaited(openCommunityAppeals(context));
-    } else if (n.type == NotificationType.announcement && postId == null && url != null && url.scheme == 'https') {
-      unawaited(launchUrl(url, mode: LaunchMode.externalApplication));
-    } else if (n.type == NotificationType.message && roomId != null) {
-      CommunityNavigator.openRoom(context, roomId);
-    } else if (postId != null) {
-      CommunityNavigator.openPost(context, postId);
-    } else if (n.actor != null) {
-      CommunityNavigator.openUser(context, n.actor!);
-    }
+bool openCommunityNotification(BuildContext context, AppNotification n) {
+  if (n.isOlt) {
+    final callback = CommunityScope.of(context).callbacks.onOltNotificationTap;
+    callback?.call(context, Map.unmodifiable({...n.payload, 'notification_id': n.id}));
+    return callback != null;
   }
+  final postId = n.postId;
+  final roomId = n.roomId;
+  final url = Uri.tryParse(n.url ?? '');
+  final topStock = n.stocks.firstOrNull;
+  if (n.type == NotificationType.appeal || n.type == NotificationType.moderation) {
+    if (context.communityFeatures == null) return false;
+    unawaited(openCommunityAppeals(context));
+  } else if (n.type == NotificationType.watchlistDigest) {
+    if (topStock == null) return false;
+    CommunityNavigator.openStock(context, topStock, source: 'notification');
+  } else if (n.type == NotificationType.announcement && postId == null && url != null && url.scheme == 'https') {
+    unawaited(launchUrl(url, mode: LaunchMode.externalApplication));
+  } else if ((n.type == NotificationType.message || n.isRoomMention) && roomId != null) {
+    CommunityNavigator.openRoom(context, roomId);
+  } else if (postId != null) {
+    CommunityNavigator.openPost(context, postId);
+  } else if (n.actor != null) {
+    CommunityNavigator.openUser(context, n.actor!);
+  } else {
+    return false;
+  }
+  return true;
 }
 
 class _NotificationTile extends StatelessWidget {
@@ -120,14 +132,25 @@ class _NotificationTile extends StatelessWidget {
     final name = n.actor?.name ?? l10n.someone;
     final title = switch (n.type) {
       NotificationType.reply => l10n.notifReply(name),
+      NotificationType.mention when n.isRoomMention => l10n.notifMentionRoom(
+        name,
+        n.stockCode == null ? (n.payload['room_name'] as String? ?? '') : '\$${n.stockCode}',
+      ),
       NotificationType.mention => l10n.notifMention(name),
       NotificationType.like => l10n.notifLike(name, n.actorCount < 1 ? 1 : n.actorCount, n.otherActors),
       NotificationType.follow => n.otherActors > 0 ? l10n.notifFollowMany(name, n.otherActors) : l10n.notifFollow(name),
       NotificationType.message => l10n.notifMessage(name, n.eventCount),
       NotificationType.announcement => n.title ?? l10n.notifAnnouncement(name),
       NotificationType.appeal => n.appealStatus == 'accepted' ? l10n.notifAppealAccepted : l10n.notifAppealRejected,
+      NotificationType.followedPost =>
+        n.eventCount > 1 ? l10n.notifFollowedPostMany(name, n.eventCount) : l10n.notifFollowedPost(name),
+      NotificationType.watchlistDigest => l10n.notifWatchlistDigest,
+      NotificationType.moderation => notificationModerationTitle(l10n, n),
     };
     final icon = switch (n.type) {
+      NotificationType.followedPost => Icons.article_outlined,
+      NotificationType.watchlistDigest => Icons.insights_outlined,
+      NotificationType.moderation => Icons.shield_outlined,
       NotificationType.reply => Icons.reply,
       NotificationType.mention => Icons.alternate_email,
       NotificationType.like => Icons.favorite,
@@ -139,6 +162,11 @@ class _NotificationTile extends StatelessWidget {
     final snippet = switch (n.type) {
       NotificationType.announcement => n.body,
       NotificationType.appeal => n.note ?? n.body,
+      NotificationType.watchlistDigest => notificationDigestText(l10n, n),
+      NotificationType.moderation => [
+        if ((n.excerpt ?? '').isNotEmpty) n.excerpt!,
+        n.appealable ? l10n.notifModerationAppealable : l10n.notifModerationAppealed,
+      ].join('\n'),
       _ => n.snippet,
     };
     return ListTile(
@@ -164,6 +192,21 @@ class _NotificationTile extends StatelessWidget {
       trailing: Text(l10n.relativeTime(n.createdAt), style: theme.textTheme.bodySmall),
     );
   }
+}
+
+String notificationModerationTitle(CommunityLocalizations l10n, AppNotification n) {
+  final target = switch (n.targetType) {
+    'comment' => l10n.notifTargetComment,
+    'message' => l10n.notifTargetMessage,
+    _ => l10n.notifTargetPost,
+  };
+  return n.moderationState == 'removed' ? l10n.notifModerationRemoved(target) : l10n.notifModerationHidden(target);
+}
+
+String notificationDigestText(CommunityLocalizations l10n, AppNotification n) {
+  final codes = [for (final code in n.stocks) '\$$code'].join(', ');
+  final others = n.stockCount - n.stocks.length;
+  return l10n.notifWatchlistDigestBody(n.postCount, codes, others < 0 ? 0 : others);
 }
 
 class _OltNotificationTile extends StatelessWidget {

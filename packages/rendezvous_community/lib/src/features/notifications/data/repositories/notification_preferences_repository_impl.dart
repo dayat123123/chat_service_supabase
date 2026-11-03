@@ -44,6 +44,7 @@ NotificationPreferences parseNotificationPreferences(Object? value) {
             type: row['type'] as String,
             inApp: row['in_app'] is bool ? row['in_app'] as bool : null,
             push: row['push'] != false,
+            inAppLocked: row['in_app_locked'] == true,
           ),
     ],
     quietHours: QuietHours(

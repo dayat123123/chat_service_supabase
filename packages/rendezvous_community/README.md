@@ -130,7 +130,7 @@ final export = await RendezvousCommunity.instance.exportMyData();   // Community
 await RendezvousCommunity.instance.deleteMyAccount();
 ```
 
-`deleteMyAccount()` membersihkan sesi komunitas di perangkat (realtime, pelacak centang, cache dokumen) tanpa login ulang otomatis. Panggilan API komunitas berikutnya menukar token OLT lagi dan server membuat profil komunitas baru yang kosong. Token push dilepas server; token yang terdaftar dipasang lagi otomatis di sesi berikutnya. Karena itu, arahkan pengguna keluar dari layar komunitas di `onAccountDeleted`.
+`deleteMyAccount()` membersihkan sesi komunitas di perangkat (realtime, pelacak centang, cache dokumen, cache offline dan outbox) tanpa login ulang otomatis. Panggilan API komunitas berikutnya menukar token OLT lagi dan server membuat profil komunitas baru yang kosong. Token push dilepas server; token yang terdaftar dipasang lagi otomatis di sesi berikutnya. Karena itu, arahkan pengguna keluar dari layar komunitas di `onAccountDeleted`.
 
 ## Unggahan lewat media gateway
 
@@ -212,6 +212,59 @@ Paket mencatat `feed_open`, `post_create`, `comment_create`, `message_send`, `st
 ```dart
 RendezvousCommunity.instance.trackOrderTap(stockCode: 'BBCA', side: 'buy', source: 'stock'); // dari sosial ke layar order
 ```
+
+## Banner, draf, kartu saham, statistik notifikasi (1.3.0, migrasi `0087`–`0090`)
+
+```dart
+await RendezvousCommunity.initialize(
+  // ...
+  stockInfo: (code) => CommunityStockInfo(name: oltStocks.name(code), price: oltQuotes.last(code)), // kartu saham
+  onOltNotificationTap: (context, data) => oltRouter.openNotification(data),
+);
+
+const CommunityBannerHost();                 // banner dari get_client_config, mis. di atas halaman host
+await openCommunityPostDrafts(context);      // daftar draf postingan
+await showCommunityComposer(context, draft: draft);
+await RendezvousCommunity.instance.reportNotificationTapped(pushData); // bila host membuka tujuan push sendiri
+```
+
+- **Banner:** maksimal 3 tampil (atur `maxVisible`), urut `priority`. Gaya per level `info`/`warning`/`critical`, tautan dibuka setelah dialog konfirmasi. Banner yang bisa ditutup dan sudah ditutup disimpan per user di perangkat (ikut terhapus saat logout); banner yang tidak bisa ditutup selalu tampil. Feed Terbaru/Mengikuti menampilkannya otomatis di atas daftar.
+- **Statistik notifikasi:** membuka item kotak notifikasi atau push melapor `opened`, mengikuti tujuannya melapor `tapped` (`report_notification_event`; `notification_id`, lalu `campaign_id`/`broadcast_id`). Tidak pernah menahan UI; gagal karena jaringan diantrekan di memori sampai online. Push OLT yang diteruskan ke `onOltNotificationTap` dihitung `tapped`.
+- **Notifikasi baru:** `followed_post` → postingan, `watchlist_digest` → feed saham teratas (`onStockTap`), `moderation` → "Banding saya" dengan keterangan bisa/tidaknya banding, mention di room saham → room. Sakelar in-app jenis yang dikunci server (`moderation`) nonaktif.
+- **Draf:** composer menyimpan otomatis ke perangkat dan server (`save_post_draft`). Bila draf diubah di perangkat lain dan lebih baru, versi itu dimuat dan pengguna diberi tahu; batas 20 draf atau offline → draf hanya di perangkat. Saat terbit, `client_draft_id` dipakai sebagai `client_id` sehingga server menghapus drafnya.
+- **Kartu saham:** tombol "Kirim kartu saham" di composer chat (DM, grup, room saham; tidak di chat CS), maksimal 3 kode. Harga tidak dikirim ke server; nama/harga di kartu berasal dari `stockInfo` host atau builder `CommunityChatBuilders(stockCard:)`.
+
+## Offline: cache & outbox (1.3.0)
+
+Bawaannya aktif. Paket menyimpan data terakhir di database lokal milik user komunitas yang sedang masuk, lalu menampilkannya seketika saat layar dibuka; data server dimuat di latar belakang dan menggantikannya (server tetap sumber kebenaran).
+
+```dart
+await RendezvousCommunity.initialize(
+  // ...
+  offlineCache: true,          // false: perilaku lama, tanpa database lokal dan tanpa outbox
+  offlineMessageLimit: 200,    // pesan terakhir yang disimpan per room
+);
+
+await RendezvousCommunity.instance.clearLocalCache();   // hapus cache & antrean user ini (sesi tetap)
+RendezvousCommunity.instance.connectivity.online;       // ValueListenable<bool> untuk UI host
+const CommunityOfflineBanner();                          // banner "Anda sedang offline" untuk layar host
+```
+
+| Data | Yang disimpan | Batas |
+|---|---|---|
+| Daftar chat | halaman pertama `get_my_rooms` (tanpa room CS) | 30 room |
+| Pesan | baris `get_messages` yang pernah dimuat, pesan terkirim | `offlineMessageLimit` per room, yang terlama dipangkas |
+| Feed | halaman pertama Terbaru, Mengikuti, dan feed saham | 20 feed saham terakhir; profil, hashtag, bookmark tidak |
+| Outbox | pesan teks yang belum terkirim (`client_id`, isi, balasan) | sampai terkirim, dihapus user, atau logout |
+
+- **Sinkron:** baris server menimpa baris cache (edit, hapus, reaksi, `moderation_status`). Pesan yang tidak lagi dikembalikan server dalam rentang halaman yang sama dihapus dari cache. Saat koneksi kembali, layar yang masih menampilkan data tersimpan memuat ulang sendiri.
+- **Outbox:** pesan teks yang dikirim saat offline atau gagal karena jaringan tampil "Menunggu dikirim" lalu dikirim ulang otomatis (backoff 2 detik sampai 1 menit, langsung saat koneksi kembali, aplikasi kembali ke foreground, atau realtime tersambung). Urutan per room dijaga; `client_id` membuat server menolak duplikat. Penolakan server (`content_blocked`, `dm_request_limit`, persetujuan dokumen, `slow_mode` setelah 3 percobaan, dll.) membuat pesan "Gagal terkirim" dengan alasannya dan tombol **Coba lagi** / **Hapus**.
+- **Lampiran:** gambar dan PDF butuh media gateway, jadi tidak masuk antrean. Saat offline paket menolak dengan pesan "Gambar dan dokumen hanya bisa dikirim saat online."
+- **Status koneksi:** dinilai dari hasil request ke server dan status realtime (tanpa plugin konektivitas). Saat offline, paket memeriksa ulang lewat `get_client_config` (5 detik, naik sampai 1 menit). Banner offline tampil di daftar chat, room chat (builder `connectionBanner`, `CommunityConnectionDetails.offline`), dan feed.
+- **Buka aplikasi tanpa jaringan:** database dibuka bila token OLT dari `tokenProvider` milik user OLT yang sama dengan sesi terakhir (dicocokkan lewat hash SHA-256 `iss`+`sub`, tanpa jaringan). Token yang tidak bisa dibaca berarti tidak ada cache sampai online.
+- **Web:** cache dan outbox hanya di memori (hilang saat halaman dimuat ulang), sehingga host web tidak perlu menyediakan `sqlite3.wasm`.
+
+**Privasi.** Satu database per user komunitas (`<application support>/rendezvous_community/<user id>.sqlite`). Database dihapus saat `signOut()`, `deleteMyAccount()`, `clearLocalCache()`, saat sesi komunitas berganti ke user lain, dan saat aplikasi dibuka offline oleh user OLT lain. Token sosial maupun token OLT tidak pernah disimpan. **Chat CS tidak di-cache**: riwayatnya berisi verifikasi identitas dan data akun, dan aksesnya sudah lewat jalur `cs_api` sendiri, jadi selalu dimuat dari server. Panggil `signOut()` saat user keluar dari OLT supaya data komunitasnya hilang dari perangkat.
 
 ## Push transaksi OLT
 
@@ -370,9 +423,11 @@ dart run tool/check_logging.dart  # gagal bila library memakai print/debugPrint 
 | `test/features/*/domain` | Perhitungan centang (DM & grup), DeliveryTracker, aturan draf polling |
 | `test/features/*/presentation` | Cubit daftar chat (mengetik, centang, online, sinkron ulang setelah reconnect), cubit room, cubit & widget badge chat, tile room, widget polling, composer polling, thread komentar |
 | `test/features/legal`, `test/features/account` | Pemetaan `get_legal_documents`, cache per sesi, gerbang persetujuan (tertunda → setuju → ulang sekali, ditunda, chat CS), alur & pembaca dokumen, banner feed, ekspor data (isi + nama file, batas harian), hapus akun (ketik `HAPUS`, callback, sesi dibersihkan) |
-| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit, dokumen hukum, unggah lewat media gateway, konfigurasi klien (anon & login), pencarian/hashtag/trending, bookmark, jendela edit, permintaan DM (akun baru → budi, batas 3, terima), kebijakan DM, slow mode (`slow_mode` + detik), link preview, analitik, reaksi realtime & bagikan post |
+| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit, dokumen hukum, unggah lewat media gateway, konfigurasi klien (anon & login), pencarian/hashtag/trending, bookmark, jendela edit, permintaan DM (akun baru → budi, batas 3, terima), kebijakan DM, slow mode (`slow_mode` + detik), link preview, analitik, reaksi realtime & bagikan post, banner di konfigurasi, `report_notification_event`, draf (simpan, ubah, hapus, terbit menghapus draf), kartu saham |
 | `test/features/{config,search,trending,bookmarks,chat,message_requests,appeals,link_preview}` | 1.3.0: pemetaan RPC dengan mock, cubit (debounce pencarian, bookmark/edit optimistis, reaksi, slow mode, permintaan pesan, preferensi notifikasi), widget (gate kill switch, sentimen, menu post, chip reaksi, room permintaan, dialog tautan, banding) |
 | `test/core/logging` | Logger: field terstruktur, level, sanitasi data sensitif, `initialize(logHandler:)` |
+| `test/features/{config,notifications,drafts,chat}` (0087–0090) | Banner (parsing, prioritas, tutup tersimpan, widget), laporan dibuka/diketuk (dedupe, antrean offline, push & kotak notifikasi), tipe notifikasi baru & sakelar terkunci, draf (simpan, offline/batas, konflik, gabung daftar, autosave composer, `client_id`), kartu saham (parsing, normalisasi, cubit, kartu & pemilih) |
+| `test/core/storage`, `test/features/{chat,feed,offline}` (offline) | Store drift in-memory & memori (kontrak sama), rekonsiliasi & pemangkasan, database per user, hapus saat logout/ganti user/hapus akun, buka offline lewat identitas OLT, outbox (tertunda → terkirim/gagal, backoff, urutan, dedupe), cubit cache → server, widget pesan tertunda/gagal & banner offline |
 | `test/tool` | Pemeriksa komentar dan pemeriksa `print` untuk CI |
 | `test/support` | Fake dependensi & mock data source bersama |
 | `example/integration_test` | E2E app di Windows: login → feed → thread → komentar (Enter) → chat (Enter) → notifikasi |

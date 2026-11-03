@@ -4,6 +4,7 @@ import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
 import 'package:rendezvous_community/src/core/network/shared_stream.dart';
 import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
 import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/chat/data/local/chat_local_cache.dart';
 import 'package:rendezvous_community/src/features/chat/data/models/chat_models.dart';
 import 'package:rendezvous_community/src/features/chat/data/realtime/room_channel_hub.dart';
 import 'package:rendezvous_community/src/features/chat/data/realtime/room_connection.dart';
@@ -18,10 +19,12 @@ import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatRepositoryImpl implements ChatRepository {
-  ChatRepositoryImpl(this._api, [this._realtime]) : _hub = _realtime == null ? null : RoomChannelHub(_realtime);
+  ChatRepositoryImpl(this._api, [this._realtime, this._cache])
+    : _hub = _realtime == null ? null : RoomChannelHub(_realtime);
 
   final SocialRemoteDataSource _api;
   final RealtimeGateway? _realtime;
+  final ChatLocalCache? _cache;
   final RoomChannelHub? _hub;
   late final SharedStream<RoomActivity> _activity = SharedStream(_createActivityStream);
   final _unreadChanges = StreamController<void>.broadcast();
@@ -30,6 +33,7 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<Paged<ChatRoom>> getRooms({String? cursor, int limit = 30}) async {
     final rows = await _api.rpcRows('get_my_rooms', {'p_cursor': cursor, 'p_limit': limit});
     final models = [for (final row in rows) RoomSummaryModel.fromJson(row)];
+    if (cursor == null) await _cache?.saveRooms(rows);
     return Paged([
       for (final model in models) model.toEntity(),
     ], nextCursor: models.length < limit ? null : models.last.cursor);
@@ -45,13 +49,22 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<Paged<ChatMessage>> getMessages(String roomId, {String? cursor, int limit = 30}) async {
     final rows = await _api.rpcRows('get_messages', {'p_room_id': roomId, 'p_cursor': cursor, 'p_limit': limit});
     final items = [for (final row in rows) ChatMessageModel.fromJson(row).toEntity()];
-    return Paged(items, nextCursor: items.length < limit ? null : items.last.cursor);
+    final hasMore = items.length >= limit;
+    await _cache?.saveMessages(
+      roomId,
+      rows,
+      items,
+      window: olderPageWindow(items, cursor: cursor, hasMore: hasMore),
+    );
+    return Paged(items, nextCursor: hasMore ? items.last.cursor : null);
   }
 
   @override
   Future<Paged<ChatMessage>> getMessagesAfter(String roomId, String cursor, {int limit = 100}) async {
     final rows = await _api.rpcRows('get_messages', {'p_room_id': roomId, 'p_after': cursor, 'p_limit': limit});
-    return newerPage([for (final row in rows) ChatMessageModel.fromJson(row).toEntity()], limit);
+    final items = [for (final row in rows) ChatMessageModel.fromJson(row).toEntity()];
+    await _cache?.saveMessages(roomId, rows, items);
+    return newerPage(items, limit);
   }
 
   @override
@@ -69,7 +82,9 @@ class ChatRepositoryImpl implements ChatRepository {
       'p_reply_to_id': replyToId,
       'p_attachments': [for (final a in attachments) AttachmentModel.fromEntity(a).toJson()],
     });
-    return ChatMessageModel.fromJson(rows.first).toEntity();
+    final sent = ChatMessageModel.fromJson(rows.first).toEntity();
+    await _cache?.saveMessages(roomId, [rows.first], [sent]);
+    return sent;
   }
 
   @override
@@ -116,6 +131,7 @@ class ChatRepositoryImpl implements ChatRepository {
   @override
   Future<void> leaveRoom(String roomId) async {
     await _api.rpcValue('leave_room', {'p_room_id': roomId});
+    await _cache?.forgetRoom(roomId);
     _unreadChanged();
   }
 

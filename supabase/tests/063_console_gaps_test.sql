@@ -51,15 +51,15 @@ reset role;
 select tests.authenticate_agent(:'sinta');
 select is(jsonb_typeof(cs_api.integration_official_accounts()), 'array', 'Super Admin melihat akun resmi tanpa izin komunitas');
 select is(jsonb_typeof(cs_api.integration_stats_daily(30)), 'array', 'Statistik harian per key tersedia');
-select cs_api.admin_set_feature_flag('cg_uji', true, 100, '{}', '{}', null, 'Deskripsi awal');
-select cs_api.admin_set_feature_flag('cg_uji', true, 100, '{}', '{}', null, null);
+select cs_api.admin_set_feature_flag('search', true, 100, '{}', '{}', null, 'Deskripsi awal');
+select cs_api.admin_set_feature_flag('search', true, 100, '{}', '{}', null, null);
 reset role;
-select is((select description from private.feature_flags where key = 'cg_uji'), 'Deskripsi awal',
+select is((select description from private.feature_flags where key = 'search'), 'Deskripsi awal',
   'Deskripsi tetap bila tidak diisi');
 select tests.authenticate_agent(:'sinta');
-select cs_api.admin_set_feature_flag('cg_uji', true, 100, '{}', '{}', null, '');
+select cs_api.admin_set_feature_flag('search', true, 100, '{}', '{}', null, '');
 reset role;
-select is((select description from private.feature_flags where key = 'cg_uji'), null,
+select is((select description from private.feature_flags where key = 'search'), null,
   'Deskripsi bisa dikosongkan dengan teks kosong');
 
 select ok(not has_function_privilege('anon', 'cs_api.community_content(text,uuid)', 'EXECUTE'),

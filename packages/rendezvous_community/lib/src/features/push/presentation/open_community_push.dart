@@ -6,6 +6,7 @@ import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/app/rendezvous_community.dart';
 import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_event.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:rendezvous_community/src/features/push/domain/entities/community_push_message.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/community_support_chat.dart';
@@ -20,9 +21,23 @@ bool isOltPush(Map<String, Object?> data) {
 }
 
 bool openCommunityPush(BuildContext context, Map<String, Object?> data) {
-  if (isOltPush(data)) return _openOltPush(context, data);
+  final reporter = context.communityFeatures?.notificationReporter;
+  final source = NotificationSource.fromData(data);
+  if (isOltPush(data)) {
+    unawaited(reporter?.opened(source));
+    final opened = _openOltPush(context, data);
+    if (opened) unawaited(reporter?.tapped(source));
+    return opened;
+  }
   final message = CommunityPushMessage.tryParse(data);
   if (message == null) return false;
+  unawaited(reporter?.opened(source));
+  final opened = _openMessage(context, message);
+  if (opened) unawaited(reporter?.tapped(source));
+  return opened;
+}
+
+bool _openMessage(BuildContext context, CommunityPushMessage message) {
   final notificationId = message.notificationId;
   if (notificationId != null) unawaited(_markRead(CommunityScope.of(context).notifications, notificationId));
 
@@ -30,11 +45,14 @@ bool openCommunityPush(BuildContext context, Map<String, Object?> data) {
   final roomId = message.roomId;
   final actorId = message.actorId;
   final link = message.link;
+  final topStock = message.stocks.firstOrNull;
   if (message.isSupport) {
     unawaited(openCommunitySupport(context));
-  } else if (message.type == 'appeal' && context.communityFeatures != null) {
+  } else if ((message.type == 'appeal' || message.type == 'moderation') && context.communityFeatures != null) {
     unawaited(openCommunityAppeals(context));
-  } else if (message.type == 'message' && roomId != null) {
+  } else if (message.type == 'watchlist_digest' && topStock != null) {
+    CommunityNavigator.openStock(context, topStock, source: 'notification');
+  } else if ((message.type == 'message' || (message.type == 'mention' && postId == null)) && roomId != null) {
     CommunityNavigator.openRoom(context, roomId);
   } else if (message.type == 'follow' && actorId != null) {
     CommunityNavigator.openUser(context, UserSummary(id: actorId, username: message.actorUsername ?? ''));

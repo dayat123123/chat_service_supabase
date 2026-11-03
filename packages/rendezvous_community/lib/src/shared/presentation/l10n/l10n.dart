@@ -68,6 +68,7 @@ extension CommunityErrorText on CommunityLocalizations {
       'reactions_not_supported' => featureUnavailable,
       'request_not_found' => errorRequestNotFound,
       'invalid_quiet_hours' => errorInvalidQuietHours,
+      'attachment_offline' => errorAttachmentOffline,
       _ => switch (mapped.kind) {
         CommunityErrorKind.network => errorNetwork,
         CommunityErrorKind.unauthenticated => errorUnauthenticated,

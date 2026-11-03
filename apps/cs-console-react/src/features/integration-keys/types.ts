@@ -131,6 +131,10 @@ export type IntegrationBroadcast = {
   inbox: number
   capped: number
   pref_skipped: number
+  opened: number
+  tapped: number
+  open_rate: number | null
+  tap_rate: number | null
   error: string | null
   created_at: string
   started_at: string | null

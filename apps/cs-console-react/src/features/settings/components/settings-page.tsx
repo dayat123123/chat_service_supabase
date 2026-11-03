@@ -6,6 +6,7 @@ import {
   MegaphoneIcon,
   MessageSquareTextIcon,
   MessagesSquareIcon,
+  PanelTopIcon,
   PlugZapIcon,
   SlidersHorizontalIcon,
   TagsIcon,
@@ -16,6 +17,7 @@ import { useTranslation } from 'react-i18next'
 
 import { SectionBoundary } from '@/components/states'
 import { useAgent } from '@/features/auth/hooks'
+import { BannersSection } from '@/features/client-config/components/banners-section'
 import { FeaturesSection } from '@/features/client-config/components/features-section'
 import { IntegrationKeysSection } from '@/features/integration-keys/components/keys-section'
 import { PushSection } from '@/features/push/components/push-section'
@@ -44,6 +46,7 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
   { id: 'integration', icon: PlugZapIcon },
   { id: 'apiKeys', icon: KeyRoundIcon },
   { id: 'features', icon: FlagIcon },
+  { id: 'banners', icon: PanelTopIcon },
 ]
 
 const content: Record<SettingsSection, () => React.ReactNode> = {
@@ -58,6 +61,7 @@ const content: Record<SettingsSection, () => React.ReactNode> = {
   integration: () => <IntegrationSection />,
   apiKeys: () => <IntegrationKeysSection />,
   features: () => <FeaturesSection />,
+  banners: () => <BannersSection />,
 }
 
 export function SettingsPage() {

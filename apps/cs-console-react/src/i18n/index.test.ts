@@ -52,12 +52,12 @@ describe('lazy English translations', () => {
     vi.resetModules()
     const fresh = await import('@/i18n')
     await fresh.loadStrings('platform', 'moderation', 'policy')
-    expect(fresh.default.t('platform.keys.title')).toBe('Integrasi OLT')
+    expect(fresh.default.t('platform.keys.title')).toBe('API Notifikasi')
     expect(fresh.default.hasResourceBundle('en', 'translation')).toBe(false)
 
     await fresh.switchLanguage('en')
 
-    expect(fresh.default.t('platform.keys.title')).toBe('OLT integration')
+    expect(fresh.default.t('platform.keys.title')).toBe('Notification API')
     expect(fresh.default.t('moderation.queues.held')).toBe('Held content')
     expect(fresh.default.t('policy.actions.hold')).toBe('Hold')
     expect(fresh.default.t('app.cancel')).toBe('Cancel')

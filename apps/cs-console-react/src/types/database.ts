@@ -24,6 +24,8 @@ export type Database = {
         Args: { p_from?: string; p_to?: string }
         Returns: Json
       }
+      admin_banners: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_delete_banner: { Args: { p_id: string }; Returns: Json }
       admin_delete_feature_flag: { Args: { p_key: string }; Returns: Json }
       admin_delete_holiday: { Args: { p_day: string }; Returns: Json }
       admin_feature_flags: { Args: Record<PropertyKey, never>; Returns: Json }
@@ -31,6 +33,23 @@ export type Database = {
       admin_options: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_quick_replies: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_reset_password: { Args: { p_agent_id: string }; Returns: Json }
+      admin_save_banner: {
+        Args: {
+          p_body?: string
+          p_dismissible?: boolean
+          p_ends_at?: string
+          p_id: string
+          p_level?: string
+          p_link_url?: string
+          p_max_app_version?: string
+          p_min_app_version?: string
+          p_platforms?: string[]
+          p_priority?: number
+          p_starts_at?: string
+          p_title: string
+        }
+        Returns: Json
+      }
       admin_save_holiday: {
         Args: { p_day: string; p_kind: string; p_name: string }
         Returns: Json
@@ -92,6 +111,10 @@ export type Database = {
         Returns: Json
       }
       admin_settings: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_toggle_feature_flag: {
+        Args: { p_enabled: boolean; p_key: string }
+        Returns: Json
+      }
       admin_topics: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_update_agent: {
         Args: {
@@ -187,7 +210,13 @@ export type Database = {
         Returns: Json
       }
       community_audience_size: {
-        Args: { p_audience: string; p_stock?: string }
+        Args: {
+          p_account_id?: string
+          p_audience: string
+          p_days?: number
+          p_platform?: string
+          p_stock?: string
+        }
         Returns: number
       }
       community_campaign_push: { Args: { p_id: string }; Returns: Json }
@@ -322,6 +351,9 @@ export type Database = {
         Args: {
           p_account_id: string
           p_audience?: string
+          p_audience_account_id?: string
+          p_audience_days?: number
+          p_audience_platform?: string
           p_audience_stock?: string
           p_body: string
           p_id: string

@@ -812,6 +812,30 @@ abstract class CommunityLocalizations {
   /// **'Mengirim…'**
   String get messageSending;
 
+  /// No description provided for @messagePending.
+  ///
+  /// In id, this message translates to:
+  /// **'Menunggu dikirim'**
+  String get messagePending;
+
+  /// No description provided for @offlineBanner.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda sedang offline. Menampilkan data tersimpan.'**
+  String get offlineBanner;
+
+  /// No description provided for @offlineChatBanner.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda sedang offline. Pesan teks dikirim otomatis saat tersambung kembali.'**
+  String get offlineChatBanner;
+
+  /// No description provided for @errorAttachmentOffline.
+  ///
+  /// In id, this message translates to:
+  /// **'Gambar dan dokumen hanya bisa dikirim saat online.'**
+  String get errorAttachmentOffline;
+
   /// No description provided for @reconnecting.
   ///
   /// In id, this message translates to:
@@ -2647,6 +2671,198 @@ abstract class CommunityLocalizations {
   /// In id, this message translates to:
   /// **'Dihapus moderator'**
   String get moderationRemoved;
+
+  /// No description provided for @stockCardSend.
+  ///
+  /// In id, this message translates to:
+  /// **'Kirim kartu saham'**
+  String get stockCardSend;
+
+  /// No description provided for @stockCardHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Kode saham, mis. BBCA, TLKM'**
+  String get stockCardHint;
+
+  /// No description provided for @stockCardAdd.
+  ///
+  /// In id, this message translates to:
+  /// **'Tambah'**
+  String get stockCardAdd;
+
+  /// No description provided for @stockCardInvalid.
+  ///
+  /// In id, this message translates to:
+  /// **'Kode saham tidak valid'**
+  String get stockCardInvalid;
+
+  /// No description provided for @stockCardLimit.
+  ///
+  /// In id, this message translates to:
+  /// **'Maksimal {count} saham per pesan'**
+  String stockCardLimit(int count);
+
+  /// No description provided for @bannerOpen.
+  ///
+  /// In id, this message translates to:
+  /// **'Selengkapnya'**
+  String get bannerOpen;
+
+  /// No description provided for @bannerDismiss.
+  ///
+  /// In id, this message translates to:
+  /// **'Tutup'**
+  String get bannerDismiss;
+
+  /// No description provided for @draftsTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Draf postingan'**
+  String get draftsTitle;
+
+  /// No description provided for @draftsEmpty.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum ada draf.'**
+  String get draftsEmpty;
+
+  /// No description provided for @draftNoText.
+  ///
+  /// In id, this message translates to:
+  /// **'(tanpa teks)'**
+  String get draftNoText;
+
+  /// No description provided for @draftSaved.
+  ///
+  /// In id, this message translates to:
+  /// **'Draf tersimpan'**
+  String get draftSaved;
+
+  /// No description provided for @draftSavedLocally.
+  ///
+  /// In id, this message translates to:
+  /// **'Draf tersimpan di perangkat ini'**
+  String get draftSavedLocally;
+
+  /// No description provided for @draftReplaced.
+  ///
+  /// In id, this message translates to:
+  /// **'Draf ini diperbarui di perangkat lain; versi terbaru dimuat.'**
+  String get draftReplaced;
+
+  /// No description provided for @draftLimit.
+  ///
+  /// In id, this message translates to:
+  /// **'Batas {count} draf tercapai. Draf ini hanya tersimpan di perangkat ini.'**
+  String draftLimit(int count);
+
+  /// No description provided for @notifMentionRoom.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} menyebut Anda di {room}'**
+  String notifMentionRoom(String name, String room);
+
+  /// No description provided for @notifFollowedPost.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} membuat postingan baru'**
+  String notifFollowedPost(String name);
+
+  /// No description provided for @notifFollowedPostMany.
+  ///
+  /// In id, this message translates to:
+  /// **'{name} membuat {count} postingan baru'**
+  String notifFollowedPostMany(String name, int count);
+
+  /// No description provided for @notifWatchlistDigest.
+  ///
+  /// In id, this message translates to:
+  /// **'Ringkasan saham pantauan'**
+  String get notifWatchlistDigest;
+
+  /// No description provided for @notifWatchlistDigestBody.
+  ///
+  /// In id, this message translates to:
+  /// **'{count} postingan baru tentang {stocks}{others, plural, =0{} other{, dan {others} saham lainnya}}'**
+  String notifWatchlistDigestBody(int count, String stocks, int others);
+
+  /// No description provided for @notifTargetPost.
+  ///
+  /// In id, this message translates to:
+  /// **'Postingan'**
+  String get notifTargetPost;
+
+  /// No description provided for @notifTargetComment.
+  ///
+  /// In id, this message translates to:
+  /// **'Komentar'**
+  String get notifTargetComment;
+
+  /// No description provided for @notifTargetMessage.
+  ///
+  /// In id, this message translates to:
+  /// **'Pesan'**
+  String get notifTargetMessage;
+
+  /// No description provided for @notifModerationHidden.
+  ///
+  /// In id, this message translates to:
+  /// **'{target} Anda disembunyikan moderator'**
+  String notifModerationHidden(String target);
+
+  /// No description provided for @notifModerationRemoved.
+  ///
+  /// In id, this message translates to:
+  /// **'{target} Anda dihapus moderator'**
+  String notifModerationRemoved(String target);
+
+  /// No description provided for @notifModerationAppealable.
+  ///
+  /// In id, this message translates to:
+  /// **'Ketuk untuk melihat detail dan mengajukan banding'**
+  String get notifModerationAppealable;
+
+  /// No description provided for @notifModerationAppealed.
+  ///
+  /// In id, this message translates to:
+  /// **'Banding untuk konten ini sudah diajukan'**
+  String get notifModerationAppealed;
+
+  /// No description provided for @notifTypeFollowedPost.
+  ///
+  /// In id, this message translates to:
+  /// **'Postingan akun yang diikuti'**
+  String get notifTypeFollowedPost;
+
+  /// No description provided for @notifTypeFollowedPostHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Push bawaan mati'**
+  String get notifTypeFollowedPostHint;
+
+  /// No description provided for @notifTypeWatchlistDigest.
+  ///
+  /// In id, this message translates to:
+  /// **'Ringkasan saham pantauan'**
+  String get notifTypeWatchlistDigest;
+
+  /// No description provided for @notifTypeWatchlistDigestHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Setiap hari pukul 17.05 WIB'**
+  String get notifTypeWatchlistDigestHint;
+
+  /// No description provided for @notifTypeModeration.
+  ///
+  /// In id, this message translates to:
+  /// **'Moderasi'**
+  String get notifTypeModeration;
+
+  /// No description provided for @notifTypeModerationHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Selalu tampil di aplikasi'**
+  String get notifTypeModerationHint;
 }
 
 class _CommunityLocalizationsDelegate extends LocalizationsDelegate<CommunityLocalizations> {

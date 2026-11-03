@@ -115,6 +115,9 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     String? replyToSenderUsername,
     @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
     @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId,
+    @JsonKey(readValue: readAttachments, fromJson: stockCodesFromJson, includeToJson: false)
+    @Default(<String>[])
+    List<String> stockCodes,
     String? clientId,
     DateTime? editedAt,
     required DateTime createdAt,
@@ -160,6 +163,7 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     payload: payload,
     reactions: isDeleted ? const [] : [for (final r in reactions ?? const <MessageReactionModel>[]) r.toEntity()],
     sharedPostId: isDeleted ? null : sharedPost?.postId ?? sharedPostId,
+    stockCodes: isDeleted ? const [] : stockCodes,
     sharedPost: isDeleted ? null : sharedPost?.toEntity(),
     moderationStatus: parseModerationStatus(moderationStatus),
   );
@@ -175,6 +179,9 @@ abstract class MessageRowModel with _$MessageRowModel {
     String? replyToId,
     @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
     @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId,
+    @JsonKey(readValue: readAttachments, fromJson: stockCodesFromJson, includeToJson: false)
+    @Default(<String>[])
+    List<String> stockCodes,
     String? clientId,
     DateTime? editedAt,
     DateTime? deletedAt,
@@ -200,6 +207,7 @@ abstract class MessageRowModel with _$MessageRowModel {
     replyToId: replyToId,
     attachments: deletedAt == null ? [for (final a in attachments) a.toEntity()] : const [],
     sharedPostId: deletedAt == null ? sharedPostId : null,
+    stockCodes: deletedAt == null ? stockCodes : const [],
     clientId: clientId,
     editedAt: editedAt,
     createdAt: createdAt,

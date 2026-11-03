@@ -2,6 +2,7 @@ import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
 import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
 import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/feed/data/local/feed_local_cache.dart';
 import 'package:rendezvous_community/src/features/feed/data/models/feed_post_model.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/pinned_post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
@@ -15,10 +16,11 @@ import 'package:uuid/uuid.dart';
 const _uuid = Uuid();
 
 class FeedRepositoryImpl implements FeedRepository {
-  FeedRepositoryImpl(this._api, [this._realtime]);
+  FeedRepositoryImpl(this._api, [this._realtime, this._cache]);
 
   final SocialRemoteDataSource _api;
   final RealtimeGateway? _realtime;
+  final FeedLocalCache? _cache;
 
   @override
   Future<Paged<Post>> getFeed(FeedScope scope, {String? cursor, int limit = 20}) async {
@@ -35,6 +37,7 @@ class FeedRepositoryImpl implements FeedRepository {
       'p_author_id': scope is UserFeedScope ? scope.userId : null,
     });
     final posts = [for (final row in rows) FeedPostModel.fromJson(row).toEntity()];
+    if (cursor == null) await _cache?.saveFirstPage(scope, rows);
     return Paged(posts, nextCursor: posts.length < limit ? null : posts.last.cursor);
   }
 

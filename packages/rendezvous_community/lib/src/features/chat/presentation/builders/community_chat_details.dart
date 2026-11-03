@@ -4,6 +4,7 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_mess
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/entities/stock_info.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 class CommunityMessageDetails {
@@ -18,6 +19,7 @@ class CommunityMessageDetails {
     this.onDelete,
     this.onReport,
     this.onRetry,
+    this.onDiscard,
     this.onSenderTap,
     this.onShowActions,
     this.reactions = const [],
@@ -37,6 +39,7 @@ class CommunityMessageDetails {
   final VoidCallback? onDelete;
   final VoidCallback? onReport;
   final VoidCallback? onRetry;
+  final VoidCallback? onDiscard;
   final VoidCallback? onSenderTap;
   final VoidCallback? onShowActions;
   final List<MessageReaction> reactions;
@@ -61,6 +64,7 @@ class CommunityComposerDetails {
     this.allowsDocuments = false,
     this.extraActions = const [],
     this.cooldown = Duration.zero,
+    this.onSendStockCard,
   });
 
   final TextEditingController controller;
@@ -76,6 +80,7 @@ class CommunityComposerDetails {
   final bool allowsDocuments;
   final List<Widget> extraActions;
   final Duration cooldown;
+  final VoidCallback? onSendStockCard;
 
   bool get coolingDown => cooldown > Duration.zero;
 
@@ -116,10 +121,11 @@ class CommunityTypingDetails {
 }
 
 class CommunityConnectionDetails {
-  const CommunityConnectionDetails({required this.status, required this.label});
+  const CommunityConnectionDetails({required this.status, required this.label, this.offline = false});
 
   final RealtimeStatus status;
   final String label;
+  final bool offline;
 }
 
 class CommunityDayDetails {
@@ -186,4 +192,13 @@ class CommunityErrorDetails {
   final Object error;
   final String message;
   final VoidCallback onRetry;
+}
+
+class CommunityStockCardDetails {
+  const CommunityStockCardDetails({required this.code, required this.isMine, this.info, this.onTap});
+
+  final String code;
+  final bool isMine;
+  final CommunityStockInfo? info;
+  final VoidCallback? onTap;
 }

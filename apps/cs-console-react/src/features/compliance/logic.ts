@@ -18,6 +18,8 @@ export const auditActions = [
   'agent.reset_password',
   'agent.status',
   'agent.update',
+  'banner.delete',
+  'banner.save',
   'alerts.email_set',
   'alerts.options_set',
   'alerts.telegram_set',

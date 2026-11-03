@@ -23,6 +23,12 @@ class ReceiptIcon extends StatelessWidget {
     final l10n = context.communityL10n;
     return switch (sendStatus) {
       MessageStatus.sending => Icon(Icons.schedule, size: size - 2, color: color, semanticLabel: l10n.messageSending),
+      MessageStatus.pending => Icon(
+        Icons.cloud_upload_outlined,
+        size: size - 2,
+        color: color,
+        semanticLabel: l10n.messagePending,
+      ),
       MessageStatus.failed => Icon(
         Icons.error_outline,
         size: size - 2,

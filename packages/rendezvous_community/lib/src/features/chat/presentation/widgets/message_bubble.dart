@@ -12,6 +12,7 @@ import 'package:rendezvous_community/src/features/chat/presentation/builders/com
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/receipt_icon.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/shared_post_card.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/stock_cards.dart';
 import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
 import 'package:rendezvous_community/src/features/link_preview/presentation/widgets/link_preview_card.dart';
 import 'package:rendezvous_community/src/features/media/presentation/widgets/attachment_grid.dart';
@@ -75,6 +76,9 @@ class MessageBubble extends StatelessWidget {
           ? () => showReportDialog(context, target: ReportTarget.message, targetId: m.id)
           : null,
       onRetry: m.status == MessageStatus.failed ? () => cubit.retry(m) : null,
+      onDiscard: m.isLocal && (m.status == MessageStatus.failed || m.status == MessageStatus.pending)
+          ? () => cubit.discard(m)
+          : null,
       onSenderTap: sender != null && !support && !mine ? () => CommunityNavigator.openUser(context, sender) : null,
       onShowActions: sent ? () => _showActions(context, details) : null,
       reactions: m.reactions,
@@ -220,6 +224,7 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
               ),
             if (m.sharedPostId != null)
               SharedPostCard(postId: m.sharedPostId!, sharedPost: m.sharedPost, color: fg, onOpen: d.onOpenSharedPost),
+            if (m.stockCodes.isNotEmpty) StockCards(codes: m.stockCodes, isMine: d.isMine),
             if ((m.body ?? '').isNotEmpty)
               support
                   ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))
@@ -313,11 +318,8 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
                   children: [
                     bubble,
                     if (d.reactions.isNotEmpty) ReactionChips(reactions: d.reactions, onReact: d.onReact),
-                    if (m.status == MessageStatus.failed)
-                      Text(
-                        l10n.messageFailed,
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
-                      ),
+                    if (m.status == MessageStatus.pending || m.status == MessageStatus.failed)
+                      MessageDeliveryNotice(details: d),
                   ],
                 ),
               ),
@@ -326,6 +328,47 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class MessageDeliveryNotice extends StatelessWidget {
+  const MessageDeliveryNotice({super.key, required this.details});
+
+  final CommunityMessageDetails details;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.communityL10n;
+    final theme = Theme.of(context);
+    final message = details.message;
+    final failed = message.status == MessageStatus.failed;
+    final error = message.sendError;
+    final style = theme.textTheme.labelSmall?.copyWith(
+      color: failed ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+    );
+    final buttonStyle = TextButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      minimumSize: const Size(0, 32),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+    return Column(
+      crossAxisAlignment: details.isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(failed ? l10n.messageFailed : l10n.messagePending, style: style),
+        if (failed && error != null) Text(l10n.errorMessage(error), style: style),
+        if (details.onRetry != null || details.onDiscard != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (details.onRetry != null)
+                TextButton(style: buttonStyle, onPressed: details.onRetry, child: Text(l10n.retry)),
+              if (details.onDiscard != null)
+                TextButton(style: buttonStyle, onPressed: details.onDiscard, child: Text(l10n.delete)),
+            ],
+          ),
+      ],
     );
   }
 }

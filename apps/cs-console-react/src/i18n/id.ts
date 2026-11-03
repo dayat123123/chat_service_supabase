@@ -39,6 +39,12 @@ export const id = {
     weakPassword: 'Password terlalu lemah, pakai kombinasi yang lebih panjang.',
     staleTicket: 'Tiket sudah berubah. Data terbaru dimuat ulang.',
   },
+  notificationStats: {
+    opened: 'Dibuka',
+    tapped: 'Diketuk',
+    summary: 'Dibuka {{opened}} · diketuk {{tapped}}',
+    hint: 'Pengguna unik; persentase dari penerima.',
+  },
   time: {
     today: 'Hari ini',
     yesterday: 'Kemarin',
@@ -604,8 +610,9 @@ export const id = {
     alertUnclaimed: 'Tiket belum diambil lebih dari (menit)',
     alertP1: 'Tiket P1 belum diambil lebih dari (menit)',
     integration: 'Integrasi API Nasabah',
-    apiKeys: 'Integrasi OLT',
+    apiKeys: 'API Notifikasi',
     features: 'Fitur & versi',
+    banners: 'Banner aplikasi',
     community: 'Komunitas',
     communityDescription: 'Aturan persetujuan postingan dan notifikasi resmi.',
     fourEyes: 'Aturan empat mata',
@@ -1029,6 +1036,8 @@ export const id = {
       integration_key_revoke: 'Cabut API key integrasi',
       feature_flag_set: 'Simpan feature flag',
       feature_flag_delete: 'Hapus feature flag',
+      banner_save: 'Simpan banner aplikasi',
+      banner_delete: 'Hapus banner aplikasi',
       kill_switch_set: 'Ubah kill switch fitur sosial',
       client_min_version_set: 'Ubah versi minimum aplikasi',
       content_rule_update: 'Ubah aksi kategori konten',
@@ -1945,6 +1954,8 @@ export const id = {
       no_push_devices: 'Pengguna ini belum punya perangkat terdaftar untuk push.',
       invalid_avatar: 'Foto akun harus diunggah lewat web CS.',
       account_not_found: 'Akun resmi tidak ditemukan. Muat ulang lalu coba lagi.',
+      invalid_audience:
+        'Segmen penerima tidak valid. Periksa kode saham, jumlah hari (1–365), platform, atau akun resmi yang aktif.',
     },
   },
   push: {

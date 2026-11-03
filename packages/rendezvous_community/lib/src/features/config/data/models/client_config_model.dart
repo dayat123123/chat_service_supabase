@@ -22,6 +22,25 @@ List<String> _strings(Object? value) => [
       if (item is String) item,
 ];
 
+List<CommunityBanner> bannersFromJson(Object? value) => [
+  if (value is List)
+    for (final item in value)
+      if (item is Map && item['id'] is String && item['title'] is String)
+        CommunityBanner(
+          id: item['id'] as String,
+          title: item['title'] as String,
+          body: item['body'] is String ? item['body'] as String : '',
+          linkUrl: item['link_url'] is String && (item['link_url'] as String).isNotEmpty
+              ? item['link_url'] as String
+              : null,
+          level: CommunityBannerLevel.values.asNameMap()[item['level']] ?? CommunityBannerLevel.info,
+          dismissible: item['dismissible'] != false,
+          priority: (item['priority'] as num?)?.toInt() ?? 0,
+          startsAt: DateTime.tryParse(item['starts_at'] as String? ?? ''),
+          endsAt: DateTime.tryParse(item['ends_at'] as String? ?? ''),
+        ),
+];
+
 @freezed
 abstract class ClientConfigModel with _$ClientConfigModel {
   const factory ClientConfigModel({
@@ -30,6 +49,9 @@ abstract class ClientConfigModel with _$ClientConfigModel {
     @JsonKey(fromJson: _versionsFromJson) @Default(<String, String?>{}) Map<String, String?> minVersion,
     @Default(false) bool updateRequired,
     @Default(<String, dynamic>{}) Map<String, dynamic> config,
+    @JsonKey(fromJson: bannersFromJson, includeToJson: false)
+    @Default(<CommunityBanner>[])
+    List<CommunityBanner> banners,
   }) = _ClientConfigModel;
 
   const ClientConfigModel._();
@@ -54,6 +76,7 @@ abstract class ClientConfigModel with _$ClientConfigModel {
       notificationAggregateMinutes: (config['notification_aggregate_minutes'] as num?)?.toInt() ?? 60,
       clockSkew: serverTime == null ? Duration.zero : serverTime.toUtc().difference(received),
       fetchedAt: received,
+      banners: banners,
     );
   }
 }

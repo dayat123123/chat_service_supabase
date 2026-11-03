@@ -16,6 +16,7 @@ class CommunityChatBuilders {
     this.loading,
     this.empty,
     this.error,
+    this.stockCard,
   });
 
   final CommunityPartBuilder<CommunityMessageDetails>? message;
@@ -29,6 +30,7 @@ class CommunityChatBuilders {
   final CommunityPartBuilder<CommunityLoadingDetails>? loading;
   final CommunityPartBuilder<CommunityEmptyDetails>? empty;
   final CommunityPartBuilder<CommunityErrorDetails>? error;
+  final CommunityPartBuilder<CommunityStockCardDetails>? stockCard;
 
   static CommunityChatBuilders of(BuildContext context, {bool listen = true}) {
     final scope = listen

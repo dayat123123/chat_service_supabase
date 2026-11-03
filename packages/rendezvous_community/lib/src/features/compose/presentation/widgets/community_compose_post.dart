@@ -11,6 +11,7 @@ import 'package:rendezvous_community/src/features/analytics/domain/entities/anal
 import 'package:rendezvous_community/src/features/compose/presentation/cubit/compose_cubit.dart';
 import 'package:rendezvous_community/src/features/compose/presentation/widgets/poll_editor.dart';
 import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
+import 'package:rendezvous_community/src/features/drafts/domain/entities/post_draft.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
@@ -31,6 +32,7 @@ Future<Post?> showCommunityComposer(
   BuildContext context, {
   String? initialStock,
   CommunityComposerImage? initialImage,
+  PostDraft? draft,
 }) {
   final deps = CommunityScope.of(context);
   final features = context.getInheritedWidgetOfExactType<CommunityFeatureScope>()?.dependencies;
@@ -50,6 +52,7 @@ Future<Post?> showCommunityComposer(
             child: CommunityComposePost(
               initialStock: initialStock,
               initialImage: initialImage,
+              draft: draft,
               autofocus: true,
               onPosted: (post) => Navigator.pop(dialogContext, post),
             ),
@@ -68,6 +71,7 @@ Future<Post?> showCommunityComposer(
             child: CommunityComposePost(
               initialStock: initialStock,
               initialImage: initialImage,
+              draft: draft,
               autofocus: true,
               onPosted: (post) => Navigator.pop(pageContext, post),
             ),
@@ -79,24 +83,39 @@ Future<Post?> showCommunityComposer(
 }
 
 class CommunityComposePost extends StatelessWidget {
-  const CommunityComposePost({super.key, this.initialStock, this.initialImage, this.onPosted, this.autofocus = false});
+  const CommunityComposePost({
+    super.key,
+    this.initialStock,
+    this.initialImage,
+    this.onPosted,
+    this.autofocus = false,
+    this.draft,
+  });
 
   final String? initialStock;
   final CommunityComposerImage? initialImage;
   final ValueChanged<Post>? onPosted;
   final bool autofocus;
+  final PostDraft? draft;
 
   @override
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
     return CommunitySocialGate(
       child: BlocProvider(
-        create: (_) => ComposeCubit(feed: deps.feed, media: deps.media, consent: communityConsentGate(context)),
+        create: (_) => ComposeCubit(
+          feed: deps.feed,
+          media: deps.media,
+          consent: communityConsentGate(context),
+          drafts: context.communityFeatures?.drafts,
+          draft: draft,
+        ),
         child: _ComposeView(
           initialStock: initialStock,
           initialImage: initialImage,
           onPosted: onPosted,
           autofocus: autofocus,
+          draft: draft,
         ),
       ),
     );
@@ -104,12 +123,13 @@ class CommunityComposePost extends StatelessWidget {
 }
 
 class _ComposeView extends StatefulWidget {
-  const _ComposeView({this.initialStock, this.initialImage, this.onPosted, required this.autofocus});
+  const _ComposeView({this.initialStock, this.initialImage, this.onPosted, required this.autofocus, this.draft});
 
   final String? initialStock;
   final CommunityComposerImage? initialImage;
   final ValueChanged<Post>? onPosted;
   final bool autofocus;
+  final PostDraft? draft;
 
   @override
   State<_ComposeView> createState() => _ComposeViewState();
@@ -117,14 +137,16 @@ class _ComposeView extends StatefulWidget {
 
 class _ComposeViewState extends State<_ComposeView> {
   late final _controller = TextEditingController(
-    text: widget.initialStock == null ? '' : '\$${widget.initialStock!.toUpperCase()} ',
+    text: widget.draft?.body ?? (widget.initialStock == null ? '' : '\$${widget.initialStock!.toUpperCase()} '),
   );
 
   String? _chartPath;
+  int _draftNotice = 0;
 
   @override
   void initState() {
     super.initState();
+    _controller.addListener(() => context.read<ComposeCubit>().bodyChanged(_controller.text));
     final image = widget.initialImage;
     if (image != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -184,15 +206,24 @@ class _ComposeViewState extends State<_ComposeView> {
     final l10n = context.communityL10n;
     final theme = Theme.of(context);
     return BlocConsumer<ComposeCubit, ComposeState>(
-      listenWhen: (a, b) => a.errorId != b.errorId,
+      listenWhen: (a, b) => a.errorId != b.errorId || a.draftNoticeId != b.draftNoticeId,
       listener: (context, state) {
+        if (state.draftNoticeId != _draftNotice) {
+          _draftNotice = state.draftNoticeId;
+          if (state.draftStatus == DraftSyncStatus.replaced && state.restoredBody != null) {
+            _controller.text = state.restoredBody!;
+            return showCommunityMessage(context, l10n.draftReplaced);
+          }
+          return showCommunityMessage(context, l10n.draftLimit(maxPostDrafts));
+        }
         final error = state.error;
+        if (error == null) return;
         final code = error is CommunityException ? error.code : null;
         showCommunityMessage(context, switch (code) {
           'too_many_images' => l10n.composeTooManyImages,
           'file_too_large' => l10n.composeImageTooLarge,
           'invalid_poll_draft' => l10n.pollInvalidDraft,
-          _ => l10n.errorMessage(error!),
+          _ => l10n.errorMessage(error),
         });
       },
       builder: (context, state) {
@@ -295,6 +326,12 @@ class _ComposeViewState extends State<_ComposeView> {
               if (isDesktopPlatform(context))
                 Text(
                   l10n.sendShortcutHint,
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+                ),
+              if (state.draftStatus != null)
+                Text(
+                  state.draftStatus == DraftSyncStatus.synced ? l10n.draftSaved : l10n.draftSavedLocally,
                   textAlign: TextAlign.end,
                   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
                 ),

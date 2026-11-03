@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { useEngagementSummary } from '@/components/engagement'
+import { EngagementItems } from '@/components/engagement-stats'
 import { EmptyState, ErrorState, ListSkeleton } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import {
@@ -24,12 +26,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { useAgent } from '@/features/auth/hooks'
 import { useCampaignPush } from '@/features/push/hooks'
 import { Confirm } from '@/features/nasabah/components/confirm'
-import { useDebounced } from '@/hooks/use-now'
 import { errorText } from '@/lib/error-text'
 import { formatNumber, stamp } from '@/lib/time'
 
 import {
-  useAudienceSize,
   useCampaigns,
   useCancelCampaign,
   useCommunityOverview,
@@ -45,16 +45,18 @@ import {
   canEdit,
   canReview,
   canSubmit,
-  cleanStock,
   excerpt,
   filterCampaigns,
   fromJakartaInput,
   jakartaInput,
   reviewBlockedByFourEyes,
-  stockCodePattern,
+  segmentProblem,
+  segmentQuery,
   type CampaignFilter,
 } from '../logic'
-import type { Audience, Campaign } from '../types'
+import { segmentInput, useSegmentText } from '../segments'
+import type { Campaign } from '../types'
+import { SegmentFields } from './segment-fields'
 import { AccountAvatar, AccountChip, CampaignStatusText, ReasonDialog } from './shared'
 
 type Link = 'none' | 'post' | 'url'
@@ -119,18 +121,11 @@ function CampaignComposer({
   const [link, setLink] = useState<Link>(campaign?.link_post ? 'post' : campaign?.link_url ? 'url' : 'none')
   const [postId, setPostId] = useState(campaign?.link_post?.id ?? '')
   const [url, setUrl] = useState(campaign?.link_url ?? '')
-  const [audience, setAudience] = useState<Audience>(campaign?.audience ?? 'all')
-  const [stock, setStock] = useState(campaign?.audience_stock ?? '')
+  const [segment, setSegment] = useState(() => segmentInput(campaign))
   const [later, setLater] = useState(Boolean(campaign?.send_at))
   const [sendAt, setSendAt] = useState(jakartaInput(campaign?.send_at ?? null))
   const [touched, setTouched] = useState(false)
-  const code = cleanStock(stock)
-  const debouncedCode = useDebounced(code, 400)
-  const size = useAudienceSize(
-    audience,
-    audience === 'stock' ? debouncedCode : null,
-    audience === 'all' || stockCodePattern.test(debouncedCode),
-  )
+  const audience = segmentQuery(segment)
   const pending = save.isPending || submit.isPending || review.isPending
   const directPublish =
     agent.community_permissions.includes('community.publish') && !agent.settings.community_four_eyes
@@ -142,8 +137,7 @@ function CampaignComposer({
     body: body.trim().length < 3 ? t('community.errors.notificationBody') : undefined,
     post: link === 'post' && !postId ? t('community.errors.postRequired') : undefined,
     url: link === 'url' && !/^https:\/\/\S+$/.test(url.trim()) ? t('community.errors.urlInvalid') : undefined,
-    stock:
-      audience === 'stock' && !stockCodePattern.test(code) ? t('community.errors.stockInvalid') : undefined,
+    segment: segmentProblem(audience) ?? undefined,
     sendAt:
       later && (!fromJakartaInput(sendAt) || (fromJakartaInput(sendAt) ?? '') <= new Date().toISOString())
         ? t('community.errors.scheduleFuture')
@@ -164,8 +158,11 @@ function CampaignComposer({
           body: body.trim(),
           link_post_id: link === 'post' ? postId : null,
           link_url: link === 'url' ? url.trim() : null,
-          audience,
-          audience_stock: audience === 'stock' ? code : null,
+          audience: audience.audience,
+          audience_stock: audience.stock,
+          audience_days: audience.days,
+          audience_platform: audience.platform,
+          audience_account_id: audience.account_id,
           send_at: later ? fromJakartaInput(sendAt) : null,
         },
       })
@@ -290,40 +287,7 @@ function CampaignComposer({
               </div>
             ) : null}
           </fieldset>
-          <fieldset className="flex flex-col gap-2 rounded-lg border p-3">
-            <legend className="px-1 text-sm font-medium">{t('community.audience')}</legend>
-            <RadioGroup
-              value={audience}
-              onValueChange={(value) => setAudience(value as Audience)}
-              className="flex flex-wrap gap-4"
-            >
-              <label className="flex items-center gap-2 text-row">
-                <RadioGroupItem value="all" />
-                {t('community.audiences.all')}
-              </label>
-              <label className="flex items-center gap-2 text-row">
-                <RadioGroupItem value="stock" />
-                {t('community.audiences.stock')}
-              </label>
-            </RadioGroup>
-            {audience === 'stock' ? (
-              <div className="flex w-48 flex-col gap-1.5">
-                <Input
-                  aria-label={t('community.stockCode')}
-                  maxLength={13}
-                  placeholder="BBCA"
-                  value={stock}
-                  onChange={(event) => setStock(event.target.value)}
-                />
-                {touched ? <FieldError message={errors.stock} /> : null}
-              </div>
-            ) : null}
-            <p className="text-xs text-muted-foreground" role="status">
-              {size.data === undefined
-                ? t('community.audienceCounting')
-                : t('community.audienceSize', { count: size.data, formatted: formatNumber(size.data) })}
-            </p>
-          </fieldset>
+          <SegmentFields value={segment} onChange={setSegment} accounts={active} touched={touched} />
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1.5 text-sm font-medium">{t('community.sendTime')}</legend>
             <RadioGroup
@@ -405,6 +369,7 @@ function PushDeliveryInfo({ campaignId, live }: { campaignId: string; live: bool
 
 function CampaignDetail({ campaign, onEdit }: { campaign: Campaign; onEdit: () => void }) {
   const { t } = useTranslation()
+  const segmentText = useSegmentText()
   const agent = useAgent()
   const actor = {
     id: agent.id,
@@ -431,11 +396,7 @@ function CampaignDetail({ campaign, onEdit }: { campaign: Campaign; onEdit: () =
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
           <div>
             <dt className="text-xs text-muted-foreground">{t('community.audience')}</dt>
-            <dd className="text-row">
-              {campaign.audience === 'stock'
-                ? t('community.audienceStockValue', { code: campaign.audience_stock })
-                : t('community.audiences.all')}
-            </dd>
+            <dd className="text-row">{segmentText(campaign)}</dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">{t('community.linkTarget')}</dt>
@@ -460,7 +421,14 @@ function CampaignDetail({ campaign, onEdit }: { campaign: Campaign; onEdit: () =
             <dd className="tabular text-row">{formatNumber(campaign.recipients)}</dd>
           </div>
           {campaign.status === 'sending' || campaign.status === 'sent' ? (
-            <PushDeliveryInfo campaignId={campaign.id} live={campaign.status === 'sending'} />
+            <>
+              <EngagementItems
+                value={campaign}
+                termClassName="text-xs text-muted-foreground"
+                valueClassName="text-row"
+              />
+              <PushDeliveryInfo campaignId={campaign.id} live={campaign.status === 'sending'} />
+            </>
           ) : null}
         </dl>
         <div className="text-xs text-muted-foreground">
@@ -590,6 +558,8 @@ export function CampaignsTab() {
   const [selected, setSelected] = useState<string | null>(null)
   const [editing, setEditing] = useState<Campaign | null>(null)
   const [composing, setComposing] = useState(false)
+  const segmentText = useSegmentText()
+  const engagement = useEngagementSummary()
   const rows = campaigns.data ? filterCampaigns(campaigns.data, filter, agent.id) : []
   const current = campaigns.data?.find((campaign) => campaign.id === selected) ?? null
 
@@ -652,13 +622,12 @@ export function CampaignsTab() {
                 <span className="text-xs text-muted-foreground">
                   {[
                     campaign.account.display_name,
-                    campaign.audience === 'stock'
-                      ? t('community.audienceStockValue', { code: campaign.audience_stock })
-                      : t('community.audiences.all'),
+                    segmentText(campaign),
                     campaign.send_at ? stamp(campaign.send_at) : null,
                     campaign.recipients > 0
                       ? t('community.recipients', { count: campaign.recipients })
                       : null,
+                    campaign.recipients > 0 && campaign.status === 'sent' ? engagement(campaign) : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')}

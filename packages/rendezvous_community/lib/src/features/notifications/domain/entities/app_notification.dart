@@ -1,10 +1,30 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
+import 'dart:convert';
 
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'app_notification.freezed.dart';
 
-enum NotificationType { reply, mention, like, follow, message, announcement, appeal }
+enum NotificationType {
+  reply,
+  mention,
+  like,
+  follow,
+  message,
+  announcement,
+  appeal,
+  followedPost,
+  watchlistDigest,
+  moderation,
+}
+
+const notificationTypeKeys = {
+  NotificationType.followedPost: 'followed_post',
+  NotificationType.watchlistDigest: 'watchlist_digest',
+};
+
+NotificationType? notificationTypeFromKey(String key) =>
+    NotificationType.values.where((t) => (notificationTypeKeys[t] ?? t.name) == key).firstOrNull;
 
 @freezed
 abstract class AppNotification with _$AppNotification {
@@ -39,8 +59,33 @@ abstract class AppNotification with _$AppNotification {
   bool get isOlt => payload['source'] == 'olt';
   String? get oltKind => payload['kind'] is String ? payload['kind'] as String : null;
   String? get oltCategory => payload['category'] is String ? payload['category'] as String : null;
+  String? get stockCode => payload['stock_code'] is String ? payload['stock_code'] as String : null;
+  List<String> get stocks => _strings(payload['stocks']);
+  int get postCount => (payload['post_count'] as num?)?.toInt() ?? 0;
+  int get stockCount => (payload['stock_count'] as num?)?.toInt() ?? stocks.length;
+  String? get moderationState => payload['state'] is String ? payload['state'] as String : null;
+  bool get appealable => payload['appealable'] == true || payload['appealable'] == 'true';
+  String? get excerpt => payload['excerpt'] is String ? payload['excerpt'] as String : null;
+  bool get isRoomMention => type == NotificationType.mention && roomId != null && postId == null;
   String? localizedTitle(String languageCode) => _localizedText(payload['title'], languageCode);
   String? localizedBody(String languageCode) => _localizedText(payload['body'], languageCode);
+}
+
+List<String> _strings(Object? value) {
+  final list = value is String ? _decodeList(value) : value;
+  return [
+    if (list is List)
+      for (final item in list)
+        if (item is String && item.isNotEmpty) item,
+  ];
+}
+
+Object? _decodeList(String value) {
+  try {
+    return jsonDecode(value);
+  } on FormatException {
+    return null;
+  }
 }
 
 String? _localizedText(Object? value, String languageCode) {

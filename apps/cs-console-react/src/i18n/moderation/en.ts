@@ -2,6 +2,51 @@ import type { Translated } from '../id'
 import type { moderation as source } from './id'
 
 export const moderation: Translated<typeof source> = {
+  segments: {
+    label: 'Audience segment',
+    options: {
+      all: 'All users',
+      stock: 'Stock watchers',
+      new_users: 'New users',
+      inactive: 'Inactive users',
+      platform: 'Platform',
+      followers: 'Official account followers',
+    },
+    hints: {
+      all: 'Every active user, excluding official accounts and staff.',
+      stock: 'Users who watch this stock code.',
+      new_users: 'Profiles created less than N days ago.',
+      inactive: 'Last activity (sign-in, app, or push device) at least N days ago.',
+      platform: 'Has a push device on this platform or was last active on it.',
+      followers: 'Followers of the selected official account.',
+    },
+    days: 'Number of days (1–365)',
+    platform: 'Platform',
+    account: 'Official account',
+    choosePlatform: 'Choose a platform',
+    chooseAccount: 'Choose an official account',
+    platforms: {
+      android: 'Android',
+      ios: 'iOS',
+      web: 'Web',
+      windows: 'Windows',
+      macos: 'macOS',
+      linux: 'Linux',
+    },
+    value: {
+      all: 'All users',
+      stock: '${{code}} watchers',
+      new_users: 'New users ≤ {{days}} days',
+      inactive: 'Inactive ≥ {{days}} days',
+      platform: '{{platform}} users',
+      followers: 'Followers of {{name}}',
+    },
+    problems: {
+      days: 'Enter a whole number from 1 to 365.',
+      platform: 'Choose a platform.',
+      account: 'Choose an official account.',
+    },
+  },
   queuesLabel: 'Moderation queues',
   queues: {
     reports: 'Reports',

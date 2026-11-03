@@ -12,8 +12,12 @@ bool isOltNotificationType(String type) => type.startsWith('olt.');
 
 @freezed
 abstract class NotificationTypePreference with _$NotificationTypePreference {
-  const factory NotificationTypePreference({required String type, bool? inApp, @Default(true) bool push}) =
-      _NotificationTypePreference;
+  const factory NotificationTypePreference({
+    required String type,
+    bool? inApp,
+    @Default(true) bool push,
+    @Default(false) bool inAppLocked,
+  }) = _NotificationTypePreference;
 
   const NotificationTypePreference._();
 

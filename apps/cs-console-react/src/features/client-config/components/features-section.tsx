@@ -1,4 +1,4 @@
-import { LoaderCircleIcon, PencilIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { LoaderCircleIcon } from 'lucide-react'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -7,161 +7,86 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/controls'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Confirm } from '@/features/nasabah/components/confirm'
 import { QueryContent, SectionFrame, SettingsCard } from '@/features/settings/components/settings-ui'
 import { FieldText } from '@/features/system/components/system-ui'
 import { platformErrorText } from '@/lib/error-text'
 import { stamp } from '@/lib/time'
 
-import { useClientConfig, useDeleteFlag, useSetFlag, useSetMinVersion } from '../hooks'
-import { flagDraft, rolloutLabel, versionValid } from '../logic'
-import { appPlatforms, type ClientConfig, type FeatureFlag, type MinVersion } from '../types'
-import { FlagDialog } from './flag-dialog'
+import { useClientConfig, useSetMinVersion, useToggleFlag } from '../hooks'
+import { featureRows, versionValid } from '../logic'
+import { appPlatforms, type ClientConfig, type FeatureRow, type MinVersion } from '../types'
 import { KillSwitchCard } from './kill-switch-card'
 
-function FlagSwitch({ flag }: { flag: FeatureFlag }) {
+function FeatureItem({ row, onTurnOff }: { row: FeatureRow; onTurnOff: (row: FeatureRow) => void }) {
   const { t } = useTranslation()
-  const save = useSetFlag()
+  const id = useId()
+  const toggle = useToggleFlag()
+  const label = t(`platform.flags.features.${row.key}.label`)
   return (
-    <Switch
-      checked={flag.enabled}
-      disabled={save.isPending}
-      aria-label={t('platform.flags.toggleLabel', { key: flag.key })}
-      onCheckedChange={(value) =>
-        save
-          .mutateAsync({ ...flagDraft(flag), enabled: value })
-          .then(() =>
-            toast.success(
-              value
-                ? t('platform.flags.turnedOn', { key: flag.key })
-                : t('platform.flags.turnedOff', { key: flag.key }),
-            ),
-          )
-          .catch((error: unknown) => toast.error(platformErrorText(error)))
-      }
-    />
-  )
-}
-
-function Rollout({ flag }: { flag: FeatureFlag }) {
-  const { t } = useTranslation()
-  const kind = rolloutLabel(flag)
-  return (
-    <span className="text-xs">
-      {t(`platform.flags.rollout.${kind}`, { percent: flag.percentage, count: flag.user_ids.length })}
-      {flag.percentage < 100 && flag.percentage > 0 && flag.user_ids.length > 0 ? (
-        <span className="block text-muted-foreground">
-          {t('platform.flags.plusUsers', { count: flag.user_ids.length })}
-        </span>
-      ) : null}
-    </span>
+    <li className="flex items-start gap-4 border-b py-3 last:border-b-0">
+      <div className="min-w-0 flex-1">
+        <Label htmlFor={`${id}-switch`} className="text-row font-medium">
+          {label}
+        </Label>
+        <p id={`${id}-text`} className="text-xs text-muted-foreground">
+          {t(`platform.flags.features.${row.key}.description`)}
+        </p>
+        {row.updated_at ? (
+          <p className="text-xs text-muted-foreground">
+            {row.updated_by?.name
+              ? t('platform.versions.changedBy', { time: stamp(row.updated_at), name: row.updated_by.name })
+              : t('platform.versions.changed', { time: stamp(row.updated_at) })}
+          </p>
+        ) : null}
+      </div>
+      <Switch
+        id={`${id}-switch`}
+        checked={row.enabled}
+        disabled={toggle.isPending}
+        aria-describedby={`${id}-text`}
+        onCheckedChange={(value) => {
+          if (!value) {
+            onTurnOff(row)
+            return
+          }
+          toggle
+            .mutateAsync({ key: row.key, enabled: true })
+            .then(() => toast.success(t('platform.flags.turnedOn', { feature: label })))
+            .catch((error: unknown) => toast.error(platformErrorText(error)))
+        }}
+      />
+    </li>
   )
 }
 
 function FlagsCard({ config }: { config: ClientConfig }) {
   const { t } = useTranslation()
-  const remove = useDeleteFlag()
-  const [editing, setEditing] = useState<FeatureFlag | 'new' | null>(null)
-  const [removing, setRemoving] = useState<FeatureFlag | null>(null)
+  const toggle = useToggleFlag()
+  const [turningOff, setTurningOff] = useState<FeatureRow | null>(null)
+  const label = turningOff ? t(`platform.flags.features.${turningOff.key}.label`) : ''
   return (
     <SettingsCard title={t('platform.flags.title')} subtitle={t('platform.flags.subtitle')}>
-      <Button size="sm" variant="outline" className="self-start" onClick={() => setEditing('new')}>
-        <PlusIcon />
-        {t('platform.flags.add')}
-      </Button>
-      {config.flags.length === 0 ? (
-        <p className="border-y py-6 text-center text-row text-muted-foreground">
-          {t('platform.flags.empty')}
-        </p>
-      ) : (
-        <Table>
-          <caption className="sr-only">{t('platform.flags.title')}</caption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t('platform.flags.cols.flag')}</TableHead>
-              <TableHead>{t('platform.flags.cols.enabled')}</TableHead>
-              <TableHead>{t('platform.flags.cols.rollout')}</TableHead>
-              <TableHead>{t('platform.flags.cols.platforms')}</TableHead>
-              <TableHead>{t('platform.flags.cols.minVersion')}</TableHead>
-              <TableHead>{t('platform.flags.cols.updated')}</TableHead>
-              <TableHead>
-                <span className="sr-only">{t('platform.flags.cols.actions')}</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {config.flags.map((flag) => (
-              <TableRow key={flag.key} className="align-top">
-                <TableCell className="py-2 whitespace-normal">
-                  <p className="font-mono text-row font-medium">{flag.key}</p>
-                  {flag.description ? (
-                    <p className="max-w-80 text-xs text-muted-foreground">{flag.description}</p>
-                  ) : null}
-                </TableCell>
-                <TableCell className="py-2">
-                  <FlagSwitch flag={flag} />
-                </TableCell>
-                <TableCell className="py-2 whitespace-normal">
-                  <Rollout flag={flag} />
-                </TableCell>
-                <TableCell className="py-2 text-xs">
-                  {flag.platforms.length === 0
-                    ? t('platform.flags.allPlatforms')
-                    : flag.platforms.map((item) => t(`platform.platforms.${item}`)).join(', ')}
-                </TableCell>
-                <TableCell className="py-2 font-mono text-xs">{flag.min_app_version ?? '–'}</TableCell>
-                <TableCell className="py-2 text-xs whitespace-normal text-muted-foreground">
-                  {stamp(flag.updated_at)}
-                  {flag.updated_by?.name ? <span className="block">{flag.updated_by.name}</span> : null}
-                </TableCell>
-                <TableCell className="py-2">
-                  <div className="flex justify-end gap-1">
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      aria-label={t('platform.flags.editLabel', { key: flag.key })}
-                      onClick={() => setEditing(flag)}
-                    >
-                      <PencilIcon />
-                    </Button>
-                    <Button
-                      size="icon-xs"
-                      variant="ghost"
-                      aria-label={t('platform.flags.deleteLabel', { key: flag.key })}
-                      onClick={() => setRemoving(flag)}
-                    >
-                      <Trash2Icon />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-      {editing ? (
-        <FlagDialog
-          editing={editing === 'new' ? null : editing}
-          existing={config.flags.map((flag) => flag.key)}
-          onClose={() => setEditing(null)}
-        />
-      ) : null}
+      <ul className="border-y">
+        {featureRows(config.flags).map((row) => (
+          <FeatureItem key={row.key} row={row} onTurnOff={setTurningOff} />
+        ))}
+      </ul>
       <Confirm
-        open={removing !== null}
-        title={t('platform.flags.deleteTitle', { key: removing?.key ?? '' })}
-        body={t('platform.flags.deleteBody')}
-        action={t('app.delete')}
+        open={turningOff !== null}
+        title={t('platform.flags.offTitle', { feature: label })}
+        body={t('platform.flags.offBody')}
+        action={t('platform.flags.offAction')}
         destructive
-        pending={remove.isPending}
-        onClose={() => setRemoving(null)}
+        pending={toggle.isPending}
+        onClose={() => setTurningOff(null)}
         onConfirm={() =>
-          removing &&
-          remove
-            .mutateAsync(removing.key)
+          turningOff &&
+          toggle
+            .mutateAsync({ key: turningOff.key, enabled: false })
             .then(() => {
-              toast.success(t('platform.flags.deleted', { key: removing.key }))
-              setRemoving(null)
+              toast.success(t('platform.flags.turnedOff', { feature: label }))
+              setTurningOff(null)
             })
             .catch((error: unknown) => toast.error(platformErrorText(error)))
         }

@@ -13,7 +13,7 @@ reset role;
 
 select tests.authenticate_agent(:'sinta');
 select lives_ok($$select cs_api.admin_set_min_version('windows', '1.3.0')$$, 'Super Admin mengatur versi minimum Windows');
-select lives_ok($$select cs_api.admin_set_feature_flag('cl_desktop', true, 100, '{}', '{windows,macos}', null, null)$$,
+select lives_ok($$select cs_api.admin_set_feature_flag('trending', true, 100, '{}', '{windows,macos}', null, null)$$,
   'Feature flag bisa ditargetkan ke desktop');
 reset role;
 

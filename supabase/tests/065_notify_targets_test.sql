@@ -20,6 +20,7 @@ select ok((select bool_and(c.relrowsecurity) from pg_class c
   'RLS aktif di tabel siaran dan batas harian');
 select is(private.notification_pref_types(),
   array['reply', 'mention', 'like', 'follow', 'message', 'announcement', 'appeal',
+        'followed_post', 'watchlist_digest', 'moderation',
         'olt.trade', 'olt.funds', 'olt.market', 'olt.info', 'olt.promo'],
   'Preferensi OLT dipecah menjadi transaksi, dana, pasar, info, dan promo');
 select is(array[private.notification_pref_type('olt.trade.partial'), private.notification_pref_type('olt.order.rejected'),

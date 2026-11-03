@@ -100,6 +100,7 @@ class _HomePageState extends State<HomePage> {
         () => openCommunityNotificationSettings(context),
       ),
       (Icons.gavel_outlined, l10n.myAppeals, () => openCommunityAppeals(context)),
+      (Icons.drafts_outlined, l10n.draftsTitle, () => openCommunityPostDrafts(context)),
       (Icons.candlestick_chart_outlined, 'Bagikan chart \$$_stock', _shareChart),
     ];
     final action = await showModalBottomSheet<Future<void> Function()>(
@@ -170,7 +171,7 @@ class _HomePageState extends State<HomePage> {
       setState(() => _index = i);
     }
 
-    final body = switch (_index) {
+    final page = switch (_index) {
       0 => wide ? const _TwoPaneStream() : const CommunityStreamFeed(),
       1 => Column(
         children: [
@@ -224,6 +225,14 @@ class _HomePageState extends State<HomePage> {
         username: RendezvousCommunity.instance.currentUser?.username,
       ),
     };
+    final body = _index == 0
+        ? page
+        : Column(
+            children: [
+              const CommunityBannerHost(),
+              Expanded(child: page),
+            ],
+          );
     final mobileActions = [
       IconButton(
         tooltip: context.communityL10n.supportTitle,

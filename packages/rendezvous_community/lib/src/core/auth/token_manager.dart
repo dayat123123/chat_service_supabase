@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:logging/logging.dart';
 import 'package:rendezvous_community/src/core/auth/auth_bridge_client.dart';
+import 'package:rendezvous_community/src/core/auth/host_identity.dart';
 import 'package:rendezvous_community/src/core/auth/session_tokens.dart';
 import 'package:rendezvous_community/src/core/auth/social_session.dart';
 import 'package:rendezvous_community/src/core/error/community_exception.dart';
@@ -25,11 +26,22 @@ class TokenManager implements SessionTokens {
 
   final _changes = StreamController<SocialSession?>.broadcast();
   SocialSession? _session;
+  String? _hostKey;
   Future<SocialSession>? _inflight;
   Timer? _timer;
   bool _disposed = false;
 
   SocialSession? get currentSession => _session;
+
+  String? get hostKey => _session == null ? null : _hostKey;
+
+  Future<String?> resolveHostKey() async {
+    try {
+      return hostIdentityKey(await _tokenProvider());
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   String? get currentUserId => _session?.user.id;
@@ -76,6 +88,7 @@ class TokenManager implements SessionTokens {
     }
     final session = await _bridge.exchange(token);
     if (_disposed) return session;
+    _hostKey = hostIdentityKey(token);
     _session = session;
     _schedule(session.expiresAt.difference(_clock()) - refreshMargin);
     _changes.add(session);
@@ -109,6 +122,7 @@ class TokenManager implements SessionTokens {
   void clear() {
     _timer?.cancel();
     _session = null;
+    _hostKey = null;
     if (!_disposed) _changes.add(null);
   }
 

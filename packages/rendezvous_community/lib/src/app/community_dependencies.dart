@@ -7,6 +7,7 @@ import 'package:rendezvous_community/src/features/notifications/domain/repositor
 import 'package:rendezvous_community/src/features/poll/domain/repositories/poll_repository.dart';
 import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
 import 'package:rendezvous_community/src/features/profile/domain/repositories/profile_repository.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/entities/stock_info.dart';
 import 'package:rendezvous_community/src/features/stocks/domain/entities/stock_suggestion.dart';
 import 'package:rendezvous_community/src/features/stocks/domain/repositories/stock_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
@@ -25,6 +26,8 @@ typedef CommunityOltNotificationTapCallback = void Function(BuildContext context
 
 typedef CommunityStockSearch = Future<List<StockSuggestion>> Function(String query);
 
+typedef CommunityStockInfoProvider = CommunityStockInfo? Function(String stockCode);
+
 class CommunityCallbacks {
   const CommunityCallbacks({
     this.onStockTap,
@@ -34,6 +37,7 @@ class CommunityCallbacks {
     this.stockSearch,
     this.onHashtagTap,
     this.onOltNotificationTap,
+    this.stockInfo,
   });
 
   final CommunityStockTapCallback? onStockTap;
@@ -43,6 +47,7 @@ class CommunityCallbacks {
   final CommunityStockSearch? stockSearch;
   final CommunityHashtagTapCallback? onHashtagTap;
   final CommunityOltNotificationTapCallback? onOltNotificationTap;
+  final CommunityStockInfoProvider? stockInfo;
 }
 
 abstract interface class CommunityDependencies {

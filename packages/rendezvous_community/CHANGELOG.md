@@ -94,14 +94,82 @@
 * Baru: `isCommunityPush(data)` dan `isOltPush(data)`. Tanpa `onOltNotificationTap`,
   `openCommunityPush` mengembalikan `false` untuk push `olt.*` (`source: "olt"`, `cust_id`,
   `message_id`, plus `data` dari OLT seperti `screen`) supaya host yang menanganinya.
-* Logger baru `RendezvousCommunity.Config` dan `RendezvousCommunity.Analytics`.
+* **Butuh migrasi `0087`–`0090`** untuk fitur berikut (backend lama: banner kosong, laporan
+  notifikasi/draf/kartu saham gagal tanpa mengganggu UI lain).
+* Baru (`0089`): banner aplikasi dari `get_client_config` (`ClientConfig.banners`, `CommunityBanner`,
+  level `info`/`warning`/`critical`). `CommunityBannerHost(maxVisible: 3, builder:)` untuk dipasang
+  host; tampil otomatis di atas feed Terbaru/Mengikuti. Urut `priority` lalu `starts_at`, banner yang
+  sudah berakhir disembunyikan, tautan dibuka lewat dialog konfirmasi `openCommunityLink`. Banner
+  `dismissible` yang ditutup disimpan lokal per user (`BannerDismissals`, maks 100 id); yang tidak
+  bisa ditutup selalu tampil.
+* Baru (`0088`): laporan dibuka/diketuk notifikasi (`report_notification_event`). Membuka item kotak
+  notifikasi atau push melapor `opened`; mengikuti tujuannya melapor `tapped` (`notification_id`
+  lebih dulu, lalu `campaign_id`/`broadcast_id` dari data push). Kirim lalu lupakan, tiap event
+  sekali per sumber, diantrekan di memori saat offline dan dikirim ulang saat koneksi kembali
+  (`NotificationReporter`, `RendezvousCommunity.reportNotificationOpened/Tapped(data)` untuk host).
+* Baru (`0087`): jenis notifikasi `followed_post` (buka postingan), `watchlist_digest` (buka feed saham
+  teratas lewat `onStockTap`), `moderation` (buka "Banding saya", menampilkan bisa/tidaknya banding),
+  dan `mention` dari room saham (buka room). Nilai enum baru `NotificationType.followedPost`,
+  `watchlistDigest`, `moderation`, `notificationTypeFromKey()`, `openCommunityNotification()`.
+  Pengaturan notifikasi menampilkan jenis baru; sakelar in-app nonaktif bila `in_app_locked`
+  (`NotificationTypePreference.inAppLocked`).
+* Baru (`0090`): draf postingan. Composer menyimpan otomatis (jeda 1,5 detik) ke perangkat lalu
+  `save_post_draft` dengan `p_base_updated_at`; `draft_conflict` → versi yang lebih baru dipakai dan
+  pengguna diberi tahu; `draft_limit` / offline → draf tetap di perangkat. Terbit memakai
+  `client_draft_id` sebagai `client_id` sehingga server menghapus drafnya. `CommunityPostDrafts` /
+  `openCommunityPostDrafts` untuk melanjutkan atau menghapus draf, `showCommunityComposer(draft:)`,
+  `CommunityDrafts`, `PostDraft`.
+* Baru (`0090`): kartu saham di chat. Tombol "Kirim kartu saham" di composer (bukan chat CS), maksimal
+  3 kode; lampiran `{"type": "stock", "code"}` tampil sebagai kartu (`ChatMessage.stockCodes`,
+  `StockCards`, builder `CommunityChatBuilders.stockCard`). Nama/harga dari host lewat callback baru
+  `stockInfo` (`CommunityStockInfo`); ketuk → `onStockTap`. `ChatExtrasRepository.sendStockCards`,
+  `ChatRoomCubit.sendStockCards`.
+* `CommunityFeatureDependencies` bertambah `notificationReporter`, `bannerDismissals`, `drafts`.
+* Baru: cache offline (bawaan aktif, `initialize(offlineCache: false)` untuk mematikan). Database
+  lokal per user komunitas (drift + SQLite di Android/iOS/Windows/macOS/Linux, memori di web)
+  menyimpan halaman pertama daftar room (tanpa room CS), pesan terakhir per room (bawaan 200,
+  `initialize(offlineMessageLimit:)`, dipangkas otomatis), dan halaman pertama feed
+  Terbaru/Mengikuti/saham (20 saham terakhir). Saat dibuka, data tersimpan langsung tampil lalu
+  diganti data server di latar belakang; server tetap sumber kebenaran (edit, hapus, reaksi, dan
+  `moderation_status` di baris ikut tersimpan, pesan yang tidak lagi dikembalikan server dalam
+  rentang halaman yang sama dihapus dari cache). Saat koneksi kembali, layar yang masih
+  menampilkan data tersimpan memuat ulang sendiri. Skema bernomor versi (`CommunityDatabase.version`).
+* Baru: outbox pesan teks. Pesan yang dikirim saat offline atau gagal karena jaringan disimpan
+  bersama `client_id`, tampil "Menunggu dikirim" (`MessageStatus.pending`), lalu dikirim ulang
+  dengan backoff (2 detik, maks 1 menit) dan segera saat koneksi kembali, aplikasi kembali ke
+  foreground, atau realtime tersambung lagi. Urutan per room dijaga; server menolak duplikat lewat
+  `client_id`. Error permanen (`content_blocked`, `dm_request_limit`, `consent_required`,
+  `slow_mode` setelah 3 percobaan di latar belakang, dll.) menandai pesan gagal beserta alasannya
+  (`ChatMessage.sendError`) dengan tombol "Coba lagi" dan "Hapus" (`CommunityMessageDetails.onDiscard`,
+  `ChatRoomCubit.discard`, `MessageDeliveryNotice`). Lampiran gambar/PDF tidak masuk antrean:
+  saat offline ditolak dengan pesan jelas (kode `attachment_offline`).
+* Baru: indikator offline. `CommunityConnectivity` menilai koneksi dari hasil request ke server dan
+  status realtime (tanpa plugin konektivitas); saat offline memeriksa ulang lewat
+  `get_client_config` (5 detik, naik sampai 1 menit). `CommunityOfflineBanner` tampil di atas
+  daftar chat dan feed; room chat memakai builder `connectionBanner` dengan
+  `CommunityConnectionDetails.offline`.
+* Privasi: database lokal dihapus saat `signOut()`, `deleteMyAccount()`, `clearLocalCache()`, saat
+  sesi komunitas berganti user, dan saat aplikasi dibuka offline oleh user OLT lain. Token tidak
+  pernah disimpan; pemilik database dicocokkan lewat hash SHA-256 dari `iss`+`sub` token OLT.
+  Chat CS tidak di-cache.
+* API baru: `RendezvousCommunity.instance.clearLocalCache()`, `connectivity`, `offlineCacheEnabled`,
+  `chatCache`, `feedCache`, `outbox`, `CommunityOfflineScope` + `CommunityOfflineDependencies`,
+  `ChatCacheRepository`, `FeedCacheRepository`, `MessageOutbox`, `OutboxMessage`. Parameter cubit
+  baru (opsional): `ChatRoomCubit(cache:, outbox:, connectivity:)`, `ChatListCubit(cache:,
+  connectivity:)`, `FeedCubit(cache:, connectivity:)`; state baru `stale`.
+* Dependensi baru: `drift` (MIT), `sqlite3` (MIT; SQLite dibundel lewat build hooks, tanpa
+  `sqlite3_flutter_libs`), `path_provider` (BSD), `path` (BSD), `crypto` (BSD); dev: `drift_dev` (MIT).
+* Logger baru `RendezvousCommunity.Config`, `RendezvousCommunity.Analytics`, dan
+  `RendezvousCommunity.Offline`.
 * Kompatibilitas: `CommunityDependencies` tidak berubah; fitur baru lewat antarmuka baru
   `CommunityFeatureDependencies` dan `CommunityFeatureScope` (bawaannya
   `RendezvousCommunity.instance`; tanpa keduanya fitur baru tersembunyi). Parameter baru semua
   opsional. **Perlu perhatian:** subclass baru pada sealed class `RoomSignal` (`RoomReaction`,
   `RoomStateSignal`), `ChatRoomEvent` (`ReactionChanged`, `StockRoomStateChanged`), dan
   `SocialTextSegment` (`HashtagSegment`, `LinkSegment`), serta nilai enum
-  `NotificationType.appeal`: `switch` lengkap di kode host perlu cabang baru.
+  `NotificationType.appeal`, `followedPost`, `watchlistDigest`, `moderation`, dan `MessageStatus.pending`:
+  `switch` lengkap di kode host perlu
+  cabang baru.
   `parseSocialText` hanya menghasilkan segmen baru bila `hashtags: true` / `links: true`.
 * Perbaikan: lampiran `{"type": "post"}` dari pesan bagikan post tidak lagi membuat
   `get_messages` gagal di-parse (versi ≤ 1.2.0 gagal membaca room yang berisi post yang dibagikan).

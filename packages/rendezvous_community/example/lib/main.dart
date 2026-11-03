@@ -76,6 +76,8 @@ Future<void> _startSocial(FakeOltAuth auth) async {
     tokenProvider: auth.token,
     onStockTap: openStockPage,
     stockSearch: searchStocks,
+    stockInfo: (code) => stockNames.containsKey(code) ? CommunityStockInfo(name: stockNames[code]) : null,
+    onOltNotificationTap: showOltNotification,
     appVersion: '1.3.0',
   );
   await social.ensureSignedIn();
@@ -129,6 +131,27 @@ class _MissingConfigPage extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
       ),
+    ),
+  );
+}
+
+void showOltNotification(BuildContext context, Map<String, Object?> data) {
+  final title = data['title'];
+  showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(title is Map ? '${title['id'] ?? title['en'] ?? 'Notifikasi OLT'}' : '${title ?? 'Notifikasi OLT'}'),
+      content: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final entry in data.entries)
+              if (entry.key != 'title') Text('${entry.key}: ${entry.value}'),
+          ],
+        ),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Tutup'))],
     ),
   );
 }

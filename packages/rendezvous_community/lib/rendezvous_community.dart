@@ -6,6 +6,7 @@ export 'src/app/community_account_scope.dart';
 export 'src/app/community_dependencies.dart';
 export 'src/app/community_feature_scope.dart';
 export 'src/app/community_official_scope.dart';
+export 'src/app/community_offline_scope.dart';
 export 'src/app/community_scope.dart';
 export 'src/app/community_support_scope.dart';
 export 'src/app/rendezvous_community.dart';
@@ -14,6 +15,7 @@ export 'src/core/error/community_exception.dart';
 export 'src/core/logging/community_logger.dart'
     show CommunityLogEvent, CommunityLogHandler, debugConsoleLogHandler, formatLogRecord, redactedValue;
 export 'src/core/network/authorized_image.dart';
+export 'src/core/network/community_connectivity.dart' show CommunityConnectivity;
 export 'src/core/network/realtime_status.dart';
 export 'src/core/paging/paged.dart';
 export 'src/core/text/social_text_parser.dart'
@@ -48,10 +50,27 @@ export 'src/features/chat/domain/entities/chat_events.dart';
 export 'src/features/chat/domain/entities/chat_message.dart';
 export 'src/features/chat/domain/entities/chat_room.dart';
 export 'src/features/chat/domain/entities/message_extras.dart';
+export 'src/features/chat/domain/entities/outbox_message.dart';
 export 'src/features/chat/domain/entities/receipt.dart';
+export 'src/features/chat/domain/entities/stock_card.dart'
+    show maxStockCards, normalizeStockCardCode, normalizeStockCardCodes;
 export 'src/features/chat/domain/entities/stock_room_state.dart';
+export 'src/features/chat/domain/repositories/chat_cache_repository.dart';
 export 'src/features/chat/domain/repositories/chat_extras_repository.dart';
 export 'src/features/chat/domain/repositories/chat_repository.dart';
+export 'src/features/chat/domain/services/message_outbox.dart'
+    show
+        MessageOutbox,
+        OutboxBusy,
+        OutboxChanged,
+        OutboxDelivered,
+        OutboxEvent,
+        OutboxFailed,
+        OutboxGuard,
+        OutboxQueued,
+        OutboxRemoved,
+        OutboxResult,
+        OutboxSent;
 export 'src/features/chat/presentation/builders/community_chat_builders.dart'
     show CommunityChatBuilders, CommunityChatBuildersScope, CommunityPartBuilder;
 export 'src/features/chat/presentation/builders/community_chat_details.dart';
@@ -59,20 +78,29 @@ export 'src/features/chat/presentation/cubit/chat_room_cubit.dart' show ChatRoom
 export 'src/features/chat/presentation/widgets/community_chat_badge.dart' show CommunityChatBadge;
 export 'src/features/chat/presentation/widgets/community_chat_list.dart' show CommunityChatList;
 export 'src/features/chat/presentation/widgets/community_chat_room.dart' show CommunityChatRoom;
-export 'src/features/chat/presentation/widgets/message_bubble.dart' show ReactionChips, ReactionPicker;
+export 'src/features/chat/presentation/widgets/message_bubble.dart'
+    show MessageDeliveryNotice, ReactionChips, ReactionPicker;
 export 'src/features/chat/presentation/widgets/receipt_icon.dart';
 export 'src/features/chat/presentation/widgets/room_visuals.dart' show CommunityRoomAvatar;
 export 'src/features/chat/presentation/widgets/share_post_sheet.dart' show showSharePostToChat;
 export 'src/features/chat/presentation/widgets/shared_post_card.dart' show SharedPostCard;
+export 'src/features/chat/presentation/widgets/stock_cards.dart' show StockCardTile, StockCards, showStockCardPicker;
 export 'src/features/compose/presentation/widgets/community_compose_post.dart'
     show CommunityComposePost, CommunityComposerImage, showCommunityComposer;
 export 'src/features/config/domain/entities/client_config.dart';
 export 'src/features/config/domain/repositories/client_config_repository.dart';
+export 'src/features/config/domain/services/banner_dismissals.dart';
 export 'src/features/config/domain/services/client_config_service.dart';
+export 'src/features/config/presentation/widgets/community_banner_host.dart';
 export 'src/features/config/presentation/widgets/community_social_gate.dart';
+export 'src/features/drafts/domain/entities/post_draft.dart';
+export 'src/features/drafts/domain/repositories/post_draft_repository.dart';
+export 'src/features/drafts/domain/services/community_drafts.dart';
+export 'src/features/drafts/presentation/widgets/community_post_drafts.dart';
 export 'src/features/edit/domain/repositories/content_edit_repository.dart';
 export 'src/features/feed/domain/entities/pinned_post.dart';
 export 'src/features/feed/domain/entities/post.dart';
+export 'src/features/feed/domain/repositories/feed_cache_repository.dart' show FeedCacheRepository;
 export 'src/features/feed/domain/repositories/feed_repository.dart';
 export 'src/features/feed/presentation/widgets/community_feed_list.dart' show CommunityFeedList;
 export 'src/features/feed/presentation/widgets/community_stream_feed.dart' show CommunityFeedTab, CommunityStreamFeed;
@@ -101,13 +129,17 @@ export 'src/features/message_requests/presentation/widgets/community_message_req
 export 'src/features/moderation/domain/entities/report.dart';
 export 'src/features/moderation/domain/repositories/moderation_repository.dart';
 export 'src/features/notifications/domain/entities/app_notification.dart';
+export 'src/features/notifications/domain/entities/notification_event.dart';
 export 'src/features/notifications/domain/entities/notification_preferences.dart';
+export 'src/features/notifications/domain/repositories/notification_event_repository.dart';
 export 'src/features/notifications/domain/repositories/notification_preferences_repository.dart';
 export 'src/features/notifications/domain/repositories/notification_repository.dart';
+export 'src/features/notifications/domain/services/notification_reporter.dart';
 export 'src/features/notifications/presentation/widgets/community_notification_settings.dart'
     show CommunityNotificationSettings, openCommunityNotificationSettings;
 export 'src/features/notifications/presentation/widgets/community_notifications.dart'
-    show CommunityNotificationBadge, CommunityNotificationList;
+    show CommunityNotificationBadge, CommunityNotificationList, openCommunityNotification;
+export 'src/features/offline/presentation/widgets/community_offline_banner.dart';
 export 'src/features/poll/domain/entities/poll.dart';
 export 'src/features/poll/domain/repositories/poll_repository.dart';
 export 'src/features/poll/presentation/widgets/community_poll_view.dart' show CommunityPollView;
@@ -125,6 +157,7 @@ export 'src/features/search/domain/repositories/search_repository.dart';
 export 'src/features/search/presentation/widgets/community_hashtag_feed.dart';
 export 'src/features/search/presentation/widgets/community_search.dart' show CommunitySearch, openCommunitySearch;
 export 'src/features/stocks/domain/entities/stock.dart';
+export 'src/features/stocks/domain/entities/stock_info.dart';
 export 'src/features/stocks/domain/entities/stock_suggestion.dart';
 export 'src/features/stocks/domain/repositories/stock_repository.dart';
 export 'src/features/stocks/presentation/widgets/community_stock_feed.dart' show CommunityStockFeed;

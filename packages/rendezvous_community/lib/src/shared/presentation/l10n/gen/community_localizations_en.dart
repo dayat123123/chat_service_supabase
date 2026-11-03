@@ -419,6 +419,18 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
   String get messageSending => 'Sending…';
 
   @override
+  String get messagePending => 'Waiting to send';
+
+  @override
+  String get offlineBanner => 'You\'re offline. Showing saved data.';
+
+  @override
+  String get offlineChatBanner => 'You\'re offline. Text messages will be sent automatically once you\'re back online.';
+
+  @override
+  String get errorAttachmentOffline => 'Images and documents can only be sent while online.';
+
+  @override
   String get reconnecting => 'Reconnecting…';
 
   @override
@@ -1462,4 +1474,123 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
 
   @override
   String get moderationRemoved => 'Removed by a moderator';
+
+  @override
+  String get stockCardSend => 'Send stock card';
+
+  @override
+  String get stockCardHint => 'Stock code, e.g. BBCA, TLKM';
+
+  @override
+  String get stockCardAdd => 'Add';
+
+  @override
+  String get stockCardInvalid => 'Invalid stock code';
+
+  @override
+  String stockCardLimit(int count) {
+    return 'Up to $count stocks per message';
+  }
+
+  @override
+  String get bannerOpen => 'Learn more';
+
+  @override
+  String get bannerDismiss => 'Dismiss';
+
+  @override
+  String get draftsTitle => 'Post drafts';
+
+  @override
+  String get draftsEmpty => 'No drafts yet.';
+
+  @override
+  String get draftNoText => '(no text)';
+
+  @override
+  String get draftSaved => 'Draft saved';
+
+  @override
+  String get draftSavedLocally => 'Draft saved on this device';
+
+  @override
+  String get draftReplaced => 'This draft was updated on another device; the newer version was loaded.';
+
+  @override
+  String draftLimit(int count) {
+    return 'You reached the limit of $count drafts. This draft is only saved on this device.';
+  }
+
+  @override
+  String notifMentionRoom(String name, String room) {
+    return '$name mentioned you in $room';
+  }
+
+  @override
+  String notifFollowedPost(String name) {
+    return '$name published a new post';
+  }
+
+  @override
+  String notifFollowedPostMany(String name, int count) {
+    return '$name published $count new posts';
+  }
+
+  @override
+  String get notifWatchlistDigest => 'Watchlist digest';
+
+  @override
+  String notifWatchlistDigestBody(int count, String stocks, int others) {
+    String _temp0 = intl.Intl.pluralLogic(
+      others,
+      locale: localeName,
+      other: ', and $others more stocks',
+      one: ', and 1 more stock',
+      zero: '',
+    );
+    return '$count new posts about $stocks$_temp0';
+  }
+
+  @override
+  String get notifTargetPost => 'post';
+
+  @override
+  String get notifTargetComment => 'comment';
+
+  @override
+  String get notifTargetMessage => 'message';
+
+  @override
+  String notifModerationHidden(String target) {
+    return 'Your $target was hidden by a moderator';
+  }
+
+  @override
+  String notifModerationRemoved(String target) {
+    return 'Your $target was removed by a moderator';
+  }
+
+  @override
+  String get notifModerationAppealable => 'Tap to see details and appeal';
+
+  @override
+  String get notifModerationAppealed => 'An appeal for this content was already filed';
+
+  @override
+  String get notifTypeFollowedPost => 'Posts from accounts you follow';
+
+  @override
+  String get notifTypeFollowedPostHint => 'Push is off by default';
+
+  @override
+  String get notifTypeWatchlistDigest => 'Watchlist digest';
+
+  @override
+  String get notifTypeWatchlistDigestHint => 'Daily at 17:05 WIB';
+
+  @override
+  String get notifTypeModeration => 'Moderation';
+
+  @override
+  String get notifTypeModerationHint => 'Always shown in the app';
 }
