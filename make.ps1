@@ -24,7 +24,7 @@ param(
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
-                 'testkit', 'test-security', 'scan-deps', 'load-test', 'load-integration', 'chaos-test', 'loadtest-cleanup')]
+                 'testkit', 'test-security', 'test-zap', 'scan-deps', 'load-test', 'load-integration', 'chaos-test', 'loadtest-cleanup')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
@@ -244,9 +244,10 @@ switch ($Target) {
   test-cs-console   Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
   e2e-cs-console    E2E Playwright web CS React vs stack dev (butuh up -DummyOlt, Node 24 + Chromium Playwright)
 
-  Uji keamanan, beban, dan chaos (hanya stack dev: .make.ps1 up -DummyOlt; docs/testing/README.md)
+  Uji keamanan, beban, dan chaos (hanya stack dev: .\make.ps1 up -DummyOlt; docs/testing/README.md)
   testkit           Build image alat uji (k6, tokengen, psql, docker CLI)
   test-security     Uji otorisasi, konfigurasi edge statis, routing produksi
+  test-zap          OWASP ZAP baseline pasif (opsional) ke web CS dan API dev
   scan-deps         Pindai kerentanan (govulncheck, npm audit, osv-scanner, Trivy) [-Strict] [-ThirdParty], butuh Git Bash
   load-test         Uji beban k6 pembukaan pasar: -Load smoke|step|spike|light
   load-integration  Uji beban API integrasi OLT (notify + siaran, inbox saja)
@@ -487,6 +488,7 @@ switch ($Target) {
     }
     'testkit' { Invoke-Testkit @() }
     'test-security' { Assert-Config; Invoke-Testkit @('security') }
+    'test-zap' { Assert-Config; Invoke-Testkit @('zap') }
     'scan-deps' {
         $scanArgs = @('tests/security/scan-deps.sh')
         if ($Strict) { $scanArgs += '--strict' }

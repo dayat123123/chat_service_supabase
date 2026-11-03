@@ -66,7 +66,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
         test-media test-sentinel test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console \
-        testkit test-security scan-deps load-test load-integration chaos-test loadtest-cleanup
+        testkit test-security test-zap scan-deps load-test load-integration chaos-test loadtest-cleanup
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -312,3 +312,6 @@ chaos-test: check-config testkit ## Uji chaos di bawah beban ringan: make chaos-
 
 loadtest-cleanup: check-config testkit ## Hapus data uji lt_* (DRY=1 hanya menampilkan)
 	$(TESTKIT) cleanup $(if $(DRY),--dry-run)
+
+test-zap: check-config testkit ## OWASP ZAP baseline pasif (opsional, image ±1,2 GB) ke web CS :8085 dan API dev
+	$(TESTKIT) zap

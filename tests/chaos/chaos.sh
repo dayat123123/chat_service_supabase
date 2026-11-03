@@ -98,6 +98,11 @@ load_stop() {
     ' "$EXP_DIR/k6-summary.json" > "$EXP_DIR/k6-line.txt"
     note info "beban ringan" "$(cat "$EXP_DIR/k6-line.txt")"
   fi
+  if [ -n "${FAULT_T0:-}" ]; then
+    r=$(recovery_from_probe "$FAULT_T0")
+    note info "jendela gagal REST (gagal pertama -> 200 pertama)" "$( [ "$r" = 0 ] && echo "tidak ada probe gagal" || secs "${r:-999999}")"
+    FAULT_T0=""
+  fi
   rest_errors=$(awk -F, '$2 != 200' "$EXP_DIR/rest-probe.csv" | wc -l)
   note info "probe REST tiap 1 dtk gagal" "$rest_errors dari $(wc -l < "$EXP_DIR/rest-probe.csv")"
   lt_msgs=$(sql "select count(*) from public.messages m join public.profiles p on p.id = m.sender_id
@@ -109,7 +114,7 @@ load_stop() {
   fi
 }
 recovery_from_probe() {
-  awk -F, -v t="$1" '$1 >= t && $2 == 200 {print $1 - t; exit}' "$EXP_DIR/rest-probe.csv"
+  awk -F, -v t="$1" '($1 + 0) >= (t + 0) { if ($2 != 200 && f == "") f = $1; if ($2 == 200 && f != "") { print $1 - f; done = 1; exit } } END { if (!done) print (f == "" ? 0 : "") }' "$EXP_DIR/rest-probe.csv"
 }
 alert_snapshot() {
   sql "select key || ' ' || severity || ' opened=' || to_char(opened_at, 'HH24:MI:SS') || coalesce(' resolved=' || to_char(resolved_at, 'HH24:MI:SS'), ' AKTIF')
@@ -171,8 +176,7 @@ exp_pgbouncer() {
   t0=$(now_ms)
   crash pgbouncer
   wait_state pgbouncer healthy 120 && note info "pgbouncer healthy lagi" "$(secs "$(since "$t0")")"
-  r=$(recovery_from_probe $(( t0 + 1000 )))
-  note info "REST pulih (probe 200 pertama setelah crash)" "$(secs "${r:-999999}")"
+  FAULT_T0=$t0
   sleep 45
   load_stop
 }
@@ -231,18 +235,22 @@ insert into private.push_devices (user_id, token, platform) values ('$PROBE_ID',
 insert into private.push_queue (user_id, device_id, kind, ref, title, body, data, status, available_at, expires_at)
   select '$PROBE_ID', d.id, 'system', 'chaos', 'uji', 'uji', '{}', 'queued', now(), now() + interval '1 hour'
   from private.push_devices d where d.user_id = '$PROBE_ID' returning 'queued';
+select jsonb_agg(jsonb_build_object('id', id, 'outcome', 'sent'))::text as report from private.push_queue where ref = 'chaos' \gset
 select set_config('role', 'service_role', true), set_config('request.jwt.claims', '{"role":"service_role"}', true);
-select 'klaim A: ' || jsonb_array_length(public.push_claim('chaos-a', 10, 1));
+select 'klaim A: ' || jsonb_array_length(public.push_claim('chaos-a', 10, 60));
 select 'klaim B saat A masih memegang lease: ' || jsonb_array_length(public.push_claim('chaos-b', 10, 60));
-select pg_sleep(1.5);
+reset role;
+update private.push_queue set locked_until = now() - interval '1 second' where ref = 'chaos';
+select set_config('role', 'service_role', true);
 select 'klaim B setelah lease A habis (A dianggap crash): ' || jsonb_array_length(public.push_claim('chaos-b', 10, 60));
-select 'laporan A yang basi diterima: ' || public.push_report('chaos-a', (select jsonb_agg(jsonb_build_object('id', id, 'outcome', 'sent')) from private.push_queue where ref = 'chaos'));
+select 'laporan A yang basi diterima: ' || public.push_report('chaos-a', :'report'::jsonb);
+select 'laporan B diterima: ' || public.push_report('chaos-b', :'report'::jsonb);
 rollback;
 SQL
 )
   note info "uji lease push_queue (rollback)" "$(grep -E 'klaim|laporan' <<< "$out" | tr '\n' ';')"
-  grep -q 'saat A masih memegang lease: 0' <<< "$out" && grep -q 'basi diterima: 0' <<< "$out" \
-    && note ok "tidak ada klaim ganda selama lease; laporan instance lama ditolak" "-" \
+  grep -q 'saat A masih memegang lease: 0' <<< "$out" && grep -q 'lease A habis (A dianggap crash): 1' <<< "$out" && grep -q 'basi diterima: 0' <<< "$out" \
+    && note ok "tidak ada klaim ganda selama lease; diambil alih setelah lease habis; laporan instance lama ditolak" "-" \
     || note FAIL "lease push_queue" "$(tr '\n' ' ' <<< "$out" | head -c 300)"
   note info "catatan" "pengiriman at-least-once: bila notifier crash setelah FCM menerima tetapi sebelum push_report, item dikirim ulang setelah lease (60 dtk); collapse_key mengurangi dampak di HP"
 }
@@ -253,8 +261,7 @@ exp_rest() {
   t0=$(now_ms)
   crash rest
   wait_state rest healthy 120 && note info "rest healthy lagi" "$(secs "$(since "$t0")")"
-  r=$(recovery_from_probe $(( t0 + 1000 )))
-  note info "REST pulih (probe 200 pertama)" "$(secs "${r:-999999}")"
+  FAULT_T0=$t0
   sleep 45
   load_stop
 }
@@ -268,8 +275,7 @@ exp_db() {
   docker restart "$(container db)" > /dev/null
   note info "docker restart db selesai" "$(secs "$(since "$t0")")"
   wait_state db healthy 180 && note info "db healthy" "$(secs "$(since "$t0")")"
-  r=$(recovery_from_probe $(( t0 + 1000 )))
-  note info "REST pulih (probe 200 pertama sejak restart)" "$(secs "${r:-999999}")"
+  FAULT_T0=$t0
   sleep 60
   load_stop
   migrate_after=$(docker inspect -f '{{.State.FinishedAt}} exit={{.State.ExitCode}}' "$(container migrate)" 2>/dev/null)
@@ -289,8 +295,7 @@ exp_partition() {
   note info "status rest saat terputus" "$(health rest)"
   t1=$(now_ms)
   docker network connect "${STACK}_data" "$(container rest)"
-  r=$(recovery_from_probe "$t1")
-  note info "REST pulih setelah network tersambung" "$(secs "${r:-999999}")"
+  FAULT_T0=$t0
   wait_state rest healthy 120
   sleep 40
   load_stop
