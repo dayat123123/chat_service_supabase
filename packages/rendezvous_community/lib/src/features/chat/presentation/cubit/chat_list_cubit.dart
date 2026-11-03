@@ -3,10 +3,12 @@ import 'dart:math';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:rendezvous_community/src/core/network/community_connectivity.dart';
 import 'package:rendezvous_community/src/core/network/realtime_status.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_cache_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -24,6 +26,7 @@ abstract class ChatListState with _$ChatListState {
     @Default(<String, Map<String, UserSummary>>{}) Map<String, Map<String, UserSummary>> typing,
     UserSummary? me,
     Object? error,
+    @Default(false) bool stale,
   }) = _ChatListState;
 
   const ChatListState._();
@@ -43,10 +46,15 @@ class ChatListCubit extends Cubit<ChatListState> {
     this.pageSize = 30,
     this.maxWatchedRooms = 30,
     this.typingTimeout = const Duration(seconds: 6),
+    this._cache,
+    this._connectivity,
   }) : super(const ChatListState());
 
   final ChatRepository _chat;
   final Future<UserSummary> Function() _me;
+  final ChatCacheRepository? _cache;
+  final CommunityConnectivity? _connectivity;
+  StreamSubscription<bool>? _onlineChanges;
   final int pageSize;
   final int maxWatchedRooms;
   final Duration typingTimeout;
@@ -58,17 +66,36 @@ class ChatListCubit extends Cubit<ChatListState> {
   Timer? _debounce;
 
   Future<void> load() async {
-    emit(state.copyWith(status: LoadStatus.loading, error: null));
+    if (!(state.status == LoadStatus.ready && state.stale)) {
+      emit(state.copyWith(status: LoadStatus.loading, error: null));
+      _onlineChanges ??= _connectivity?.changes.listen((online) {
+        if (online && state.stale && !isClosed) unawaited(load());
+      });
+      await _showCached();
+    }
     try {
       final me = await _me();
       final page = await _chat.getRooms(limit: pageSize);
       if (isClosed) return;
-      emit(state.copyWith(status: LoadStatus.ready, rooms: page.items, nextCursor: page.nextCursor, me: me));
+      emit(
+        state.copyWith(status: LoadStatus.ready, rooms: page.items, nextCursor: page.nextCursor, me: me, stale: false),
+      );
       _activity ??= _chat.watchRoomActivity().listen(_onActivity, onError: (Object _) {});
       _watchRooms();
     } catch (e) {
-      if (!isClosed) emit(state.copyWith(status: LoadStatus.failure, error: e));
+      if (isClosed || (state.status == LoadStatus.ready && state.stale)) return;
+      emit(state.copyWith(status: LoadStatus.failure, error: e));
     }
+  }
+
+  Future<void> _showCached() async {
+    final cache = _cache;
+    if (cache == null) return;
+    final rooms = await cache.cachedRooms();
+    if (rooms.isEmpty || isClosed || state.status == LoadStatus.ready) return;
+    final me = await cache.cachedUser();
+    if (isClosed || state.status == LoadStatus.ready) return;
+    emit(state.copyWith(status: LoadStatus.ready, rooms: rooms, me: me, nextCursor: null, stale: true));
   }
 
   Future<void> loadMore() async {
@@ -109,6 +136,7 @@ class ChatListCubit extends Cubit<ChatListState> {
           rooms: [...fresh.items, ...beyond],
           nextCursor: beyond.isEmpty ? fresh.nextCursor : state.nextCursor,
           status: LoadStatus.ready,
+          stale: false,
         ),
       );
       _watchRooms();
@@ -148,7 +176,7 @@ class ChatListCubit extends Cubit<ChatListState> {
         final previous = _channels[roomId];
         _channels[roomId] = status;
         if (status == RealtimeStatus.connected && previous != null && previous != status) _scheduleRefresh();
-      case RoomReaction() || RoomStateSignal():
+      case RoomReaction() || RoomStateSignal() || RoomMessageHidden():
         return;
     }
   }
@@ -200,6 +228,7 @@ class ChatListCubit extends Cubit<ChatListState> {
     }
     await _activity?.cancel();
     await _signals?.cancel();
+    await _onlineChanges?.cancel();
     return super.close();
   }
 }

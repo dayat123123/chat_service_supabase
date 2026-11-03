@@ -66,6 +66,7 @@ class _RoomChannel {
       ..onBroadcast(event: 'receipt', callback: _onReceipt)
       ..onBroadcast(event: 'reaction', callback: _onReaction)
       ..onBroadcast(event: 'room_state', callback: _onRoomState)
+      ..onBroadcast(event: 'message_hidden', callback: _onMessageHidden)
       ..onPresenceSync((_) => _emit(RoomPresence(roomId, {for (final s in channel.presenceState()) s.key})))
       ..subscribe((status, _) async {
         _emit(RoomConnection(roomId, mapSubscribeStatus(status)));
@@ -123,6 +124,13 @@ class _RoomChannel {
 
   void _onRoomState(Map<String, dynamic> payload) {
     _emit(RoomStateSignal(roomId, parseStockRoomState(_unwrap(payload))));
+  }
+
+  void _onMessageHidden(Map<String, dynamic> payload) {
+    final data = _unwrap(payload);
+    final messageId = data['message_id'] as String?;
+    if (messageId == null) return;
+    _emit(RoomMessageHidden(roomId, messageId, userId: data['user_id'] as String?));
   }
 
   Future<void> sendTyping(UserSummary me, {required bool isTyping}) async {

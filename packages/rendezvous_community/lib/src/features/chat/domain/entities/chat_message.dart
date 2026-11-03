@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
@@ -6,7 +7,7 @@ import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'chat_message.freezed.dart';
 
-enum MessageStatus { sending, sent, failed }
+enum MessageStatus { sending, sent, failed, pending }
 
 enum MessageKind { text, system, quickReply, helpLink, identityRequest, csat }
 
@@ -37,7 +38,9 @@ abstract class ChatMessage with _$ChatMessage {
     @Default(<MessageReaction>[]) List<MessageReaction> reactions,
     String? sharedPostId,
     SharedPost? sharedPost,
+    @Default(<String>[]) List<String> stockCodes,
     ModerationStatus? moderationStatus,
+    CommunityException? sendError,
   }) = _ChatMessage;
 
   const ChatMessage._();

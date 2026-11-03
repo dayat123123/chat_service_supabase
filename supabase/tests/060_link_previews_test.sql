@@ -140,7 +140,7 @@ select is(public.link_preview_report('lp-a', jsonb_build_array(
     'final_url', 'https://news.example.com/bbca', 'title', E'  BBCA\n naik\t5%  ', 'description', repeat('d', 1500),
     'site_name', 'Berita Contoh',
     'image_path', :'h_news' || '/0123456789abcdef/preview.jpg',
-    'image_width', 1200, 'image_height', 630),
+    'image_width', 1200, 'image_height', 630, 'image_sha256', repeat('1', 64), 'image_verdict', 'allow'),
   jsonb_build_object('url_hash', :'h_blog', 'status', 'ok',
     'title', 'Blog', 'image_path', 'lain/0123456789abcdef/preview.jpg', 'image_width', 10, 'image_height', 10),
   jsonb_build_object('url_hash', :'h_komentar', 'status', 'ok'),
@@ -260,10 +260,11 @@ select is((select status from public.get_link_previews(array['https://news.examp
   'Pratinjau domain yang baru diblokir tidak lagi ditampilkan');
 reset role;
 
-insert into public.link_previews (url_hash, url, status, title, image_path, image_width, image_height, fetched_at, expires_at)
+insert into public.link_previews (url_hash, url, status, title, image_path, image_width, image_height, fetched_at, expires_at,
+                                  image_sha256, image_verdict)
 values (private.link_preview_hash('https://kuno.example.com/'), 'https://kuno.example.com/', 'ok', 'Kuno',
         private.link_preview_hash('https://kuno.example.com/') || '/aaaaaaaaaaaaaaaa/preview.png', 10, 10,
-        now() - interval '60 days', now() - interval '53 days');
+        now() - interval '60 days', now() - interval '53 days', repeat('2', 64), 'allow');
 insert into storage.objects (bucket_id, name, created_at) values
   ('link-previews', private.link_preview_hash('https://kuno.example.com/') || '/aaaaaaaaaaaaaaaa/preview.png', now() - interval '60 days'),
   ('link-previews', private.link_preview_hash('https://news.example.com/bbca?x=1') || '/0123456789abcdef/preview.jpg', now() - interval '2 days'),

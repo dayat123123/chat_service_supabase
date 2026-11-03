@@ -40,6 +40,7 @@ abstract class ClientConfig with _$ClientConfig {
     @Default(<String>['24h', '7d']) List<String> trendingWindows,
     @Default(60) int notificationAggregateMinutes,
     @Default(Duration.zero) Duration clockSkew,
+    @Default(<CommunityBanner>[]) List<CommunityBanner> banners,
     DateTime? fetchedAt,
   }) = _ClientConfig;
 
@@ -55,4 +56,21 @@ abstract class ClientConfig with _$ClientConfig {
 
   bool canEdit(DateTime createdAt, {DateTime? now}) =>
       feature(CommunityFlags.postEdit) && serverNow(now).difference(createdAt.toUtc()) < editWindow;
+}
+
+enum CommunityBannerLevel { info, warning, critical }
+
+@freezed
+abstract class CommunityBanner with _$CommunityBanner {
+  const factory CommunityBanner({
+    required String id,
+    required String title,
+    @Default('') String body,
+    String? linkUrl,
+    @Default(CommunityBannerLevel.info) CommunityBannerLevel level,
+    @Default(true) bool dismissible,
+    @Default(0) int priority,
+    DateTime? startsAt,
+    DateTime? endsAt,
+  }) = _CommunityBanner;
 }

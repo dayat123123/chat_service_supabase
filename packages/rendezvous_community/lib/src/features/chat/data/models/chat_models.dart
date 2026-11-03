@@ -1,8 +1,11 @@
+import 'dart:convert';
+
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/stock_room_state.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
@@ -115,6 +118,9 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     String? replyToSenderUsername,
     @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
     @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId,
+    @JsonKey(readValue: readAttachments, fromJson: stockCodesFromJson, includeToJson: false)
+    @Default(<String>[])
+    List<String> stockCodes,
     String? clientId,
     DateTime? editedAt,
     required DateTime createdAt,
@@ -160,6 +166,7 @@ abstract class ChatMessageModel with _$ChatMessageModel {
     payload: payload,
     reactions: isDeleted ? const [] : [for (final r in reactions ?? const <MessageReactionModel>[]) r.toEntity()],
     sharedPostId: isDeleted ? null : sharedPost?.postId ?? sharedPostId,
+    stockCodes: isDeleted ? const [] : stockCodes,
     sharedPost: isDeleted ? null : sharedPost?.toEntity(),
     moderationStatus: parseModerationStatus(moderationStatus),
   );
@@ -175,6 +182,9 @@ abstract class MessageRowModel with _$MessageRowModel {
     String? replyToId,
     @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
     @JsonKey(readValue: readAttachments, fromJson: sharedPostIdFromJson, includeToJson: false) String? sharedPostId,
+    @JsonKey(readValue: readAttachments, fromJson: stockCodesFromJson, includeToJson: false)
+    @Default(<String>[])
+    List<String> stockCodes,
     String? clientId,
     DateTime? editedAt,
     DateTime? deletedAt,
@@ -200,6 +210,7 @@ abstract class MessageRowModel with _$MessageRowModel {
     replyToId: replyToId,
     attachments: deletedAt == null ? [for (final a in attachments) a.toEntity()] : const [],
     sharedPostId: deletedAt == null ? sharedPostId : null,
+    stockCodes: deletedAt == null ? stockCodes : const [],
     clientId: clientId,
     editedAt: editedAt,
     createdAt: createdAt,
@@ -321,5 +332,57 @@ StockRoomState parseStockRoomState(Map<String, dynamic> json) {
     waitSeconds: (json['wait_seconds'] as num?)?.toInt() ?? 0,
     pinnedMessage: pinned is Map ? ChatMessageModel.fromJson(Map<String, dynamic>.from(pinned)).toEntity() : null,
     pinnedAt: DateTime.tryParse(json['pinned_at'] as String? ?? ''),
+    moderatorIds: {
+      if (json['moderators'] case final List<dynamic> ids)
+        for (final id in ids)
+          if (id is String) id,
+    },
+    mutes: {
+      if (json['mutes'] case final List<dynamic> mutes)
+        for (final mute in mutes)
+          if (mute case {'user_id': final String userId, 'until': final String until})
+            if (DateTime.tryParse(until) case final DateTime at) userId: at.toUtc(),
+    },
+    viewerMutedUntil: DateTime.tryParse(json['muted_until'] as String? ?? '')?.toUtc(),
   );
 }
+
+typedef RoomMuteNotice = ({String roomId, DateTime? mutedUntil});
+
+RoomMuteNotice? parseRoomMuteNotice(Map<String, dynamic> row) {
+  if (row['type'] != 'moderation') return null;
+  final payload = switch (row['payload']) {
+    final Map<dynamic, dynamic> map => map,
+    final String text => _decodeMap(text),
+    _ => null,
+  };
+  if (payload == null || payload['target_type'] != 'room') return null;
+  final roomId = payload['room_id'];
+  if (roomId is! String) return null;
+  final until = payload['state'] == 'muted' ? DateTime.tryParse(payload['until'] as String? ?? '')?.toUtc() : null;
+  return (roomId: roomId, mutedUntil: until);
+}
+
+Map<dynamic, dynamic>? _decodeMap(String text) {
+  try {
+    final value = jsonDecode(text);
+    return value is Map ? value : null;
+  } on FormatException {
+    return null;
+  }
+}
+
+const _roomModerationActions = {
+  'hide': RoomModerationAction.hide,
+  'mute': RoomModerationAction.mute,
+  'escalate': RoomModerationAction.escalate,
+};
+
+RoomModerationResult parseRoomModerationResult(Map<String, dynamic> json) => RoomModerationResult(
+  id: json['id'] as String? ?? '',
+  action: _roomModerationActions[json['action']] ?? RoomModerationAction.hide,
+  targetUserId: json['target_user_id'] as String?,
+  messageId: json['message_id'] as String?,
+  muteUntil: DateTime.tryParse(json['mute_until'] as String? ?? '')?.toUtc(),
+  reportId: json['report_id'] as String?,
+);

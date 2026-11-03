@@ -28,7 +28,7 @@ abstract class NotificationModel with _$NotificationModel {
   factory NotificationModel.fromJson(Map<String, dynamic> json) => _$NotificationModelFromJson(json);
 
   AppNotification? toEntity() {
-    final kind = NotificationType.values.asNameMap()[type];
+    final kind = notificationTypeFromKey(type);
     if (kind == null) return null;
     return AppNotification(
       id: id,

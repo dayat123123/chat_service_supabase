@@ -5,6 +5,7 @@ import {
   BanIcon,
   BarChart3Icon,
   ClockIcon,
+  FileLockIcon,
   FileTextIcon,
   FolderSearchIcon,
   GaugeIcon,
@@ -118,6 +119,7 @@ type SectionTarget =
   | '/compliance/words'
   | '/compliance/content'
   | '/compliance/legal'
+  | '/compliance/evidence'
   | '/nasabah'
   | '/system'
 
@@ -186,6 +188,9 @@ function PaletteBody({
       : []),
     ...(hasNasabah(agent) ? [{ label: t('nav.nasabah'), icon: UsersIcon, to: '/nasabah' as const }] : []),
     ...(superAdmin ? [{ label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const }] : []),
+    ...(superAdmin && !compliance
+      ? [{ label: t('nav.evidence'), icon: FileLockIcon, to: '/compliance/evidence' as const }]
+      : []),
     ...(superAdmin && SHOW_SYSTEM_HEALTH_NAV
       ? [{ label: t('nav.system'), icon: ActivityIcon, to: '/system' as const }]
       : []),
@@ -198,6 +203,7 @@ function PaletteBody({
           { label: t('nav.words'), icon: BanIcon, to: '/compliance/words' as const },
           { label: t('nav.contentPolicy'), icon: ShieldIcon, to: '/compliance/content' as const },
           { label: t('nav.legal'), icon: FileTextIcon, to: '/compliance/legal' as const },
+          { label: t('nav.evidence'), icon: FileLockIcon, to: '/compliance/evidence' as const },
         ]
       : []),
   ]

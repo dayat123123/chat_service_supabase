@@ -39,6 +39,7 @@ await RendezvousCommunity.initialize(
 | `RendezvousCommunity.Account` | Dokumen hukum, ekspor data, hapus akun |
 | `RendezvousCommunity.Config` | Konfigurasi klien, kill switch, versi minimum |
 | `RendezvousCommunity.Analytics` | Pengiriman batch analitik |
+| `RendezvousCommunity.Offline` | Database lokal (hapus, ganti user, error penyimpanan) dan status koneksi |
 
 Di kode: `CommunityLoggers.chat.event(Level.SEVERE, 'Failed to send message', fields: {...})`.
 
@@ -72,6 +73,18 @@ Di kode: `CommunityLoggers.chat.event(Level.SEVERE, 'Failed to send message', fi
 | INFO | Config | `Client config changed` | `socialEnabled`, `updateRequired` |
 | FINE | Analytics | `Analytics batch dropped` | `eventCount`, `kind`, `code` (isi event tidak dicatat) |
 | FINE | Analytics | `Analytics disabled by server` | — |
+| FINE | Chat | `Message queued for retry` | `roomId`, `clientId`, `attemptCount`, `kind`, `code`, `delayMs` |
+| WARNING | Chat | `Queued message failed` | `roomId`, `clientId`, `attemptCount`, `kind`, `code` |
+| FINE | Chat | `Queued message sent` | `roomId`, `clientId`, `attemptCount` |
+| FINE | Push | `Notification event queued` / `Notification event dropped` | `event`, `kind`, `code` |
+| FINE | Feed | `Draft kept on this device` | `draftId`, `kind`, `code` (isi draf tidak dicatat) |
+| INFO | Offline | `Offline cache wiped` | `storeCount` |
+| INFO | Offline | `Offline cache of a previous user removed` | — |
+| WARNING | Offline | `Offline cache operation failed` | `operation`, `errorType`, error |
+| INFO | Offline | `Network reachability changed` | `online` |
+| INFO | Offline | `Image cache wiped` | — |
+| INFO | Offline | `Image cache of a previous user removed` | — |
+| WARNING | Offline | `Image cache operation failed` | `operation` (`open`, `write`, `wipe`), `errorType`, error |
 
 ## Data sensitif
 

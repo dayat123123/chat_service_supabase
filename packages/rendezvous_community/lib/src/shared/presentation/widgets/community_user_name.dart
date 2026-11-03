@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:rendezvous_community/src/app/community_official_scope.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_builders.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_part_builder.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_official_badge.dart';
 
 class CommunityUserName extends StatelessWidget {
@@ -39,7 +42,7 @@ class CommunityUserName extends StatelessWidget {
           const CommunityOfficialBadge(),
         ] else if (user.isVerified) ...[
           const SizedBox(width: 4),
-          Icon(Icons.verified, size: 16, color: theme.colorScheme.primary),
+          _VerifiedBadge(user: user),
         ],
         if (showUsername && user.displayName != null && user.displayName!.isNotEmpty) ...[
           const SizedBox(width: 6),
@@ -52,6 +55,23 @@ class CommunityUserName extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _VerifiedBadge extends StatelessWidget {
+  const _VerifiedBadge({required this.user});
+
+  final UserSummary user;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = CommunityVerifiedBadgeDetails(user: user, color: Theme.of(context).colorScheme.primary);
+    return buildCommunityPart(
+      CommunityBadgeBuilders.of(context).verified,
+      context,
+      details,
+      Icon(Icons.verified, size: details.size, color: details.color),
     );
   }
 }

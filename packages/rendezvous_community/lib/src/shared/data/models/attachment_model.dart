@@ -10,6 +10,12 @@ List<AttachmentModel> attachmentsFromJson(Object? value) => [
       if (item is Map && item['path'] is String) AttachmentModel.fromJson(Map<String, dynamic>.from(item)),
 ];
 
+List<String> stockCodesFromJson(Object? value) => [
+  if (value is List)
+    for (final item in value)
+      if (item is Map && item['type'] == 'stock' && item['code'] is String) item['code'] as String,
+];
+
 String? sharedPostIdFromJson(Object? value) {
   if (value is! List) return null;
   for (final item in value) {

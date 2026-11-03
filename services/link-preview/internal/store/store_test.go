@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"olt-social/link-preview/internal/heartbeat"
+	"olt-social/link-preview/internal/moderation"
 )
 
 type call struct {
@@ -93,5 +94,68 @@ func TestHeartbeatPayload(t *testing.T) {
 	if c.path != "/rpc/service_heartbeat" || c.body["p_service"] != "link-preview" || c.body["p_started_at"] != "2026-11-03T01:02:03Z" ||
 		c.body["p_error"] != nil || c.body["p_detail"].(map[string]any)["fetched"] != float64(3) {
 		t.Fatalf("call = %+v", c)
+	}
+}
+
+func TestModerationConfigReadsMediaThresholds(t *testing.T) {
+	p, calls := server(t, func(string) (int, string) {
+		return 200, `{"revision":7,"thresholds":{"porn":{"hold":0.5,"block":0.9}}}`
+	})
+	cfg, err := p.ModerationConfig(context.Background(), moderation.UnknownRevision)
+	if err != nil || cfg.Revision != 7 || cfg.Unchanged || *cfg.Limits["porn"].Block != 0.9 {
+		t.Fatalf("cfg = %+v err = %v", cfg, err)
+	}
+	if c := (*calls)[0]; c.path != "/rpc/media_moderation_config" || c.body["p_revision"] != nil {
+		t.Fatalf("call = %+v", c)
+	}
+	p, calls = server(t, func(string) (int, string) { return 200, `{"revision":7,"unchanged":true}` })
+	cfg, err = p.ModerationConfig(context.Background(), 7)
+	if err != nil || !cfg.Unchanged || (*calls)[0].body["p_revision"] != float64(7) {
+		t.Fatalf("cfg = %+v err = %v", cfg, err)
+	}
+	p, _ = server(t, func(string) (int, string) { return 200, `{"revision":7}` })
+	if _, err := p.ModerationConfig(context.Background(), 6); err == nil {
+		t.Fatal("a reply without thresholds is an error")
+	}
+}
+
+func TestCachedScores(t *testing.T) {
+	p, calls := server(t, func(string) (int, string) {
+		return 200, `{"model":"m@1","scores":{"porn":0.97,"neutral":0.01}}`
+	})
+	r, ok, err := p.CachedScores(context.Background(), strings.Repeat("a", 64))
+	if err != nil || !ok || r.Model != "m@1" || r.Scores["porn"] != 0.97 {
+		t.Fatalf("r = %+v ok = %v err = %v", r, ok, err)
+	}
+	if c := (*calls)[0]; c.path != "/rpc/link_preview_image_scores" || c.body["p_sha256"] != strings.Repeat("a", 64) {
+		t.Fatalf("call = %+v", c)
+	}
+	p, _ = server(t, func(string) (int, string) { return 200, `null` })
+	if _, ok, err := p.CachedScores(context.Background(), strings.Repeat("b", 64)); ok || err != nil {
+		t.Fatalf("miss: ok = %v err = %v", ok, err)
+	}
+	p, _ = server(t, func(string) (int, string) { return 503, `{"message":"down"}` })
+	if _, ok, err := p.CachedScores(context.Background(), strings.Repeat("c", 64)); ok || err == nil {
+		t.Fatalf("error: ok = %v err = %v", ok, err)
+	}
+}
+
+func TestReportCarriesImageVerdict(t *testing.T) {
+	p, calls := server(t, func(string) (int, string) { return 200, `1` })
+	score := 0.97
+	_, err := p.Report(context.Background(), "lp-1", []Result{{URLHash: "ab", Status: StatusOK, ImageCheck: ImageCheck{
+		ImageSHA256: "cd", ImageVerdict: VerdictBlock, ImageCategory: "porn", ImageScore: &score, ImageModel: "m@1",
+		ImageScores: map[string]float64{"porn": 0.97}, ThresholdsRevision: 4}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := (*calls)[0].body["p_results"].([]any)[0].(map[string]any)
+	if row["image_sha256"] != "cd" || row["image_verdict"] != "block" || row["image_category"] != "porn" ||
+		row["image_score"] != 0.97 || row["image_model"] != "m@1" || row["thresholds_revision"] != float64(4) ||
+		row["image_scores"].(map[string]any)["porn"] != 0.97 {
+		t.Fatalf("row = %v", row)
+	}
+	if _, present := row["image_path"]; present {
+		t.Fatalf("row = %v", row)
 	}
 }

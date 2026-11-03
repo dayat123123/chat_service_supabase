@@ -11,6 +11,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 typedef CommunityErrorListener = void Function(CommunityException error);
 
+typedef CommunityReachabilityListener = void Function({required bool reachable});
+
 abstract interface class SocialRemoteDataSource {
   String? get currentUserId;
 
@@ -85,6 +87,8 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
   set errorListener(CommunityErrorListener? listener) => _errors.listener = listener;
 
+  set reachabilityListener(CommunityReachabilityListener? listener) => _errors.reachability = listener;
+
   @override
   String? get currentUserId => _tokens.currentUserId;
 
@@ -109,9 +113,11 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
   Future<T> _run<T>(Future<T> Function() fn) async {
     try {
-      return await _attempt(fn);
+      final result = await _attempt(fn);
+      _errors.succeeded();
+      return result;
     } on CommunityException catch (e) {
-      _errors.listener?.call(e);
+      _errors.failed(e);
       rethrow;
     }
   }
@@ -171,12 +177,15 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
           ),
         );
       }
+      _errors.succeeded();
       return body;
     } on CommunityException catch (e) {
-      _errors.listener?.call(e);
+      _errors.failed(e);
       rethrow;
     } catch (e) {
-      throw mapError(e);
+      final mapped = mapError(e);
+      _errors.failed(mapped);
+      throw mapped;
     } finally {
       if (shared == null) client.close();
     }
@@ -234,6 +243,14 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
 class _ErrorListeners {
   CommunityErrorListener? listener;
+  CommunityReachabilityListener? reachability;
+
+  void succeeded() => reachability?.call(reachable: true);
+
+  void failed(CommunityException error) {
+    reachability?.call(reachable: error.kind != CommunityErrorKind.network);
+    listener?.call(error);
+  }
 }
 
 extension SocialRemoteDataSourceInsert on SocialRemoteDataSource {

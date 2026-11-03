@@ -12,6 +12,11 @@ Paket fitur komunitas tahap 3 November 2026: pencarian, trending & sentimen saha
 | `0078_analytics` | event analitik (partisi bulanan), laporan Super Admin, `export_my_data` | `058_analytics_test` |
 | `0081_trending_snapshot` | snapshot hashtag trending di job 5 menit, bobot penulis inline, retensi riwayat edit | `061_trending_snapshot_test` |
 | `0083_moderation_status_rows` | `moderation_status` di baris post/komentar/pesan untuk penulis, `dm_policy` di ekspor, jenis preferensi `appeal` | `062_moderation_status_rows_test` |
+| `0087_notification_types` | mention di room saham, notifikasi postingan akun yang diikuti, ringkasan saham pantauan, notifikasi moderasi, jenis preferensi baru | `066_notification_types_test` |
+| `0088_notification_stats_segments` | statistik dibuka/diketuk notifikasi, segmen kampanye baru, `broadcast_id` di siaran OLT | `067_notification_stats_segments_test` |
+| `0089_app_banners` | banner aplikasi di `get_client_config`, RPC Super Admin | `068_app_banners_test` |
+| `0090_post_drafts_stock_cards` | sinkron draf postingan, kartu saham di chat, ekspor & hapus akun | `069_post_drafts_stock_cards_test` |
+| `0091_fixed_feature_flags` | daftar feature flag tetap (8 kunci), hanya sakelar nyala/mati | `070_fixed_feature_flags_test` |
 
 Semua pengaturan baru ada di `private.settings` (ubah lewat `update private.settings set value = ... where key = ...`), batas laju di `private.rate_limits`. Kode error memakai pola yang sudah ada: HTTP status dari `PTxxx`, field `message` berisi kode stabil (mis. `query_too_short`), `details` berisi teks bahasa Indonesia. Error `429 rate_limited` membawa header `Retry-After`.
 
@@ -120,7 +125,7 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 
 ## Preferensi notifikasi (`0076`)
 
-- Jenis: `reply`, `mention`, `like`, `follow`, `message`, `announcement`, `appeal` (keputusan banding, sejak `0083`), lalu lima jenis OLT (sejak `0086`): `olt.trade`, `olt.funds`, `olt.market`, `olt.info`, `olt.promo`. Masing-masing `in_app` dan `push` (bawaan **aktif**, kecuali push `olt.promo` yang **mati** sampai pengguna mengaktifkannya; pengguna tanpa pengaturan berperilaku persis seperti sebelumnya).
+- Jenis (urutan = urutan di `get_notification_prefs` dan `config.notification_types`): `reply`, `mention`, `like`, `follow`, `message`, `announcement`, `appeal` (keputusan banding, sejak `0083`), `followed_post`, `watchlist_digest`, `moderation` (sejak `0087`, lihat [Notifikasi baru](#notifikasi-baru-0087)), lalu lima jenis OLT (sejak `0086`): `olt.trade`, `olt.funds`, `olt.market`, `olt.info`, `olt.promo`. Masing-masing `in_app` dan `push` (bawaan **aktif**, kecuali push `olt.promo` dan push `followed_post` yang **mati** sampai pengguna mengaktifkannya; pengguna tanpa pengaturan berperilaku persis seperti sebelumnya). `in_app` jenis `moderation` selalu aktif (`in_app_locked: true`; nilai `false` diabaikan).
 - Pemetaan `kind` OLT (`private.notification_pref_type(kind, category)`): `olt.trade*`/`olt.order*` → `olt.trade` (Transaksi); `olt.deposit*`/`olt.withdrawal*`/`olt.rdn*` → `olt.funds` (Dana); `olt.price_alert*`/`olt.ipo*`/`olt.corporate_action*` → `olt.market` (Pasar); `olt.*` lain → `olt.info` (Info); pesan ber-`category` `promo` apa pun jenisnya → `olt.promo` (Promo). Kategori `important` **menembus** preferensi per jenis (in-app dan push) dan jam tenang; tetap hanya ke perangkat yang terdaftar.
 - Sebelum `0086` semua `olt.*` memakai satu preferensi `olt.trade` (push saja). Migrasi `0086` menyalin `olt.trade` yang push-nya dimatikan ke `olt.funds`, `olt.market`, dan `olt.info` supaya pengguna yang sudah mematikan push OLT tetap tidak menerimanya. `olt.trade` kini juga punya `in_app` (pesan OLT bisa masuk kotak notifikasi sebagai `announcement` dengan `payload.source = 'olt'`).
 - `in_app = false`: notifikasi tidak masuk kotak notifikasi; bila `push = true`, push tetap dikirim. `push = false`: push tidak diantrekan.
@@ -132,11 +137,13 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 
 ### RPC
 
-- `get_notification_prefs()` → `{"types": [{type, in_app, push}], "quiet_hours": {enabled, start "HH:MM", end, timezone "Asia/Jakarta"}, "aggregate_minutes": 60}`.
+- `get_notification_prefs()` → `{"types": [{type, in_app, push, in_app_locked}], "quiet_hours": {enabled, start "HH:MM", end, timezone "Asia/Jakarta"}, "aggregate_minutes": 60}`.
 - `set_notification_prefs(p_prefs jsonb)` → bentuk yang sama. Parsial: `{"types": {"like": {"push": false}}, "quiet_hours": {"enabled": true, "start": "22:00", "end": "06:00"}}` (atau `types` berupa array `[{type, in_app?, push?}]`). Error: `400 invalid_preferences`, `400 invalid_notification_type`, `400 invalid_quiet_hours`, `429 rate_limited` (`notification_prefs` 30/menit).
 - `get_notifications(p_cursor, p_limit)` bertambah `actor_count integer` dan `actors jsonb` (≤ 3 pelaku terbaru `{id, username, display_name, avatar_url}`). Contoh teks: "Budi dan {actor_count−1} lainnya menyukai postingan Anda". Notifikasi lama (sebelum 0076) memiliki `actor_count` 1.
 
-## Feature flag, kill switch, versi minimum (`0077`)
+## Feature flag, kill switch, versi minimum (`0077`, `0091`)
+
+Daftar flag **tetap**: aplikasi hanya membaca delapan kunci `search`, `trending`, `bookmarks`, `post_edit`, `message_reactions`, `share_post_to_chat`, `notification_prefs`, `analytics` (`private.known_feature_flags()`). Kunci yang tidak ada di `flags` dianggap **mati** oleh aplikasi. Flag baru tidak bisa dibuat dan flag tidak bisa dihapus; di web CS (Pengaturan → Fitur & versi) setiap fitur hanya punya sakelar nyala/mati. Menambah fitur baru = migrasi baru yang memperluas daftar.
 
 ### `get_client_config(p_platform = null, p_app_version = null)` → `jsonb` (`anon` dan `authenticated`)
 
@@ -157,9 +164,10 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 
 ### RPC Super Admin (`cs_api`, peran `cs_super_admin`, semua tercatat di audit)
 
-- `admin_feature_flags()` → `{kill_switch: {social_enabled, reason, changed_by, changed_at}, flags: [...], min_versions: [...]}`.
-- `admin_set_feature_flag(p_key, p_enabled, p_percentage = 100, p_user_ids = '{}', p_platforms = '{}', p_min_app_version = null, p_description = null)` — buat/ubah; audit `feature_flag.set` (before/after). Error `400 use_kill_switch` (kunci `social.enabled`), `invalid_flag_key`, `invalid_percentage`, `invalid_platform`, `too_many_users` (> 1000), `invalid_version`.
-- `admin_delete_feature_flag(p_key)` — audit `feature_flag.delete`; `404 flag_not_found`.
+- `admin_feature_flags()` → `{kill_switch: {social_enabled, reason, changed_by, changed_at}, flags: [...], min_versions: [...]}`; `flags` hanya berisi delapan flag tetap dalam urutan di atas.
+- `admin_toggle_feature_flag(p_key, p_enabled)` — satu-satunya yang dipakai web CS: hanya mengubah `enabled`, kolom lain tetap; audit `feature_flag.set` (before/after). Error `400 unknown_flag` (kunci di luar daftar), `400 invalid_flag` (`p_enabled` kosong).
+- `admin_set_feature_flag(p_key, p_enabled, p_percentage = 100, p_user_ids = '{}', p_platforms = '{}', p_min_app_version = null, p_description = null)` — tetap ada untuk kompatibilitas (rollout persentase/platform/versi), tetapi hanya untuk kunci yang dikenal; audit `feature_flag.set`. Error `400 use_kill_switch` (kunci `social.enabled`), `invalid_flag_key`, `unknown_flag`, `invalid_percentage`, `invalid_platform`, `too_many_users` (> 1000), `invalid_version`.
+- `admin_delete_feature_flag(p_key)` — selalu ditolak `400 flag_not_deletable`; matikan fitur alih-alih menghapusnya.
 - `admin_set_kill_switch(p_enabled, p_reason)` — alasan wajib 10–500 karakter (`400 reason_required`) untuk mematikan maupun menghidupkan; audit `kill_switch.set`.
 - `admin_set_min_version(p_platform, p_min_version | null)` — audit `client.min_version_set`.
 
@@ -200,11 +208,11 @@ Bawaan 30 hari terakhir (WIB), maksimal 366 hari (`400 invalid_range`).
 
 ## Ekspor data
 
-`export_my_data()` kini juga memuat `bookmarks`, `message_reactions`, `notification_preferences`, `dm_policy` (sejak `0083`), `linked_accounts` (rekening OLT tertaut dari agen P, bila fungsi `private.account_links_export` ada), `appeals` (banding dari agen S, dibaca dari `public.appeals` bila tabel ada; kolom pemilik `user_id`/`appellant_id`/`created_by`), dan `analytics_events` (5000 terakhir).
+`export_my_data()` kini juga memuat `bookmarks`, `message_reactions`, `notification_preferences`, `dm_policy` (sejak `0083`), `linked_accounts` (rekening OLT tertaut dari agen P, bila fungsi `private.account_links_export` ada), `appeals` (banding dari agen S, dibaca dari `public.appeals` bila tabel ada; kolom pemilik `user_id`/`appellant_id`/`created_by`), `analytics_events` (5000 terakhir), `post_drafts` (sejak `0090`), dan `notification_events` (event dibuka/diketuk notifikasi, 5000 terakhir: `{event, source_type, source_id, notification_id, created_at}`).
 
 ## Hapus akun
 
-Trigger `profiles_40_social_forget` (saat `profiles.deleted_at` terisi) menghapus bookmark, reaksi pesan, preferensi & jam tenang, jejak pelaku notifikasi (`private.notification_actors`), dan event analitik pengguna. Riwayat edit (`private.content_edits`) tetap disimpan sebagai arsip regulator, sama seperti `private.content_archive`.
+Trigger `profiles_40_social_forget` (saat `profiles.deleted_at` terisi) menghapus bookmark, reaksi pesan, preferensi & jam tenang, jejak pelaku notifikasi (`private.notification_actors`), event analitik pengguna, dan draf postingan (sejak `0090`). Event dibuka/diketuk notifikasi dianonimkan (`user_id = null`) agar statistik kampanye/siaran tidak berubah. Riwayat edit (`private.content_edits`) tetap disimpan sebagai arsip regulator, sama seperti `private.content_archive`.
 
 ## Catatan untuk pengembang klien
 
@@ -221,3 +229,163 @@ Trigger `profiles_40_social_forget` (saat `profiles.deleted_at` terisi) menghapu
 - Semua job baru: `social-trending` (*/5 menit), `social-trending-rebuild` (harian), `social-analytics` (harian), `social-content-edits-retention` (03:35 UTC). Pantau dengan `select * from cron.job_run_details order by start_time desc`.
 - Uji beban sintetis (30.000 postingan/7 hari, 200 penulis, dalam transaksi yang di-rollback, setelah `0081`): `get_feed` ±3 ms, `get_hashtag_feed` ±3 ms, `search(... 'posts')` ±80 ms (kata umum yang cocok ribuan postingan), `get_trending('24h')` ±2 ms, `get_trending('7d')` ±4 ms, `get_trending_hashtags` < 1 ms, `get_stock_sentiment` ±1 ms, job 5 menit ±0,3 dtk, rebuild harian ±0,4 dtk. Sebelum `0081`, hashtag trending dihitung langsung (7 hari ±370 ms) dan bobot penulis dipanggil per baris.
 - Riwayat edit `private.content_edits` dibersihkan job `social-content-edits-retention` (`private.content_edits_purge()`, maks 50.000 baris per jalan): baris dihapus bila tidak `legal_hold`, `retain_until` sudah lewat, **dan** `edited_at` lebih tua dari `retention.archive_days` (1825) saat ini. Jadi menaikkan setting langsung memperpanjang retensi; menurunkannya berlaku untuk baris yang `retain_until`-nya juga sudah lewat (sama konservatifnya dengan arsip regulator).
+
+## Banner aplikasi (`0089`)
+
+`get_client_config(p_platform, p_app_version)` (anon dan authenticated) kini memuat kunci tingkat atas **`banners`**: maksimal 10 banner yang aktif **saat ini** untuk platform dan versi pemanggil, urut `priority` menurun lalu `starts_at` terbaru.
+
+```json
+"banners": [{"id": "uuid", "title": "Pemeliharaan sistem", "body": "Chat dipelihara pukul 22.00 WIB",
+             "link_url": "https://olt.example/status", "level": "warning", "dismissible": true, "priority": 10,
+             "starts_at": "2026-11-03T10:00:00+00:00", "ends_at": "2026-11-04T10:00:00+00:00"}]
+```
+
+- Aktif = `starts_at ≤ now` dan (`ends_at` kosong atau `> now`). `platforms` kosong = semua platform; bila diisi, banner hanya tampil bila `p_platform` termasuk di dalamnya. `min_app_version`/`max_app_version` (inklusif, perbandingan per angka) hanya terpenuhi bila `p_app_version` dikirim. `link_url` boleh `null`; `body` boleh kosong.
+- `level`: `info` | `warning` | `critical` (gaya tampilan diserahkan ke klien). `dismissible = false` → jangan tampilkan tombol tutup.
+- **Penutupan disimpan klien** (tidak ada status di server): simpan `id` banner yang ditutup di penyimpanan lokal dan sembunyikan id itu. Mengubah banner mempertahankan `id`; untuk menampilkan ulang ke semua orang, Super Admin membuat banner baru.
+
+RPC Super Admin (`cs_api`, peran `cs_super_admin`, semua tercatat di audit dengan isi sebelum/sesudah):
+
+- `admin_banners()` → `[{id, title, body, link_url, level, starts_at, ends_at, platforms, min_app_version, max_app_version, dismissible, priority, status: active|scheduled|ended, created_by {id, name}, updated_by, created_at, updated_at}]` (aktif/terjadwal dulu, yang berakhir di akhir).
+- `admin_save_banner(p_id uuid, p_title text, p_body text = '', p_link_url text = null, p_level text = 'info', p_starts_at timestamptz = null, p_ends_at timestamptz = null, p_platforms text[] = '{}', p_min_app_version text = null, p_max_app_version text = null, p_dismissible boolean = true, p_priority integer = 0)` → satu banner (bentuk seperti daftar). `p_id = null` membuat baru; `p_starts_at = null` berarti sekarang (saat membuat) atau tetap (saat mengubah). Audit `banner.save`. Error `400`: `invalid_title` (1–80), `invalid_body` (> 300), `invalid_link` (harus `http(s)://`, ≤ 500), `invalid_level`, `invalid_platform` (android, ios, web, windows, macos, linux), `invalid_version` (format `2.4.0`, min ≤ max), `invalid_priority` (0–1000), `invalid_schedule` (`ends_at` harus setelah `starts_at`); `404 banner_not_found`.
+- `admin_delete_banner(p_id)` → `{"id", "deleted": true}`; audit `banner.delete`; `404 banner_not_found`.
+
+## Statistik dibuka/diketuk notifikasi (`0088`)
+
+### `report_notification_event(p_event, p_notification_id = null, p_campaign_id = null, p_broadcast_id = null)` → `jsonb` (authenticated)
+
+```json
+{"recorded": true, "source": "campaign", "source_id": "uuid", "read": true}
+```
+
+- `p_event`: `opened` = pengguna membuka notifikasi (mengetuk push sistem atau membuka item di kotak notifikasi); `tapped` = pengguna mengikuti tujuan notifikasi (tautan/postingan/layar tujuan). `tapped` otomatis juga mencatat `opened`.
+- Sumber: kirim `notification_id` bila ada (data push dan baris `get_notifications`); bila tidak ada, kirim `campaign_id` atau `broadcast_id` dari data push. Server mencari kampanye/siaran dari `payload.campaign_id` / `payload.broadcast_id` notifikasi milik pemanggil. Prioritas atribusi: kampanye → siaran OLT → notifikasi itu sendiri (`source = "notification"`). Notifikasi milik orang lain, kampanye yang belum dikirim, atau id yang tidak dikenal → `{"recorded": false, "source": null, ...}` tanpa error.
+- **Dedupe** per (pengguna, sumber, event): event kedua dijawab `recorded: false`. `read = true` bila notifikasi milik pemanggil baru saja ditandai dibaca (terjadi untuk `opened` maupun `tapped`).
+- Error: `400 invalid_event`, `400 missing_source` (ketiga id kosong), `401 not_authenticated`, `429 rate_limited` (`notification_event` 120/menit). Klien boleh "kirim lalu lupakan"; kegagalan tidak perlu ditampilkan.
+- Data push yang relevan (semua nilai string): `notification_id` (push dari kotak notifikasi, termasuk siaran OLT yang masuk kotak masuk), `campaign_id` (kampanye Komunitas), `broadcast_id` (siaran OLT, sejak `0088`; juga ada di `payload` notifikasi kotak masuknya).
+- Penyimpanan: `private.notification_events`. Saat akun dihapus, `user_id` dikosongkan sehingga angka statistik tetap.
+
+Web CS: setiap baris `cs_api.community_campaigns()` (dan respons `community_save_campaign`/`submit`/`review`/`cancel`) serta `cs_api.community_campaign_push(id)` kini memuat `opened`, `tapped` (jumlah pengguna unik), `open_rate`, `tap_rate` (persen dari `recipients`, 1 desimal; `null` bila `recipients = 0`). `cs_api.integration_broadcasts()` memuat field yang sama terhadap `recipients` siaran.
+
+## Segmen kampanye notifikasi (`0088`)
+
+`cs.community_campaigns.audience` kini: `all`, `stock` (pemantau saham, seperti sebelumnya), plus:
+
+| Segmen | Parameter | Penerima |
+|---|---|---|
+| `new_users` | `days` 1–365 | profil dibuat kurang dari N hari lalu |
+| `inactive` | `days` 1–365 | aktivitas terakhir ≥ N hari lalu. Aktivitas = nilai terbesar dari login/tukar token terakhir (`private.user_private.last_login_at`), `last_seen_at` perangkat push, dan event analitik terakhir; bila tidak ada, tanggal profil dibuat |
+| `platform` | `platform` (android, ios, web, windows, macos, linux) | punya perangkat push terdaftar di platform itu **atau** platform event analitik terakhirnya sama |
+| `followers` | `account_id` akun resmi aktif | pengikut akun resmi itu |
+
+Semua segmen tetap mengecualikan profil terhapus, akun resmi, dan staf. Alur empat mata tidak berubah.
+
+- `cs_api.community_audience_size(p_audience, p_stock = null, p_days = null, p_platform = null, p_account_id = null)` → `integer` (izin `community.post` atau `community.publish`). Panggilan lama `(audience, stock)` tetap jalan.
+- `cs_api.community_save_campaign(p_id, p_account_id, p_title, p_body, p_link_post_id = null, p_link_url = null, p_audience = 'all', p_audience_stock = null, p_send_at = null, p_version = null, p_audience_days = null, p_audience_platform = null, p_audience_account_id = null)`: tiga parameter baru di akhir (kompatibel). Parameter yang tidak relevan dengan segmen dibersihkan. Audit `community.campaign_save` kini memuat `audience`.
+- Error `400 invalid_audience` dengan detail: segmen tidak dikenal, kode saham salah, hari di luar 1–365, platform tidak dikenal, atau akun pengikut bukan akun resmi aktif.
+- Bentuk kampanye bertambah `audience_days`, `audience_platform`, `audience_account` (`{id, username, display_name, avatar_url}` atau null) serta statistik di atas.
+
+## Notifikasi baru (`0087`)
+
+Notifikasi masuk lewat `get_notifications` seperti biasa (tipe baru di kolom `type`). Data push memakai pola standar: semua kunci `payload` kecuali `title`/`body`/`snippet`/`excerpt`, ditambah `source = "rendezvous_community"`, `type`, `kind` (= type), `notification_id`, `actor_id`, `actor_username`. Semua nilai data push berupa string (array/boolean diserialisasi JSON, mis. `stocks = "[\"BBCA\"]"`, `appealable = "true"`).
+
+### Mention di room saham (tipe `mention`)
+
+- `@username` di pesan room **saham** memberi notifikasi ke maksimal `notifications.mention_room_max` (5) pengguna pertama yang disebut. Tidak untuk diri sendiri, profil terhapus, pengguna yang sedang di-ban, pengguna yang membisukan pengirim, atau pasangan yang saling blokir. Mute room tidak menahan mention. Pesan yang ditahan (`held`) tidak memberi notifikasi. Preferensi `mention` berlaku.
+- `payload`: `{"room_id", "room_type": "stock", "room_name", "stock_code", "message_id", "snippet"}` (bedakan dari mention postingan yang memuat `post_id`/`comment_id`). Buka room saham lalu gulir ke `message_id`.
+- Digabung per room per pengguna (`group_key = mention:room:<room_id>`): mention berikutnya sebelum dibaca menaikkan `event_count`. Push: judul "Budi menyebut Anda di $BBCA", isi cuplikan; `collapse_key` sama.
+
+### Postingan baru dari akun yang diikuti (tipe `followed_post`; bawaan in-app aktif, push **mati**)
+
+- Saat pengguna memposting konten yang langsung terlihat (`visible`), pengikutnya diberi notifikasi oleh job `social-followed-posts` (tiap 30 detik, `notifications.followed_post_batch` = 5000 pengikut per putaran). Dilewati: pengikut yang membisukan/saling blokir dengan penulis, profil terhapus, postingan yang ditahan/dihapus sebelum job berjalan, postingan lebih dari 1 hari.
+- **Akun resmi, staf, dan postingan bot integrasi tidak memicu notifikasi ini**; mereka memakai pengumuman/kampanye Komunitas (opsi "beri notifikasi") agar pengikut tidak menerima dobel.
+- `payload`: `{"post_id", "author_id", "snippet"}`; `actor_id` = penulis. Digabung per penulis per jam (UTC) selama belum dibaca: `event_count` = jumlah postingan, `payload.post_id` = postingan terbaru. Push hanya untuk postingan pertama dalam jam itu ("Budi membuat postingan baru").
+
+### Ringkasan saham pantauan (tipe `watchlist_digest`; bawaan in-app dan push aktif)
+
+- Job `social-watchlist-digest` setiap hari 17.05 WIB (10.05 UTC), sekali per hari (`private.watchlist_digest_runs`). Rentang = sejak ringkasan sebelumnya (pertama kali `notifications.digest_lookback_hours` = 24 jam; maksimal 7 hari).
+- Satu notifikasi per pengguna yang punya postingan baru **terlihat** tentang saham pantauannya (`stock_watchers`), tidak termasuk postingan sendiri, penulis yang dibisukan/saling blokir, dan saham yang dibisukan (`muted_stocks`). Pengguna tanpa postingan baru tidak diberi notifikasi.
+- `payload`: `{"date": "2026-11-03", "post_count": 12, "stock_count": 4, "stocks": ["BBCA", "TLKM", "ASII"], "since", "until"}`; `stocks` = 3 kode dengan postingan terbanyak, `post_count` = postingan unik. Tanpa `actor_id`. Push: "Ringkasan saham pantauan" / "12 postingan baru tentang $BBCA, $TLKM, $ASII, dan 1 saham lainnya". Ketuk → feed saham/watchlist.
+
+### Notifikasi moderasi (tipe `moderation`; in-app selalu aktif, push bawaan aktif)
+
+- Dikirim ke penulis saat postingan/komentar/pesan miliknya **disembunyikan** moderator (`moderation_status` → `hidden`) atau **dihapus** moderator (arsip alasan `moderator_remove`), dari jalur mana pun (web CS, admin, moderator room). Tidak dikirim untuk penahanan otomatis (`held`), konten staf/akun resmi, chat CS, atau sanksi toleransi nol.
+- `payload`: `{"target_type": "post"|"comment"|"message", "target_id", "state": "hidden"|"removed", "excerpt" (≤ 140 karakter), "appealable": true|false}` + `post_id` (komentar) atau `room_id` (pesan). `appealable = false` bila banding untuk konten itu sudah pernah diajukan. Tanpa `actor_id` (moderator tidak diungkap). Ketuk → layar konten yang dimoderasi (`get_my_moderated_content`) / `create_appeal`.
+- Push: "Postingan Anda disembunyikan moderator" / "Komentar Anda dihapus moderator", isi "Ketuk untuk melihat detail dan mengajukan banding"; data push tanpa `excerpt`.
+
+## Draf postingan (`0090`)
+
+Tabel `public.post_drafts` (hanya bisa dibaca pemiliknya; tulis lewat RPC). Maksimal `drafts.max_per_user` (20) draf.
+
+- `save_post_draft(p_client_draft_id uuid, p_body text = '', p_sentiment text = null, p_stocks text[] = '{}', p_attachments jsonb = '[]', p_poll jsonb = null, p_base_updated_at timestamptz = null)` → draf. Upsert per `client_draft_id` (dibuat klien). Teks dirapikan, kode saham dinormalkan (huruf besar, tanpa duplikat). `p_base_updated_at` = `updated_at` draf yang terakhir diketahui klien; bila draf di server lebih baru → `409 draft_conflict` (muat ulang). Tanpa `p_base_updated_at` = tulis terakhir menang.
+- `get_post_drafts()` → `[{id, client_draft_id, body, sentiment, stocks, attachments, poll, created_at, updated_at}]` terbaru dulu.
+- `delete_post_draft(p_client_draft_id)` → `boolean` (`false` bila tidak ada).
+- `create_post(..., p_client_id => client_draft_id)` menghapus draf dengan id itu secara otomatis.
+- Validasi: isi ≤ 2000 (`400 body_too_long`), sentimen `bullish|bearish|neutral` (`400 invalid_sentiment`), ≤ 10 kode `^[A-Z][A-Z0-9]{1,11}$` (`400 invalid_stocks`), lampiran ≤ 4 di folder `posts/<uid>/` (`400 invalid_attachments`), `poll` objek ≤ 4000 byte (`400 invalid_poll`, isinya divalidasi saat terbit), draf kosong (`400 empty_draft`), tanpa id (`400 invalid_draft`), `409 draft_limit`, `429 rate_limited` (`post_draft` 60/menit). Ikut `export_my_data` (`post_drafts`) dan terhapus saat akun dihapus.
+
+## Kartu saham di chat (`0090`)
+
+- Lampiran `{"type": "stock", "code": "BBCA"}` lewat `send_message(..., p_attachments)` di room `direct`, `group`, dan `stock` (bukan chat CS: `400 share_not_allowed`). Maksimal 3 kode unik per pesan (`400 invalid_attachments`), format `^[A-Z][A-Z0-9]{1,11}$` (huruf kecil/spasi dinormalkan). Kunci lain (mis. harga) dibuang; lampiran dinormalkan menjadi persis `{"type", "code"}`.
+- Boleh digabung dengan gambar dan satu bagikan postingan. Urutan tersimpan: gambar, postingan, kartu saham. Baris `get_messages` menampilkannya apa adanya di `attachments`; **harga diambil klien dari aplikasi OLT**. Pratinjau room untuk pesan tanpa teks tetap `[lampiran]`.
+
+## Catatan untuk klien (`0087`–`0090`)
+
+1. Render `banners` dari `get_client_config`; simpan id yang ditutup secara lokal; hormati `dismissible`.
+2. Laporkan `opened` saat push dibuka atau item kotak notifikasi dibuka, dan `tapped` saat tujuan diikuti, lewat `report_notification_event` (pakai `notification_id` bila ada, selain itu `campaign_id`/`broadcast_id` dari data push). Server menandai notifikasi dibaca.
+3. Tampilkan jenis preferensi baru dari `get_notification_prefs`; nonaktifkan sakelar in-app bila `in_app_locked`.
+4. Tangani tipe notifikasi `followed_post`, `watchlist_digest`, `moderation`, dan `mention` ber-`room_id` (lihat payload di atas). Klien lama menampilkan tipe yang belum dikenal sebagai notifikasi umum.
+5. Draf: simpan lokal + `save_post_draft` (debounce), gunakan `client_draft_id` sebagai `p_client_id` saat menerbitkan.
+6. Kartu saham: render dari `attachments` bertipe `stock`; ambil harga dari aplikasi OLT.
+
+Job baru: `social-followed-posts` (30 detik), `social-watchlist-digest` (10.05 UTC).
+
+## Moderator room (`0093`)
+
+Nasabah tepercaya bisa ditunjuk staf (izin `community.moderate`) menjadi moderator room saham dari web CS: Komunitas → Room saham → Moderator room. Kuasa mereka terbatas pada room itu saja.
+
+Syarat dan batas (`private.settings`, diubah Kepatuhan/Super Admin lewat `cs_api.community_set_room_moderator_settings`, tercatat di audit):
+
+| Kunci | Bawaan | Rentang |
+| --- | --- | --- |
+| `room_mods.min_trust_level` | 2 (tepercaya) | 1–3 |
+| `room_mods.sanction_free_days` | 90 hari tanpa sanksi (sanksi yang dicabut tidak dihitung; zero tolerance selalu menolak) | 0–365 |
+| `room_mods.max_mute_hours` | 24 jam | 1–24 |
+| `room_mods.max_per_room` | 10 moderator | 1–50 |
+| `room_mods.max_rooms_per_user` | 3 room | 1–20 |
+
+Akun staf CS, akun resmi, dan agen tidak bisa ditunjuk. Moderator yang dikenai sanksi apa pun otomatis dicopot (`community.room_moderator_auto_remove`); trust level yang turun menangguhkan hak (`403 room_moderator_suspended`).
+
+### RPC nasabah (authenticated)
+
+- `room_mod_hide_message(p_message_id, p_reason, p_note = null)` → `{id, action: "hide", room_id, target_user_id, message_id, ...}`. Pesan menjadi `hidden` (bisa dipulihkan staf), pengirim mendapat notifikasi `moderation` dan bisa banding lewat `create_appeal('message', id, ...)` / `get_my_moderated_content`. Disiarkan ke `room:<id>` sebagai event `message_hidden` `{message_id, user_id}`.
+- `room_mod_mute_user(p_room_id, p_user_id, p_minutes, p_reason, p_note = null, p_message_id = null)` → `{..., mute_until}`. 5 menit sampai `max_mute_hours`. Anggota yang dibisukan ditolak saat mengirim pesan di room itu: `403 room_muted`, `detail` = batas waktu ISO UTC. Tetap bisa membaca.
+- `room_mod_escalate(p_message_id, p_reason, p_note = null)` → `{..., report_id}`. Membuat laporan di antrean staf (`details` diawali `[Moderator room $KODE]`). Boleh untuk pesan moderator lain; tidak untuk pesan sendiri.
+- `p_reason`: `spam|abuse|scam|pump_and_dump|misinformation|other` (`400 invalid_mod_reason`), catatan ≤ 500 (`400 invalid_note`).
+- Galat: `403 not_room_moderator`, `403 room_moderator_suspended`, `403 protected_account` (akun resmi/staf), `403 moderator_target` (moderator lain), `403 self_target`, `404 message_not_found` (hanya pesan room saham yang tampil), `409 already_moderated|already_muted|already_escalated`, `429 rate_limited` (`room_mod_action` 15/jam dan 50/hari, dikali faktor trust).
+- Moderator **tidak** bisa: menghapus akun, melihat DM, mengubah sematan/slow mode, atau menindak akun resmi, staf, dan moderator lain.
+
+`get_stock_room_state` dan siaran `room_state` memuat `moderators` (array user id, untuk lencana). `get_stock_room_state` juga memuat `is_moderator` dan `muted_until` milik pemanggil.
+
+#### Privasi bisu (`0096`)
+
+Siapa yang sedang dibisukan tidak dibagikan ke anggota room (di room saham, itu sama dengan membuka siapa yang sedang ditindak):
+
+- Siaran `room_state` di `room:<id>` tidak pernah memuat `mutes`, `muted_until`, atau `is_moderator`. Membisukan dan mencabut bisu juga tidak memicu siaran `room_state` sama sekali, jadi waktu siaran tidak bisa dipakai menebak.
+- `get_stock_room_state` memuat `mutes` (`[{user_id, until}]` yang masih berlaku) **hanya** bila pemanggil moderator room itu (untuk menghindari bisu ganda). Anggota biasa tidak menerima kunci `mutes`; tiap anggota tetap menerima `muted_until` miliknya sendiri. Staf melihat daftar bisu di `cs_api.community_room_state`.
+- Anggota yang dibisukan diberi tahu lewat notifikasi pribadinya: baris `public.notifications` jenis `moderation` (in-app tidak bisa dimatikan, push mengikuti preferensi) dengan payload `{target_type: "room", target_id, room_id, stock_code, state: "muted"|"unmuted", until, reason, appealable: false}`, tanpa `actor_id` dan tanpa identitas moderator. Dikirim saat dibisukan (`state: muted`) dan saat staf mencabut bisu lewat `community_undo_room_moderator_action` (`state: unmuted`, atau `muted` dengan `until` baru bila masih ada bisu lain yang berlaku). Bisu yang habis waktunya tidak dikirimi notifikasi: klien memakai `until`, dan server menolak kiriman berdasarkan waktu yang sama.
+- Push: "Anda dibisukan moderator di $KODE" / "Anda bisa mengirim pesan lagi setelah DD/MM HH:MI WIB"; pencabutan: "Bisu Anda di $KODE dicabut". Ketukan membuka room.
+- Cadangan: `403 room_muted` (`detail` = batas waktu ISO UTC) tetap dikembalikan saat mengirim.
+
+
+### RPC staf (`cs_api`, izin `community.moderate`)
+
+- `community_room_moderators(p_code)` → `{room_id, stock_code, moderators[], removed[] (20 terakhir), settings}`; tiap moderator memuat `problems` (alasan hak ditangguhkan), `actions_7d`, `undone_7d`.
+- `community_room_moderator_candidates(p_code, p_query)` → pengguna dengan `eligible`, `problems`, `is_moderator`, `moderated_rooms`, `member`.
+- `community_appoint_room_moderator(p_code, p_user_id, p_note = null)` (room dibuat bila belum ada, nasabah otomatis menjadi anggota; `400 not_eligible` dengan `detail` = daftar masalah, `409 already_moderator|room_moderator_limit|user_moderator_limit`) dan `community_remove_room_moderator(p_code, p_user_id, p_reason)` (alasan 5–500). Keduanya tercatat di `cs.cs_audit_log`.
+- `community_room_moderator_actions(p_code = null, p_limit = 50, p_before = null, p_before_id = null)` → `{items}` log aksi (semua room bila `p_code` kosong) beserta cuplikan pesan, status laporan/banding, dan `can_undo`.
+- `community_undo_room_moderator_action(p_id, p_note)`: memulihkan pesan tersembunyi (banding yang menunggu ikut diterima dan pengirim diberi tahu) atau mencabut bisu. Eskalasi diselesaikan dari antrean laporan (`400 undo_not_supported`). Tercatat `community.room_moderator_undo`.
+- `community_room_moderator_settings()`; `community_set_room_moderator_settings(p_values)` khusus peran `compliance`/`cs_super_admin`.
+
+### Klien Flutter (`rendezvous_community`)
+
+Tanpa kode tambahan di aplikasi host: `CommunityChatRoom` membaca `StockRoomState.moderatorIds`, `viewerMutedUntil` (bisu milik sendiri, dari `muted_until`), dan `mutes` (hanya terisi untuk moderator; kosong untuk anggota biasa). Selama room saham terbuka, koneksi room mendengarkan notifikasi bisu milik pengguna (postgres_changes `notifications` dengan filter `user_id`, satu channel bersama untuk semua room) dan memancarkan `OwnRoomMuteChanged(mutedUntil)`; `ChatRoomCubit` langsung menerapkannya lalu memuat ulang `get_stock_room_state`. Siaran `room_state` tidak mengubah bisu milik sendiri maupun daftar bisu moderator; anggota yang baru ditunjuk moderator memuat ulang status untuk mendapat daftar bisu. Moderator melihat strip pemberitahuan dan aksi tekan-lama (sembunyikan, bisukan, eskalasi) di pesan anggota; pesan moderator berlencana; anggota yang dibisukan melihat banner dan tombol kirim nonaktif sampai waktunya habis. API: `ChatExtrasRepository.hideMessage/muteMember/escalateMessage`, `ChatRoomCubit.hideMessage/muteMember/escalateMessage`, dan `CommunityMessageDetails.senderIsModerator/onHide/onMuteSender/onEscalate` untuk builder kustom.

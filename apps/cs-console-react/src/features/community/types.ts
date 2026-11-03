@@ -106,7 +106,21 @@ export const campaignStatuses = [
 ] as const
 export type CampaignStatus = (typeof campaignStatuses)[number]
 
-export type Audience = 'all' | 'stock'
+export const audiences = ['all', 'stock', 'new_users', 'inactive', 'platform', 'followers'] as const
+export type Audience = (typeof audiences)[number]
+
+export const audiencePlatforms = ['android', 'ios', 'web', 'windows', 'macos', 'linux'] as const
+export type AudiencePlatform = (typeof audiencePlatforms)[number]
+
+export const AUDIENCE_DAYS_MAX = 365
+
+export type AudienceQuery = {
+  audience: Audience
+  stock: string | null
+  days: number | null
+  platform: AudiencePlatform | null
+  account_id: string | null
+}
 
 export type Campaign = {
   id: string
@@ -117,6 +131,9 @@ export type Campaign = {
   link_url: string | null
   audience: Audience
   audience_stock: string | null
+  audience_days: number | null
+  audience_platform: AudiencePlatform | null
+  audience_account: AccountRef | null
   status: CampaignStatus
   send_at: string | null
   created_by: StaffRef
@@ -129,6 +146,10 @@ export type Campaign = {
   started_at: string | null
   finished_at: string | null
   recipients: number
+  opened: number
+  tapped: number
+  open_rate: number | null
+  tap_rate: number | null
   version: number
 }
 
@@ -140,6 +161,9 @@ export type CampaignDraft = {
   link_url: string | null
   audience: Audience
   audience_stock: string | null
+  audience_days: number | null
+  audience_platform: AudiencePlatform | null
+  audience_account_id: string | null
   send_at: string | null
 }
 

@@ -1,6 +1,7 @@
 import { MegaphoneIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
+import { EngagementItems } from '@/components/engagement-stats'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { QueryContent } from '@/features/settings/components/settings-ui'
 import { ToneBadge } from '@/features/system/components/system-ui'
@@ -69,7 +70,7 @@ function BroadcastItem({ item }: { item: IntegrationBroadcast }) {
           <TargetText target={item.target} />
         </span>
       </p>
-      <dl className="grid grid-cols-3 gap-x-4 gap-y-1 text-xs sm:grid-cols-6">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
         {counters.map((counter) => (
           <div key={counter} className="min-w-0">
             <dt className="truncate text-muted-foreground">
@@ -78,6 +79,11 @@ function BroadcastItem({ item }: { item: IntegrationBroadcast }) {
             <dd className="tabular font-medium">{formatNumber(item[counter])}</dd>
           </div>
         ))}
+        <EngagementItems
+          value={item}
+          termClassName="truncate text-muted-foreground"
+          valueClassName="font-medium"
+        />
       </dl>
       {item.error ? (
         <p className="text-xs break-words text-destructive">

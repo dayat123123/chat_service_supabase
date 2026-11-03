@@ -2,6 +2,7 @@ import { compareMessages } from '@/features/conversation/cache'
 import type { ChatMessage } from '@/features/conversation/types'
 import { rpc } from '@/lib/supabase'
 
+import { policyCall } from './policy-versions/api'
 import type {
   AuditCursor,
   AuditFilter,
@@ -85,12 +86,13 @@ export const complianceApi = {
   },
   confirmPolicy: (key: PolicyKey, value: number, note: string) =>
     rpc<Policy>('compliance_confirm_policy', { p_key: key, p_value: value, p_note: note.trim() || null }),
-  bannedWords: () => rpc<BannedWordList>('compliance_banned_words'),
+  bannedWords: () => policyCall<BannedWordList>('compliance_banned_words'),
   addBannedWord: (word: string, action: BannedAction) =>
-    rpc<BannedWordList>('compliance_add_banned_word', { p_word: word, p_action: action }),
+    policyCall<BannedWordList>('compliance_add_banned_word', { p_word: word, p_action: action }),
   setBannedWordAction: (word: string, action: BannedAction) =>
-    rpc<BannedWordList>('compliance_set_banned_word_action', { p_word: word, p_action: action }),
-  deleteBannedWord: (word: string) => rpc<BannedWordList>('compliance_delete_banned_word', { p_word: word }),
+    policyCall<BannedWordList>('compliance_set_banned_word_action', { p_word: word, p_action: action }),
+  deleteBannedWord: (word: string) =>
+    policyCall<BannedWordList>('compliance_delete_banned_word', { p_word: word }),
   importBannedWords: (rows: { word: string; action: BannedAction }[]) =>
-    rpc<BannedImportResult>('compliance_import_banned_words', { p_rows: rows }),
+    policyCall<BannedImportResult>('compliance_import_banned_words', { p_rows: rows }),
 }

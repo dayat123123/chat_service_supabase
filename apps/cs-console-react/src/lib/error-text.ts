@@ -59,6 +59,7 @@ const communityCodes = [
   'no_push_devices',
   'invalid_avatar',
   'account_not_found',
+  'invalid_audience',
 ] as const
 
 type CommunityCode = (typeof communityCodes)[number]
@@ -172,15 +173,11 @@ const platformCodes = [
   'key_not_found',
   'key_revoked',
   'reason_required',
-  'use_kill_switch',
-  'invalid_flag_key',
   'invalid_flag',
-  'invalid_percentage',
+  'unknown_flag',
+  'flag_not_deletable',
   'invalid_platform',
-  'too_many_users',
   'invalid_version',
-  'invalid_description',
-  'flag_not_found',
   'invalid_kill_switch',
   'invalid_range',
 ] as const
@@ -203,6 +200,19 @@ const policyCodes = [
   'invalid_surface',
   'invalid_text',
   'invalid_image_thresholds',
+  'policy_review_required',
+  'policy_no_change',
+  'policy_stale',
+  'policy_limit',
+  'policy_draft_not_found',
+  'policy_change_not_found',
+  'policy_change_decided',
+  'policy_version_not_found',
+  'invalid_policy_call',
+  'invalid_reason',
+  'note_required',
+  'four_eyes',
+  'invalid_decision',
 ] as const
 
 const moderationCodes = [
@@ -248,4 +258,21 @@ export function policyErrorText(error: unknown): string {
 export function moderationErrorText(error: unknown): string {
   const code = toApiError(error).code
   return among(moderationCodes, code) ? i18n.t(`moderation.errors.${code}`) : errorText(error)
+}
+
+const bannerCodes = [
+  'invalid_title',
+  'invalid_body',
+  'invalid_link',
+  'invalid_level',
+  'invalid_platform',
+  'invalid_version',
+  'invalid_priority',
+  'invalid_schedule',
+  'banner_not_found',
+] as const
+
+export function bannerErrorText(error: unknown): string {
+  const code = toApiError(error).code
+  return among(bannerCodes, code) ? i18n.t(`platform.banners.errors.${code}`) : errorText(error)
 }

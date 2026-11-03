@@ -11,7 +11,7 @@ App contoh yang meniru cara OLT memasang `rendezvous_community`:
 
 Menu yang tersedia: Stream, Saham, Chat, Notifikasi, dan Profil. Ada juga tombol untuk mengganti tema terang/gelap, bahasa ID/EN, dan gaya chat bawaan/kustom.
 
-Fitur 1.3.0 bisa dicoba dari tombol **Jelajah** (ikon kompas): Cari, Trending, Disimpan, Permintaan pesan, Notifikasi (preferensi & jam tenang), Banding saya, dan **Bagikan chart** (membuat gambar chart contoh dengan `dart:ui` lalu membuka `showCommunityComposer(initialStock:, initialImage:)`). Halaman Saham menampilkan `CommunityStockSentiment`, tombol "Bagikan chart", dan tombol "Beli" yang memanggil `trackOrderTap()`. Permintaan pesan muncul di atas daftar Chat bila ada; pengaturan pesan langsung, notifikasi, dan banding ada di Privasi & akun. App memasang `CommunityUpdateListener` yang menampilkan dialog bila server mewajibkan update (`appVersion: '1.3.0'`). Tombol gaya chat (ikon palet) memasang contoh builder dari `lib/custom_chat_style.dart` lewat `CommunityChatBuildersScope`: gelembung pesan, composer, tile daftar chat, dan pemisah hari versi host, dengan logika tetap dari package.
+Fitur 1.3.0 bisa dicoba dari tombol **Jelajah** (ikon kompas): Cari, Trending, Disimpan, Permintaan pesan, Notifikasi (preferensi & jam tenang), Banding saya, dan **Bagikan chart** (membuat gambar chart contoh dengan `dart:ui` lalu membuka `showCommunityComposer(initialStock:, initialImage:)`). Halaman Saham menampilkan `CommunityStockSentiment`, tombol "Bagikan chart", dan tombol "Beli" yang memanggil `trackOrderTap()`. Permintaan pesan muncul di atas daftar Chat bila ada; pengaturan pesan langsung, notifikasi, dan banding ada di Privasi & akun. App memasang `CommunityUpdateListener` yang menampilkan dialog bila server mewajibkan update (`appVersion: '1.3.0'`). Tombol gaya chat (ikon palet) memasang contoh builder dari `lib/custom_chat_style.dart` lewat `CommunityChatBuildersScope`: gelembung pesan, composer, tile daftar chat, dan pemisah hari versi host, dengan logika tetap dari package. Tombol kartu post & badge (ikon `style`, 1.4.0) memasang `lib/custom_feed_style.dart` lewat `CommunityBuildersScope`: kartu post versi host (`CommunityFeedBuilders.postCard`, post tersemat tetap bawaan) dan badge berbentuk pil untuk semua badge label serta jumlah belum dibaca (`CommunityBadgeBuilders.label`/`count`).
 
 ## Menjalankan
 
@@ -52,9 +52,9 @@ Build debug Android mengizinkan HTTP (`android/app/src/debug/AndroidManifest.xml
 make web-example                # Windows: .\make.ps1 web-example
 ```
 
-Perintah ini mem-build app ke `build/web`, lalu menyajikannya lewat container Caddy `olt-web-example` di `http://localhost:8081`. Setelah mengubah kode, jalankan lagi untuk build ulang. Untuk menghentikan: `docker rm -f olt-web-example`.
+Perintah ini mem-build app ke `build/web`, lalu menyajikannya lewat container Caddy `olt-web-example` di `http://localhost:8086`. Setelah mengubah kode, jalankan lagi untuk build ulang. Untuk menghentikan: `docker rm -f olt-web-example`.
 
-- `http://localhost:8081/?user=sari_invest` langsung masuk sebagai Sari (token mock). Nilai lain: `budi_santoso`, `andi_trader`, `rina_saham`, `dewi_cuan`, `hidayat` (LoginId csAdmin uji), `hidayat2`, atau id OLT-nya (mis. `1002`).
+- `http://localhost:8086/?user=sari_invest` langsung masuk sebagai Sari (token mock). Nilai lain: `budi_santoso`, `andi_trader`, `rina_saham`, `dewi_cuan`, `hidayat` (LoginId csAdmin uji), `hidayat2`, atau id OLT-nya (mis. `1002`).
 - Sesi hanya disimpan di memori tab, jadi tiap tab bisa menjadi user berbeda. Chat, indikator mengetik, like, komentar, dan notifikasi realtime bisa dicoba antara tab dengan tab, atau tab dengan app Windows.
 - Form "Login OLT dummy" juga berfungsi di web (stack `make up DUMMY_OLT=1`).
 - Untuk development dengan hot reload: `flutter run -d chrome --dart-define=OLT_SOCIAL_ANON_KEY=<ANON_KEY>`.
@@ -84,6 +84,12 @@ flutter test integration_test/app_test.dart -d windows --dart-define=OLT_SOCIAL_
 
 # form login OLT dummy (butuh make up DUMMY_OLT=1):
 make e2e-windows-dummy          # Windows: .\make.ps1 e2e-windows-dummy
+```
+
+Tes performa scroll tanpa backend (repository palsu, mode profile; budget dan cara menjalankan di Android ada di README package, bagian "Tes performa scroll"):
+
+```bash
+flutter drive --profile -d windows --driver=test_driver/perf_driver.dart --target=integration_test/perf_scroll_test.dart
 ```
 
 Tes klien WebSocket OLT dummy (tanpa UI) ada di `test/dummy_olt_client_test.dart` dan dilewati kecuali `OLT_DUMMY_IT=1`:

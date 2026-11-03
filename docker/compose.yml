@@ -805,12 +805,13 @@ services:
 
   # Pembersih file Storage (services/janitor). Menghapus file akun yang dihapus (avatar, lampiran
   # postingan/chat, dokumen CS) dan surat yang lewat masa simpan, dari antrean
-  # private.storage_cleanup_queue, lewat API storage agar file di disk/S3 ikut terhapus.
+  # private.storage_cleanup_queue, lewat API storage agar file di disk/S3 ikut terhapus. Juga menyalin
+  # file konten yang dilaporkan/dihapus ke bucket evidence (karantina bukti, migrasi 0095) sebelum dihapus.
   janitor:
     <<: *base
     build:
       context: ../services/janitor
-    image: olt-social/janitor:0.1.0
+    image: olt-social/janitor:0.2.0
     networks: [app]
     depends_on:
       migrate:
@@ -1000,12 +1001,14 @@ services:
 
   # Pratinjau link (services/link-preview): satu-satunya layanan yang menghubungi host internet
   # sembarang. Proteksi SSRF menolak alamat privat (termasuk jaringan Docker), port selain 80/443,
-  # dan lebih dari 3 redirect. Hasil dibaca klien lewat RPC get_link_previews.
+  # dan lebih dari 3 redirect. Setiap gambar pratinjau diklasifikasi classifier dengan ambang yang
+  # sama dengan media; bila classifier mati, pratinjau tampil tanpa gambar (fail closed). Hasil
+  # dibaca klien lewat RPC get_link_previews.
   link-preview:
     <<: *base
     build:
       context: ../services/link-preview
-    image: olt-social/link-preview:0.1.0
+    image: olt-social/link-preview:0.2.0
     networks: [app, egress]
     depends_on:
       migrate:
@@ -1013,6 +1016,8 @@ services:
       rest:
         condition: service_healthy
       storage:
+        condition: service_healthy
+      classifier:
         condition: service_healthy
     stop_grace_period: 30s
     secrets: [jwt_secret]
@@ -1024,6 +1029,9 @@ services:
       STORAGE_URL: http://storage:5000
       USER_AGENT: ${LINK_PREVIEW_USER_AGENT:-OLTSocialLinkPreview/1.0 (+https://olt-social.invalid/link-preview)}
       CONCURRENCY: ${LINK_PREVIEW_CONCURRENCY:-4}
+      CLASSIFIER_URL: http://classifier:8080
+      CLASSIFIER_TIMEOUT: ${LINK_PREVIEW_CLASSIFIER_TIMEOUT:-10s}
+      MODERATION_REFRESH: 30s
     healthcheck:
       test: ["CMD", "/link-preview", "healthcheck"]
       interval: 10s

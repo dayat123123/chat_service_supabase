@@ -105,6 +105,7 @@ class _PostDetailView extends StatelessWidget {
               children: [
                 Expanded(
                   child: ListView.builder(
+                    addAutomaticKeepAlives: false,
                     padding: const EdgeInsets.only(bottom: 16),
                     itemCount: header.length + rows.length,
                     itemBuilder: (context, index) => index < header.length

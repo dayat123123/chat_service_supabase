@@ -4,6 +4,7 @@ import { initReactI18next } from 'react-i18next'
 import { logger } from '@/lib/logger'
 import { readLocal } from '@/lib/storage'
 
+import type { evidence } from './evidence/id'
 import { id } from './id'
 import type { moderation } from './moderation/id'
 import type { platform } from './platform/id'
@@ -12,7 +13,12 @@ import type { policy } from './policy/id'
 export const languages = ['id', 'en'] as const
 export type Language = (typeof languages)[number]
 
-type Bundles = { platform: typeof platform; policy: typeof policy; moderation: typeof moderation }
+type Bundles = {
+  platform: typeof platform
+  policy: typeof policy
+  moderation: typeof moderation
+  evidence: typeof evidence
+}
 export type Bundle = keyof Bundles
 
 declare module 'i18next' {
@@ -34,6 +40,10 @@ const bundleLoaders: { [B in Bundle]: Record<Language, () => Promise<Bundles[B]>
   moderation: {
     id: () => import('./moderation/id').then((module) => module.moderation),
     en: () => import('./moderation/en').then((module) => module.moderation),
+  },
+  evidence: {
+    id: () => import('./evidence/id').then((module) => module.evidence),
+    en: () => import('./evidence/en').then((module) => module.evidence),
   },
 }
 

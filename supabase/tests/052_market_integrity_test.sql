@@ -1,5 +1,6 @@
 begin;
 select plan(41);
+update cs.cs_settings set value = 'false' where key = 'compliance.policy_four_eyes';
 
 update private.rate_limits set max_count = 1000 where action in ('message', 'room_create', 'stock_room_create');
 delete from cs.manipulation_alerts;

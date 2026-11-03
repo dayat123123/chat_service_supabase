@@ -36,7 +36,8 @@ class NotificationPreferencesCubit extends Cubit<NotificationPreferencesState> {
   Future<void> setChannel(String type, {bool? inApp, bool? push}) async {
     final before = state.preferences;
     final current = before.of(type);
-    if (current == null) return;
+    if (current == null || (current.inAppLocked && inApp != null && push == null)) return;
+    if (current.inAppLocked) inApp = null;
     final next = current.copyWith(
       inApp: current.supportsInApp ? (inApp ?? current.inApp) : null,
       push: push ?? current.push,

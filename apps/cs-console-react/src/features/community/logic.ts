@@ -2,8 +2,10 @@ import { isSuperAdmin } from '@/features/presence/types'
 import { format } from '@/lib/time'
 
 import {
+  AUDIENCE_DAYS_MAX,
   SLOW_MODE_MAX,
   type Appeal,
+  type AudienceQuery,
   type Campaign,
   type CampaignStatus,
   type CommunityPermission,
@@ -252,4 +254,54 @@ export function evidenceText(evidence: Record<string, unknown>, key: string) {
 export function evidenceIds(evidence: Record<string, unknown>, key: string) {
   const value = evidence[key]
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+}
+
+export type SegmentInput = Omit<AudienceQuery, 'days' | 'stock'> & { stock: string; days: string }
+export type SegmentProblem = 'stock' | 'days' | 'platform' | 'account'
+
+export function parseDays(text: string) {
+  const trimmed = text.trim()
+  if (!/^\d{1,3}$/.test(trimmed)) return null
+  const days = Number(trimmed)
+  return days >= 1 && days <= AUDIENCE_DAYS_MAX ? days : null
+}
+
+export function segmentQuery(input: SegmentInput): AudienceQuery {
+  const audience = input.audience
+  return {
+    audience,
+    stock: audience === 'stock' ? cleanStock(input.stock) : null,
+    days: audience === 'new_users' || audience === 'inactive' ? parseDays(input.days) : null,
+    platform: audience === 'platform' ? input.platform : null,
+    account_id: audience === 'followers' ? input.account_id : null,
+  }
+}
+
+export function segmentProblem(query: AudienceQuery): SegmentProblem | null {
+  switch (query.audience) {
+    case 'stock':
+      return stockCodePattern.test(query.stock ?? '') ? null : 'stock'
+    case 'new_users':
+    case 'inactive':
+      return query.days === null ? 'days' : null
+    case 'platform':
+      return query.platform ? null : 'platform'
+    case 'followers':
+      return query.account_id ? null : 'account'
+    default:
+      return null
+  }
+}
+
+export function campaignSegment(campaign: Campaign): AudienceQuery & { account_name: string | null } {
+  return {
+    audience: campaign.audience,
+    stock: campaign.audience_stock,
+    days: campaign.audience_days ?? null,
+    platform: campaign.audience_platform ?? null,
+    account_id: campaign.audience_account?.id ?? null,
+    account_name: campaign.audience_account
+      ? (campaign.audience_account.display_name ?? `@${campaign.audience_account.username}`)
+      : null,
+  }
 }

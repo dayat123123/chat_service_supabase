@@ -24,13 +24,36 @@ export type Database = {
         Args: { p_from?: string; p_to?: string }
         Returns: Json
       }
+      admin_banners: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_delete_banner: { Args: { p_id: string }; Returns: Json }
       admin_delete_feature_flag: { Args: { p_key: string }; Returns: Json }
       admin_delete_holiday: { Args: { p_day: string }; Returns: Json }
       admin_feature_flags: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_holidays: { Args: { p_year: number }; Returns: Json }
       admin_options: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_policy_four_eyes: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       admin_quick_replies: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_reset_password: { Args: { p_agent_id: string }; Returns: Json }
+      admin_save_banner: {
+        Args: {
+          p_body?: string
+          p_dismissible?: boolean
+          p_ends_at?: string
+          p_id: string
+          p_level?: string
+          p_link_url?: string
+          p_max_app_version?: string
+          p_min_app_version?: string
+          p_platforms?: string[]
+          p_priority?: number
+          p_starts_at?: string
+          p_title: string
+        }
+        Returns: Json
+      }
       admin_save_holiday: {
         Args: { p_day: string; p_kind: string; p_name: string }
         Returns: Json
@@ -87,11 +110,19 @@ export type Database = {
         Args: { p_agent_id: string; p_permissions: string[] }
         Returns: Json
       }
+      admin_set_policy_four_eyes: {
+        Args: { p_enabled: boolean }
+        Returns: Json
+      }
       admin_set_setting: {
         Args: { p_key: string; p_value: Json }
         Returns: Json
       }
       admin_settings: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_toggle_feature_flag: {
+        Args: { p_enabled: boolean; p_key: string }
+        Returns: Json
+      }
       admin_topics: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_update_agent: {
         Args: {
@@ -186,8 +217,18 @@ export type Database = {
         Args: { p_limit?: number; p_status?: string }
         Returns: Json
       }
+      community_appoint_room_moderator: {
+        Args: { p_code: string; p_note?: string; p_user_id: string }
+        Returns: Json
+      }
       community_audience_size: {
-        Args: { p_audience: string; p_stock?: string }
+        Args: {
+          p_account_id?: string
+          p_audience: string
+          p_days?: number
+          p_platform?: string
+          p_stock?: string
+        }
         Returns: number
       }
       community_campaign_push: { Args: { p_id: string }; Returns: Json }
@@ -246,6 +287,10 @@ export type Database = {
         Returns: Json
       }
       community_posts: { Args: { p_status?: string }; Returns: Json }
+      community_remove_room_moderator: {
+        Args: { p_code: string; p_reason: string; p_user_id: string }
+        Returns: Json
+      }
       community_reports: {
         Args: { p_limit?: number; p_status?: string }
         Returns: Json
@@ -294,6 +339,24 @@ export type Database = {
         }
         Returns: Json
       }
+      community_room_moderator_actions: {
+        Args: {
+          p_before?: string
+          p_before_id?: string
+          p_code?: string
+          p_limit?: number
+        }
+        Returns: Json
+      }
+      community_room_moderator_candidates: {
+        Args: { p_code: string; p_query: string }
+        Returns: Json
+      }
+      community_room_moderator_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      community_room_moderators: { Args: { p_code: string }; Returns: Json }
       community_room_settings: {
         Args: { p_code: string; p_slow_mode_seconds: number; p_until?: string }
         Returns: Json
@@ -322,6 +385,9 @@ export type Database = {
         Args: {
           p_account_id: string
           p_audience?: string
+          p_audience_account_id?: string
+          p_audience_days?: number
+          p_audience_platform?: string
           p_audience_stock?: string
           p_body: string
           p_id: string
@@ -354,6 +420,10 @@ export type Database = {
         Args: { p_disabled: boolean; p_id: string }
         Returns: Json
       }
+      community_set_room_moderator_settings: {
+        Args: { p_values: Json }
+        Returns: Json
+      }
       community_set_verified: {
         Args: { p_reason: string; p_user_id: string; p_verified: boolean }
         Returns: Json
@@ -364,6 +434,10 @@ export type Database = {
       }
       community_submit_post: {
         Args: { p_id: string; p_version?: number }
+        Returns: Json
+      }
+      community_undo_room_moderator_action: {
+        Args: { p_id: string; p_note: string }
         Returns: Json
       }
       community_user: { Args: { p_user_id: string }; Returns: Json }
@@ -444,6 +518,49 @@ export type Database = {
       }
       compliance_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       compliance_policies: { Args: Record<PropertyKey, never>; Returns: Json }
+      compliance_policy_call: {
+        Args: { p_args?: Json; p_fn: string }
+        Returns: Json
+      }
+      compliance_policy_change: { Args: { p_id: number }; Returns: Json }
+      compliance_policy_changes: {
+        Args: { p_limit?: number; p_status?: string }
+        Returns: Json
+      }
+      compliance_policy_decide: {
+        Args: { p_approve: boolean; p_id: number; p_note?: string }
+        Returns: Json
+      }
+      compliance_policy_discard: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      compliance_policy_rollback: {
+        Args: { p_reason: string; p_version: number }
+        Returns: Json
+      }
+      compliance_policy_simulate: {
+        Args: {
+          p_change_id?: number
+          p_days?: number
+          p_limit?: number
+          p_surface?: string
+          p_text?: string
+          p_version?: number
+        }
+        Returns: Json
+      }
+      compliance_policy_state: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      compliance_policy_submit: { Args: { p_reason: string }; Returns: Json }
+      compliance_policy_version: { Args: { p_version: number }; Returns: Json }
+      compliance_policy_versions: {
+        Args: { p_before?: number; p_limit?: number }
+        Returns: Json
+      }
+      compliance_policy_withdraw: { Args: { p_id: number }; Returns: Json }
       compliance_review: {
         Args: { p_note: string; p_ticket_id: string; p_verdict: string }
         Returns: Json
@@ -491,6 +608,30 @@ export type Database = {
         Returns: Json
       }
       customer_history: { Args: { p_customer_id: string }; Returns: Json }
+      evidence_detail: { Args: { p_id: string }; Returns: Json }
+      evidence_export: {
+        Args: { p_id: string; p_purpose: string }
+        Returns: Json
+      }
+      evidence_file_checked: {
+        Args: { p_file_id: number; p_sha256: string }
+        Returns: Json
+      }
+      evidence_list: {
+        Args: {
+          p_before_seq?: number
+          p_filter?: string
+          p_limit?: number
+          p_query?: string
+          p_source?: string
+        }
+        Returns: Json
+      }
+      evidence_set_hold: {
+        Args: { p_hold: boolean; p_id: string; p_reason: string }
+        Returns: Json
+      }
+      evidence_verify: { Args: { p_id: string }; Returns: Json }
       flag_ticket: {
         Args: { p_flag: string; p_ticket_id: string }
         Returns: Json

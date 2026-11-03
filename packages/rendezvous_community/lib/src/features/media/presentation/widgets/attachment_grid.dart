@@ -2,9 +2,11 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
-import 'package:rendezvous_community/src/core/network/authorized_image.dart';
+import 'package:rendezvous_community/src/core/media/image_mime.dart';
+import 'package:rendezvous_community/src/core/storage/image_disk_cache.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_network_image.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/moderation_notice.dart';
 
 class AttachmentGrid extends StatelessWidget {
@@ -56,36 +58,22 @@ class AttachmentGrid extends StatelessWidget {
   }
 }
 
-class _AttachmentImage extends StatefulWidget {
+class _AttachmentImage extends StatelessWidget {
   const _AttachmentImage({required this.attachment, required this.media});
 
   final Attachment attachment;
   final MediaRepository media;
 
   @override
-  State<_AttachmentImage> createState() => _AttachmentImageState();
-}
-
-class _AttachmentImageState extends State<_AttachmentImage> {
-  late final Future<AuthorizedImage> _image = widget.media.attachmentImage(widget.attachment);
-
-  @override
   Widget build(BuildContext context) {
-    final placeholder = ColoredBox(color: Theme.of(context).colorScheme.surfaceContainerHighest);
-    return FutureBuilder<AuthorizedImage>(
-      future: _image,
-      builder: (context, snapshot) {
-        final image = snapshot.data;
-        if (image == null) return placeholder;
-        return Image.network(
-          image.url,
-          headers: image.headers,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) =>
-              Center(child: Icon(Icons.broken_image_outlined, color: Theme.of(context).colorScheme.outline)),
-          loadingBuilder: (context, child, progress) => progress == null ? child : placeholder,
-        );
-      },
+    final scheme = Theme.of(context).colorScheme;
+    final bucket = attachment.bucket ?? attachmentBucket;
+    return CommunityNetworkImage(
+      cacheKey: imageCacheKeyForObject(bucket, attachment.path),
+      source: () => media.attachmentImage(attachment),
+      persist: bucket != supportDocumentBucket,
+      placeholder: ColoredBox(color: scheme.surfaceContainerHighest),
+      error: Center(child: Icon(Icons.broken_image_outlined, color: scheme.outline)),
     );
   }
 }

@@ -7,6 +7,8 @@ import 'package:rendezvous_community/src/app/community_support_scope.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
 import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_count_badge.dart';
 
 class SupportUnreadCubit extends Cubit<int> {
   SupportUnreadCubit({required this._support, required this._chat, required this._supportChat}) : super(0);
@@ -61,7 +63,7 @@ class CommunitySupportBadge extends StatelessWidget {
       )..start(),
       child: BlocBuilder<SupportUnreadCubit, int>(
         builder: (context, count) =>
-            Badge(isLabelVisible: count > 0, label: Text(count > 99 ? '99+' : '$count'), child: child),
+            CommunityCountOverlay(kind: CommunityCountKind.supportUnread, count: count, child: child),
       ),
     );
   }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/support_message_actions.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_builders.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -114,26 +116,43 @@ class OfficialBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-      decoration: BoxDecoration(
-        border: Border.all(color: color.withValues(alpha: 0.6)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.verified, size: 12, color: color),
-          const SizedBox(width: 3),
-          Text(
-            context.communityL10n.supportOfficialBadge,
-            style: theme.textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
-          ),
-        ],
-      ),
+    final details = CommunityLabelBadgeDetails(
+      kind: CommunityBadgeKind.supportOfficial,
+      label: context.communityL10n.supportOfficialBadge,
+      icon: Icons.verified,
+      foreground: color,
+      border: color.withValues(alpha: 0.6),
     );
+    return buildLabelBadge(context, details, _DefaultSupportOfficialBadge(details: details));
   }
+}
+
+class _DefaultSupportOfficialBadge extends StatelessWidget {
+  const _DefaultSupportOfficialBadge({required this.details});
+
+  final CommunityLabelBadgeDetails details;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+    decoration: BoxDecoration(
+      border: Border.all(color: details.border ?? details.foreground),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(details.icon, size: 12, color: details.foreground),
+        const SizedBox(width: 3),
+        Text(
+          details.label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: details.foreground, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
 }
 
 class SupportMessageExtras extends StatelessWidget {

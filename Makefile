@@ -43,6 +43,17 @@ TOOLS_IMG     := olt-social/tools:0.1.0
 ALPINE_IMG    := alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
 WEB_IMG       := caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
 PKG           := packages/rendezvous_community
+TESTKIT_IMG   := olt-social/testkit:0.1.0
+TESTKIT_SECRETS := anon_key jwt_secret postgres_password olt_dev_signing_key
+# Alat uji keamanan/beban/chaos (tests/, docs/testing): k6, psql, docker CLI (docker.sock untuk chaos),
+# di network edge+app+data stack dev. Hasil di tests/results/ (tidak di-commit).
+TESTKIT       = docker run --rm --network $(STACK)_app --network $(STACK)_data --network $(STACK)_edge \
+                  -v /var/run/docker.sock:/var/run/docker.sock -v "$(CURDIR)/tests:/olt/tests:ro" \
+                  -v "$(CURDIR)/tests/results:/olt/results" -v "$(CURDIR)/docker:/olt/docker:ro" \
+                  --mount type=tmpfs,destination=/olt/docker/secrets \
+                  $(foreach s,$(TESTKIT_SECRETS),-v "$(CURDIR)/$(SECRETS)/$(s):/olt/secrets/$(s):ro") \
+                  -e LOAD_STEPS -e LOAD_HOLD -e LOAD_RAMP -e LOAD_MSG_EVERY -e LOAD_FORCE -e LOAD_VIA \
+                  -e CHAOS_VUS -e CHAOS_OUTAGE -e CHAOS_LONG_OUTAGE $(TESTKIT_IMG)
 ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
@@ -51,9 +62,11 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
-        e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
-        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \n        test-media test-sentinel test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
-        smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console
+        e2e-windows web-example license-audit perf-flutter smoke backup restore gen-secrets gen-keys psql check-config \
+        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
+        test-media test-sentinel test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
+        smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console \
+        testkit test-security scan-deps load-test load-integration chaos-test loadtest-cleanup
 
 help: ## Tampilkan daftar target
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -172,17 +185,21 @@ e2e-windows: check-config ## E2E app example di Windows (butuh Flutter SDK + Vis
 	cd $(PKG)/example && flutter test integration_test/app_test.dart -d windows \
 	  --dart-define=OLT_SOCIAL_ANON_KEY=$(ANON_KEY)
 
-web-example: check-config ## App example versi web di http://localhost:8081 (?user=sari_invest), butuh Flutter SDK
+web-example: check-config ## App example versi web di http://localhost:8086 (?user=sari_invest), butuh Flutter SDK
 	cd $(PKG)/example && flutter build web --release --no-web-resources-cdn --pwa-strategy=none \
 	  --dart-define=OLT_SOCIAL_ANON_KEY=$(ANON_KEY)
 	@# Server statis untuk build/web; container lama diganti. Stop: docker rm -f olt-web-example
 	@docker rm -f olt-web-example >/dev/null 2>&1 || true
-	docker run -d --name olt-web-example --restart unless-stopped -p 127.0.0.1:8081:8081 \
-	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8081
-	@echo "App web: http://localhost:8081  (langsung login: http://localhost:8081/?user=sari_invest)"
+	docker run -d --name olt-web-example --restart unless-stopped -p 127.0.0.1:8086:8086 \
+	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8086
+	@echo "App web: http://localhost:8086  (langsung login: http://localhost:8086/?user=sari_invest)"
 
 license-audit: ## Audit lisensi dependensi runtime Flutter rendezvous_community (tolak GPL/AGPL)
 	cd $(PKG) && dart run tool/license_audit.dart
+
+PERF_DEVICE ?= windows
+perf-flutter: ## Tes performa scroll Flutter tanpa backend (profile; PERF_DEVICE=<id Android> untuk HP)
+	cd $(PKG)/example && flutter drive --profile -d $(PERF_DEVICE) --driver=test_driver/perf_driver.dart --target=integration_test/perf_scroll_test.dart
 
 # --- OLT dummy (development/testing) -------------------------------------------------
 
@@ -269,3 +286,29 @@ e2e-windows-dummy: check-config ## E2E app example: form login OLT dummy (butuh 
 	cd $(PKG)/example && flutter test integration_test/dummy_olt_login_test.dart -d windows \
 	  --dart-define=OLT_DUMMY_E2E=true \
 	  --dart-define=OLT_SOCIAL_ANON_KEY=$(ANON_KEY)
+
+# --- Uji keamanan, beban, dan chaos sebelum produksi (docs/testing/README.md) --------------
+# Hanya untuk stack DEV dengan OLT dummy (make up DUMMY_OLT=1). Tidak pernah diarahkan ke produksi.
+
+testkit: ## Build image alat uji (k6, tokengen, psql, docker CLI) olt-social/testkit
+	@[ "$(PROFILE)" = dev ] || { echo "Uji keamanan/beban/chaos hanya untuk PROFILE=dev"; exit 1; }
+	@mkdir -p tests/results
+	docker build -q -t $(TESTKIT_IMG) tests > /dev/null
+
+test-security: check-config testkit ## Uji otorisasi (anon/nasabah lain/agen tanpa izin), konfigurasi edge statis, routing produksi
+	$(TESTKIT) security
+
+scan-deps: ## Pindai kerentanan: govulncheck, npm audit, osv-scanner, Trivy (STRICT=1 gagal bila ada temuan penghalang)
+	bash tests/security/scan-deps.sh $(if $(STRICT),--strict) $(if $(THIRD_PARTY),--third-party)
+
+load-test: check-config testkit ## Uji beban k6 pembukaan pasar: make load-test P=smoke|step|spike|light (LOAD_STEPS="50 100 200")
+	$(TESTKIT) load $(or $(P),smoke)
+
+load-integration: check-config testkit ## Uji beban API integrasi OLT (notify per cust_id + siaran stock_watchers, inbox saja)
+	$(TESTKIT) integration
+
+chaos-test: check-config testkit ## Uji chaos di bawah beban ringan: make chaos-test [E="realtime valkey"]
+	$(TESTKIT) chaos $(E)
+
+loadtest-cleanup: check-config testkit ## Hapus data uji lt_* (DRY=1 hanya menampilkan)
+	$(TESTKIT) cleanup $(if $(DRY),--dry-run)

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 enum CommunityPushPlatform { android, ios, web }
 
 class CommunityPushRegistration {
@@ -27,6 +29,25 @@ class CommunityPushMessage {
   String? get roomType => _text('room_type');
   String? get ticketId => _text('ticket_id');
   String? get campaignId => _text('campaign_id');
+  String? get broadcastId => _text('broadcast_id');
+  String? get stockCode => _text('stock_code');
+  List<String> get stocks {
+    final raw = data['stocks'];
+    Object? list = raw;
+    if (raw is String) {
+      try {
+        list = jsonDecode(raw);
+      } on FormatException {
+        list = null;
+      }
+    }
+    return [
+      if (list is List)
+        for (final item in list)
+          if (item is String && item.isNotEmpty) item,
+    ];
+  }
+
   String? get actorId => _text('actor_id');
   String? get actorUsername => _text('actor_username');
   Uri? get link {

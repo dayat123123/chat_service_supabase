@@ -171,6 +171,7 @@ describe('TopBar', () => {
       'Kata terlarang',
       'Kebijakan konten',
       'Dokumen hukum',
+      'Bukti',
     ])
   })
 })

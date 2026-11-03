@@ -19,6 +19,9 @@ func TestRenderListsEveryCounter(t *testing.T) {
 		Concurrency:   4,
 		LastClaim:     time.Unix(1_800_000_000, 0),
 		LastHeartbeat: time.Time{},
+		Verdicts:      map[string]uint64{"block": 2},
+		CacheHits:     5,
+		ThresholdsSet: true,
 	})
 	for _, line := range []string{
 		`link_preview_fetch_total{result="ok"} 3`,
@@ -33,6 +36,11 @@ func TestRenderListsEveryCounter(t *testing.T) {
 		`link_preview_inflight 2`,
 		`link_preview_last_claim_timestamp_seconds 1800000000`,
 		`link_preview_last_heartbeat_timestamp_seconds 0`,
+		`link_preview_image_verdicts_total{verdict="block"} 2`,
+		`link_preview_image_verdicts_total{verdict="unavailable"} 0`,
+		`link_preview_image_cache_hits_total 5`,
+		`link_preview_classifier_consecutive_failures 0`,
+		`link_preview_thresholds_loaded 1`,
 	} {
 		if !strings.Contains(out, line+"\n") {
 			t.Fatalf("missing %q in\n%s", line, out)

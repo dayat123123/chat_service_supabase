@@ -14,6 +14,7 @@ var keys = []string{
 	"PORT", "LOG_LEVEL", "JWT_SECRET", "JWT_SECRET_FILE", "JWT_ISSUER", "POSTGREST_URL", "STORAGE_URL", "INSTANCE_ID",
 	"USER_AGENT", "BATCH_SIZE", "CONCURRENCY", "LEASE", "POLL_INTERVAL", "FETCH_TIMEOUT", "REQUEST_TIMEOUT",
 	"HEARTBEAT_INTERVAL", "SHUTDOWN_TIMEOUT", "MAX_HTML_BYTES", "MAX_IMAGE_BYTES",
+	"CLASSIFIER_URL", "CLASSIFIER_TIMEOUT", "MODERATION_REFRESH",
 }
 
 func clearEnv(t *testing.T) {
@@ -53,6 +54,9 @@ func TestLoadUsesDefaults(t *testing.T) {
 		ShutdownTimeout:   20 * time.Second,
 		MaxHTMLBytes:      1 << 20,
 		MaxImageBytes:     5 << 20,
+		ClassifierURL:     "http://classifier:8080",
+		ClassifierTimeout: 10 * time.Second,
+		ModerationRefresh: 30 * time.Second,
 	}
 	if string(cfg.JWTSecret) != string(want.JWTSecret) {
 		t.Fatal("secret not loaded")
@@ -84,15 +88,19 @@ func TestLoadReadsOverridesAndSecretFiles(t *testing.T) {
 
 func TestLoadRejectsUnsafeValues(t *testing.T) {
 	cases := map[string]map[string]string{
-		"JWT_SECRET":      {"JWT_SECRET": "short"},
-		"USER_AGENT":      {"USER_AGENT": "bot\r\nX-Injected: 1"},
-		"FETCH_TIMEOUT":   {"FETCH_TIMEOUT": "30s"},
-		"MAX_HTML_BYTES":  {"MAX_HTML_BYTES": "10485760"},
-		"MAX_IMAGE_BYTES": {"MAX_IMAGE_BYTES": "10485760"},
-		"LEASE must be":   {"LEASE": "30s"},
-		"CONCURRENCY":     {"CONCURRENCY": "0"},
-		"POSTGREST_URL":   {"POSTGREST_URL": "rest:3000"},
-		"BATCH_SIZE":      {"BATCH_SIZE": "x"},
+		"JWT_SECRET":                           {"JWT_SECRET": "short"},
+		"USER_AGENT":                           {"USER_AGENT": "bot\r\nX-Injected: 1"},
+		"FETCH_TIMEOUT":                        {"FETCH_TIMEOUT": "30s"},
+		"MAX_HTML_BYTES":                       {"MAX_HTML_BYTES": "10485760"},
+		"MAX_IMAGE_BYTES":                      {"MAX_IMAGE_BYTES": "10485760"},
+		"LEASE must be":                        {"LEASE": "30s"},
+		"CONCURRENCY":                          {"CONCURRENCY": "0"},
+		"POSTGREST_URL":                        {"POSTGREST_URL": "rest:3000"},
+		"BATCH_SIZE":                           {"BATCH_SIZE": "x"},
+		"CLASSIFIER_URL":                       {"CLASSIFIER_URL": "classifier:8080"},
+		"CLASSIFIER_TIMEOUT":                   {"CLASSIFIER_TIMEOUT": "2m"},
+		"MODERATION_REFRESH":                   {"MODERATION_REFRESH": "1s"},
+		"CLASSIFIER_TIMEOUT + REQUEST_TIMEOUT": {"LEASE": "45s", "CLASSIFIER_TIMEOUT": "30s"},
 	}
 	for want, env := range cases {
 		t.Run(want, func(t *testing.T) {

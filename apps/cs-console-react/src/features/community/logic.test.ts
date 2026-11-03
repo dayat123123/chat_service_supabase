@@ -9,6 +9,9 @@ import {
   communityPageTabs,
   communityTabsFor,
   fromJakartaInput,
+  parseDays,
+  segmentProblem,
+  segmentQuery,
   jakartaInput,
   reviewBlockedByFourEyes,
   staffMediaUrl,
@@ -94,5 +97,39 @@ describe('helpers', () => {
 
   it('normalises stock codes', () => {
     expect(cleanStock(' $bbca ')).toBe('BBCA')
+  })
+})
+
+describe('campaign segments', () => {
+  const input = { audience: 'all' as const, stock: ' $bbca ', days: '30', platform: null, account_id: null }
+
+  it('keeps only the parameter of the chosen segment', () => {
+    expect(segmentQuery(input)).toEqual({
+      audience: 'all',
+      stock: null,
+      days: null,
+      platform: null,
+      account_id: null,
+    })
+    expect(segmentQuery({ ...input, audience: 'stock' }).stock).toBe('BBCA')
+    expect(segmentQuery({ ...input, audience: 'new_users' }).days).toBe(30)
+    expect(segmentQuery({ ...input, audience: 'platform', platform: 'ios' }).platform).toBe('ios')
+    expect(segmentQuery({ ...input, audience: 'followers', account_id: 'acc-1' }).account_id).toBe('acc-1')
+  })
+
+  it('accepts 1 to 365 days only', () => {
+    expect(parseDays('1')).toBe(1)
+    expect(parseDays(' 365 ')).toBe(365)
+    expect(parseDays('0')).toBeNull()
+    expect(parseDays('366')).toBeNull()
+    expect(parseDays('2.5')).toBeNull()
+  })
+
+  it('reports the missing parameter', () => {
+    expect(segmentProblem(segmentQuery(input))).toBeNull()
+    expect(segmentProblem(segmentQuery({ ...input, audience: 'stock', stock: '1' }))).toBe('stock')
+    expect(segmentProblem(segmentQuery({ ...input, audience: 'inactive', days: '' }))).toBe('days')
+    expect(segmentProblem(segmentQuery({ ...input, audience: 'platform' }))).toBe('platform')
+    expect(segmentProblem(segmentQuery({ ...input, audience: 'followers' }))).toBe('account')
   })
 })

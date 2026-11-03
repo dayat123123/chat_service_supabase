@@ -1,6 +1,14 @@
 import type { StaffRef } from '@/features/community/types'
 
-export const policyTabs = ['rules', 'domains', 'terms', 'images', 'manipulation', 'tester'] as const
+export const policyTabs = [
+  'rules',
+  'domains',
+  'terms',
+  'images',
+  'manipulation',
+  'tester',
+  'versions',
+] as const
 export type PolicyTab = (typeof policyTabs)[number]
 
 export const contentCategories = [

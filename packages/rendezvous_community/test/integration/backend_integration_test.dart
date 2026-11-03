@@ -545,6 +545,83 @@ void main() {
     }
   }, skip: skip);
 
+  test('room mutes stay private: the muted member hears it alone and moderators see the list', () async {
+    final code = 'ITMU${DateTime.now().microsecondsSinceEpoch % 100000}';
+    final budiId = budi.currentUser!.id;
+    final sariId = sari.currentUser!.id;
+    final roomId = await budi.chat.joinStockRoom(code);
+    await sari.chat.joinStockRoom(code);
+    final trust = await _psqlValue("select trust_level from public.profiles where id = '$sariId'");
+    final room = budi.chat.connectRoom(roomId, me: budi.currentUser!);
+    final events = room.events.asBroadcastStream();
+    final connected = _waitFor(
+      events,
+      (e) => e is ConnectionChanged && e.status == RealtimeStatus.connected,
+      timeout: const Duration(seconds: 30),
+    );
+    final sub = events.listen((_) {});
+    try {
+      final appointed =
+          trust != null &&
+          await _psql(
+            "update public.profiles set trust_level = 2 where id = '$sariId'; "
+            "insert into private.room_moderators (room_id, user_id) values ('$roomId', '$sariId')",
+          );
+      if (!appointed) {
+        connected.ignore();
+        markTestSkipped('docker exec psql is not available to appoint a room moderator');
+        return;
+      }
+      await connected;
+      await Future<void>.delayed(const Duration(seconds: 3));
+
+      final muted = _waitFor(
+        events,
+        (e) => e is OwnRoomMuteChanged && e.mutedUntil != null,
+        timeout: const Duration(seconds: 20),
+      );
+      final result = await sari.chatExtras.muteMember(roomId, budiId, const Duration(minutes: 5), ReportReason.spam);
+      final notice = await muted as OwnRoomMuteChanged;
+      expect(notice.mutedUntil!.difference(result.muteUntil!).inSeconds.abs(), lessThan(2));
+
+      final own = await budi.chatExtras.stockRoomState(code);
+      expect(own.mutes, isEmpty);
+      expect(own.viewerMute(), isNotNull);
+      final moderator = await sari.chatExtras.stockRoomState(code);
+      expect(moderator.isModerator(sariId), isTrue);
+      expect(moderator.mutedUntil(budiId), isNotNull);
+      expect(moderator.viewerMute(), isNull);
+      await expectLater(
+        budi.chat.sendMessage(roomId, body: 'Masih bisu', clientId: const Uuid().v4()),
+        throwsA(isA<CommunityException>().having((e) => e.code, 'code', 'room_muted')),
+      );
+
+      final unmuted = _waitFor(
+        events,
+        (e) => e is OwnRoomMuteChanged && e.mutedUntil == null,
+        timeout: const Duration(seconds: 20),
+      );
+      expect(
+        await _psql(
+          "update private.room_mod_actions set undone_at = now() where room_id = '$roomId'; "
+          "select private.room_mute_notice('$roomId', '$budiId')",
+        ),
+        isTrue,
+      );
+      await unmuted;
+      expect((await budi.chatExtras.stockRoomState(code)).viewerMute(), isNull);
+    } finally {
+      await sub.cancel();
+      await room.close();
+      await _psql(
+        "${trust == null ? '' : "update public.profiles set trust_level = $trust where id = '$sariId'; "}"
+        "delete from private.push_queue where data ->> 'room_id' = '$roomId'; "
+        "delete from public.notifications where payload ->> 'room_id' = '$roomId'; "
+        "delete from public.chat_rooms where id = '$roomId'",
+      );
+    }
+  }, skip: skip);
+
   test('link previews: each URL comes back with a known status', () async {
     final urls = ['https://example.com/it-${DateTime.now().microsecondsSinceEpoch}', 'https://www.idx.co.id/'];
     for (final url in urls) {
@@ -631,6 +708,92 @@ void main() {
       } on CommunityException catch (_) {}
     }
   }, skip: skip);
+
+  test('banners from get_client_config are visible to signed-in clients', () async {
+    final id = const Uuid().v4();
+    expect(
+      await _psql(
+        'insert into private.app_banners (id, title, body, level, dismissible, priority) '
+        "values ('$id', 'IT banner', 'Isi', 'warning', false, 999)",
+      ),
+      isTrue,
+    );
+    try {
+      final config = await budi.refreshClientConfig();
+      final banner = config.banners.firstWhere((b) => b.id == id);
+      expect(banner.level, CommunityBannerLevel.warning);
+      expect(banner.dismissible, isFalse);
+      expect(config.banners.first.priority, greaterThanOrEqualTo(banner.priority));
+    } finally {
+      await _psql("delete from private.app_banners where id = '$id'");
+    }
+  }, skip: skip);
+
+  test('report_notification_event records opened and tapped for an inbox item', () async {
+    final post = await budi.feed.createPost(body: 'Event integration ${DateTime.now().microsecondsSinceEpoch}');
+    try {
+      await sari.feed.likePost(post.id);
+      AppNotification? notification;
+      for (var i = 0; i < 20 && notification == null; i++) {
+        final page = await budi.notifications.getNotifications(limit: 30);
+        notification = page.items.where((n) => n.postId == post.id).firstOrNull;
+        if (notification == null) await Future<void>.delayed(const Duration(milliseconds: 250));
+      }
+      expect(notification, isNotNull);
+      await budi.reportNotificationTapped({'notification_id': notification!.id});
+      expect(budi.notificationReporter.queuedCount, 0);
+      expect(
+        await _psql(
+          'do \$\$ begin if (select count(*) from private.notification_events '
+          "where notification_id = '${notification.id}') < 2 then raise exception 'missing'; end if; end \$\$",
+        ),
+        isTrue,
+      );
+    } finally {
+      await budi.feed.deletePost(post.id);
+    }
+  }, skip: skip);
+
+  test('drafts: save, list, update, delete and publishing removes the draft', () async {
+    final id = const Uuid().v4();
+    final first = await budi.drafts.save(
+      PostDraft(clientDraftId: id, body: r'Draf integrasi $BBCA', stocks: const ['bbca'], updatedAt: DateTime.now()),
+    );
+    expect(first.status, DraftSyncStatus.synced);
+    final listed = (await budi.drafts.list()).firstWhere((d) => d.clientDraftId == id);
+    expect(listed.stocks, ['BBCA']);
+
+    final second = await budi.drafts.save(listed.copyWith(body: r'Draf integrasi $BBCA diubah'));
+    expect(second.status, DraftSyncStatus.synced);
+
+    final post = await budi.feed.createPost(body: r'Terbit dari draf $BBCA', clientId: id);
+    try {
+      expect((await budi.drafts.list()).where((d) => d.clientDraftId == id), isEmpty);
+    } finally {
+      await budi.feed.deletePost(post.id);
+    }
+
+    final other = const Uuid().v4();
+    await budi.drafts.save(PostDraft(clientDraftId: other, body: 'Hapus saya', updatedAt: DateTime.now()));
+    await budi.drafts.delete(other);
+    expect((await budi.drafts.list()).where((d) => d.clientDraftId == other), isEmpty);
+  }, skip: skip);
+
+  test('stock cards round trip through send_message and get_messages', () async {
+    final roomId = await budi.chat.getOrCreateDirectRoom(sari.currentUser!.id);
+    final sent = await budi.chatExtras.sendStockCards(roomId, ['bbca', 'TLKM'], clientId: const Uuid().v4());
+    try {
+      expect(sent.stockCodes, ['BBCA', 'TLKM']);
+      final seen = (await sari.chat.getMessages(roomId, limit: 5)).items.firstWhere((m) => m.id == sent.id);
+      expect(seen.stockCodes, ['BBCA', 'TLKM']);
+      await expectLater(
+        budi.chatExtras.sendStockCards(roomId, ['BBCA', 'TLKM', 'ASII', 'GOTO'], clientId: const Uuid().v4()),
+        throwsA(isA<CommunityException>()),
+      );
+    } finally {
+      await budi.chat.deleteMessage(sent.id);
+    }
+  }, skip: skip);
 }
 
 Future<bool> _psql(String sql) async {
@@ -651,5 +814,27 @@ Future<bool> _psql(String sql) async {
     return result.exitCode == 0;
   } on ProcessException catch (_) {
     return false;
+  }
+}
+
+Future<String?> _psqlValue(String sql) async {
+  try {
+    final result = await Process.run('docker', [
+      'exec',
+      'olt-social-db-1',
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'postgres',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '-tAc',
+      sql,
+    ]);
+    final value = (result.stdout as String).trim();
+    return result.exitCode == 0 && value.isNotEmpty ? value : null;
+  } on ProcessException catch (_) {
+    return null;
   }
 }

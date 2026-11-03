@@ -40,7 +40,13 @@ class _MessageListState extends State<MessageList> {
     final l10n = context.communityL10n;
     return BlocBuilder<ChatRoomCubit, ChatRoomState>(
       buildWhen: (a, b) =>
-          a.messages != b.messages || a.members != b.members || a.loadingOlder != b.loadingOlder || a.room != b.room,
+          a.messages != b.messages ||
+          a.members != b.members ||
+          a.loadingOlder != b.loadingOlder ||
+          a.room != b.room ||
+          a.stockRoom?.moderatorIds != b.stockRoom?.moderatorIds ||
+          a.stockRoom?.mutes != b.stockRoom?.mutes ||
+          a.me != b.me,
       builder: (context, state) {
         if (state.messages.isEmpty) {
           return buildChatPart(
@@ -54,6 +60,7 @@ class _MessageListState extends State<MessageList> {
           if (mounted) _loadOlderNearTop();
         });
         return ListView.builder(
+          addAutomaticKeepAlives: false,
           controller: _scroll,
           reverse: true,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

@@ -34,6 +34,9 @@ type Config struct {
 	ShutdownTimeout   time.Duration
 	MaxHTMLBytes      int64
 	MaxImageBytes     int64
+	ClassifierURL     string
+	ClassifierTimeout time.Duration
+	ModerationRefresh time.Duration
 }
 
 func Load() (Config, error) {
@@ -56,6 +59,9 @@ func Load() (Config, error) {
 		MaxHTMLBytes:      int64(intEnv("MAX_HTML_BYTES", 1<<20, &errs)),
 		MaxImageBytes:     int64(intEnv("MAX_IMAGE_BYTES", 5<<20, &errs)),
 		JWTSecret:         []byte(secretEnv("JWT_SECRET", &errs)),
+		ClassifierURL:     urlEnv("CLASSIFIER_URL", "http://classifier:8080", &errs),
+		ClassifierTimeout: durationEnv("CLASSIFIER_TIMEOUT", 10*time.Second, &errs),
+		ModerationRefresh: durationEnv("MODERATION_REFRESH", 30*time.Second, &errs),
 	}
 	if err := cfg.LogLevel.UnmarshalText([]byte(stringEnv("LOG_LEVEL", "info"))); err != nil {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
@@ -78,7 +84,10 @@ func Load() (Config, error) {
 		{within(cfg.ShutdownTimeout, time.Second, 5*time.Minute), "SHUTDOWN_TIMEOUT must be between 1s and 5m"},
 		{cfg.MaxHTMLBytes >= 64<<10 && cfg.MaxHTMLBytes <= 2<<20, "MAX_HTML_BYTES must be between 65536 and 2097152"},
 		{cfg.MaxImageBytes >= 256<<10 && cfg.MaxImageBytes <= 5<<20, "MAX_IMAGE_BYTES must be between 262144 and 5242880"},
-		{cfg.Lease >= 2*cfg.FetchTimeout+cfg.RequestTimeout+10*time.Second, "LEASE must be at least 2 x FETCH_TIMEOUT + REQUEST_TIMEOUT + 10s"},
+		{within(cfg.ClassifierTimeout, time.Second, time.Minute), "CLASSIFIER_TIMEOUT must be between 1s and 60s"},
+		{within(cfg.ModerationRefresh, 5*time.Second, 10*time.Minute), "MODERATION_REFRESH must be between 5s and 10m"},
+		{cfg.Lease >= 2*cfg.FetchTimeout+cfg.ClassifierTimeout+cfg.RequestTimeout+10*time.Second,
+			"LEASE must be at least 2 x FETCH_TIMEOUT + CLASSIFIER_TIMEOUT + REQUEST_TIMEOUT + 10s"},
 	}
 	for _, rule := range rules {
 		if !rule.ok {

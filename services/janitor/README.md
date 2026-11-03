@@ -6,6 +6,17 @@ Isi antrean berasal dari dua sumber:
 
 - **Penghapusan akun**: avatar (`avatars`), lampiran postingan dan lampiran chat (`attachments`), serta dokumen chat CS (`cs-documents`) milik akun yang dihapus.
 - **Retensi surat**: dokumen surat yang masa simpannya sudah habis (`care-documents`).
+- **Retensi bukti**: folder bucket `evidence` milik bukti karantina yang masa simpannya habis (alasan `evidence_expired`).
+
+## Salinan bukti (karantina bukti)
+
+Sejak 0.2.0 janitor juga menyalin file konten yang dilaporkan atau dihapus ke bucket privat `evidence` ([docs/evidence](../../docs/evidence/README.md), migrasi `0095`). Loop kedua mengambil antrean `private.evidence_files` lewat `evidence_copy_claim` (memakai `BATCH_SIZE`, `CONCURRENCY`, `LEASE`, dan `POLL_INTERVAL` yang sama), lalu per file:
+
+1. unduh file sumber (`GET /object/authenticated/{bucket}/{nama}`) dan hitung SHA-256,
+2. salin lewat `POST /object/copy` (`destinationBucket: evidence`, `x-upsert: true` agar aman diulang),
+3. unduh salinannya dan hitung ulang SHA-256; bila tidak sama dengan sumbernya, hasilnya error.
+
+Hasil dilaporkan lewat `evidence_copy_report`: `sha256` + `size` (tersalin), `missing` (file sumber sudah tidak ada), `error` (dicoba lagi dengan jeda sampai 6 jam, dicatat `failed` setelah 30 kali), atau `release` (shutdown/lease hampir habis). Database memeriksa salinannya benar-benar ada di `storage.objects` dan ukurannya cocok sebelum menandai `copied`. Selama sebuah file masih menunggu disalin, `storage_cleanup_claim` tidak memberikan folder sumbernya kepada janitor, jadi salinan selalu dibuat sebelum aslinya dihapus.
 
 ## Antrean, lease, dan backoff
 
@@ -55,6 +66,8 @@ Log berformat JSON. Setiap claim yang berisi folder menghasilkan satu baris info
 | `janitor_entries_total{outcome}` | counter | `cleaned` (tanpa error dan tidak dilepas), `failed`, `released` |
 | `janitor_claim_errors_total` | counter | Claim yang gagal |
 | `janitor_last_success_timestamp_seconds` | gauge | Waktu Unix laporan terakhir yang berhasil (0 jika belum ada). Tidak bergerak saat antrean kosong |
+| `janitor_evidence_files_total{outcome}` | counter | Salinan bukti: `copied`, `missing`, `error`, `released` |
+| `janitor_evidence_claim_errors_total` | counter | Claim antrean salinan bukti yang gagal |
 
 Saat SIGTERM, janitor berhenti claim dan tidak memulai potongan baru. Request yang sedang jalan diberi waktu `SHUTDOWN_TIMEOUT`, lalu hasilnya dilaporkan (folder yang belum selesai dilepas) dan janitor keluar dengan kode 0. Atur `stop_grace_period` container agar lebih panjang dari `SHUTDOWN_TIMEOUT` (misalnya 40s).
 

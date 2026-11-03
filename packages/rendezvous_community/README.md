@@ -130,7 +130,7 @@ final export = await RendezvousCommunity.instance.exportMyData();   // Community
 await RendezvousCommunity.instance.deleteMyAccount();
 ```
 
-`deleteMyAccount()` membersihkan sesi komunitas di perangkat (realtime, pelacak centang, cache dokumen) tanpa login ulang otomatis. Panggilan API komunitas berikutnya menukar token OLT lagi dan server membuat profil komunitas baru yang kosong. Token push dilepas server; token yang terdaftar dipasang lagi otomatis di sesi berikutnya. Karena itu, arahkan pengguna keluar dari layar komunitas di `onAccountDeleted`.
+`deleteMyAccount()` membersihkan sesi komunitas di perangkat (realtime, pelacak centang, cache dokumen, cache offline dan outbox) tanpa login ulang otomatis. Panggilan API komunitas berikutnya menukar token OLT lagi dan server membuat profil komunitas baru yang kosong. Token push dilepas server; token yang terdaftar dipasang lagi otomatis di sesi berikutnya. Karena itu, arahkan pengguna keluar dari layar komunitas di `onAccountDeleted`.
 
 ## Unggahan lewat media gateway
 
@@ -213,6 +213,59 @@ Paket mencatat `feed_open`, `post_create`, `comment_create`, `message_send`, `st
 RendezvousCommunity.instance.trackOrderTap(stockCode: 'BBCA', side: 'buy', source: 'stock'); // dari sosial ke layar order
 ```
 
+## Banner, draf, kartu saham, statistik notifikasi (1.3.0, migrasi `0087`–`0090`)
+
+```dart
+await RendezvousCommunity.initialize(
+  // ...
+  stockInfo: (code) => CommunityStockInfo(name: oltStocks.name(code), price: oltQuotes.last(code)), // kartu saham
+  onOltNotificationTap: (context, data) => oltRouter.openNotification(data),
+);
+
+const CommunityBannerHost();                 // banner dari get_client_config, mis. di atas halaman host
+await openCommunityPostDrafts(context);      // daftar draf postingan
+await showCommunityComposer(context, draft: draft);
+await RendezvousCommunity.instance.reportNotificationTapped(pushData); // bila host membuka tujuan push sendiri
+```
+
+- **Banner:** maksimal 3 tampil (atur `maxVisible`), urut `priority`. Gaya per level `info`/`warning`/`critical`, tautan dibuka setelah dialog konfirmasi. Banner yang bisa ditutup dan sudah ditutup disimpan per user di perangkat (ikut terhapus saat logout); banner yang tidak bisa ditutup selalu tampil. Feed Terbaru/Mengikuti menampilkannya otomatis di atas daftar.
+- **Statistik notifikasi:** membuka item kotak notifikasi atau push melapor `opened`, mengikuti tujuannya melapor `tapped` (`report_notification_event`; `notification_id`, lalu `campaign_id`/`broadcast_id`). Tidak pernah menahan UI; gagal karena jaringan diantrekan di memori sampai online. Push OLT yang diteruskan ke `onOltNotificationTap` dihitung `tapped`.
+- **Notifikasi baru:** `followed_post` → postingan, `watchlist_digest` → feed saham teratas (`onStockTap`), `moderation` → "Banding saya" dengan keterangan bisa/tidaknya banding, mention di room saham → room. Sakelar in-app jenis yang dikunci server (`moderation`) nonaktif.
+- **Draf:** composer menyimpan otomatis ke perangkat dan server (`save_post_draft`). Bila draf diubah di perangkat lain dan lebih baru, versi itu dimuat dan pengguna diberi tahu; batas 20 draf atau offline → draf hanya di perangkat. Saat terbit, `client_draft_id` dipakai sebagai `client_id` sehingga server menghapus drafnya.
+- **Kartu saham:** tombol "Kirim kartu saham" di composer chat (DM, grup, room saham; tidak di chat CS), maksimal 3 kode. Harga tidak dikirim ke server; nama/harga di kartu berasal dari `stockInfo` host atau builder `CommunityChatBuilders(stockCard:)`.
+
+## Offline: cache & outbox (1.3.0)
+
+Bawaannya aktif. Paket menyimpan data terakhir di database lokal milik user komunitas yang sedang masuk, lalu menampilkannya seketika saat layar dibuka; data server dimuat di latar belakang dan menggantikannya (server tetap sumber kebenaran).
+
+```dart
+await RendezvousCommunity.initialize(
+  // ...
+  offlineCache: true,          // false: perilaku lama, tanpa database lokal dan tanpa outbox
+  offlineMessageLimit: 200,    // pesan terakhir yang disimpan per room
+);
+
+await RendezvousCommunity.instance.clearLocalCache();   // hapus cache & antrean user ini (sesi tetap)
+RendezvousCommunity.instance.connectivity.online;       // ValueListenable<bool> untuk UI host
+const CommunityOfflineBanner();                          // banner "Anda sedang offline" untuk layar host
+```
+
+| Data | Yang disimpan | Batas |
+|---|---|---|
+| Daftar chat | halaman pertama `get_my_rooms` (tanpa room CS) | 30 room |
+| Pesan | baris `get_messages` yang pernah dimuat, pesan terkirim | `offlineMessageLimit` per room, yang terlama dipangkas |
+| Feed | halaman pertama Terbaru, Mengikuti, dan feed saham | 20 feed saham terakhir; profil, hashtag, bookmark tidak |
+| Outbox | pesan teks yang belum terkirim (`client_id`, isi, balasan) | sampai terkirim, dihapus user, atau logout |
+
+- **Sinkron:** baris server menimpa baris cache (edit, hapus, reaksi, `moderation_status`). Pesan yang tidak lagi dikembalikan server dalam rentang halaman yang sama dihapus dari cache. Saat koneksi kembali, layar yang masih menampilkan data tersimpan memuat ulang sendiri.
+- **Outbox:** pesan teks yang dikirim saat offline atau gagal karena jaringan tampil "Menunggu dikirim" lalu dikirim ulang otomatis (backoff 2 detik sampai 1 menit, langsung saat koneksi kembali, aplikasi kembali ke foreground, atau realtime tersambung). Urutan per room dijaga; `client_id` membuat server menolak duplikat. Penolakan server (`content_blocked`, `dm_request_limit`, persetujuan dokumen, `slow_mode` setelah 3 percobaan, dll.) membuat pesan "Gagal terkirim" dengan alasannya dan tombol **Coba lagi** / **Hapus**.
+- **Lampiran:** gambar dan PDF butuh media gateway, jadi tidak masuk antrean. Saat offline paket menolak dengan pesan "Gambar dan dokumen hanya bisa dikirim saat online."
+- **Status koneksi:** dinilai dari hasil request ke server dan status realtime (tanpa plugin konektivitas). Saat offline, paket memeriksa ulang lewat `get_client_config` (5 detik, naik sampai 1 menit). Banner offline tampil di daftar chat, room chat (builder `connectionBanner`, `CommunityConnectionDetails.offline`), dan feed.
+- **Buka aplikasi tanpa jaringan:** database dibuka bila token OLT dari `tokenProvider` milik user OLT yang sama dengan sesi terakhir (dicocokkan lewat hash SHA-256 `iss`+`sub`, tanpa jaringan). Token yang tidak bisa dibaca berarti tidak ada cache sampai online.
+- **Web:** cache dan outbox hanya di memori (hilang saat halaman dimuat ulang), sehingga host web tidak perlu menyediakan `sqlite3.wasm`.
+
+**Privasi.** Satu database per user komunitas (`<application support>/rendezvous_community/<user id>.sqlite`). Database dihapus saat `signOut()`, `deleteMyAccount()`, `clearLocalCache()`, saat sesi komunitas berganti ke user lain, dan saat aplikasi dibuka offline oleh user OLT lain. Token sosial maupun token OLT tidak pernah disimpan. **Chat CS tidak di-cache**: riwayatnya berisi verifikasi identitas dan data akun, dan aksesnya sudah lewat jalur `cs_api` sendiri, jadi selalu dimuat dari server. Panggil `signOut()` saat user keluar dari OLT supaya data komunitasnya hilang dari perangkat.
+
 ## Push transaksi OLT
 
 Push dari backend OLT (`/integration/v1/notify/messages`) berisi `source: "olt"`, `kind` berawalan `olt.` (`olt.trade`, `olt.funds`, `olt.market`, `olt.info`, `olt.promo`), `category`, `message_id`, `cust_id`, `notification_id`, dan isi `data` dari OLT (mis. `screen`, `order_id`). Pesan yang sama juga masuk ke kotak notifikasi. Daftarkan `onOltNotificationTap` di `initialize` supaya ketukan di kotak notifikasi (payload lengkap: `kind`, `category`, `message_id`, `title`, `body`, `data`, `notification_id`) dan `openCommunityPush` untuk push OLT diteruskan ke router OLT; notifikasinya ditandai terbaca otomatis:
@@ -248,14 +301,35 @@ ThemeData(
 );
 ```
 
-## Kustomisasi UI chat (builder)
+## Kustomisasi UI (builder)
 
-Tampilan chat bisa diganti per bagian tanpa menulis ulang logikanya. Setiap builder menerima tiga hal:
+Chat, feed, kartu post, komentar, notifikasi, profil, dan badge bisa diganti per bagian tanpa menulis ulang logikanya (feed/notifikasi/profil/badge sejak 1.4.0). Setiap builder menerima tiga hal:
 - `details`: data siap tampil dan handler yang sudah tersambung ke logika package (kirim, balas, hapus, kirim ulang, bisukan, buka room, dan lain-lain);
 - `fallback`: tampilan bawaan bagian itu;
 - `context`.
 
-Lazy load, kirim ulang otomatis, indikator mengetik, dan tanda terima tetap diurus package.
+Lazy load, kirim ulang otomatis, indikator mengetik, dan tanda terima tetap diurus package. Tanpa builder, tampilan bawaan tidak berubah sedikit pun.
+
+### Pasang semua sekaligus
+
+`CommunityBuilders` menggabungkan lima set builder (`chat`, `feed`, `notifications`, `profile`, `badges`). Pasang sekali di `MaterialApp.builder` supaya berlaku di semua halaman, termasuk halaman yang dibuka package:
+
+```dart
+MaterialApp(
+  builder: (context, child) => CommunityBuildersScope(
+    builders: const CommunityBuilders(
+      chat: CommunityChatBuilders(message: oltBubble),
+      feed: CommunityFeedBuilders(actionBar: oltPostActions),
+      badges: CommunityBadgeBuilders(label: oltPillBadge),
+    ),
+    child: child!,
+  ),
+);
+```
+
+`CommunityBuildersScope` boleh bersarang: scope di dalam hanya menimpa bagian yang diisinya, sisanya diwarisi dari scope di atasnya (`merge` mencakup semua field; dijaga oleh `test/tool/merge_completeness_test.dart`). Builder per widget (`CommunityFeedList(builders: ...)`, `CommunityStreamFeed(builders: ...)`, `CommunityNotificationList(builders: ...)`, `CommunityUserProfile(builders: ...)`, `CommunityChatList/CommunityChatRoom(builders: ...)`) juga digabung dengan cara yang sama. Scope per set (`CommunityChatBuildersScope`, `CommunityFeedBuildersScope`, `CommunityNotificationBuildersScope`, `CommunityProfileBuildersScope`, `CommunityBadgeBuildersScope`) mengganti set itu seluruhnya.
+
+### Chat
 
 Pasang sekali untuk seluruh aplikasi:
 
@@ -325,6 +399,7 @@ Builder juga bisa dipasang per widget: `CommunityChatList(builders: ...)` atau `
 | `loading` | `CommunityLoadingDetails` | `kind`: `rooms`, `moreRooms`, `messages`, `olderMessages` |
 | `empty` | `CommunityEmptyDetails` | `kind`: `rooms`, `messages`, `noRoomSelected`; `message` |
 | `error` | `CommunityErrorDetails` | `error`, `message` (terlokalisasi); `onRetry` |
+| `stockCard` | `CommunityStockCardDetails` | `code`, `isMine`, `info` (dari `stockInfo` host); `onTap` (buka halaman saham) |
 
 Aturan pakai:
 - **Handler `null` berarti aksinya tidak berlaku.** Contohnya `onDelete` untuk pesan orang lain, atau `onRetry` untuk pesan yang sudah terkirim. Pasang langsung ke `onPressed` supaya tombol otomatis nonaktif.
@@ -335,7 +410,150 @@ Aturan pakai:
 - **Pesan dari CS wajib tetap memperlihatkan penanda resmi.** Cara paling aman: kembalikan `fallback` bila `message.senderRole != null`, karena tampilan bawaan sudah memuat label CS Resmi, tautan bantuan, pilihan cepat, dan rating.
 - **Widget `header:` dan `composer:` di `CommunityChatRoom` tetap didukung** dan didahulukan dari builder.
 - **Builder ikut terbawa ke halaman yang dibuka package:** room di layar sempit, chat CS, dan riwayat tiket.
-- **Komponen siap pakai untuk UI sendiri:** `CommunityComposerField` (Enter mengirim, autocomplete `$KODE`/`@user`), `SocialText`, `AttachmentGrid`, `ReceiptIcon`, `CommunityAvatar`, `CommunityRoomAvatar`, `CommunityCountBadge`.
+- **Komponen siap pakai untuk UI sendiri:** `CommunityComposerField` (Enter mengirim, autocomplete `$KODE`/`@user`), `SocialText`, `AttachmentGrid`, `ReceiptIcon`, `CommunityAvatar`, `CommunityRoomAvatar`, `CommunityCountBadge`, `CommunityNetworkImage`.
+
+### Feed, kartu post, dan komentar (1.4.0)
+
+```dart
+CommunityFeedBuilders(
+  postCard: (context, d, fallback) {
+    if (d.pinned != null) return fallback;          // post tersemat tetap tampilan bawaan
+    final post = d.post;
+    return Card(
+      child: InkWell(
+        onTap: d.onOpen,
+        child: Column(children: [
+          ListTile(
+            leading: CommunityAvatar(user: post.author, onTap: d.onOpenAuthor),
+            title: Text(post.author.name),
+            subtitle: Text(d.timeLabel),
+          ),
+          SocialText(post.body, validStockCodes: post.stockCodes.toSet()),
+          if (post.attachments.isNotEmpty) AttachmentGrid(attachments: post.attachments),
+          if (post.poll != null) CommunityPollView(postId: post.id, poll: post.poll!, canVote: d.canVote),
+          Row(children: [
+            IconButton(onPressed: d.onLike, icon: Icon(post.likedByMe ? Icons.favorite : Icons.favorite_border)),
+            IconButton(onPressed: d.onComment, icon: const Icon(Icons.forum_outlined)),
+            IconButton(onPressed: d.onShare, icon: const Icon(Icons.send_outlined)),          // null: fitur mati
+            IconButton(onPressed: d.onToggleBookmark, icon: const Icon(Icons.bookmark_border)),
+            IconButton(onPressed: d.onReport, icon: const Icon(Icons.flag_outlined)),         // null untuk post sendiri
+          ]),
+        ]),
+      ),
+    );
+  },
+  stockTags: (context, d, fallback) => Wrap(spacing: 6, children: [
+    for (final code in d.post.stockCodes)
+      ActionChip(label: Text('\$$code'), onPressed: () => d.onOpenStock(code)),
+  ]),
+  comment: (context, d, fallback) => d.comment.isDeleted ? fallback : ListTile(
+    title: Text(d.comment.body ?? ''),
+    subtitle: Text(d.timeLabel),
+    trailing: IconButton(onPressed: d.onReply, icon: const Icon(Icons.reply)),
+  ),
+)
+```
+
+| Builder | `details` | Isi |
+|---|---|---|
+| `postCard`, `postAvatar`, `postHeader`, `postBody`, `attachments`, `stockTags`, `actionBar` | `CommunityPostDetails` | `post`, `isMine`, `timeLabel`, `edited`, `expanded`, `source`, `pinned`, `canVote`; `onLike`, `onOpen`, `onComment`, `onShare`, `onToggleBookmark`, `onEdit`, `onDelete` (dengan konfirmasi), `onReport`, `onBlock` (dengan konfirmasi), `onAppeal`, `onOpenAuthor`, `onOpenStock(code)`, `onOpenHashtag(tag)` |
+| `linkPreview` | `CommunityLinkPreviewDetails` | `preview` (`title`, `description`, `siteName`, `imageUrl`, `domain`); `onOpen` (dengan dialog tautan bawaan). Berlaku di feed, komentar, dan chat |
+| `poll` | `CommunityPollDetails` | `poll`, `canVote`, `closed`, `showResults`, `summary` (teks suara & sisa waktu), `pendingOptionId`; `onVote(option)` (null bila tidak bisa memilih) |
+| `pinnedMarker` | `CommunityPinnedMarkerDetails` | `pinned`, `announcement`, `title`, `label` ("Pengumuman"/"Disematkan") |
+| `comment` | `CommunityCommentDetails` | `comment`, `isMine`, `collapsed`, `timeLabel`, `edited`; `onLike`, `onReply`, `onToggleCollapse`, `onOpenAuthor`, `onEdit`, `onDelete`, `onReport`, `onBlock`, `onAppeal` |
+| `loading` / `empty` / `error` | `CommunityListLoadingDetails` (`more`) / `CommunityListEmptyDetails` (`message`) / `CommunityListErrorDetails` (`error`, `message`, `onRetry`) | status daftar feed |
+
+`postCard` menerima `fallback` berupa kartu bawaan yang sudah memakai builder bagian (`postHeader`, `postBody`, dan seterusnya), jadi host bisa mengganti kartu utuh untuk sebagian post saja. `stockTags` tidak menggambar apa pun secara bawaan (kode saham sudah tampil di isi post). Label moderasi milik sendiri ("Menunggu tinjauan", "Ajukan banding") tetap digambar package di kartu bawaan; kartu kustom bisa memakai `ModerationNotice(status: d.post.moderationStatus, onAppeal: d.onAppeal)`.
+
+### Notifikasi (1.4.0)
+
+```dart
+CommunityNotificationList(
+  builders: CommunityNotificationBuilders(
+    header: (context, d, fallback) => ListTile(
+      title: Text(d.title),
+      trailing: TextButton(onPressed: d.onMarkAllRead, child: Text('Tandai ${d.unread} dibaca')),
+    ),
+    item: (context, d, fallback) => ListTile(
+      leading: Icon(d.icon, color: d.important ? Colors.red : null),
+      title: Text(d.title, style: TextStyle(fontWeight: d.isRead ? null : FontWeight.w700)),
+      subtitle: d.snippet == null ? null : Text(d.snippet!),
+      trailing: Text(d.timeLabel),
+      onTap: d.onTap,                         // tandai dibaca, statistik, lalu buka tujuan
+    ),
+  ),
+)
+```
+
+`item` (`CommunityNotificationDetails`: `notification`, `title`, `snippet`, `icon`, `timeLabel`, `important`, `isRead`, `isOlt`; `onTap`), `header` (`CommunityNotificationHeaderDetails`: `title`, `unread`, `onMarkAllRead`), `loading`/`empty`/`error` (detail daftar yang sama dengan feed). Daftar notifikasi tidak punya pengelompokan per tanggal; `header` adalah judul daftar.
+
+### Profil (1.4.0)
+
+```dart
+CommunityUserProfile(
+  userId: id,
+  builders: CommunityProfileBuilders(
+    stats: (context, d, fallback) => Row(children: [Text(d.followersLabel), Text(d.followingLabel), Text(d.postsLabel)]),
+    followButton: (context, d, fallback) =>
+        OutlinedButton(onPressed: d.onToggleFollow, child: Text(d.isFollowing ? 'Mengikuti' : 'Ikuti')),
+  ),
+)
+```
+
+`header`, `stats`, dan `followButton` menerima `CommunityProfileDetails`: `profile`, `busy`, `isMe`, `isFollowing`, label statistik terlokalisasi; `onToggleFollow`, `onMessage`, `onEdit` (dialog edit bawaan), `onReport`, `onBlock`, `onUnblock`.
+
+### Badge (1.4.0)
+
+Satu set builder untuk semua badge di package, jadi bentuk badge cukup diganti sekali:
+
+```dart
+CommunityBadgeBuilders(
+  label: (context, d, fallback) => Container(          // resmi, CS resmi, bot, moderator, sentimen
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: ShapeDecoration(
+      shape: StadiumBorder(side: BorderSide(color: d.background ?? d.border ?? d.foreground)),
+    ),
+    child: Text(d.label.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800)),
+  ),
+  count: (context, d, fallback) => CircleAvatar(radius: 10, child: Text(d.label)),   // "99+" sudah dihitung
+  countOverlay: (context, d, fallback) => Badge.count(count: d.count, isLabelVisible: d.count > 0, child: d.child),
+)
+```
+
+| Builder | `details` | Dipakai di |
+|---|---|---|
+| `label` | `CommunityLabelBadgeDetails` (`kind`, `label`, `icon`, `foreground`, `background`, `border`) | semua badge label bila builder khususnya kosong |
+| `official` / `supportOfficial` / `bot` / `roomModerator` / `sentiment` | sama | akun resmi (`CommunityUserName`), CS resmi (`OfficialBadge`: tile room CS, pesan & header chat CS), post bot, moderator room saham, sentimen post (`kind`: `sentimentBullish`/`Bearish`/`Neutral`) |
+| `verified` | `CommunityVerifiedBadgeDetails` (`user`, `color`, `size`) | centang terverifikasi di nama user |
+| `count` | `CommunityCountBadgeDetails` (`kind`, `count`, `label`, `muted`) | jumlah belum dibaca per room (`roomUnread`), permintaan pesan (`messageRequests`) |
+| `countOverlay` | `CommunityCountOverlayDetails` (`kind`, `count`, `label`, `child`) | `CommunityChatBadge` (`chatUnread`), `CommunitySupportBadge` (`supportUnread`), `CommunityNotificationBadge` (`notificationUnread`) |
+
+Badge CS resmi wajib tetap terlihat jelas: builder `supportOfficial`/`label` boleh mengganti bentuk, jangan menyembunyikannya.
+
+Contoh app (`example/`): tombol palet mengganti gaya chat, tombol `style` mengganti kartu post dan bentuk badge (`example/lib/custom_feed_style.dart`).
+
+## Gambar & cache disk (1.4.0)
+
+Avatar, lampiran gambar (post, chat, kartu post yang dibagikan), dan gambar link preview dimuat lewat `CommunityImageProvider`:
+
+- **Didekode seukuran tampilan.** Ukuran target = ukuran layout × `devicePixelRatio`, dibulatkan ke kelipatan 64 px (supaya cache memori tidak terpecah), mempertahankan rasio (cover) dan dibatasi 2048 px. Gambar 1600×1200 di tile 300 px pada layar 2× didekode 640×480, bukan ukuran penuh.
+- **Kunci cache stabil.** Lampiran memakai `storage:<bucket>/<path>`; URL storage Supabase (`/object/sign|public|authenticated/...`) dipetakan ke kunci yang sama, dan parameter tanda tangan (`token`, `X-Amz-*`, `Expires`, dll.) dibuang. URL bertanda tangan yang berganti tidak memicu unduhan ulang. Lampiran tetap diambil lewat `MediaRepository.attachmentImage` (header `Authorization` sesi) hanya saat cache tidak punya salinan.
+- **Cache disk per user.** `<application support>/rendezvous_community/images/<user id>/`, satu file per gambar (nama = SHA-256 kunci). LRU berdasarkan total byte dan kedaluwarsa per gambar:
+
+```dart
+await RendezvousCommunity.initialize(
+  // ...
+  imageCache: const CommunityImageCacheConfig(
+    maxBytes: 200 * 1024 * 1024,     // bawaan 200 MB
+    maxAge: Duration(days: 30),      // bawaan 30 hari sejak diunduh
+  ),
+  // imageCache: const CommunityImageCacheConfig.disabled(),   // hanya cache memori
+);
+```
+
+- **Privasi.** Cache gambar hanya aktif bila `offlineCache: true`, dan dihapus bersama database offline: `signOut()`, `deleteMyAccount()`, `clearLocalCache()`, saat sesi berganti ke user lain (folder user lain dihapus saat dibuka), dan cache memori gambar milik package ikut dibuang. **Lampiran chat CS tidak pernah ditulis ke disk** (bucket `cs-documents` dan semua gambar di `CommunitySupportChat` serta riwayat tiket), sama seperti riwayat chat CS yang tidak di-cache. Host bisa menandai layar lain dengan `CommunityImagePersistence(persist: false, child: ...)`.
+- **Web:** tanpa cache disk (cache HTTP browser yang berlaku); kunci stabil dan dekode seukuran tampilan tetap aktif.
+- **Untuk UI sendiri:** `CommunityNetworkImage(cacheKey: ..., source: ...)` atau `CommunityNetworkImage.url(url)`. Tes/host bisa memasang loader sendiri lewat `CommunityImageScope(loader: CommunityImageLoader(client: ...))`.
 
 ## Arsitektur & logging
 
@@ -370,12 +588,34 @@ dart run tool/check_logging.dart  # gagal bila library memakai print/debugPrint 
 | `test/features/*/domain` | Perhitungan centang (DM & grup), DeliveryTracker, aturan draf polling |
 | `test/features/*/presentation` | Cubit daftar chat (mengetik, centang, online, sinkron ulang setelah reconnect), cubit room, cubit & widget badge chat, tile room, widget polling, composer polling, thread komentar |
 | `test/features/legal`, `test/features/account` | Pemetaan `get_legal_documents`, cache per sesi, gerbang persetujuan (tertunda → setuju → ulang sekali, ditunda, chat CS), alur & pembaca dokumen, banner feed, ekspor data (isi + nama file, batas harian), hapus akun (ketik `HAPUS`, callback, sesi dibersihkan) |
-| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit, dokumen hukum, unggah lewat media gateway, konfigurasi klien (anon & login), pencarian/hashtag/trending, bookmark, jendela edit, permintaan DM (akun baru → budi, batas 3, terima), kebijakan DM, slow mode (`slow_mode` + detik), link preview, analitik, reaksi realtime & bagikan post |
+| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit, dokumen hukum, unggah lewat media gateway, konfigurasi klien (anon & login), pencarian/hashtag/trending, bookmark, jendela edit, permintaan DM (akun baru → budi, batas 3, terima), kebijakan DM, slow mode (`slow_mode` + detik), link preview, analitik, reaksi realtime & bagikan post, banner di konfigurasi, `report_notification_event`, draf (simpan, ubah, hapus, terbit menghapus draf), kartu saham |
 | `test/features/{config,search,trending,bookmarks,chat,message_requests,appeals,link_preview}` | 1.3.0: pemetaan RPC dengan mock, cubit (debounce pencarian, bookmark/edit optimistis, reaksi, slow mode, permintaan pesan, preferensi notifikasi), widget (gate kill switch, sentimen, menu post, chip reaksi, room permintaan, dialog tautan, banding) |
 | `test/core/logging` | Logger: field terstruktur, level, sanitasi data sensitif, `initialize(logHandler:)` |
-| `test/tool` | Pemeriksa komentar dan pemeriksa `print` untuk CI |
+| `test/features/{config,notifications,drafts,chat}` (0087–0090) | Banner (parsing, prioritas, tutup tersimpan, widget), laporan dibuka/diketuk (dedupe, antrean offline, push & kotak notifikasi), tipe notifikasi baru & sakelar terkunci, draf (simpan, offline/batas, konflik, gabung daftar, autosave composer, `client_id`), kartu saham (parsing, normalisasi, cubit, kartu & pemilih) |
+| `test/core/storage`, `test/features/{chat,feed,offline}` (offline) | Store drift in-memory & memori (kontrak sama), rekonsiliasi & pemangkasan, database per user, hapus saat logout/ganti user/hapus akun, buka offline lewat identitas OLT, outbox (tertunda → terkirim/gagal, backoff, urutan, dedupe), cubit cache → server, widget pesan tertunda/gagal & banner offline |
+| `test/tool` | Pemeriksa komentar dan pemeriksa `print` untuk CI, kelengkapan `merge`/`copyWith`/`lerp` (setiap field ikut digabung) |
+| `test/features/customization`, `test/features/chat/presentation/chat_builders_merge_test.dart` (1.4.0) | Builder feed/kartu post/polling/sematan/notifikasi/profil/badge, scope bersarang, regresi `stockCard` hilang saat `merge` |
+| `test/core/storage/image_cache_test.dart`, `test/features/offline/image_cache_lifecycle_test.dart`, `test/features/media` (1.4.0) | Kunci cache stabil, LRU byte, kedaluwarsa, folder per user, hapus saat logout/hapus akun/`clearLocalCache`/ganti user, lampiran CS tidak disimpan, ukuran dekode, daftar panjang lazy |
 | `test/support` | Fake dependensi & mock data source bersama |
 | `example/integration_test` | E2E app di Windows: login → feed → thread → komentar (Enter) → chat (Enter) → notifikasi |
+
+### Tes performa scroll (1.4.0)
+
+Tes di `example/integration_test/perf_scroll_test.dart` memakai repository palsu (tanpa backend): 200 post (gambar 1600×1200, link preview, polling, sentimen) dan 500 pesan grup (gambar, kartu saham, reaksi, pembatas hari). Feed dan chat di-scroll dari atas sampai item terakhir lalu kembali, dengan `traceAction`; driver (`example/test_driver/perf_driver.dart`) menghitung rata-rata/p90/p99/terburuk waktu build dan raster, frame yang melewati budget, serta RSS proses, lalu menulis `example/build/perf_scroll_report.json` dan timeline `example/build/{feed,chat}_scroll.timeline*.json`.
+
+```bash
+make perf-flutter                       # atau: .\make.ps1 perf-flutter  (Windows desktop, mode profile)
+cd example && flutter drive --profile -d windows \
+  --driver=test_driver/perf_driver.dart --target=integration_test/perf_scroll_test.dart
+# Android nyata (USB debugging aktif; lihat id dengan `flutter devices`):
+make perf-flutter PERF_DEVICE=<device-id>   # PowerShell: $env:PERF_DEVICE='<device-id>'; .\make.ps1 perf-flutter
+cd example && flutter drive --profile -d <device-id> \
+  --driver=test_driver/perf_driver.dart --target=integration_test/perf_scroll_test.dart
+```
+
+Budget (gagal bila terlewati): p90 build < 8 ms, p90 raster < 16 ms, tidak ada frame > 32 ms kecuali frame pertama. Ubah lewat env `PERF_P90_BUILD_MS`, `PERF_P90_RASTER_MS`, `PERF_MAX_FRAME_MS` (mis. untuk perangkat Android kelas bawah). Jangan memakai mode debug untuk angka performa. Di Android, angka memori dari `ProcessInfo` berupa RSS proses aplikasi; untuk detail heap pakai DevTools.
+
+Penjaga murah di CI (`flutter test`): `test/features/media/network_image_test.dart` memastikan feed 200 post dan room 500 pesan hanya membangun item yang terlihat, dan gambar meminta dekode seukuran tampilan dengan kunci cache stabil.
 
 ## Lisensi
 

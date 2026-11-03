@@ -8,6 +8,7 @@ import { hasCommunity } from './logic'
 import type {
   AlertStatus,
   AppealStatus,
+  AudienceQuery,
   CampaignDraft,
   ContentMeta,
   ContentTarget,
@@ -31,7 +32,16 @@ export const communityKeys = {
   reports: (status: ReportStatus) => ['community', 'reports', status] as const,
   user: (id: string) => ['community', 'user', id] as const,
   users: (query: string) => ['community', 'users', query] as const,
-  audience: (audience: string, stock: string | null) => ['community', 'audience', audience, stock] as const,
+  audience: (query: AudienceQuery) =>
+    [
+      'community',
+      'audience',
+      query.audience,
+      query.stock,
+      query.days,
+      query.platform,
+      query.account_id,
+    ] as const,
   held: ['community', 'held'] as const,
   media: (status: MediaStatus) => ['community', 'media', status] as const,
   alerts: (status: AlertStatus, stock: string | null) => ['community', 'alerts', status, stock] as const,
@@ -108,10 +118,10 @@ export function useFindUsers(query: string) {
   })
 }
 
-export function useAudienceSize(audience: string, stock: string | null, enabled: boolean) {
+export function useAudienceSize(query: AudienceQuery, enabled: boolean) {
   return useQuery({
-    queryKey: communityKeys.audience(audience, stock),
-    queryFn: () => communityApi.audienceSize(audience, stock),
+    queryKey: communityKeys.audience(query),
+    queryFn: () => communityApi.audienceSize(query),
     enabled,
     staleTime: 60_000,
   })

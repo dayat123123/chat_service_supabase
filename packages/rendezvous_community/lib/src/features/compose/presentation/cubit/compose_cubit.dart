@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/core/error/community_exception.dart';
+import 'package:rendezvous_community/src/core/text/social_text_parser.dart';
+import 'package:rendezvous_community/src/features/drafts/domain/entities/post_draft.dart';
+import 'package:rendezvous_community/src/features/drafts/domain/services/community_drafts.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
 import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
@@ -29,6 +33,9 @@ abstract class ComposeState with _$ComposeState {
     @Default(false) bool submitting,
     Object? error,
     @Default(0) int errorId,
+    DraftSyncStatus? draftStatus,
+    @Default(0) int draftNoticeId,
+    String? restoredBody,
   }) = _ComposeState;
 
   const ComposeState._();
@@ -41,12 +48,102 @@ abstract class ComposeState with _$ComposeState {
 }
 
 class ComposeCubit extends Cubit<ComposeState> {
-  ComposeCubit({required this._feed, required this._media, this._consent}) : super(const ComposeState());
+  ComposeCubit({
+    required this._feed,
+    required this._media,
+    this._consent,
+    this._drafts,
+    PostDraft? draft,
+    this.draftDelay = const Duration(milliseconds: 1500),
+  }) : _clientId = draft?.clientDraftId ?? _uuid.v4(),
+       _body = draft?.body ?? '',
+       _draft = draft,
+       super(ComposeState(sentiment: draft?.sentiment, attachments: draft?.attachments ?? const [], poll: draft?.poll));
 
   final FeedRepository _feed;
   final MediaRepository _media;
   final ConsentGate? _consent;
-  String _clientId = _uuid.v4();
+  final CommunityDrafts? _drafts;
+  final Duration draftDelay;
+  String _clientId;
+  String _body;
+  PostDraft? _draft;
+  Timer? _draftTimer;
+  bool _draftDirty = false;
+
+  String get clientDraftId => _clientId;
+
+  bool get hasDrafts => _drafts != null;
+
+  void bodyChanged(String text) {
+    if (text == _body) return;
+    _body = text;
+    _scheduleDraft();
+  }
+
+  @override
+  void onChange(Change<ComposeState> change) {
+    super.onChange(change);
+    final before = change.currentState;
+    final after = change.nextState;
+    if (after.submitting || before.submitting) return;
+    if (before.sentiment != after.sentiment || before.attachments != after.attachments || before.poll != after.poll) {
+      _scheduleDraft();
+    }
+  }
+
+  void _scheduleDraft() {
+    if (_drafts == null) return;
+    _draftDirty = true;
+    _draftTimer?.cancel();
+    _draftTimer = Timer(draftDelay, () => unawaited(saveDraft()));
+  }
+
+  Future<void> saveDraft() async {
+    final drafts = _drafts;
+    _draftTimer?.cancel();
+    if (drafts == null || !_draftDirty) return;
+    _draftDirty = false;
+    final draft = PostDraft(
+      clientDraftId: _clientId,
+      body: _body.trim(),
+      sentiment: state.sentiment,
+      stocks: extractCashtags(_body).take(10).toList(),
+      attachments: state.attachments,
+      poll: state.poll,
+      updatedAt: drafts.now(),
+      serverUpdatedAt: _draft?.serverUpdatedAt,
+    );
+    if (draft.isEmpty) {
+      if (_draft != null) await drafts.delete(_clientId);
+      _draft = null;
+      return;
+    }
+    final result = await drafts.save(draft);
+    _draft = result.draft;
+    if (isClosed) return;
+    final replaced = result.status == DraftSyncStatus.replaced;
+    if (replaced) _body = result.draft.body;
+    final notify = replaced || result.status == DraftSyncStatus.limitReached;
+    emit(
+      state.copyWith(
+        draftStatus: result.status,
+        draftNoticeId: notify ? state.draftNoticeId + 1 : state.draftNoticeId,
+        restoredBody: replaced ? result.draft.body : null,
+        sentiment: replaced ? result.draft.sentiment : state.sentiment,
+        attachments: replaced ? result.draft.attachments : state.attachments,
+        poll: replaced ? result.draft.poll : state.poll,
+      ),
+    );
+    if (replaced) _draftDirty = false;
+  }
+
+  @override
+  Future<void> close() {
+    if (_draftTimer?.isActive ?? false) unawaited(saveDraft());
+    _draftTimer?.cancel();
+    return super.close();
+  }
 
   void setSentiment(Sentiment? sentiment) => emit(state.copyWith(sentiment: sentiment));
 
@@ -124,6 +221,11 @@ class ComposeCubit extends Cubit<ComposeState> {
           clientId: _clientId,
         ),
       );
+      _draftTimer?.cancel();
+      _draftDirty = false;
+      await _drafts?.published(_clientId);
+      _draft = null;
+      _body = '';
       _clientId = _uuid.v4();
       final held = {for (final a in state.attachments.where((a) => a.held)) a.path};
       if (!isClosed) emit(const ComposeState());

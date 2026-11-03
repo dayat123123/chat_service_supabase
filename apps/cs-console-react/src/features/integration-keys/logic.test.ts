@@ -14,7 +14,7 @@ import {
 import type { IntegrationBroadcast, KeyDraft } from './types'
 
 const draft = (overrides: Partial<KeyDraft> = {}): KeyDraft => ({
-  name: 'notifEngine produksi',
+  name: 'Sistem notifikasi produksi',
   scopes: ['notify'],
   official_account_id: null,
   allowed_cidrs: [],

@@ -184,6 +184,7 @@ class _CommunityComposerFieldState extends State<CommunityComposerField> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 240),
               child: ListView.builder(
+                addAutomaticKeepAlives: false,
                 shrinkWrap: true,
                 padding: EdgeInsets.zero,
                 itemCount: _suggestions.length,

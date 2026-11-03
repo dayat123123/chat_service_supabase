@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$NotificationTypePreference {
 
- String get type; bool? get inApp; bool get push;
+ String get type; bool? get inApp; bool get push; bool get inAppLocked;
 /// Create a copy of NotificationTypePreference
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $NotificationTypePreferenceCopyWith<NotificationTypePreference> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationTypePreference&&(identical(other.type, type) || other.type == type)&&(identical(other.inApp, inApp) || other.inApp == inApp)&&(identical(other.push, push) || other.push == push));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationTypePreference&&(identical(other.type, type) || other.type == type)&&(identical(other.inApp, inApp) || other.inApp == inApp)&&(identical(other.push, push) || other.push == push)&&(identical(other.inAppLocked, inAppLocked) || other.inAppLocked == inAppLocked));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,type,inApp,push);
+int get hashCode => Object.hash(runtimeType,type,inApp,push,inAppLocked);
 
 @override
 String toString() {
-  return 'NotificationTypePreference(type: $type, inApp: $inApp, push: $push)';
+  return 'NotificationTypePreference(type: $type, inApp: $inApp, push: $push, inAppLocked: $inAppLocked)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $NotificationTypePreferenceCopyWith<$Res>  {
   factory $NotificationTypePreferenceCopyWith(NotificationTypePreference value, $Res Function(NotificationTypePreference) _then) = _$NotificationTypePreferenceCopyWithImpl;
 @useResult
 $Res call({
- String type, bool? inApp, bool push
+ String type, bool? inApp, bool push, bool inAppLocked
 });
 
 
@@ -62,11 +62,12 @@ class _$NotificationTypePreferenceCopyWithImpl<$Res>
 
 /// Create a copy of NotificationTypePreference
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? inApp = freezed,Object? push = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,Object? inApp = freezed,Object? push = null,Object? inAppLocked = null,}) {
   return _then(_self.copyWith(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,inApp: freezed == inApp ? _self.inApp : inApp // ignore: cast_nullable_to_non_nullable
 as bool?,push: null == push ? _self.push : push // ignore: cast_nullable_to_non_nullable
+as bool,inAppLocked: null == inAppLocked ? _self.inAppLocked : inAppLocked // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -152,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String type,  bool? inApp,  bool push)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String type,  bool? inApp,  bool push,  bool inAppLocked)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _NotificationTypePreference() when $default != null:
-return $default(_that.type,_that.inApp,_that.push);case _:
+return $default(_that.type,_that.inApp,_that.push,_that.inAppLocked);case _:
   return orElse();
 
 }
@@ -173,10 +174,10 @@ return $default(_that.type,_that.inApp,_that.push);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String type,  bool? inApp,  bool push)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String type,  bool? inApp,  bool push,  bool inAppLocked)  $default,) {final _that = this;
 switch (_that) {
 case _NotificationTypePreference():
-return $default(_that.type,_that.inApp,_that.push);case _:
+return $default(_that.type,_that.inApp,_that.push,_that.inAppLocked);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -193,10 +194,10 @@ return $default(_that.type,_that.inApp,_that.push);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String type,  bool? inApp,  bool push)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String type,  bool? inApp,  bool push,  bool inAppLocked)?  $default,) {final _that = this;
 switch (_that) {
 case _NotificationTypePreference() when $default != null:
-return $default(_that.type,_that.inApp,_that.push);case _:
+return $default(_that.type,_that.inApp,_that.push,_that.inAppLocked);case _:
   return null;
 
 }
@@ -208,12 +209,13 @@ return $default(_that.type,_that.inApp,_that.push);case _:
 
 
 class _NotificationTypePreference extends NotificationTypePreference {
-  const _NotificationTypePreference({required this.type, this.inApp, this.push = true}): super._();
+  const _NotificationTypePreference({required this.type, this.inApp, this.push = true, this.inAppLocked = false}): super._();
   
 
 @override final  String type;
 @override final  bool? inApp;
 @override@JsonKey() final  bool push;
+@override@JsonKey() final  bool inAppLocked;
 
 /// Create a copy of NotificationTypePreference
 /// with the given fields replaced by the non-null parameter values.
@@ -225,16 +227,16 @@ _$NotificationTypePreferenceCopyWith<_NotificationTypePreference> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationTypePreference&&(identical(other.type, type) || other.type == type)&&(identical(other.inApp, inApp) || other.inApp == inApp)&&(identical(other.push, push) || other.push == push));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationTypePreference&&(identical(other.type, type) || other.type == type)&&(identical(other.inApp, inApp) || other.inApp == inApp)&&(identical(other.push, push) || other.push == push)&&(identical(other.inAppLocked, inAppLocked) || other.inAppLocked == inAppLocked));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,type,inApp,push);
+int get hashCode => Object.hash(runtimeType,type,inApp,push,inAppLocked);
 
 @override
 String toString() {
-  return 'NotificationTypePreference(type: $type, inApp: $inApp, push: $push)';
+  return 'NotificationTypePreference(type: $type, inApp: $inApp, push: $push, inAppLocked: $inAppLocked)';
 }
 
 
@@ -245,7 +247,7 @@ abstract mixin class _$NotificationTypePreferenceCopyWith<$Res> implements $Noti
   factory _$NotificationTypePreferenceCopyWith(_NotificationTypePreference value, $Res Function(_NotificationTypePreference) _then) = __$NotificationTypePreferenceCopyWithImpl;
 @override @useResult
 $Res call({
- String type, bool? inApp, bool push
+ String type, bool? inApp, bool push, bool inAppLocked
 });
 
 
@@ -262,11 +264,12 @@ class __$NotificationTypePreferenceCopyWithImpl<$Res>
 
 /// Create a copy of NotificationTypePreference
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? inApp = freezed,Object? push = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,Object? inApp = freezed,Object? push = null,Object? inAppLocked = null,}) {
   return _then(_NotificationTypePreference(
 type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String,inApp: freezed == inApp ? _self.inApp : inApp // ignore: cast_nullable_to_non_nullable
 as bool?,push: null == push ? _self.push : push // ignore: cast_nullable_to_non_nullable
+as bool,inAppLocked: null == inAppLocked ? _self.inAppLocked : inAppLocked // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

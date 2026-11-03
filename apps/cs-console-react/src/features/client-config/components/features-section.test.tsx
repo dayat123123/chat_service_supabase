@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ApiError } from '@/lib/errors'
 import { monitorFixture } from '@/test/fixtures'
 import { renderWithProviders } from '@/test/render'
 import { Toaster } from '@/test/toast'
@@ -13,8 +14,7 @@ import { FeaturesSection } from './features-section'
 vi.mock('../api', () => ({
   clientConfigApi: {
     config: vi.fn(),
-    setFlag: vi.fn(),
-    deleteFlag: vi.fn(),
+    toggleFlag: vi.fn(),
     setKillSwitch: vi.fn(),
     setMinVersion: vi.fn(),
   },
@@ -106,86 +106,55 @@ describe('FeaturesSection', () => {
     expect(screen.getByRole('button', { name: 'Nyalakan kembali' })).toBeVisible()
   })
 
-  it('validates a new feature flag before saving it', async () => {
-    const user = userEvent.setup()
-    vi.mocked(clientConfigApi.setFlag).mockResolvedValue(config())
+  it('shows the fixed feature list with only an on/off switch', async () => {
     renderSection()
 
-    await user.click(await screen.findByRole('button', { name: 'Tambah flag' }))
-    const dialog = screen.getByRole('dialog', { name: 'Tambah feature flag' })
-    await user.type(within(dialog).getByLabelText('Kunci flag'), 'Search')
-    await user.clear(within(dialog).getByLabelText('Persentase pengguna (0–100)'))
-    await user.type(within(dialog).getByLabelText('Persentase pengguna (0–100)'), '120')
-    await user.type(within(dialog).getByLabelText('Versi aplikasi minimum'), '2.x')
-    await user.type(within(dialog).getByLabelText('Pengguna terpilih (ID profil)'), 'budi')
-    await user.click(within(dialog).getByRole('button', { name: 'Simpan' }))
-
-    expect(within(dialog).getByText('Flag dengan kunci ini sudah ada.')).toBeVisible()
-    expect(within(dialog).getByText('Isi angka bulat 0–100.')).toBeVisible()
-    expect(within(dialog).getByText('Format versi seperti 2.4.0.')).toBeVisible()
-    expect(within(dialog).getByText('Bukan ID profil yang valid: budi')).toBeVisible()
-    expect(clientConfigApi.setFlag).not.toHaveBeenCalled()
-
-    await user.clear(within(dialog).getByLabelText('Kunci flag'))
-    await user.type(within(dialog).getByLabelText('Kunci flag'), 'chart.share')
-    await user.clear(within(dialog).getByLabelText('Persentase pengguna (0–100)'))
-    await user.type(within(dialog).getByLabelText('Persentase pengguna (0–100)'), '25')
-    await user.clear(within(dialog).getByLabelText('Versi aplikasi minimum'))
-    await user.type(within(dialog).getByLabelText('Versi aplikasi minimum'), '2.4.0')
-    await user.clear(within(dialog).getByLabelText('Pengguna terpilih (ID profil)'))
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Android' }))
-    await user.click(within(dialog).getByRole('switch', { name: /Nyalakan flag/ }))
-    await user.click(within(dialog).getByRole('button', { name: 'Simpan' }))
-
-    await waitFor(() =>
-      expect(clientConfigApi.setFlag).toHaveBeenCalledWith({
-        key: 'chart.share',
-        enabled: true,
-        percentage: 25,
-        user_ids: [],
-        platforms: ['android'],
-        min_app_version: '2.4.0',
-        description: '',
-      }),
-    )
-  })
-
-  it('clears a flag description and offers the desktop platforms', async () => {
-    const user = userEvent.setup()
-    vi.mocked(clientConfigApi.setFlag).mockResolvedValue(config())
-    renderSection()
-
-    await user.click(await screen.findByRole('button', { name: 'Ubah flag search' }))
-    const dialog = screen.getByRole('dialog', { name: 'Ubah flag search' })
-    for (const platform of ['Android', 'iOS', 'Web', 'Windows', 'macOS', 'Linux']) {
-      expect(within(dialog).getByRole('checkbox', { name: platform })).toBeInTheDocument()
+    expect(await screen.findByRole('switch', { name: 'Pencarian' })).toBeChecked()
+    for (const label of [
+      'Trending',
+      'Simpan postingan',
+      'Edit postingan',
+      'Reaksi pesan',
+      'Bagikan ke chat',
+      'Pengaturan notifikasi',
+      'Analitik aplikasi',
+    ]) {
+      expect(screen.getByRole('switch', { name: label })).not.toBeChecked()
     }
-    await user.click(within(dialog).getByRole('checkbox', { name: 'Linux' }))
-    await user.clear(within(dialog).getByLabelText('Deskripsi'))
-    await user.click(within(dialog).getByRole('button', { name: 'Simpan' }))
-
-    await waitFor(() =>
-      expect(clientConfigApi.setFlag).toHaveBeenCalledWith(
-        expect.objectContaining({ key: 'search', description: '', platforms: ['linux'] }),
-      ),
-    )
+    expect(screen.getByText('Cari postingan, pengguna, saham, dan hashtag.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /Tambah|Hapus|Ubah/ })).not.toBeInTheDocument()
   })
 
-  it('keeps the description of a flag toggled from the table', async () => {
+  it('turns a feature on right away', async () => {
     const user = userEvent.setup()
-    vi.mocked(clientConfigApi.setFlag).mockResolvedValue(config())
+    vi.mocked(clientConfigApi.toggleFlag).mockResolvedValue(config())
     renderSection()
 
-    await user.click(await screen.findByRole('switch', { name: 'Nyalakan search' }))
-    await waitFor(() =>
-      expect(clientConfigApi.setFlag).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: 'search',
-          enabled: false,
-          description: 'Pencarian post, pengguna, saham, dan hashtag',
-        }),
-      ),
-    )
+    await user.click(await screen.findByRole('switch', { name: 'Trending' }))
+    await waitFor(() => expect(clientConfigApi.toggleFlag).toHaveBeenCalledWith('trending', true))
+    expect(await screen.findByText('Trending dinyalakan')).toBeVisible()
+  })
+
+  it('confirms before turning a feature off', async () => {
+    const user = userEvent.setup()
+    vi.mocked(clientConfigApi.toggleFlag).mockResolvedValue(config())
+    renderSection()
+
+    await user.click(await screen.findByRole('switch', { name: 'Pencarian' }))
+    const confirm = screen.getByRole('alertdialog', { name: 'Matikan Pencarian?' })
+    expect(within(confirm).getByText(/tersembunyi untuk semua pengguna/)).toBeVisible()
+    expect(clientConfigApi.toggleFlag).not.toHaveBeenCalled()
+    await user.click(within(confirm).getByRole('button', { name: 'Matikan' }))
+    await waitFor(() => expect(clientConfigApi.toggleFlag).toHaveBeenCalledWith('search', false))
+  })
+
+  it('explains a rejected toggle', async () => {
+    const user = userEvent.setup()
+    vi.mocked(clientConfigApi.toggleFlag).mockRejectedValue(new ApiError('unknown_flag', 'x', 400))
+    renderSection()
+
+    await user.click(await screen.findByRole('switch', { name: 'Trending' }))
+    expect(await screen.findByText('Fitur ini tidak dikenal aplikasi. Daftar dimuat ulang.')).toBeVisible()
   })
 
   it('lists a minimum version for every app platform', async () => {

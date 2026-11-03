@@ -4,6 +4,7 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_mess
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/stocks/domain/entities/stock_info.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 class CommunityMessageDetails {
@@ -18,6 +19,7 @@ class CommunityMessageDetails {
     this.onDelete,
     this.onReport,
     this.onRetry,
+    this.onDiscard,
     this.onSenderTap,
     this.onShowActions,
     this.reactions = const [],
@@ -25,6 +27,11 @@ class CommunityMessageDetails {
     this.onReact,
     this.onAppeal,
     this.onOpenSharedPost,
+    this.senderIsModerator = false,
+    this.senderMutedUntil,
+    this.onHide,
+    this.onMuteSender,
+    this.onEscalate,
   });
 
   final ChatMessage message;
@@ -37,6 +44,7 @@ class CommunityMessageDetails {
   final VoidCallback? onDelete;
   final VoidCallback? onReport;
   final VoidCallback? onRetry;
+  final VoidCallback? onDiscard;
   final VoidCallback? onSenderTap;
   final VoidCallback? onShowActions;
   final List<MessageReaction> reactions;
@@ -44,6 +52,13 @@ class CommunityMessageDetails {
   final ValueChanged<String>? onReact;
   final VoidCallback? onAppeal;
   final VoidCallback? onOpenSharedPost;
+  final bool senderIsModerator;
+  final DateTime? senderMutedUntil;
+  final VoidCallback? onHide;
+  final VoidCallback? onMuteSender;
+  final VoidCallback? onEscalate;
+
+  bool get hasModeration => onHide != null || onMuteSender != null || onEscalate != null;
 }
 
 class CommunityComposerDetails {
@@ -61,6 +76,8 @@ class CommunityComposerDetails {
     this.allowsDocuments = false,
     this.extraActions = const [],
     this.cooldown = Duration.zero,
+    this.onSendStockCard,
+    this.mutedUntil,
   });
 
   final TextEditingController controller;
@@ -76,8 +93,12 @@ class CommunityComposerDetails {
   final bool allowsDocuments;
   final List<Widget> extraActions;
   final Duration cooldown;
+  final VoidCallback? onSendStockCard;
+  final DateTime? mutedUntil;
 
   bool get coolingDown => cooldown > Duration.zero;
+
+  bool get muted => mutedUntil != null;
 
   int get cooldownSeconds => (cooldown.inMilliseconds + 999) ~/ 1000;
 }
@@ -116,10 +137,11 @@ class CommunityTypingDetails {
 }
 
 class CommunityConnectionDetails {
-  const CommunityConnectionDetails({required this.status, required this.label});
+  const CommunityConnectionDetails({required this.status, required this.label, this.offline = false});
 
   final RealtimeStatus status;
   final String label;
+  final bool offline;
 }
 
 class CommunityDayDetails {
@@ -186,4 +208,13 @@ class CommunityErrorDetails {
   final Object error;
   final String message;
   final VoidCallback onRetry;
+}
+
+class CommunityStockCardDetails {
+  const CommunityStockCardDetails({required this.code, required this.isMine, this.info, this.onTap});
+
+  final String code;
+  final bool isMine;
+  final CommunityStockInfo? info;
+  final VoidCallback? onTap;
 }

@@ -1,84 +1,33 @@
 import {
-  FLAG_DESCRIPTION_MAX,
-  FLAG_USERS_MAX,
+  BANNER_BODY_MAX,
+  BANNER_LINK_MAX,
+  BANNER_PRIORITY_MAX,
+  BANNER_TITLE_MAX,
   KILL_REASON_MAX,
   KILL_REASON_MIN,
-  RESERVED_FLAG,
+  knownFlags,
+  type AppBanner,
+  type BannerDraft,
   type FeatureFlag,
-  type FlagDraft,
+  type FeatureRow,
 } from './types'
 
-const flagKeyPattern = /^[a-z][a-z0-9_.]{1,49}$/
 const versionPattern = /^[0-9]{1,5}(\.[0-9]{1,5}){0,3}$/
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-export type FlagField = 'key' | 'percentage' | 'users' | 'version' | 'description'
-export type FlagProblem =
-  'required' | 'format' | 'reserved' | 'exists' | 'range' | 'invalid' | 'tooMany' | 'length'
-export type FlagProblems = Partial<Record<FlagField, FlagProblem>>
-
-export const normalizeFlagKey = (value: string) => value.trim().toLowerCase()
 
 export function versionValid(value: string) {
   return versionPattern.test(value.trim())
 }
 
-export function parseUserIds(text: string) {
-  const items = [
-    ...new Set(
-      text
-        .split(/[\s,;]+/)
-        .map((item) => item.trim().toLowerCase())
-        .filter(Boolean),
-    ),
-  ]
-  return {
-    ids: items.filter((item) => uuidPattern.test(item)),
-    invalid: items.filter((item) => !uuidPattern.test(item)),
-  }
-}
-
-export function flagProblems(
-  draft: FlagDraft,
-  options: { isNew: boolean; existing: string[]; invalidUsers: string[] },
-): FlagProblems {
-  const problems: FlagProblems = {}
-  const key = normalizeFlagKey(draft.key)
-  if (options.isNew) {
-    if (key === '') problems.key = 'required'
-    else if (key === RESERVED_FLAG) problems.key = 'reserved'
-    else if (!flagKeyPattern.test(key)) problems.key = 'format'
-    else if (options.existing.includes(key)) problems.key = 'exists'
-  }
-  if (!Number.isInteger(draft.percentage) || draft.percentage < 0 || draft.percentage > 100)
-    problems.percentage = 'range'
-  if (options.invalidUsers.length > 0) problems.users = 'invalid'
-  else if (draft.user_ids.length > FLAG_USERS_MAX) problems.users = 'tooMany'
-  if (draft.min_app_version !== null && !versionValid(draft.min_app_version)) problems.version = 'format'
-  if ((draft.description ?? '').length > FLAG_DESCRIPTION_MAX) problems.description = 'length'
-  return problems
-}
-
-export function flagDraft(flag: FeatureFlag | null): FlagDraft {
-  return flag
-    ? {
-        key: flag.key,
-        enabled: flag.enabled,
-        percentage: flag.percentage,
-        user_ids: flag.user_ids,
-        platforms: flag.platforms,
-        min_app_version: flag.min_app_version,
-        description: flag.description,
-      }
-    : {
-        key: '',
-        enabled: false,
-        percentage: 100,
-        user_ids: [],
-        platforms: [],
-        min_app_version: null,
-        description: null,
-      }
+export function featureRows(flags: FeatureFlag[]): FeatureRow[] {
+  return knownFlags.map((key) => {
+    const flag = flags.find((item) => item.key === key)
+    return {
+      key,
+      enabled: flag?.enabled ?? false,
+      updated_by: flag?.updated_by ?? null,
+      updated_at: flag?.updated_at ?? null,
+    }
+  })
 }
 
 export const collapseSpaces = (value: string) => value.replace(/\s+/g, ' ').trim()
@@ -92,9 +41,82 @@ export function phraseMatches(typed: string, phrase: string) {
   return collapseSpaces(typed).toLocaleUpperCase('id') === phrase.toLocaleUpperCase('id')
 }
 
-export function rolloutLabel(flag: Pick<FeatureFlag, 'enabled' | 'percentage' | 'user_ids'>) {
-  if (!flag.enabled) return 'off' as const
-  if (flag.percentage >= 100) return 'all' as const
-  if (flag.percentage === 0) return flag.user_ids.length > 0 ? ('users' as const) : ('none' as const)
-  return 'partial' as const
+export type BannerField =
+  'title' | 'body' | 'link' | 'minVersion' | 'maxVersion' | 'priority' | 'starts' | 'ends'
+export type BannerProblem = 'required' | 'length' | 'format' | 'range' | 'order'
+export type BannerProblems = Partial<Record<BannerField, BannerProblem>>
+
+const linkPattern = /^https?:\/\/\S+$/
+
+export function compareVersions(a: string, b: string) {
+  const left = a.trim().split('.').map(Number)
+  const right = b.trim().split('.').map(Number)
+  for (let index = 0; index < Math.max(left.length, right.length); index += 1) {
+    const diff = (left[index] ?? 0) - (right[index] ?? 0)
+    if (diff !== 0) return diff
+  }
+  return 0
+}
+
+export function bannerProblems(
+  draft: BannerDraft,
+  inputs: { startsText: string; endsText: string },
+): BannerProblems {
+  const problems: BannerProblems = {}
+  const title = draft.title.trim()
+  if (title === '') problems.title = 'required'
+  else if (title.length > BANNER_TITLE_MAX) problems.title = 'length'
+  if (draft.body.trim().length > BANNER_BODY_MAX) problems.body = 'length'
+  if (draft.link_url !== null) {
+    if (!linkPattern.test(draft.link_url)) problems.link = 'format'
+    else if (draft.link_url.length > BANNER_LINK_MAX) problems.link = 'length'
+  }
+  if (draft.min_app_version !== null && !versionValid(draft.min_app_version)) problems.minVersion = 'format'
+  if (draft.max_app_version !== null && !versionValid(draft.max_app_version)) problems.maxVersion = 'format'
+  else if (
+    !problems.minVersion &&
+    draft.min_app_version !== null &&
+    draft.max_app_version !== null &&
+    compareVersions(draft.min_app_version, draft.max_app_version) > 0
+  )
+    problems.maxVersion = 'order'
+  if (!Number.isInteger(draft.priority) || draft.priority < 0 || draft.priority > BANNER_PRIORITY_MAX)
+    problems.priority = 'range'
+  if (inputs.startsText.trim() !== '' && draft.starts_at === null) problems.starts = 'format'
+  if (inputs.endsText.trim() !== '' && draft.ends_at === null) problems.ends = 'format'
+  else if (draft.ends_at !== null) {
+    const start = draft.starts_at ?? new Date().toISOString()
+    if (Date.parse(draft.ends_at) <= Date.parse(start)) problems.ends = 'order'
+  }
+  return problems
+}
+
+export function bannerDraft(banner: AppBanner | null): BannerDraft {
+  return banner
+    ? {
+        title: banner.title,
+        body: banner.body,
+        link_url: banner.link_url,
+        level: banner.level,
+        starts_at: banner.starts_at,
+        ends_at: banner.ends_at,
+        platforms: banner.platforms,
+        min_app_version: banner.min_app_version,
+        max_app_version: banner.max_app_version,
+        dismissible: banner.dismissible,
+        priority: banner.priority,
+      }
+    : {
+        title: '',
+        body: '',
+        link_url: null,
+        level: 'info',
+        starts_at: null,
+        ends_at: null,
+        platforms: [],
+        min_app_version: null,
+        max_app_version: null,
+        dismissible: true,
+        priority: 0,
+      }
 }

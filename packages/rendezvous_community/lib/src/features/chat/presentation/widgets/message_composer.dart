@@ -7,6 +7,7 @@ import 'package:rendezvous_community/src/core/media/image_mime.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/stock_cards.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_composer_field.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
@@ -97,6 +98,12 @@ class _MessageComposerState extends State<MessageComposer> {
     }
   }
 
+  Future<void> _pickStockCards() async {
+    final cubit = context.read<ChatRoomCubit>();
+    final codes = await showStockCardPicker(context);
+    if (codes != null && codes.isNotEmpty) await cubit.sendStockCards(codes);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.communityL10n;
@@ -104,7 +111,11 @@ class _MessageComposerState extends State<MessageComposer> {
     return BlocConsumer<ChatRoomCubit, ChatRoomState>(
       listenWhen: (a, b) => a.replyTo?.id != b.replyTo?.id && b.replyTo != null,
       listener: (_, _) => _focus.requestFocus(),
-      buildWhen: (a, b) => a.replyTo != b.replyTo || a.uploading != b.uploading || a.cooldownUntil != b.cooldownUntil,
+      buildWhen: (a, b) =>
+          a.replyTo != b.replyTo ||
+          a.uploading != b.uploading ||
+          a.cooldownUntil != b.cooldownUntil ||
+          a.mutedUntil() != b.mutedUntil(),
       builder: (context, state) {
         final replyTo = state.replyTo;
         final cooldown = state.cooldownLeft();
@@ -125,6 +136,8 @@ class _MessageComposerState extends State<MessageComposer> {
           allowsDocuments: widget.allowDocuments,
           extraActions: widget.leading,
           cooldown: cooldown,
+          onSendStockCard: context.read<ChatRoomCubit>().canSendStockCards ? _pickStockCards : null,
+          mutedUntil: state.mutedUntil(),
         );
         return buildChatPart(builder, context, details, _DefaultComposer(details: details));
       },
@@ -174,6 +187,12 @@ class _DefaultComposer extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 ...d.extraActions,
+                if (d.onSendStockCard != null)
+                  IconButton(
+                    tooltip: l10n.stockCardSend,
+                    onPressed: d.onSendStockCard,
+                    icon: const Icon(Icons.candlestick_chart_outlined),
+                  ),
                 IconButton(
                   tooltip: d.allowsDocuments ? l10n.composeAddImageOrPdf : l10n.composeAddImage,
                   onPressed: d.onPickImage,
@@ -193,7 +212,12 @@ class _DefaultComposer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                if (d.coolingDown)
+                if (d.muted)
+                  Tooltip(
+                    message: l10n.roomMutedComposer,
+                    child: IconButton.filled(onPressed: null, icon: const Icon(Icons.volume_off_outlined)),
+                  )
+                else if (d.coolingDown)
                   Tooltip(
                     message: l10n.errorSlowMode(d.cooldownSeconds),
                     child: FilledButton.tonal(onPressed: null, child: Text(l10n.slowModeWait(d.cooldownSeconds))),

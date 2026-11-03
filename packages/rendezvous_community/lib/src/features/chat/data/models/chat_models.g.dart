@@ -66,6 +66,9 @@ _ChatMessageModel _$ChatMessageModelFromJson(Map<String, dynamic> json) => _Chat
   replyToSenderUsername: json['reply_to_sender_username'] as String?,
   attachments: json['attachments'] == null ? const <AttachmentModel>[] : attachmentsFromJson(json['attachments']),
   sharedPostId: sharedPostIdFromJson(readAttachments(json, 'shared_post_id')),
+  stockCodes: readAttachments(json, 'stock_codes') == null
+      ? const <String>[]
+      : stockCodesFromJson(readAttachments(json, 'stock_codes')),
   clientId: json['client_id'] as String?,
   editedAt: json['edited_at'] == null ? null : DateTime.parse(json['edited_at'] as String),
   createdAt: DateTime.parse(json['created_at'] as String),
@@ -117,6 +120,9 @@ _MessageRowModel _$MessageRowModelFromJson(Map<String, dynamic> json) => _Messag
   replyToId: json['reply_to_id'] as String?,
   attachments: json['attachments'] == null ? const <AttachmentModel>[] : attachmentsFromJson(json['attachments']),
   sharedPostId: sharedPostIdFromJson(readAttachments(json, 'shared_post_id')),
+  stockCodes: readAttachments(json, 'stock_codes') == null
+      ? const <String>[]
+      : stockCodesFromJson(readAttachments(json, 'stock_codes')),
   clientId: json['client_id'] as String?,
   editedAt: json['edited_at'] == null ? null : DateTime.parse(json['edited_at'] as String),
   deletedAt: json['deleted_at'] == null ? null : DateTime.parse(json['deleted_at'] as String),

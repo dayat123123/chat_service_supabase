@@ -17,6 +17,7 @@ import (
 	"olt-social/link-preview/internal/config"
 	"olt-social/link-preview/internal/heartbeat"
 	"olt-social/link-preview/internal/metrics"
+	"olt-social/link-preview/internal/moderation"
 	"olt-social/link-preview/internal/safehttp"
 	"olt-social/link-preview/internal/storage"
 	"olt-social/link-preview/internal/store"
@@ -25,7 +26,7 @@ import (
 
 const (
 	service     = "link-preview"
-	version     = "0.1.0"
+	version     = "0.2.0"
 	pingTimeout = 5 * time.Second
 )
 
@@ -52,11 +53,16 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 
 	queue := store.NewPostgREST(cfg.PostgRESTURL, cfg.JWTSecret, cfg.JWTIssuer, cfg.RequestTimeout)
 	objects := storage.New(cfg.StorageURL, cfg.JWTSecret, cfg.JWTIssuer, cfg.RequestTimeout)
+	classifier := moderation.NewClient(cfg.ClassifierURL, cfg.ClassifierTimeout, cfg.Concurrency)
+	policy := moderation.NewPolicy(queue, log, cfg.ModerationRefresh, nil)
 	fetcher := safehttp.New(safehttp.Options{Policy: safehttp.DefaultPolicy(), Timeout: cfg.FetchTimeout, UserAgent: cfg.UserAgent})
 	w := worker.New(worker.Options{
 		Store:           queue,
 		Fetcher:         fetcher,
 		Uploader:        objects,
+		Classifier:      classifier,
+		Policy:          policy,
+		Scores:          queue,
 		Log:             log,
 		Instance:        cfg.InstanceID,
 		BatchSize:       cfg.BatchSize,
@@ -65,6 +71,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		PollInterval:    cfg.PollInterval,
 		FetchTimeout:    cfg.FetchTimeout,
 		RequestTimeout:  cfg.RequestTimeout,
+		ClassifyTimeout: cfg.ClassifierTimeout,
 		ShutdownTimeout: cfg.ShutdownTimeout,
 		MaxHTMLBytes:    cfg.MaxHTMLBytes,
 		MaxImageBytes:   cfg.MaxImageBytes,
@@ -124,14 +131,19 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		}
 	}()
 	log.Info("Link preview listening", "port", cfg.Port, "instance", cfg.InstanceID, "version", version,
-		"concurrency", cfg.Concurrency, "fetch_timeout", cfg.FetchTimeout.String())
+		"concurrency", cfg.Concurrency, "fetch_timeout", cfg.FetchTimeout.String(), "classifier", cfg.ClassifierURL)
 
+	policy.Refresh(ctx)
 	beatCtx, stopBeats := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		beats.Run(beatCtx)
+	}()
+	go func() {
+		defer wg.Done()
+		policy.Run(beatCtx)
 	}()
 	done := make(chan struct{})
 	go func() {

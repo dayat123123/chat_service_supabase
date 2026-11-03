@@ -5,11 +5,14 @@ import 'package:rendezvous_community/src/features/appeals/domain/repositories/ap
 import 'package:rendezvous_community/src/features/bookmarks/domain/repositories/bookmark_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_extras_repository.dart';
 import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
+import 'package:rendezvous_community/src/features/config/domain/services/banner_dismissals.dart';
 import 'package:rendezvous_community/src/features/config/domain/services/client_config_service.dart';
+import 'package:rendezvous_community/src/features/drafts/domain/services/community_drafts.dart';
 import 'package:rendezvous_community/src/features/edit/domain/repositories/content_edit_repository.dart';
 import 'package:rendezvous_community/src/features/link_preview/domain/services/link_preview_loader.dart';
 import 'package:rendezvous_community/src/features/message_requests/domain/repositories/message_request_repository.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_preferences_repository.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/services/notification_reporter.dart';
 import 'package:rendezvous_community/src/features/search/domain/repositories/search_repository.dart';
 import 'package:rendezvous_community/src/features/trending/domain/repositories/trending_repository.dart';
 
@@ -25,6 +28,9 @@ abstract interface class CommunityFeatureDependencies {
   NotificationPreferencesRepository get notificationPreferences;
   LinkPreviewLoader get linkPreviews;
   CommunityAnalytics get analytics;
+  NotificationReporter get notificationReporter;
+  BannerDismissals get bannerDismissals;
+  CommunityDrafts get drafts;
 }
 
 class CommunityFeatureScope extends InheritedWidget {

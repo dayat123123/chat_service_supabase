@@ -49,33 +49,34 @@ select throws_ok($$select cs_api.admin_set_feature_flag('social.enabled', false)
   'Kill switch tidak bisa diubah lewat flag biasa');
 select throws_ok($$select cs_api.admin_set_feature_flag('Beta Fitur', true)$$, 'PT400', 'invalid_flag_key',
   'Format kunci flag divalidasi');
-select throws_ok($$select cs_api.admin_set_feature_flag('beta.x', true, 150)$$, 'PT400', 'invalid_percentage',
+select throws_ok($$select cs_api.admin_set_feature_flag('trending', true, 150)$$, 'PT400', 'invalid_percentage',
   'Persentase divalidasi');
-select ok(cs_api.admin_set_feature_flag('beta.half', true, 50) -> 'flags' @> '[{"key": "beta.half", "percentage": 50}]',
-  'Super Admin membuat flag bertahap');
-select ok(cs_api.admin_set_feature_flag('beta.vip', true, 0, array[:'ani']::uuid[]) is not null, 'Flag khusus pengguna tertentu');
-select ok(cs_api.admin_set_feature_flag('beta.ios', true, 100, '{}', array['ios'], '3.0.0', 'Hanya iOS 3.0+') is not null,
+select ok(cs_api.admin_set_feature_flag('trending', true, 50) -> 'flags' @> '[{"key": "trending", "percentage": 50}]',
+  'Super Admin mengatur rollout bertahap');
+select ok(cs_api.admin_set_feature_flag('bookmarks', true, 0, array[:'ani']::uuid[]) is not null, 'Flag khusus pengguna tertentu');
+select ok(cs_api.admin_set_feature_flag('post_edit', true, 100, '{}', array['ios'], '3.0.0', 'Hanya iOS 3.0+') is not null,
   'Flag per platform dan versi');
 reset role;
 
-select is((select count(*)::integer from cs.cs_audit_log where action = 'feature_flag.set' and details ->> 'key' like 'beta.%'), 3,
+select is((select count(*)::integer from cs.cs_audit_log where action = 'feature_flag.set' and details ->> 'key' in ('trending', 'bookmarks', 'post_edit')
+                                                     and actor_id = :'sa'), 3,
   'Perubahan flag tercatat di audit');
 select is((select count(*)::integer from generate_series(1, 400) g
-           where private.rollout_bucket('beta.half', gen_random_uuid()) < 50) between 140 and 260, true,
+           where private.rollout_bucket('trending', gen_random_uuid()) < 50) between 140 and 260, true,
   'Rollout persentase membagi pengguna kira-kira sesuai persentase');
-select is(private.rollout_bucket('beta.half', :'ani'), private.rollout_bucket('beta.half', :'ani'),
+select is(private.rollout_bucket('trending', :'ani'), private.rollout_bucket('trending', :'ani'),
   'Rollout deterministik per pengguna');
-select (private.rollout_bucket('beta.half', :'ani') < 50)::text as ani_half \gset
+select (private.rollout_bucket('trending', :'ani') < 50)::text as ani_half \gset
 
 select tests.authenticate_as(:'ani');
-select is(public.get_client_config() -> 'flags' ->> 'beta.half', :'ani_half', 'Flag bertahap memakai hash pengguna');
-select is(public.get_client_config() -> 'flags' ->> 'beta.vip', 'true', 'Pengguna dalam daftar flag mendapat fitur');
-select is(public.get_client_config('ios', '3.1.0') -> 'flags' ->> 'beta.ios', 'true', 'Flag aktif untuk platform dan versi yang cocok');
-select is(public.get_client_config('android', '3.1.0') -> 'flags' ->> 'beta.ios', 'false', 'Flag mati di platform lain');
-select is(public.get_client_config('ios', '2.9.0') -> 'flags' ->> 'beta.ios', 'false', 'Flag mati di versi lama');
+select is(public.get_client_config() -> 'flags' ->> 'trending', :'ani_half', 'Flag bertahap memakai hash pengguna');
+select is(public.get_client_config() -> 'flags' ->> 'bookmarks', 'true', 'Pengguna dalam daftar flag mendapat fitur');
+select is(public.get_client_config('ios', '3.1.0') -> 'flags' ->> 'post_edit', 'true', 'Flag aktif untuk platform dan versi yang cocok');
+select is(public.get_client_config('android', '3.1.0') -> 'flags' ->> 'post_edit', 'false', 'Flag mati di platform lain');
+select is(public.get_client_config('ios', '2.9.0') -> 'flags' ->> 'post_edit', 'false', 'Flag mati di versi lama');
 reset role;
 select tests.authenticate_as(:'budi');
-select is(public.get_client_config() -> 'flags' ->> 'beta.vip', 'false', 'Pengguna lain tidak mendapat flag khusus');
+select is(public.get_client_config() -> 'flags' ->> 'bookmarks', 'false', 'Pengguna lain tidak mendapat flag khusus');
 select cs_api.open_ticket('account') ->> 'id' as ticket \gset
 select get_or_create_direct_room(:'ani') as dm \gset
 reset role;

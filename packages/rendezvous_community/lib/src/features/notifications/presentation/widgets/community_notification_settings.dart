@@ -53,6 +53,9 @@ String notificationTypeLabel(CommunityLocalizations l10n, String type) => switch
   'message' => l10n.notifTypeMessage,
   'announcement' => l10n.notifTypeAnnouncement,
   'appeal' => l10n.notifTypeAppeal,
+  'followed_post' => l10n.notifTypeFollowedPost,
+  'watchlist_digest' => l10n.notifTypeWatchlistDigest,
+  'moderation' => l10n.notifTypeModeration,
   notificationTradeType => l10n.notifTypeTrade,
   notificationFundsType => l10n.notifTypeFunds,
   notificationMarketType => l10n.notifTypeMarket,
@@ -67,6 +70,9 @@ String? notificationTypeDescription(CommunityLocalizations l10n, String type) =>
   notificationMarketType => l10n.notifTypeMarketHint,
   notificationOltInfoType => l10n.notifTypeOltInfoHint,
   notificationPromoType => l10n.notifTypePromoHint,
+  'followed_post' => l10n.notifTypeFollowedPostHint,
+  'watchlist_digest' => l10n.notifTypeWatchlistDigestHint,
+  'moderation' => l10n.notifTypeModerationHint,
   _ => null,
 };
 
@@ -112,7 +118,7 @@ class _TypeRow extends StatelessWidget {
             child: pref.supportsInApp
                 ? Switch(
                     value: pref.inApp ?? true,
-                    onChanged: (value) => cubit.setChannel(pref.type, inApp: value),
+                    onChanged: pref.inAppLocked ? null : (value) => cubit.setChannel(pref.type, inApp: value),
                   )
                 : const SizedBox.shrink(),
           ),

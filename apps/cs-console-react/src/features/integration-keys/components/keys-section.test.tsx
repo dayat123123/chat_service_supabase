@@ -35,7 +35,7 @@ const SECRET = 'oik_Zm9vYmFyYmF6cXV4cXV1eGNvcmdlZ3JhdWx0Z2FycGx5d2FsZG8'
 
 const notifyKey: IntegrationKey = {
   id: 'key-1',
-  name: 'notifEngine produksi',
+  name: 'Sistem notifikasi produksi',
   prefix: 'AbCdEfGh',
   hint: 'oik_AbCdEfGh…',
   scopes: ['notify'],
@@ -60,7 +60,7 @@ const stats: IntegrationStats = {
   keys: [
     {
       id: 'key-1',
-      name: 'notifEngine produksi',
+      name: 'Sistem notifikasi produksi',
       prefix: 'AbCdEfGh',
       status: 'active',
       last_used_at: null,
@@ -81,7 +81,7 @@ const stats: IntegrationStats = {
 
 const broadcastBase: IntegrationBroadcast = {
   id: 'bc-1',
-  key: { id: 'key-1', name: 'notifEngine produksi', prefix: 'AbCdEfGh' },
+  key: { id: 'key-1', name: 'Sistem notifikasi produksi', prefix: 'AbCdEfGh' },
   message_id: 'market-close-20261103',
   kind: 'market',
   title: { id: 'Pasar tutup lebih awal', en: 'Market closes early' },
@@ -95,6 +95,10 @@ const broadcastBase: IntegrationBroadcast = {
   inbox: 1350,
   capped: 0,
   pref_skipped: 50,
+  opened: 700,
+  tapped: 245,
+  open_rate: 50,
+  tap_rate: 17.5,
   error: null,
   created_at: '2026-11-03T02:00:00.000Z',
   started_at: '2026-11-03T02:00:01.000Z',
@@ -132,9 +136,9 @@ describe('IntegrationKeysSection', () => {
     renderSection()
 
     const list = await screen.findByRole('table', { name: 'API key' })
-    const row = within(list).getByRole('row', { name: /notifEngine produksi/ })
+    const row = within(list).getByRole('row', { name: /Sistem notifikasi produksi/ })
     expect(within(row).getByText('oik_AbCdEfGh…')).toBeInTheDocument()
-    expect(within(row).getByText('Notifikasi transaksi')).toBeInTheDocument()
+    expect(within(row).getByText('Notifikasi per rekening')).toBeInTheDocument()
     expect(within(row).getByText('10.20.0.0/16')).toBeInTheDocument()
     expect(within(row).getByText('Aktif')).toBeInTheDocument()
     expect(within(row).getByText('10.20.1.5')).toBeInTheDocument()
@@ -149,7 +153,7 @@ describe('IntegrationKeysSection', () => {
   it('validates the form, then shows the new key only once and never caches it', async () => {
     const user = userEvent.setup()
     vi.mocked(integrationKeysApi.create).mockResolvedValue({
-      key: { ...notifyKey, id: 'key-2', name: 'notifEngine baru' },
+      key: { ...notifyKey, id: 'key-2', name: 'Sistem notifikasi baru' },
       secret: SECRET,
     })
     const { client } = renderSection()
@@ -166,7 +170,7 @@ describe('IntegrationKeysSection', () => {
     expect(within(dialog).getByText('Alamat tidak valid: 10.0.0.0/40')).toBeVisible()
     expect(integrationKeysApi.create).not.toHaveBeenCalled()
 
-    await user.type(within(dialog).getByLabelText('Nama key'), 'notifEngine baru')
+    await user.type(within(dialog).getByLabelText('Nama key'), 'Sistem notifikasi baru')
     await user.clear(within(dialog).getByLabelText('Batas request per menit'))
     await user.type(within(dialog).getByLabelText('Batas request per menit'), '1200')
     await user.clear(within(dialog).getByLabelText('IP atau CIDR yang diizinkan'))
@@ -175,7 +179,7 @@ describe('IntegrationKeysSection', () => {
 
     await waitFor(() =>
       expect(integrationKeysApi.create).toHaveBeenCalledWith({
-        name: 'notifEngine baru',
+        name: 'Sistem notifikasi baru',
         scopes: ['notify'],
         official_account_id: null,
         allowed_cidrs: ['203.0.113.7'],
@@ -219,7 +223,7 @@ describe('IntegrationKeysSection', () => {
     await user.click(screen.getByRole('button', { name: 'Buat API key' }))
     const dialog = await screen.findByRole('dialog', { name: 'Buat API key' })
     await user.type(within(dialog).getByLabelText('Nama key'), 'Bot berita')
-    await user.click(within(dialog).getByRole('checkbox', { name: /^Notifikasi transaksi/ }))
+    await user.click(within(dialog).getByRole('checkbox', { name: /^Notifikasi per rekening/ }))
     await user.click(within(dialog).getByRole('checkbox', { name: /Postingan bot/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Buat API key' }))
     expect(within(dialog).getByText('Pilih akun resmi untuk izin Postingan bot.')).toBeVisible()
@@ -235,7 +239,7 @@ describe('IntegrationKeysSection', () => {
     )
   })
 
-  it('selects trade notifications together with mass notifications and warns about the reach', async () => {
+  it('selects per-account notifications together with mass notifications and warns about the reach', async () => {
     const user = userEvent.setup()
     vi.mocked(integrationKeysApi.create).mockResolvedValue({ key: notifyKey, secret: SECRET })
     renderSection()
@@ -243,7 +247,7 @@ describe('IntegrationKeysSection', () => {
     await user.click(screen.getByRole('button', { name: 'Buat API key' }))
     const dialog = await screen.findByRole('dialog', { name: 'Buat API key' })
     await user.type(within(dialog).getByLabelText('Nama key'), 'Broadcast pasar')
-    const notify = within(dialog).getByRole('checkbox', { name: /^Notifikasi transaksi/ })
+    const notify = within(dialog).getByRole('checkbox', { name: /^Notifikasi per rekening/ })
     const broadcast = within(dialog).getByRole('checkbox', { name: /^Notifikasi massal/ })
     await user.click(notify)
     expect(notify).not.toBeChecked()
@@ -281,6 +285,11 @@ describe('IntegrationKeysSection', () => {
         channels: ['push'],
         target: { type: 'olt_user_ids', count: 3 },
         status: 'failed',
+        recipients: 0,
+        opened: 0,
+        tapped: 0,
+        open_rate: null,
+        tap_rate: null,
         error: 'fcm_unavailable',
       },
       broadcastBase,
@@ -288,11 +297,11 @@ describe('IntegrationKeysSection', () => {
     renderSection()
 
     const list = await screen.findByRole('table', { name: 'API key' })
-    const row = within(list).getByRole('row', { name: /notifEngine produksi/ })
+    const row = within(list).getByRole('row', { name: /Sistem notifikasi produksi/ })
     expect(within(row).getByText('Notifikasi massal')).toBeInTheDocument()
 
-    await user.click(within(row).getByRole('button', { name: 'Broadcast notifEngine produksi' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Broadcast notifEngine produksi' })
+    await user.click(within(row).getByRole('button', { name: 'Broadcast Sistem notifikasi produksi' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Broadcast Sistem notifikasi produksi' })
     const items = await within(dialog).findAllByRole('listitem')
     expect(integrationKeysApi.broadcasts).toHaveBeenCalledWith('key-1')
     expect(items).toHaveLength(2)
@@ -311,6 +320,9 @@ describe('IntegrationKeysSection', () => {
     expect(within(done).getByText('Semua pengguna')).toBeVisible()
     expect(within(done).getByText('1.500')).toBeVisible()
     expect(within(done).getByText('2.100')).toBeVisible()
+    expect(within(done).getByText('Dibuka').nextElementSibling).toHaveTextContent('700 (50%)')
+    expect(within(done).getByText('Diketuk').nextElementSibling).toHaveTextContent('245 (17,5%)')
+    expect(within(failed).getByText('Dibuka').nextElementSibling).toHaveTextContent(/^0$/)
     expect(within(done).queryByText(/Galat/)).not.toBeInTheDocument()
   })
 
@@ -318,8 +330,8 @@ describe('IntegrationKeysSection', () => {
     const user = userEvent.setup()
     renderSection()
 
-    await user.click(await screen.findByRole('button', { name: 'Broadcast notifEngine produksi' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Broadcast notifEngine produksi' })
+    await user.click(await screen.findByRole('button', { name: 'Broadcast Sistem notifikasi produksi' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Broadcast Sistem notifikasi produksi' })
     expect(await within(dialog).findByText('Belum ada broadcast dari key ini.')).toBeVisible()
   })
 
@@ -341,7 +353,7 @@ describe('IntegrationKeysSection', () => {
     vi.mocked(integrationKeysApi.statsDaily).mockResolvedValue([
       {
         key_id: 'key-1',
-        name: 'notifEngine produksi',
+        name: 'Sistem notifikasi produksi',
         prefix: 'AbCdEfGh',
         days: [
           {
@@ -364,10 +376,12 @@ describe('IntegrationKeysSection', () => {
     expect(chooser).toHaveTextContent('Semua key')
     expect(integrationKeysApi.statsDaily).not.toHaveBeenCalled()
     await user.click(chooser)
-    await user.click(await screen.findByRole('option', { name: /notifEngine produksi/ }))
+    await user.click(await screen.findByRole('option', { name: /Sistem notifikasi produksi/ }))
     await waitFor(() => expect(integrationKeysApi.statsDaily).toHaveBeenCalledWith(7, 'key-1'))
     expect(
-      screen.getByRole('figure', { name: 'Pesan dan postingan bot per hari untuk notifEngine produksi' }),
+      screen.getByRole('figure', {
+        name: 'Pesan dan postingan bot per hari untuk Sistem notifikasi produksi',
+      }),
     ).toBeInTheDocument()
   })
 
@@ -378,8 +392,8 @@ describe('IntegrationKeysSection', () => {
       .mockResolvedValueOnce({ ...notifyKey, status: 'revoked' })
     renderSection()
 
-    await user.click(await screen.findByRole('button', { name: 'Cabut notifEngine produksi' }))
-    const dialog = screen.getByRole('dialog', { name: 'Cabut API key notifEngine produksi?' })
+    await user.click(await screen.findByRole('button', { name: 'Cabut Sistem notifikasi produksi' }))
+    const dialog = screen.getByRole('dialog', { name: 'Cabut API key Sistem notifikasi produksi?' })
     await user.type(within(dialog).getByLabelText('Alasan pencabutan'), 'abc')
     await user.click(within(dialog).getByRole('button', { name: 'Cabut' }))
     expect(integrationKeysApi.revoke).not.toHaveBeenCalled()

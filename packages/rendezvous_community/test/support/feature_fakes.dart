@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:rendezvous_community/src/core/storage/local_values.dart';
+import 'package:rendezvous_community/src/features/config/data/repositories/banner_dismissal_repository_impl.dart';
+import 'package:rendezvous_community/src/features/drafts/data/repositories/post_draft_repository_impl.dart';
 
 import 'fakes.dart';
 
@@ -274,6 +277,15 @@ class FakeFeatureDependencies implements CommunityFeatureDependencies {
   final FakeAppealRepository appeals = FakeAppealRepository();
   @override
   final FakeNotificationPreferencesRepository notificationPreferences = FakeNotificationPreferencesRepository();
+  final notificationEvents = FakeNotificationEventRepository();
+  final draftRepository = FakePostDraftRepository();
+  final localValues = MemoryLocalValues();
+  @override
+  late final NotificationReporter notificationReporter = NotificationReporter(notificationEvents);
+  @override
+  late final BannerDismissals bannerDismissals = BannerDismissals(BannerDismissalRepositoryImpl(localValues));
+  @override
+  late final CommunityDrafts drafts = CommunityDrafts(draftRepository, PostDraftStoreImpl(localValues));
 
   void dispose() {
     analytics.dispose();
@@ -322,4 +334,46 @@ Future<void> pumpFeatureApp(
       ),
     ),
   );
+}
+
+class FakeNotificationEventRepository implements NotificationEventRepository {
+  final reported = <(NotificationEvent, NotificationSource)>[];
+  Object? error;
+
+  @override
+  Future<void> report(NotificationEvent event, NotificationSource source) async {
+    final failure = error;
+    if (failure != null) throw failure;
+    reported.add((event, source));
+  }
+}
+
+class FakePostDraftRepository implements PostDraftRepository {
+  final saved = <String, PostDraft>{};
+  final deleted = <String>[];
+  Object? saveError;
+  Object? listError;
+  DateTime Function() clock = () => DateTime.now().toUtc();
+
+  @override
+  Future<List<PostDraft>> list() async {
+    final failure = listError;
+    if (failure != null) throw failure;
+    return saved.values.toList();
+  }
+
+  @override
+  Future<PostDraft> save(PostDraft draft, {DateTime? baseUpdatedAt}) async {
+    final failure = saveError;
+    if (failure != null) throw failure;
+    final stored = draft.copyWith(updatedAt: clock(), serverUpdatedAt: clock());
+    saved[draft.clientDraftId] = stored;
+    return stored;
+  }
+
+  @override
+  Future<void> delete(String clientDraftId) async {
+    deleted.add(clientDraftId);
+    saved.remove(clientDraftId);
+  }
 }

@@ -56,3 +56,14 @@ func TestHandlerRendersZeroBeforeTheFirstSuccess(t *testing.T) {
 		"janitor_last_success_timestamp_seconds 0",
 	)
 }
+
+func TestHandlerRendersEvidenceCopies(t *testing.T) {
+	expectLines(t, render(t, Snapshot{EvidenceFiles: map[string]uint64{EvidenceCopied: 9, EvidenceError: 1}, EvidenceClaimErrors: 2}),
+		"# TYPE janitor_evidence_files_total counter",
+		`janitor_evidence_files_total{outcome="copied"} 9`,
+		`janitor_evidence_files_total{outcome="missing"} 0`,
+		`janitor_evidence_files_total{outcome="error"} 1`,
+		`janitor_evidence_files_total{outcome="released"} 0`,
+		"janitor_evidence_claim_errors_total 2",
+	)
+}

@@ -119,6 +119,7 @@ abstract final class CommunityLoggers {
   static final Logger push = Logger('$rootName.Push');
   static final Logger config = Logger('$rootName.Config');
   static final Logger analytics = Logger('$rootName.Analytics');
+  static final Logger offline = Logger('$rootName.Offline');
 
   static StreamSubscription<LogRecord>? _subscription;
 

@@ -28,6 +28,30 @@ vi.mock('../api', async (importOriginal) => {
 
 vi.mock('../banned-words-file', () => ({ readWordTable: vi.fn(), saveWorkbook: vi.fn() }))
 
+vi.mock('../policy-versions/api', () => ({
+  policyCall: vi.fn(),
+  policyVersionsApi: {
+    state: vi.fn().mockResolvedValue({
+      four_eyes: true,
+      current: {
+        version: 2,
+        source: 'change',
+        reason: 'Uji',
+        change_id: 1,
+        restored_from: null,
+        created_by: null,
+        created_at: '2026-11-01T02:00:00.000Z',
+        summary: { total: 0, sections: {} },
+        current: true,
+      },
+      draft: null,
+      pending: 0,
+      pending_mine: 0,
+      pending_to_review: 0,
+    }),
+  },
+}))
+
 const kirana = { ...monitorFixture, display_name: 'Kirana', roles: ['compliance'] }
 
 const list: BannedWordList = {

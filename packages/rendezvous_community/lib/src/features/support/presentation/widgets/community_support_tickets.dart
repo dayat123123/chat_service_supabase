@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:rendezvous_community/src/app/community_builders.dart';
+import 'package:rendezvous_community/src/app/community_image_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/app/community_support_scope.dart';
 import 'package:rendezvous_community/src/core/error/community_exception.dart';
@@ -8,7 +10,6 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_even
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
-import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/community_chat_room.dart';
 import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
 import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
@@ -45,6 +46,7 @@ class _CommunitySupportTicketsState extends State<CommunitySupportTickets> {
         final tickets = snapshot.data!;
         if (tickets.isEmpty) return CommunityEmptyView(message: l10n.supportNoTickets, icon: Icons.inbox_outlined);
         return ListView.separated(
+          addAutomaticKeepAlives: false,
           itemCount: tickets.length,
           separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, i) {
@@ -70,7 +72,7 @@ class _CommunitySupportTicketsState extends State<CommunitySupportTickets> {
   Future<void> _openTranscript(BuildContext context, SupportTicket ticket) {
     final deps = CommunityScope.of(context);
     final support = CommunitySupportScope.of(context).support;
-    final carry = carryChatBuilders(context);
+    final carry = carryCommunityBuilders(context);
     return Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => carry(
@@ -78,11 +80,14 @@ class _CommunitySupportTicketsState extends State<CommunitySupportTickets> {
             dependencies: deps,
             child: Scaffold(
               appBar: AppBar(title: Text('${ticket.ticketNumber} · ${ticket.topicName ?? ticket.topic}')),
-              body: CommunityChatRoom(
-                roomId: ticket.roomId,
-                repository: _TranscriptRepository(support, ticket),
-                showHeader: false,
-                composer: const SizedBox.shrink(),
+              body: CommunityImagePersistence(
+                persist: false,
+                child: CommunityChatRoom(
+                  roomId: ticket.roomId,
+                  repository: _TranscriptRepository(support, ticket),
+                  showHeader: false,
+                  composer: const SizedBox.shrink(),
+                ),
               ),
             ),
           ),

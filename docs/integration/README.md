@@ -176,6 +176,8 @@ Untuk informasi pasar, IPO, pengumuman layanan, atau promo ke banyak nasabah sek
 - **Batas frekuensi.** Siaran selain kategori `important` dikirim maksimal `integration.broadcast_daily_cap` (3) kali per nasabah per hari WIB (gabungan semua key). Nasabah yang sudah mencapai batas dilewati dan dihitung `capped`.
 - **Status job:** `queued` → `sending` → `done`, atau `failed` (mis. key dinonaktifkan/dicabut atau izin `notify_broadcast` dicabut sebelum selesai: `error = key_inactive`). Penghitung: `targeted` (profil diproses), `recipients` (menerima push dan/atau kotak masuk), `devices`, `inbox`, `capped`, `pref_skipped` (kanal yang diminta dimatikan nasabah). Super Admin melihatnya di web CS (Integrasi → key → Broadcast).
 - Push siaran memakai `ttl_seconds`/`collapse_key`/`priority` yang sama; masa berlaku dihitung dari saat batch dikirim.
+- **`broadcast_id` di push dan kotak masuk** (sejak `0088`): data push siaran memuat `broadcast_id` (selain `data` dari OLT, `message_id`, `notification_id`, dst.) dan `payload` notifikasi kotak masuknya juga memuat `broadcast_id`. Target `cust_id` tidak berubah.
+- **Statistik dibuka/diketuk** (sejak `0088`): aplikasi melaporkan `report_notification_event('opened'|'tapped', notification_id, null, broadcast_id)` (lihat [docs/social](../social/README.md#statistik-dibukadiketuk-notifikasi-0088)). Satu kali per nasabah per event; `tapped` juga dihitung `opened`. Hasilnya `opened`, `tapped`, `open_rate`, `tap_rate` (persen dari `recipients`) di `cs_api.integration_broadcasts`.
 
 ```bash
 curl -sS -X POST "https://api.contoh.co.id/integration/v1/notify/messages" \
@@ -260,7 +262,7 @@ RPC untuk web CS (semua tercatat di Kepatuhan → Jejak Audit sebagai `integrati
 | `cs_api.integration_key_revoke(id, reason)` | Cabut permanen, alasan 5–500 karakter |
 | `cs_api.integration_stats(days)` | Per key: diterima, masuk antrean, perangkat, tanpa penerima, duplikat, tidak valid, siaran diterima (`accepted`), kotak masuk (`inbox`), postingan bot, ringkasan siaran (`broadcasts`: total, aktif, selesai, gagal, penerima, perangkat, kotak masuk, `capped`, `pref_skipped`), serta hasil kirim FCM (terkirim, gagal, token mati, kedaluwarsa, menunggu). Juga total siaran semua key dan jumlah rekening/profil tertaut |
 | `cs_api.integration_stats_daily(days, key_id)` | Statistik per hari per key, dipotong per tanggal WIB |
-| `cs_api.integration_broadcasts(key_id = null, limit = 50)` | Daftar siaran terbaru (maks 200): key, `message_id`, `kind`, judul, kategori, kanal, ringkasan target (`olt_user_ids` + jumlah, `all`, `stock_watchers` + kode), status, penghitung, error, waktu dibuat/mulai/selesai |
+| `cs_api.integration_broadcasts(key_id = null, limit = 50)` | Daftar siaran terbaru (maks 200): key, `message_id`, `kind`, judul, kategori, kanal, ringkasan target (`olt_user_ids` + jumlah, `all`, `stock_watchers` + kode), status, penghitung, `opened`/`tapped` (pengguna unik) dan `open_rate`/`tap_rate` (persen dari `recipients`, `null` bila 0), error, waktu dibuat/mulai/selesai |
 
 **Rotasi:** buat key baru → pasang di notifEngine → pastikan "terakhir dipakai" key baru bergerak → cabut key lama. Key yang dicabut atau dinonaktifkan langsung ditolak (cache layanan paling lama 30 detik, dan database memeriksa ulang setiap batch).
 

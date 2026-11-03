@@ -5,12 +5,14 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logging/logging.dart';
 import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/logging/community_logger.dart';
+import 'package:rendezvous_community/src/core/network/community_connectivity.dart';
 import 'package:rendezvous_community/src/core/paging/paged.dart';
 import 'package:rendezvous_community/src/core/text/social_text_parser.dart';
 import 'package:rendezvous_community/src/features/bookmarks/domain/repositories/bookmark_repository.dart';
 import 'package:rendezvous_community/src/features/edit/domain/repositories/content_edit_repository.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/pinned_post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_cache_repository.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 
@@ -30,6 +32,7 @@ abstract class FeedState with _$FeedState {
     Object? error,
     Object? actionError,
     @Default(0) int actionErrorId,
+    @Default(false) bool stale,
   }) = _FeedState;
 }
 
@@ -43,7 +46,13 @@ class FeedCubit extends Cubit<FeedState> {
     this._bookmarks,
     this._edits,
     this.removeOnUnbookmark = false,
+    this._cache,
+    this._connectivity,
   }) : super(const FeedState());
+
+  final FeedCacheRepository? _cache;
+  final CommunityConnectivity? _connectivity;
+  StreamSubscription<bool>? _onlineChanges;
 
   final FeedRepository _feed;
   final FeedScope scope;
@@ -67,7 +76,13 @@ class FeedCubit extends Cubit<FeedState> {
   }
 
   Future<void> load() async {
-    emit(state.copyWith(status: LoadStatus.loading, error: null));
+    if (!(state.status == LoadStatus.ready && state.stale)) {
+      emit(state.copyWith(status: LoadStatus.loading, error: null));
+      _onlineChanges ??= _connectivity?.changes.listen((online) {
+        if (online && state.stale && !isClosed) unawaited(load());
+      });
+      await _showCached();
+    }
     try {
       final (page, pinned) = await (_page(), _pinned()).wait;
       if (isClosed) return;
@@ -78,6 +93,7 @@ class FeedCubit extends Cubit<FeedState> {
           nextCursor: page.nextCursor,
           pinned: pinned,
           newPosts: 0,
+          stale: false,
         ),
       );
       _listen();
@@ -88,12 +104,21 @@ class FeedCubit extends Cubit<FeedState> {
         'Failed to load feed',
         fields: {'scope': scope, 'kind': mapped.kind, 'code': mapped.code},
       );
-      if (!isClosed) emit(state.copyWith(status: LoadStatus.failure, error: e));
+      if (isClosed || (state.status == LoadStatus.ready && state.stale)) return;
+      emit(state.copyWith(status: LoadStatus.failure, error: e));
     }
   }
 
+  Future<void> _showCached() async {
+    final cache = _cache;
+    if (cache == null || isCustomSource) return;
+    final posts = await cache.cachedFeed(scope);
+    if (posts == null || posts.isEmpty || isClosed || state.status == LoadStatus.ready) return;
+    emit(state.copyWith(status: LoadStatus.ready, posts: posts, nextCursor: null, stale: true));
+  }
+
   Future<void> refresh() async {
-    if (state.status != LoadStatus.ready) return load();
+    if (state.status != LoadStatus.ready || state.stale) return load();
     try {
       final page = await _page();
       final pinned = await _pinned();
@@ -294,6 +319,7 @@ class FeedCubit extends Cubit<FeedState> {
   @override
   Future<void> close() async {
     await _changes?.cancel();
+    await _onlineChanges?.cancel();
     return super.close();
   }
 }

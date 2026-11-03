@@ -111,7 +111,22 @@ MaterialApp(
 
 - **Lokalisasi:** tanpa delegate pun package tetap tampil dalam bahasa Indonesia.
 - **Warna bullish/bearish dan indentasi thread:** sesuaikan lewat `CommunityTheme` (ThemeExtension). Lihat README package.
-- **Tampilan chat versi OLT:** pasang `CommunityChatBuildersScope` di `MaterialApp.builder`, lalu isi builder untuk bagian yang ingin diganti (gelembung pesan, composer, header room, tile daftar chat, status kosong/error, dan lainnya). Builder menerima data siap tampil dan handler yang sudah jadi, jadi OLT hanya menggambar UI. Contoh dan daftar lengkapnya ada di README package, bagian "Kustomisasi UI chat (builder)".
+- **Tampilan versi OLT (1.4.0):** pasang satu `CommunityBuildersScope` di `MaterialApp.builder` lalu isi builder untuk bagian yang ingin diganti: `chat` (gelembung pesan, composer, header room, tile daftar chat, kartu saham, status kosong/error), `feed` (kartu post utuh atau per bagian: avatar, header, isi, lampiran, link preview, tag saham, tombol aksi, polling, penanda sematan, komentar, status kosong/loading/error), `notifications` (item, header, kosong/loading/error), `profile` (header, statistik, tombol ikuti), dan `badges` (bentuk semua badge sekaligus: resmi, CS resmi, bot, moderator, sentimen, terverifikasi, jumlah belum dibaca). Builder menerima data siap tampil, handler yang sudah tersambung, dan `fallback` (tampilan bawaan). Scope bersarang hanya menimpa bagian yang diisi. Tanpa builder tampilan tetap sama persis. Contoh lengkap ada di README package, bagian "Kustomisasi UI (builder)".
+
+```dart
+MaterialApp(
+  builder: (context, child) => CommunityBuildersScope(
+    builders: const CommunityBuilders(
+      chat: oltChatBuilders,
+      feed: CommunityFeedBuilders(actionBar: oltPostActions),
+      badges: CommunityBadgeBuilders(label: oltPillBadge, count: oltCountBadge),
+    ),
+    child: child!,
+  ),
+);
+```
+
+- **Cache gambar (1.4.0):** gambar diunduh sekali, didekode seukuran tampilan, dan disimpan di disk per user (bawaan 200 MB, 30 hari). Atur lewat `RendezvousCommunity.initialize(imageCache: CommunityImageCacheConfig(maxBytes: ..., maxAge: ...))`; `CommunityImageCacheConfig.disabled()` mematikan cache disk. Cache ikut terhapus bersama cache offline saat `signOut()`, `deleteMyAccount()`, `clearLocalCache()`, dan ganti user. Lampiran chat CS tidak pernah disimpan ke disk.
 
 ## 5. Tempatkan widget
 

@@ -7,11 +7,14 @@ import 'package:rendezvous_community/src/features/appeals/presentation/widgets/c
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/receipt_icon.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/shared_post_card.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/stock_cards.dart';
 import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
 import 'package:rendezvous_community/src/features/link_preview/presentation/widgets/link_preview_card.dart';
 import 'package:rendezvous_community/src/features/media/presentation/widgets/attachment_grid.dart';
@@ -61,6 +64,10 @@ class MessageBubble extends StatelessWidget {
         cubit.state.supportsReactions &&
         context.communityFeature(CommunityFlags.messageReactions);
     final sharedPostId = m.sharedPostId;
+    final room = cubit.state;
+    final moderating = room.canModerate(m);
+    VoidCallback moderate(RoomModerationAction action) =>
+        () => runRoomModeration(context, cubit, m, action);
     late final CommunityMessageDetails details;
     details = CommunityMessageDetails(
       message: m,
@@ -75,6 +82,9 @@ class MessageBubble extends StatelessWidget {
           ? () => showReportDialog(context, target: ReportTarget.message, targetId: m.id)
           : null,
       onRetry: m.status == MessageStatus.failed ? () => cubit.retry(m) : null,
+      onDiscard: m.isLocal && (m.status == MessageStatus.failed || m.status == MessageStatus.pending)
+          ? () => cubit.discard(m)
+          : null,
       onSenderTap: sender != null && !support && !mine ? () => CommunityNavigator.openUser(context, sender) : null,
       onShowActions: sent ? () => _showActions(context, details) : null,
       reactions: m.reactions,
@@ -84,6 +94,11 @@ class MessageBubble extends StatelessWidget {
           ? () => showCommunityAppealDialog(context, targetType: AppealTargetType.message, targetId: m.id)
           : null,
       onOpenSharedPost: sharedPostId == null ? null : () => CommunityNavigator.openPost(context, sharedPostId),
+      senderIsModerator: room.isModerator(m.senderId),
+      senderMutedUntil: room.isRoomModerator ? room.memberMutedUntil(m.senderId) : null,
+      onHide: moderating ? moderate(RoomModerationAction.hide) : null,
+      onMuteSender: moderating ? moderate(RoomModerationAction.mute) : null,
+      onEscalate: room.canEscalate(m) ? moderate(RoomModerationAction.escalate) : null,
     );
     return details;
   }
@@ -99,27 +114,52 @@ class MessageBubble extends StatelessWidget {
     final onReact = details.onReact;
     final action = await showModalBottomSheet<VoidCallback>(
       context: context,
+      isScrollControlled: details.hasModeration,
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (onReact != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: ReactionPicker(
-                  choices: details.reactionChoices,
-                  selected: myReaction(details.reactions),
-                  onSelected: (emoji) => Navigator.pop(sheetContext, () => onReact(emoji)),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (onReact != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                  child: ReactionPicker(
+                    choices: details.reactionChoices,
+                    selected: myReaction(details.reactions),
+                    onSelected: (emoji) => Navigator.pop(sheetContext, () => onReact(emoji)),
+                  ),
                 ),
-              ),
-            for (final (handler, icon, label) in [
-              (details.onReply, Icons.reply, l10n.replyToMessage),
-              (details.onDelete, Icons.delete_outline, l10n.delete),
-              (details.onReport, Icons.flag_outlined, l10n.report),
-            ])
-              if (handler != null)
-                ListTile(leading: Icon(icon), title: Text(label), onTap: () => Navigator.pop(sheetContext, handler)),
-          ],
+              for (final (handler, icon, label) in [
+                (details.onReply, Icons.reply, l10n.replyToMessage),
+                (details.onDelete, Icons.delete_outline, l10n.delete),
+                (details.onReport, Icons.flag_outlined, l10n.report),
+              ])
+                if (handler != null)
+                  ListTile(leading: Icon(icon), title: Text(label), onTap: () => Navigator.pop(sheetContext, handler)),
+              if (details.hasModeration) ...[
+                const Divider(height: 1),
+                ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.shield_outlined),
+                  title: Text(l10n.roomModeratorBadge),
+                  subtitle: details.senderMutedUntil == null
+                      ? null
+                      : Text(l10n.roomModMemberMuted(roomModerationTime(l10n, details.senderMutedUntil!))),
+                ),
+                for (final (handler, icon, label) in [
+                  (details.onHide, Icons.visibility_off_outlined, l10n.roomModHide),
+                  (details.onMuteSender, Icons.volume_off_outlined, l10n.roomModMute),
+                  (details.onEscalate, Icons.outlined_flag, l10n.roomModEscalate),
+                ])
+                  if (handler != null)
+                    ListTile(
+                      leading: Icon(icon),
+                      title: Text(label),
+                      onTap: () => Navigator.pop(sheetContext, handler),
+                    ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -172,6 +212,20 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
           if (d.showSender && m.sender != null)
             if (m.isOfficial)
               OfficialSenderLabel(sender: m.sender!, color: t.link)
+            else if (d.senderIsModerator)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: GestureDetector(
+                      onTap: d.onSenderTap,
+                      child: Text(m.sender!.name, style: senderStyle, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  RoomModeratorBadge(color: t.link),
+                ],
+              )
             else
               GestureDetector(
                 onTap: d.onSenderTap,
@@ -220,6 +274,7 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
               ),
             if (m.sharedPostId != null)
               SharedPostCard(postId: m.sharedPostId!, sharedPost: m.sharedPost, color: fg, onOpen: d.onOpenSharedPost),
+            if (m.stockCodes.isNotEmpty) StockCards(codes: m.stockCodes, isMine: d.isMine),
             if ((m.body ?? '').isNotEmpty)
               support
                   ? SelectableText(m.body!, style: theme.textTheme.bodyMedium?.copyWith(color: fg))
@@ -313,11 +368,8 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
                   children: [
                     bubble,
                     if (d.reactions.isNotEmpty) ReactionChips(reactions: d.reactions, onReact: d.onReact),
-                    if (m.status == MessageStatus.failed)
-                      Text(
-                        l10n.messageFailed,
-                        style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.error),
-                      ),
+                    if (m.status == MessageStatus.pending || m.status == MessageStatus.failed)
+                      MessageDeliveryNotice(details: d),
                   ],
                 ),
               ),
@@ -326,6 +378,47 @@ class _DefaultBubbleState extends State<_DefaultBubble> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class MessageDeliveryNotice extends StatelessWidget {
+  const MessageDeliveryNotice({super.key, required this.details});
+
+  final CommunityMessageDetails details;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.communityL10n;
+    final theme = Theme.of(context);
+    final message = details.message;
+    final failed = message.status == MessageStatus.failed;
+    final error = message.sendError;
+    final style = theme.textTheme.labelSmall?.copyWith(
+      color: failed ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
+    );
+    final buttonStyle = TextButton.styleFrom(
+      visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      minimumSize: const Size(0, 32),
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    );
+    return Column(
+      crossAxisAlignment: details.isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(failed ? l10n.messageFailed : l10n.messagePending, style: style),
+        if (failed && error != null) Text(l10n.errorMessage(error), style: style),
+        if (details.onRetry != null || details.onDiscard != null)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (details.onRetry != null)
+                TextButton(style: buttonStyle, onPressed: details.onRetry, child: Text(l10n.retry)),
+              if (details.onDiscard != null)
+                TextButton(style: buttonStyle, onPressed: details.onDiscard, child: Text(l10n.delete)),
+            ],
+          ),
+      ],
     );
   }
 }

@@ -1,12 +1,12 @@
 # link-preview
 
-Pembuat pratinjau link (judul, deskripsi, nama situs, gambar) untuk postingan, komentar, dan chat. Ini satu-satunya komponen OLT Social yang menghubungi host internet sembarang, jadi seluruh desainnya berpusat pada proteksi SSRF. Hanya memakai standard library Go (tanpa dependensi luar; parser HTML ditulis sendiri, paket `sanitize` disalin dari `services/media`).
+Pembuat pratinjau link (judul, deskripsi, nama situs, gambar) untuk postingan, komentar, dan chat. Ini satu-satunya komponen OLT Social yang menghubungi host internet sembarang, jadi seluruh desainnya berpusat pada proteksi SSRF. Hanya memakai standard library Go (tanpa dependensi luar; parser HTML ditulis sendiri, paket `sanitize` dan `moderation` disalin dari `services/media`).
 
 ## Alur
 
 1. Trigger `posts_50_link_preview`, `comments_50_link_preview`, `messages_50_link_preview` (migrasi `0080`) mengambil maksimal **3 URL http/https unik** per konten yang **terlihat** (`moderation_status = 'visible'`, tidak dihapus). Pesan di room `support` (chat CS) dan pesan non-teks dilewati. Konten yang ditahan moderasi baru diantrekan saat dilepas; edit isi ikut diantrekan.
 2. URL dinormalisasi di database (skema + host huruf kecil, port bawaan dan fragmen dibuang, tanda baca penutup dibuang, URL dengan userinfo / `%` / `\` di host ditolak), di-hash SHA-256, lalu masuk `private.link_preview_queue` bila belum ada pratinjau yang masih segar (7 hari). Domain di `cs.blocked_domains` (bila tabel itu ada) langsung dicatat `blocked` tanpa diambil.
-3. Worker memanggil `link_preview_claim` (lease, percobaan dihitung saat claim), mengambil halaman lewat klien HTTP aman, mem-parse meta tag, mengunduh gambar dengan aturan yang sama, membersihkan metadata gambar, mengunggahnya ke bucket publik `link-previews`, lalu melaporkan setiap link lewat `link_preview_report`.
+3. Worker memanggil `link_preview_claim` (lease, percobaan dihitung saat claim), mengambil halaman lewat klien HTTP aman, mem-parse meta tag, mengunduh gambar dengan aturan yang sama, membersihkan metadata gambar, **mengklasifikasi gambar NSFW** (lihat [Klasifikasi gambar](#klasifikasi-gambar-nsfw)), mengunggah hanya gambar yang lolos ke bucket publik `link-previews`, lalu melaporkan setiap link lewat `link_preview_report`.
 4. Database mengecek ulang domain asal **dan** domain akhir setelah redirect terhadap daftar blokir, lalu menyimpan hasil di `public.link_previews`.
 5. Aplikasi membaca lewat RPC `get_link_previews(p_urls)`.
 
@@ -36,7 +36,17 @@ Risiko yang diterima (dicatat):
 - Link sekali pakai (link reset password, magic link) di chat bisa "terpakai" karena server melakukan GET, seperti pembuat pratinjau di aplikasi chat lain.
 - Situs tujuan melihat IP server dan User-Agent pratinjau. Isi `USER_AGENT` dengan URL halaman penjelasan resmi sebelum produksi.
 - `robots.txt` tidak dibaca (hanya satu GET halaman + satu GET gambar per link per 7 hari).
-- Gambar pratinjau belum melewati klasifikasi NSFW. Sumber gambar dibatasi lewat daftar domain terlarang; integrasi dengan `services/classifier` (agen V) adalah tindak lanjut.
+- Classifier hanya memberi skor NSFW (porn/hentai/sexy). Gambar kekerasan, gore, atau teks di dalam gambar tidak terdeteksi; sumber gambar tetap dibatasi lewat daftar domain terlarang.
+
+## Klasifikasi gambar NSFW
+
+Sejak 0.2.0 (migrasi `0094_link_preview_nsfw`) setiap gambar pratinjau, baik og:image maupun link gambar langsung, dikirim ke `services/classifier` (`POST /classify`) **setelah** dibersihkan dan **sebelum** diunggah. Panggilan ke classifier memakai klien HTTP internal terpisah (jaringan `app`), bukan klien `safehttp`, sehingga proteksi SSRF untuk internet tidak berubah.
+
+- **Ambang** sama dengan layanan media: dibaca dari RPC `media_moderation_config` (diatur Kepatuhan → Ambang gambar), disegarkan setiap `MODERATION_REFRESH`. Keputusan memakai fungsi yang sama dengan media (kategori dengan skor tertinggi yang melewati `block`, lalu `hold`).
+- **`block`** (mis. pornografi): gambar dibuang, judul/deskripsi tetap. **`hold`** (ragu-ragu): gambar tidak ditampilkan. Tidak ada antrean tinjauan untuk thumbnail karena gambar milik situs luar (tidak ada pengunggah untuk ditinjau/dibanding) dan link akan diambil ulang setelah cache habis. **`unreadable`** (classifier tidak bisa membaca): gambar dibuang.
+- **Classifier mati / model belum ada / ambang belum termuat** (`unavailable`): fail closed, pratinjau tanpa gambar. Database langsung menyimpan pratinjau teks (klien tetap melihat judul) lalu mengantrekan link lagi dengan jeda 1, 2, 4 … menit sampai `link_preview.max_attempts`; setelah itu pratinjau tanpa gambar hanya di-cache `link_preview.failed_cache_hours`. Setelah 3 kegagalan classifier berturut-turut heartbeat menjadi `degraded` ("classifier: …") sehingga terlihat di Kesehatan sistem (classifier sendiri juga di-probe sentinel); selama itu worker mengecek `GET /status` classifier setiap putaran dan kembali `ok` begitu classifier menjawab.
+- **Cache per hash**: skor (model + skor per kategori) disimpan di `private.link_preview_image_scores` per SHA-256 gambar bersih, plus cache di memori (maks 2048 entri). Thumbnail yang sama (mis. logo situs di semua artikel) hanya diklasifikasi sekali; verdict dihitung ulang dari skor dengan ambang terbaru, jadi perubahan ambang langsung berlaku tanpa klasifikasi ulang. Cache yang tidak dipakai lebih dari `link_preview.retention_days` dihapus job purge harian. RPC baca: `link_preview_image_scores(p_sha256)` (khusus `service_role`).
+- **Pencatatan**: `public.link_previews` menyimpan `image_sha256`, `image_verdict` (`allow`/`hold`/`block`/`unreadable`/`unavailable`), `image_category`, `image_score`, `image_thresholds_revision`. Constraint `link_previews_image_checked` menolak `image_path` tanpa verdict `allow` + hash, dan `link_preview_report` membuang path gambar yang tidak berverdict `allow`. Migrasi 0094 melepas gambar pratinjau lama yang belum diklasifikasi (file dibersihkan job purge) dan membuat pratinjau itu diambil ulang saat link muncul lagi.
 
 ## Status dan cache
 
@@ -83,7 +93,7 @@ Saran klien: ekstrak URL `https?://…` dari teks (maks 3 per konten), panggil R
 | `USER_AGENT` | `OLTSocialLinkPreview/1.0 (+https://olt-social.invalid/link-preview)` | Placeholder: ganti URL dengan halaman penjelasan resmi |
 | `BATCH_SIZE` | `8` | Link per claim (1–100) |
 | `CONCURRENCY` | `4` | Link yang diambil paralel (1–32) |
-| `LEASE` | `2m` | 30s–1h, minimal 2 × `FETCH_TIMEOUT` + `REQUEST_TIMEOUT` + 10s |
+| `LEASE` | `2m` | 30s–1h, minimal 2 × `FETCH_TIMEOUT` + `CLASSIFIER_TIMEOUT` + `REQUEST_TIMEOUT` + 10s |
 | `POLL_INTERVAL` | `5s` | Jeda claim saat antrean tidak penuh |
 | `FETCH_TIMEOUT` | `5s` | Batas total per request ke internet (1s–10s) |
 | `REQUEST_TIMEOUT` | `15s` | Batas request ke PostgREST/Storage |
@@ -91,10 +101,13 @@ Saran klien: ekstrak URL `https?://…` dari teks (maks 3 per konten), panggil R
 | `SHUTDOWN_TIMEOUT` | `20s` | Waktu menyelesaikan link yang sedang jalan saat SIGTERM; sisanya dilepas |
 | `MAX_HTML_BYTES` | `1048576` | 64 KiB–2 MiB |
 | `MAX_IMAGE_BYTES` | `5242880` | 256 KiB–5 MiB (batas bucket 5 MB) |
+| `CLASSIFIER_URL` | `http://classifier:8080` | Layanan classifier NSFW (jaringan internal) |
+| `CLASSIFIER_TIMEOUT` | `10s` | 1s–60s per gambar |
+| `MODERATION_REFRESH` | `30s` | 5s–10m, interval membaca ulang ambang gambar |
 
 Daftar rentang IP dan port **tidak bisa** diubah lewat env; pengecualian hanya ada di tes (`safehttp.Policy.Allow`).
 
-Jaringan Docker: `app` (PostgREST, Storage) dan `egress` (internet). Container lain di kedua jaringan itu tidak terjangkau karena semua alamat privat ditolak.
+Jaringan Docker: `app` (PostgREST, Storage, classifier) dan `egress` (internet). Container lain di kedua jaringan itu tidak terjangkau karena semua alamat privat ditolak.
 
 ## Endpoint dan metrik
 
@@ -104,15 +117,20 @@ Jaringan Docker: `app` (PostgREST, Storage) dan `egress` (internet). Container l
 |---|---|---|
 | `link_preview_fetch_total{result}` | counter | `ok`, `empty`, `blocked`, `failed`, `retry`, `release` |
 | `link_preview_blocked_total{reason}` | counter | Alasan SSRF (`private_address`, `port`, `numeric_host`, `internal_host`, `userinfo`, `scheme`, `non_ascii_host`, `invalid_host`; awalan `image_` untuk gambar) |
-| `link_preview_images_total{outcome}` | counter | `stored`, `skipped` (terlalu kecil), `rejected` (bukan gambar valid), `blocked`, `failed` |
+| `link_preview_images_total{outcome}` | counter | `stored`, `skipped` (terlalu kecil), `rejected` (bukan gambar valid), `blocked`, `failed`, `unsafe` (tidak lolos classifier) |
+| `link_preview_image_verdicts_total{verdict}` | counter | `allow`, `hold`, `block`, `unreadable`, `unavailable` |
+| `link_preview_image_cache_hits_total` | counter | Verdict dari skor yang sudah di-cache |
+| `link_preview_classify_duration_seconds` | summary | Waktu menunggu classifier |
+| `link_preview_classifier_consecutive_failures` | gauge | Kegagalan classifier berturut-turut |
+| `link_preview_thresholds_loaded` | gauge | 1 bila ambang gambar sudah termuat |
 | `link_preview_image_bytes_total` | counter | Byte gambar bersih yang diunggah |
 | `link_preview_fetch_duration_seconds` | summary | Waktu per link termasuk gambar |
 | `link_preview_claim_errors_total`, `link_preview_report_errors_total` | counter | |
 | `link_preview_inflight`, `link_preview_concurrency` | gauge | |
 | `link_preview_last_claim_timestamp_seconds`, `link_preview_last_heartbeat_timestamp_seconds` | gauge | |
 
-Heartbeat berstatus `degraded` setelah 3 claim gagal berturut-turut.
+Heartbeat berstatus `degraded` setelah 3 claim gagal berturut-turut atau 3 panggilan classifier gagal berturut-turut. `detail` memuat juga `images_allowed`, `images_held`, `images_blocked`, `images_unchecked`, `classifier_failures`, `thresholds_loaded`.
 
 ## Tes
 
-`go test ./...` (CI: `gofmt`, `go vet`, `go test -race`, `scripts/check-go-comments`). Tes SSRF memakai `httptest` di `127.0.0.1` dengan resolver palsu dan allow list sempit yang hanya ada di tes; tes terpisah memastikan kebijakan bawaan menolak server tes itu. Tes database: `supabase/tests/060_link_previews_test.sql`.
+`go test ./...`; `-race` butuh cgo, jalankan di `golang:1.27.3-bookworm` dengan `CGO_ENABLED=1 go test -race ./...` (CI: `gofmt`, `go vet`, `go test -race`, `scripts/check-go-comments`). Tes SSRF memakai `httptest` di `127.0.0.1` dengan resolver palsu dan allow list sempit yang hanya ada di tes; tes terpisah memastikan kebijakan bawaan menolak server tes itu. Tes klasifikasi memakai classifier palsu (porn, ragu-ragu, aman, mati, model hilang, tidak terbaca, ambang belum termuat, cache memori dan database). Tes database: `supabase/tests/060_link_previews_test.sql`, `074_link_preview_nsfw_test.sql`.
