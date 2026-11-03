@@ -1369,6 +1369,300 @@ abstract class CommunityLocalizations {
   /// In id, this message translates to:
   /// **'Chat CS belum tersedia. Coba lagi sebentar lagi.'**
   String get supportUnavailable;
+
+  /// No description provided for @errorUnsupportedType.
+  ///
+  /// In id, this message translates to:
+  /// **'Jenis file tidak didukung. Gunakan gambar JPEG, PNG, WebP, atau GIF (foto profil tanpa GIF), atau PDF di chat CS.'**
+  String get errorUnsupportedType;
+
+  /// No description provided for @errorFileTooLarge.
+  ///
+  /// In id, this message translates to:
+  /// **'File terlalu besar. Batasnya 5 MB untuk gambar, 2 MB untuk foto profil, dan 10 MB untuk PDF.'**
+  String get errorFileTooLarge;
+
+  /// No description provided for @errorEmptyFile.
+  ///
+  /// In id, this message translates to:
+  /// **'File kosong. Pilih file lain.'**
+  String get errorEmptyFile;
+
+  /// No description provided for @errorInvalidImage.
+  ///
+  /// In id, this message translates to:
+  /// **'Gambar rusak atau tidak bisa dibaca. Coba gambar lain.'**
+  String get errorInvalidImage;
+
+  /// No description provided for @errorImageTooLarge.
+  ///
+  /// In id, this message translates to:
+  /// **'Resolusi gambar terlalu besar. Maksimal 10.000 piksel per sisi dan 40 megapiksel.'**
+  String get errorImageTooLarge;
+
+  /// No description provided for @errorInvalidPdf.
+  ///
+  /// In id, this message translates to:
+  /// **'PDF rusak atau tidak bisa dibaca.'**
+  String get errorInvalidPdf;
+
+  /// No description provided for @errorPdfEncrypted.
+  ///
+  /// In id, this message translates to:
+  /// **'PDF yang dikunci kata sandi tidak bisa dikirim. Buka kuncinya dulu, lalu kirim ulang.'**
+  String get errorPdfEncrypted;
+
+  /// No description provided for @errorPdfActiveContent.
+  ///
+  /// In id, this message translates to:
+  /// **'PDF berisi skrip, file tersemat, atau konten aktif lain. Simpan ulang sebagai PDF biasa (misalnya lewat Cetak ke PDF), lalu kirim ulang.'**
+  String get errorPdfActiveContent;
+
+  /// No description provided for @errorUploadForbidden.
+  ///
+  /// In id, this message translates to:
+  /// **'Anda tidak diizinkan mengunggah file ke sini.'**
+  String get errorUploadForbidden;
+
+  /// No description provided for @errorTooManyUploads.
+  ///
+  /// In id, this message translates to:
+  /// **'Batas unggahan hari ini sudah tercapai. Coba lagi besok.'**
+  String get errorTooManyUploads;
+
+  /// No description provided for @errorUploadBusy.
+  ///
+  /// In id, this message translates to:
+  /// **'Server unggahan sedang sibuk. Coba lagi sebentar lagi.'**
+  String get errorUploadBusy;
+
+  /// No description provided for @errorStorageUnavailable.
+  ///
+  /// In id, this message translates to:
+  /// **'Unggahan file sedang tidak tersedia. Coba lagi nanti.'**
+  String get errorStorageUnavailable;
+
+  /// No description provided for @errorConsentRequired.
+  ///
+  /// In id, this message translates to:
+  /// **'Setujui Syarat & Ketentuan dan Pedoman Komunitas terbaru untuk mengirim konten.'**
+  String get errorConsentRequired;
+
+  /// No description provided for @consentDeclined.
+  ///
+  /// In id, this message translates to:
+  /// **'Belum terkirim. Setujui dokumen terbaru untuk mengirim; tulisan Anda tetap tersimpan.'**
+  String get consentDeclined;
+
+  /// No description provided for @consentTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Persetujuan diperlukan'**
+  String get consentTitle;
+
+  /// No description provided for @consentIntro.
+  ///
+  /// In id, this message translates to:
+  /// **'Sebelum ikut berdiskusi, baca dan setujui dokumen berikut.'**
+  String get consentIntro;
+
+  /// No description provided for @consentAgree.
+  ///
+  /// In id, this message translates to:
+  /// **'Saya telah membaca dan menyetujui {documents}.'**
+  String consentAgree(String documents);
+
+  /// No description provided for @consentAccept.
+  ///
+  /// In id, this message translates to:
+  /// **'Setuju'**
+  String get consentAccept;
+
+  /// No description provided for @consentLater.
+  ///
+  /// In id, this message translates to:
+  /// **'Nanti'**
+  String get consentLater;
+
+  /// No description provided for @consentRead.
+  ///
+  /// In id, this message translates to:
+  /// **'Baca'**
+  String get consentRead;
+
+  /// No description provided for @consentReview.
+  ///
+  /// In id, this message translates to:
+  /// **'Tinjau'**
+  String get consentReview;
+
+  /// No description provided for @consentAccepted.
+  ///
+  /// In id, this message translates to:
+  /// **'Terima kasih. Persetujuan Anda sudah tersimpan.'**
+  String get consentAccepted;
+
+  /// No description provided for @consentBannerUpdated.
+  ///
+  /// In id, this message translates to:
+  /// **'{documents} diperbarui — tinjau dan setujui.'**
+  String consentBannerUpdated(String documents);
+
+  /// No description provided for @consentBannerRequired.
+  ///
+  /// In id, this message translates to:
+  /// **'Tinjau dan setujui {documents} untuk ikut berdiskusi.'**
+  String consentBannerRequired(String documents);
+
+  /// No description provided for @legalVersion.
+  ///
+  /// In id, this message translates to:
+  /// **'Versi {version} · berlaku {date}'**
+  String legalVersion(int version, String date);
+
+  /// No description provided for @legalChanges.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang berubah'**
+  String get legalChanges;
+
+  /// No description provided for @listAnd.
+  ///
+  /// In id, this message translates to:
+  /// **'dan'**
+  String get listAnd;
+
+  /// No description provided for @accountSettingsTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Privasi & akun'**
+  String get accountSettingsTitle;
+
+  /// No description provided for @accountLegalSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Dokumen hukum'**
+  String get accountLegalSection;
+
+  /// No description provided for @accountDataSection.
+  ///
+  /// In id, this message translates to:
+  /// **'Data Anda'**
+  String get accountDataSection;
+
+  /// No description provided for @accountExport.
+  ///
+  /// In id, this message translates to:
+  /// **'Unduh data saya'**
+  String get accountExport;
+
+  /// No description provided for @accountExportHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Salinan data komunitas Anda dalam format JSON. Bisa diunduh 3 kali sehari.'**
+  String get accountExportHint;
+
+  /// No description provided for @accountExportSaved.
+  ///
+  /// In id, this message translates to:
+  /// **'Data komunitas Anda sudah diunduh.'**
+  String get accountExportSaved;
+
+  /// No description provided for @accountExportLimit.
+  ///
+  /// In id, this message translates to:
+  /// **'Unduh data dibatasi 3 kali sehari. Coba lagi besok.'**
+  String get accountExportLimit;
+
+  /// No description provided for @accountDelete.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus akun komunitas'**
+  String get accountDelete;
+
+  /// No description provided for @accountDeleteHint.
+  ///
+  /// In id, this message translates to:
+  /// **'Menghapus profil dan konten komunitas Anda. Akun trading tidak terpengaruh.'**
+  String get accountDeleteHint;
+
+  /// No description provided for @accountDeleteTitle.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus akun komunitas?'**
+  String get accountDeleteTitle;
+
+  /// No description provided for @accountDeleteIntro.
+  ///
+  /// In id, this message translates to:
+  /// **'Yang terjadi bila akun komunitas dihapus:'**
+  String get accountDeleteIntro;
+
+  /// No description provided for @accountDeleteContent.
+  ///
+  /// In id, this message translates to:
+  /// **'Postingan, komentar, dan pesan chat Anda dihapus dari tampilan semua orang.'**
+  String get accountDeleteContent;
+
+  /// No description provided for @accountDeleteArchive.
+  ///
+  /// In id, this message translates to:
+  /// **'Salinan konten tetap diarsipkan untuk regulator sesuai ketentuan hukum.'**
+  String get accountDeleteArchive;
+
+  /// No description provided for @accountDeleteRelations.
+  ///
+  /// In id, this message translates to:
+  /// **'Pengikut, akun yang Anda ikuti, blokir, dan bisukan dihapus.'**
+  String get accountDeleteRelations;
+
+  /// No description provided for @accountDeleteSupport.
+  ///
+  /// In id, this message translates to:
+  /// **'Tiket layanan CS tetap tercatat untuk keperluan kepatuhan, tetapi pesan dan lampiran chat CS ikut dihapus.'**
+  String get accountDeleteSupport;
+
+  /// No description provided for @accountDeleteTrading.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun trading OLT Anda tidak terpengaruh.'**
+  String get accountDeleteTrading;
+
+  /// No description provided for @accountDeleteFresh.
+  ///
+  /// In id, this message translates to:
+  /// **'Saat membuka komunitas lagi, profil komunitas baru yang kosong akan dibuat.'**
+  String get accountDeleteFresh;
+
+  /// No description provided for @accountDeleteTypeToConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Ketik {word} untuk konfirmasi'**
+  String accountDeleteTypeToConfirm(String word);
+
+  /// No description provided for @accountDeleteWord.
+  ///
+  /// In id, this message translates to:
+  /// **'HAPUS'**
+  String get accountDeleteWord;
+
+  /// No description provided for @accountDeleteConfirm.
+  ///
+  /// In id, this message translates to:
+  /// **'Hapus akun'**
+  String get accountDeleteConfirm;
+
+  /// No description provided for @accountDeleteProgress.
+  ///
+  /// In id, this message translates to:
+  /// **'Menghapus akun komunitas…'**
+  String get accountDeleteProgress;
+
+  /// No description provided for @accountDeleted.
+  ///
+  /// In id, this message translates to:
+  /// **'Akun komunitas Anda sudah dihapus.'**
+  String get accountDeleted;
 }
 
 class _CommunityLocalizationsDelegate extends LocalizationsDelegate<CommunityLocalizations> {

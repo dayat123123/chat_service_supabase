@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
 import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
 import 'package:rendezvous_community/src/features/post/domain/repositories/comment_repository.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -50,10 +51,12 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     this.maxLevels = 4,
     this.pageSize = 20,
     this.repliesPerBranch = 3,
+    this._consent,
   }) : super(const ThreadState());
 
   final FeedRepository _feed;
   final CommentRepository _comments;
+  final ConsentGate? _consent;
   final String postId;
   final String? rootCommentId;
 
@@ -153,7 +156,9 @@ class CommentThreadCubit extends Cubit<ThreadState> {
     final parentId = state.replyTo?.id ?? state.root?.id;
     emit(state.copyWith(sending: true));
     try {
-      final created = await _comments.createComment(postId: postId, parentId: parentId, body: text);
+      final created = await _consent.guard(
+        () => _comments.createComment(postId: postId, parentId: parentId, body: text),
+      );
       if (isClosed) return true;
       var next = _merge(state, [created]);
       next = _bumpReplyCount(next, parentId, 1);

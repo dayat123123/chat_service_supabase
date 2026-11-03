@@ -72,6 +72,53 @@ type PushCode = (typeof pushCodes)[number]
 
 const isPushCode = (code: string): code is PushCode => (pushCodes as readonly string[]).includes(code)
 
+const legalCodes = [
+  'legal_scheduled_exists',
+  'legal_draft_locked',
+  'legal_draft_not_pending',
+  'legal_note_required',
+  'legal_effective_past',
+  'legal_already_effective',
+  'legal_draft_not_found',
+  'document_not_found',
+  'invalid_legal_kind',
+  'invalid_legal_title',
+  'invalid_legal_body',
+  'invalid_legal_summary',
+] as const
+
+type LegalCode = (typeof legalCodes)[number]
+
+const isLegalCode = (code: string): code is LegalCode => (legalCodes as readonly string[]).includes(code)
+
+const systemCodes = [
+  'alert_not_found',
+  'invalid_telegram_token',
+  'invalid_telegram_chat',
+  'telegram_incomplete',
+  'invalid_smtp',
+  'invalid_email_address',
+  'email_incomplete',
+  'invalid_alert_label',
+  'invalid_console_url',
+  'alert_channel_disabled',
+  'invalid_alert_channel',
+  'invalid_backup_endpoint',
+  'invalid_backup_bucket',
+  'invalid_backup_prefix',
+  'invalid_backup_region',
+  'invalid_backup_credentials',
+  'weak_backup_password',
+  'backup_password_locked',
+  'invalid_backup_schedule',
+  'invalid_backup_request',
+  'backup_not_configured',
+] as const
+
+type SystemCode = (typeof systemCodes)[number]
+
+const isSystemCode = (code: string): code is SystemCode => (systemCodes as readonly string[]).includes(code)
+
 const isNasabahCode = (code: string): code is NasabahCode =>
   (nasabahCodes as readonly string[]).includes(code)
 
@@ -82,6 +129,8 @@ export function errorText(error: unknown): string {
   if (isBannedWordCode(e.code)) return t(`compliance.words.errors.${e.code}`)
   if (isCommunityCode(e.code)) return t(`community.errorCodes.${e.code}`)
   if (isPushCode(e.code)) return t(`push.errorCodes.${e.code}`)
+  if (isLegalCode(e.code)) return t(`legal.errors.${e.code}`)
+  if (isSystemCode(e.code)) return t(`system.errors.${e.code}`)
   switch (e.code) {
     case 'invalid_credentials':
       return t('errors.invalidLogin')
@@ -108,4 +157,8 @@ export function errorText(error: unknown): string {
     default:
       return e.status !== undefined && e.detail ? e.detail : t('errors.generic')
   }
+}
+
+export function legalErrorText(error: unknown): string {
+  return toApiError(error).code === 'four_eyes' ? i18n.t('legal.errors.four_eyes') : errorText(error)
 }

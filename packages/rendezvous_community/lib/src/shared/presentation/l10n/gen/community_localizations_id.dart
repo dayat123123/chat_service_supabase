@@ -750,4 +750,166 @@ class CommunityLocalizationsId extends CommunityLocalizations {
 
   @override
   String get supportUnavailable => 'Chat CS belum tersedia. Coba lagi sebentar lagi.';
+
+  @override
+  String get errorUnsupportedType =>
+      'Jenis file tidak didukung. Gunakan gambar JPEG, PNG, WebP, atau GIF (foto profil tanpa GIF), atau PDF di chat CS.';
+
+  @override
+  String get errorFileTooLarge =>
+      'File terlalu besar. Batasnya 5 MB untuk gambar, 2 MB untuk foto profil, dan 10 MB untuk PDF.';
+
+  @override
+  String get errorEmptyFile => 'File kosong. Pilih file lain.';
+
+  @override
+  String get errorInvalidImage => 'Gambar rusak atau tidak bisa dibaca. Coba gambar lain.';
+
+  @override
+  String get errorImageTooLarge => 'Resolusi gambar terlalu besar. Maksimal 10.000 piksel per sisi dan 40 megapiksel.';
+
+  @override
+  String get errorInvalidPdf => 'PDF rusak atau tidak bisa dibaca.';
+
+  @override
+  String get errorPdfEncrypted =>
+      'PDF yang dikunci kata sandi tidak bisa dikirim. Buka kuncinya dulu, lalu kirim ulang.';
+
+  @override
+  String get errorPdfActiveContent =>
+      'PDF berisi skrip, file tersemat, atau konten aktif lain. Simpan ulang sebagai PDF biasa (misalnya lewat Cetak ke PDF), lalu kirim ulang.';
+
+  @override
+  String get errorUploadForbidden => 'Anda tidak diizinkan mengunggah file ke sini.';
+
+  @override
+  String get errorTooManyUploads => 'Batas unggahan hari ini sudah tercapai. Coba lagi besok.';
+
+  @override
+  String get errorUploadBusy => 'Server unggahan sedang sibuk. Coba lagi sebentar lagi.';
+
+  @override
+  String get errorStorageUnavailable => 'Unggahan file sedang tidak tersedia. Coba lagi nanti.';
+
+  @override
+  String get errorConsentRequired => 'Setujui Syarat & Ketentuan dan Pedoman Komunitas terbaru untuk mengirim konten.';
+
+  @override
+  String get consentDeclined => 'Belum terkirim. Setujui dokumen terbaru untuk mengirim; tulisan Anda tetap tersimpan.';
+
+  @override
+  String get consentTitle => 'Persetujuan diperlukan';
+
+  @override
+  String get consentIntro => 'Sebelum ikut berdiskusi, baca dan setujui dokumen berikut.';
+
+  @override
+  String consentAgree(String documents) {
+    return 'Saya telah membaca dan menyetujui $documents.';
+  }
+
+  @override
+  String get consentAccept => 'Setuju';
+
+  @override
+  String get consentLater => 'Nanti';
+
+  @override
+  String get consentRead => 'Baca';
+
+  @override
+  String get consentReview => 'Tinjau';
+
+  @override
+  String get consentAccepted => 'Terima kasih. Persetujuan Anda sudah tersimpan.';
+
+  @override
+  String consentBannerUpdated(String documents) {
+    return '$documents diperbarui — tinjau dan setujui.';
+  }
+
+  @override
+  String consentBannerRequired(String documents) {
+    return 'Tinjau dan setujui $documents untuk ikut berdiskusi.';
+  }
+
+  @override
+  String legalVersion(int version, String date) {
+    return 'Versi $version · berlaku $date';
+  }
+
+  @override
+  String get legalChanges => 'Yang berubah';
+
+  @override
+  String get listAnd => 'dan';
+
+  @override
+  String get accountSettingsTitle => 'Privasi & akun';
+
+  @override
+  String get accountLegalSection => 'Dokumen hukum';
+
+  @override
+  String get accountDataSection => 'Data Anda';
+
+  @override
+  String get accountExport => 'Unduh data saya';
+
+  @override
+  String get accountExportHint => 'Salinan data komunitas Anda dalam format JSON. Bisa diunduh 3 kali sehari.';
+
+  @override
+  String get accountExportSaved => 'Data komunitas Anda sudah diunduh.';
+
+  @override
+  String get accountExportLimit => 'Unduh data dibatasi 3 kali sehari. Coba lagi besok.';
+
+  @override
+  String get accountDelete => 'Hapus akun komunitas';
+
+  @override
+  String get accountDeleteHint => 'Menghapus profil dan konten komunitas Anda. Akun trading tidak terpengaruh.';
+
+  @override
+  String get accountDeleteTitle => 'Hapus akun komunitas?';
+
+  @override
+  String get accountDeleteIntro => 'Yang terjadi bila akun komunitas dihapus:';
+
+  @override
+  String get accountDeleteContent => 'Postingan, komentar, dan pesan chat Anda dihapus dari tampilan semua orang.';
+
+  @override
+  String get accountDeleteArchive => 'Salinan konten tetap diarsipkan untuk regulator sesuai ketentuan hukum.';
+
+  @override
+  String get accountDeleteRelations => 'Pengikut, akun yang Anda ikuti, blokir, dan bisukan dihapus.';
+
+  @override
+  String get accountDeleteSupport =>
+      'Tiket layanan CS tetap tercatat untuk keperluan kepatuhan, tetapi pesan dan lampiran chat CS ikut dihapus.';
+
+  @override
+  String get accountDeleteTrading => 'Akun trading OLT Anda tidak terpengaruh.';
+
+  @override
+  String get accountDeleteFresh => 'Saat membuka komunitas lagi, profil komunitas baru yang kosong akan dibuat.';
+
+  @override
+  String accountDeleteTypeToConfirm(String word) {
+    return 'Ketik $word untuk konfirmasi';
+  }
+
+  @override
+  String get accountDeleteWord => 'HAPUS';
+
+  @override
+  String get accountDeleteConfirm => 'Hapus akun';
+
+  @override
+  String get accountDeleteProgress => 'Menghapus akun komunitas…';
+
+  @override
+  String get accountDeleted => 'Akun komunitas Anda sudah dihapus.';
 }

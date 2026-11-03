@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
+import 'package:rendezvous_community/src/app/community_account_scope.dart';
 import 'package:rendezvous_community/src/app/community_dependencies.dart';
 import 'package:rendezvous_community/src/app/community_support_scope.dart';
 import 'package:rendezvous_community/src/core/auth/auth_bridge_client.dart';
@@ -11,12 +12,18 @@ import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/logging/community_logger.dart';
 import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
 import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/features/account/data/repositories/account_repository_impl.dart';
+import 'package:rendezvous_community/src/features/account/domain/entities/community_data_export.dart';
+import 'package:rendezvous_community/src/features/account/domain/repositories/account_repository.dart';
 import 'package:rendezvous_community/src/features/chat/data/repositories/chat_repository_impl.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/services/delivery_tracker.dart';
 import 'package:rendezvous_community/src/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
+import 'package:rendezvous_community/src/features/legal/data/repositories/legal_repository_impl.dart';
+import 'package:rendezvous_community/src/features/legal/domain/entities/legal_document.dart';
+import 'package:rendezvous_community/src/features/legal/domain/services/community_consent.dart';
 import 'package:rendezvous_community/src/features/media/data/repositories/media_repository_impl.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/features/moderation/data/repositories/moderation_repository_impl.dart';
@@ -41,7 +48,7 @@ import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:rendezvous_community/src/shared/domain/official_accounts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class RendezvousCommunity implements CommunityDependencies, CommunitySupportDependencies {
+class RendezvousCommunity implements CommunityDependencies, CommunitySupportDependencies, CommunityAccountDependencies {
   RendezvousCommunity._({
     required this.client,
     required this._tokens,
@@ -58,6 +65,8 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     required this.support,
     required this.supportChat,
     required this._push,
+    required this.consent,
+    required this._account,
     required bool trackDelivery,
   }) {
     if (trackDelivery) {
@@ -139,7 +148,13 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
       tokenProvider: tokenProvider,
     );
     final client = SupabaseClient(baseUrl, anonKey, accessToken: tokens.accessToken, httpClient: httpClient);
-    final api = SupabaseSocialDataSource(client, tokens, supabaseUrl: baseUrl, anonKey: anonKey);
+    final api = SupabaseSocialDataSource(
+      client,
+      tokens,
+      supabaseUrl: baseUrl,
+      anonKey: anonKey,
+      httpClient: httpClient,
+    );
     final realtime = RealtimeGateway(client);
     final notifications = NotificationRepositoryImpl(api, realtime);
     final cs = api.inSchema('cs_api');
@@ -179,10 +194,13 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
         },
       ),
       push: PushRegistrar(PushRepositoryImpl(api), currentUserId: () => tokens.currentSession?.user.id),
+      consent: CommunityConsent(LegalRepositoryImpl(api)),
+      account: AccountRepositoryImpl(api, currentUsername: () => tokens.currentSession?.user.username),
       trackDelivery: trackDelivery,
     );
 
     social._sessionSub = tokens.sessionChanges.listen((session) {
+      social.consent.onUserChanged(session?.user.id);
       if (session == null) {
         unawaited(social._delivery?.stop());
         return;
@@ -198,6 +216,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
   final TokenManager _tokens;
   final ChatRepositoryImpl _chatImpl;
   final PushRegistrar _push;
+  final AccountRepository _account;
   DeliveryTracker? _delivery;
   StreamSubscription<SocialSession?>? _sessionSub;
 
@@ -225,6 +244,8 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
   final SupportRepository support;
   @override
   final ChatRepository supportChat;
+  @override
+  final CommunityConsent consent;
   late final OfficialAccounts officialAccounts = OfficialAccounts(profiles.officialAccountIds);
 
   @override
@@ -268,8 +289,52 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     }
   }
 
+  Future<List<LegalDocument>> legalDocuments({bool refresh = false}) => consent.documents(refresh: refresh);
+
+  Future<List<LegalDocument>> pendingLegalDocuments({bool refresh = false}) => consent.pending(refresh: refresh);
+
+  Future<void> acceptLegalDocuments(Iterable<String> documentIds) async {
+    try {
+      await consent.accept(documentIds);
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<CommunityDataExport> exportMyData() async {
+    try {
+      final export = await _account.exportMyData();
+      CommunityLoggers.account.event(
+        Level.INFO,
+        'Personal data exported',
+        fields: {'userId': currentUser?.id, 'byteCount': export.bytes.length},
+      );
+      return export;
+    } catch (e) {
+      throw mapError(e);
+    }
+  }
+
+  @override
+  Future<void> deleteMyAccount() async {
+    final userId = currentUser?.id;
+    try {
+      await _account.deleteMyAccount();
+    } catch (e) {
+      throw mapError(e);
+    }
+    CommunityLoggers.account.event(Level.INFO, 'Community account deleted', fields: {'userId': userId});
+    _push.release();
+    await _endSession();
+  }
+
   Future<void> signOut() async {
     await _push.detach();
+    await _endSession();
+  }
+
+  Future<void> _endSession() async {
     await _delivery?.stop();
     _tokens.clear();
     await client.removeAllChannels();
@@ -284,5 +349,6 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     await client.removeAllChannels();
     await client.dispose();
     await _tokens.dispose();
+    consent.dispose();
   }
 }

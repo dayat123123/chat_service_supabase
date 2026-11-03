@@ -57,3 +57,20 @@ CommunityException mapError(Object error) {
 
   return CommunityException(CommunityErrorKind.unknown, message: error.toString(), cause: error);
 }
+
+CommunityException mapMediaError(int status, {String? code, String? message}) {
+  final kind = switch (status) {
+    401 => CommunityErrorKind.unauthenticated,
+    403 => CommunityErrorKind.forbidden,
+    404 => code == null ? CommunityErrorKind.unavailable : CommunityErrorKind.notFound,
+    429 => CommunityErrorKind.rateLimited,
+    400 || 409 || 413 || 415 || 422 => CommunityErrorKind.invalidInput,
+    502 || 503 || 504 => CommunityErrorKind.unavailable,
+    _ => CommunityErrorKind.unknown,
+  };
+  return CommunityException(
+    kind,
+    code: code ?? (status == 404 ? 'media_unavailable' : null),
+    message: message ?? 'Media gateway returned status $status',
+  );
+}

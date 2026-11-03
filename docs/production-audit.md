@@ -17,7 +17,9 @@ Dasar audit:
 | 1. Infrastruktur | ✅ Selesai 29 Okt 2026 (rincian di bawah) |
 | 2. Database (+ fondasi data F1) | ✅ Selesai 29 Okt 2026 (rincian di bawah) |
 | 3. auth-bridge | ✅ Selesai 29 Okt 2026 (rincian di bawah) |
-| F1, 4–5, 6, F2–F5, 7 | Belum dimulai |
+| F1, 4–5, F2–F5 | Sebagian besar dikerjakan lewat web CS React (menu CS, Kepatuhan, Komunitas, Pengaturan) dan paket Flutter 1.x, di luar urutan awal |
+| 6. Hardening & observabilitas | Sebagian. 3 Nov 2026: Kesehatan sistem + alert, backup PITR + uji restore, upload media aman, dokumen hukum + hapus/ekspor akun di aplikasi, CI backend + gitleaks |
+| 7. Multi-node | Belum dimulai |
 
 **Urutan kerja** (gabungan addendum produksi dan [PROMPT-FEATURES.md](PROMPT-FEATURES.md), ditetapkan 29 Okt 2026):
 1. **Tahap 2** (DB), diperluas dengan fondasi data F1: role admin + 2FA, sanksi, audit log, arsip & legal hold, persetujuan T&C.
@@ -341,7 +343,7 @@ Setiap poin punya usulan default. Balas "setuju semua" atau sebutkan nomor yang 
 | 3.4 | GoTrue | ✅ | Signup, email, dan anonymous mati. Client tidak memakai GoTrue sama sekali → usul: `/auth/v1` ditutup di edge. | S |
 | 3.5 | DB: `check_rate_limit(user_id, action)` | 🟡 | Trigger + tabel `private.rate_limits` ✅. Kurang: multi-jendela (50 post/hari), aksi baru, user baru lebih ketat, `trust_level`, pencatatan pelanggaran, dan fungsi yang bisa dipanggil dari RPC. | M |
 | 3.6 | Realtime: koneksi, channel, event, payload | 🟡 | Masih default tenant: **200 koneksi**, 100 event/dtk per tenant, 100 channel per klien. → `TENANT_MAX_*` + update tenant. Batas 10 event/dtk **per klien** tidak tersedia bawaan → throttle di klien + batas koneksi di edge. Batas payload 64 KB masih perlu dicek. | M |
-| 3.7 | Storage: ukuran, jenis, kuota | 🟡 | Batas per bucket ✅ (avatar 2 MB, lampiran 5 MB). GIF masih diterima ❌, kuota 50 upload/hari ❌. → bagian 4.7. | – |
+| 3.7 | Storage: ukuran, jenis, kuota | ✅ | Batas per bucket ✅, kuota upload harian ✅ (rate limit `upload`, 0012). 3 Nov 2026: jenis file diperiksa dari isi (magic bytes) oleh layanan `media`. GIF tetap diterima untuk chat/postingan (keputusan media chat 2 Nov), tetapi strukturnya divalidasi dan metadatanya dibuang. | – |
 | 3.8 | Anti-spam | 🟡 | Filter kata (mask/block, tabel) ✅. Konten sama 3× dalam 5 menit ❌, maks 3 link per post ❌. | S |
 | 3.9 | 429 + `Retry-After`, pesan ramah di Flutter | 🟡 | auth-bridge ✅. DB sudah mengembalikan HTTP 429 tetapi tanpa `Retry-After` → error `PGRST` dengan header. Pesan ramah di Flutter ✅. | S |
 | 3.10 | Pelanggaran tercatat di log & metrik | ❌ | → `RAISE LOG` di DB (exception membatalkan insert ke tabel), metrik 429 dari Traefik dan auth-bridge. | bagian 6 |
@@ -398,7 +400,7 @@ Batas per user di DB, sekarang vs addendum:
 | 4.4.3 | `make gen-secrets` | 🟡 | `gen-keys` sudah membuat JWT secret 64 karakter, anon/service key, dan password DB. Kurang: Erlang cookie, password Valkey, dan output file Docker secrets. | S |
 | 4.4.4 | `service_role` hanya untuk service internal | 🟡 | Flutter hanya memakai anon key ✅. Edge Functions menerima `SUPABASE_DB_URL` sebagai superuser `postgres` → role terbatas. | S |
 | 4.4.5 | Prosedur rotasi | 🟡 | Ada di `PRODUCTION.md` §6, tetapi tanpa masa transisi. **Catatan penting:** `ANON_KEY` adalah JWT yang ditandatangani `JWT_SECRET` dan tertanam di app yang sudah rilis, jadi rotasi JWT secret mematikannya. → masa transisi (Kong menerima key lama & baru), atau pindah ke API key baru Supabase (`sb_publishable_…`). Perlu diuji. | M |
-| 4.4.6 | gitleaks pre-commit | ❌ | → hook + `make install-hooks` + job CI. | S |
+| 4.4.6 | gitleaks pre-commit | ✅ | 3 Nov 2026: job CI `backend.yml` (riwayat git penuh) + `make secrets-scan`, allowlist sempit di `.gitleaks.toml`. Hook pre-commit tidak dipasang paksa. | S |
 
 ### 4.5 Database
 
@@ -439,7 +441,7 @@ Batas per user di DB, sekarang vs addendum:
 | 4.8.1 | Report, block, mute, hapus oleh moderator, ban, antrean moderasi | 🟡 | Report ✅, block ✅, mute room ✅. Mute user ❌, peran moderator dan ban ❌. Antrean `private.report_queue` hanya bisa dibuka lewat Studio, yang akan dimatikan. → role moderator, RPC moderasi, UI antrean di package. | L |
 | 4.8.2 | Filter kata & spam diatur tanpa deploy | 🟡 | Kata terlarang ✅ (tabel). Ambang spam → tabel konfigurasi. | 3.8 |
 | 4.8.3 | Disclaimer | ✅ | Composer dan detail post. | – |
-| 4.8.4 | UU PDP: retensi, hapus akun, ekspor data, log akses data pribadi | ❌ | → retensi lewat `pg_cron`, RPC `delete_my_account` / `export_my_data`, dan `pgaudit` (sudah ter-preload) untuk akses `private.user_private`. | M |
+| 4.8.4 | UU PDP: retensi, hapus akun, ekspor data, log akses data pribadi | ✅ | RPC di DB sejak Tahap 2. 3 Nov 2026: layar Privasi & akun di paket Flutter (unduh data, hapus akun), ekspor memuat tiket CS dan perangkat push, file akun yang dihapus dibersihkan janitor. | M |
 | 4.8.5 | Data disimpan di Indonesia | – | Keputusan hosting; dicatat di checklist. | – |
 
 ### 4.9 Keamanan client Flutter
@@ -468,25 +470,25 @@ Batas per user di DB, sekarang vs addendum:
 | 6.1 | Log JSON + `request_id` lintas service | 🟡 | auth-bridge sudah JSON + `X-Request-Id` ✅. Log Kong berformat `combined` dan request id tidak diteruskan. Postgres `log_min_messages=fatal` menyembunyikan error. → log JSON di edge/Kong, plugin `correlation-id`, level log DB dinaikkan. | M |
 | 6.2 | Metrik Prometheus + dashboard | ❌ | → Prometheus, exporter (node, cAdvisor, postgres, redis), metrik Traefik/Kong/Realtime/auth-bridge, dashboard. | L (6.2–6.4) |
 | 6.3 | Log terpusat | ❌ | → Alloy + VictoriaLogs (atau Loki; lihat keputusan no. 2). | ↑ |
-| 6.4 | Alert | ❌ | → Alertmanager untuk: service down, error rate, disk > 80 %, backup gagal, sertifikat hampir habis, lonjakan 429, replication lag. | ↑ |
-| 6.5 | Uptime monitoring dari luar | ❌ | → compose Uptime Kuma (MIT) untuk server terpisah. | S |
+| 6.4 | Alert | ✅ | 3 Nov 2026: aturan di DB (`0064`), layanan `sentinel` mengirim ke Telegram/email yang diatur dari web; layanan mati, disk, koneksi DB, slot replikasi, cron gagal, antrean, backup. Alertmanager tidak dipakai. Sertifikat dan lonjakan 429 belum. [docs/system-health](system-health/README.md) | ↑ |
+| 6.5 | Uptime monitoring dari luar | 🟡 | Didokumentasikan (Uptime Kuma di server lain). Sentinel juga mengirim alert saat API/DB mati, tetapi tidak saat seluruh server mati. | S |
 
 ### 7. Backup & disaster recovery
 
 | # | Syarat | Status | Sekarang → perubahan | Effort |
 |---|---|---|---|---|
-| 7.1 | Full backup harian + WAL kontinu (PITR) | ❌ | Baru `pg_dump` lewat `make backup`. → image DB turunan + WAL-G, `archive_timeout` 60 dtk. | L |
-| 7.2 | Backup object storage harian | 🟡 | `make backup` membuat tar volume di lokal. → restic. | S |
-| 7.3 | Disimpan di luar server, terenkripsi | ❌ | Lokal di `backups/`, tanpa enkripsi. | 7.1–7.2 |
-| 7.4 | Retensi harian 7 / mingguan 4 / bulanan 6 | ❌ | Satu tingkat, 14 hari. | 7.1–7.2 |
-| 7.5 | `make restore` + uji restore otomatis berkala | 🟡 | `make restore` (pg_restore) ✅. PITR ❌, uji restore berkala ❌ → job mingguan + metrik + alert. | M |
-| 7.6 | RPO ≤ 5 menit, RTO ≤ 1 jam, `docs/operations.md` | ❌ | | M |
+| 7.1 | Full backup harian + WAL kontinu (PITR) | ✅ | 3 Nov 2026: layanan `backup` (`pg_basebackup` harian + `pg_receivewal` lewat slot `olt_backup`). **Menyimpang dari WAL-G**: image DB tidak diubah dan WAL tertahan dibatasi `max_slot_wal_keep_size`. [docs/backup](backup/README.md) | L |
+| 7.2 | Backup object storage harian | ✅ | restic `--tag files` dari volume storage (profil single). | S |
+| 7.3 | Disimpan di luar server, terenkripsi | ✅ | Repositori restic di S3, password dari web (Vault). | 7.1–7.2 |
+| 7.4 | Retensi harian 7 / mingguan 4 / bulanan 6 | ✅ | Default 7/4/6 + WAL 7 hari, diubah dari web. | 7.1–7.2 |
+| 7.5 | `make restore` + uji restore otomatis berkala | ✅ | Uji restore mingguan otomatis + alert; `backup restore` untuk PITR. | M |
+| 7.6 | RPO ≤ 5 menit, RTO ≤ 1 jam, `docs/operations.md` | 🟡 | RPO = interval kirim WAL (default 5 menit). RTO diukur oleh uji restore mingguan. Dokumen: [docs/backup](backup/README.md). | M |
 
 ### 8. CI/CD & rilis
 
 | # | Syarat | Status | Sekarang → perubahan | Effort |
 |---|---|---|---|---|
-| 8.1 | Pipeline CI | ❌ | Semua tes hanya bisa jalan lewat `make` di lokal. → GitHub Actions: format/lint, analyze + tes Flutter, tes Go, pgTAP, build image + Trivy, cek lisensi, gitleaks. | M |
+| 8.1 | Pipeline CI | ✅ | GitHub Actions: `cs-console-react.yml`, `rendezvous-community.yml`, dan 3 Nov 2026 `backend.yml` (Go: gofmt, vet, `-race`, tanpa komentar, image + Trivy; pgTAP + smoke vs stack dev; gitleaks). | M |
 | 8.2 | Migrasi berurutan dan terlacak | ✅ | `olt_internal.schema_migrations` dengan checksum. | – |
 | 8.3 | Migrasi backward-compatible; destruktif tidak otomatis | ❌ | Belum ada aturan tertulis maupun penjaga. → panduan expand → migrate → contract; `migrate` menolak `DROP`/`TRUNCATE`/ubah tipe tanpa persetujuan eksplisit. | S |
 | 8.4 | Rolling update + rollback satu perintah | 🟡 | Panduan update ada. → `make deploy SERVICE=… TAG=…`, `make rollback`, tag image = versi/commit. | M |
@@ -500,7 +502,7 @@ Batas per user di DB, sekarang vs addendum:
 | 9.1 | Tes RLS untuk akses silang antar user | 🟡 | 141 tes pgTAP untuk skenario utama ✅; diperluas untuk fitur baru. | M (9.1–9.4) |
 | 9.2 | Endpoint internal tidak bisa diakses dari luar | ❌ | → skrip cek port dan route. | ↑ |
 | 9.3 | Scan OWASP ZAP | ❌ | → `zap-api-scan` terhadap API. | ↑ |
-| 9.4 | Upload file berbahaya | ❌ | → file palsu, polyglot, SVG, EXIF GPS, file kebesaran. | ↑ |
+| 9.4 | Upload file berbahaya | 🟡 | 3 Nov 2026: layanan `media` diuji dengan EXIF GPS, data ekor (polyglot), PDF terenkripsi/JavaScript, ukuran dan dimensi berlebih. Belum ada pemindaian antivirus. | ↑ |
 | 9.5 | Rate limit tiap lapisan: 429 lalu pulih | 🟡 | DB dan auth-bridge sudah diuji ✅. Edge, Realtime, Storage, dan pemulihan setelah jendela waktu ❌. | M |
 | 9.6 | Uji beban profil single | ❌ | k6 berlisensi AGPL → alat uji beban Go sendiri (koneksi WebSocket + pesan/dtk, p50/p95/p99). | M |
 | 9.7 | Chaos ringan | ❌ | → skrip restart DB, Valkey, dan Realtime, lalu verifikasi pulih tanpa kehilangan data. | S |

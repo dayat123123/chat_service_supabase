@@ -35,6 +35,8 @@ await RendezvousCommunity.initialize(
 | `RendezvousCommunity.Chat` | Pengiriman pesan |
 | `RendezvousCommunity.Feed` | Pemuatan feed |
 | `RendezvousCommunity.Support` | Chat CS / tiket |
+| `RendezvousCommunity.Push` | Pendaftaran token push |
+| `RendezvousCommunity.Account` | Dokumen hukum, ekspor data, hapus akun |
 
 Di kode: `CommunityLoggers.chat.event(Level.SEVERE, 'Failed to send message', fields: {...})`.
 
@@ -61,6 +63,9 @@ Di kode: `CommunityLoggers.chat.event(Level.SEVERE, 'Failed to send message', fi
 | SEVERE | Chat | `Failed to send message` | `roomId`, `clientId`, `kind`, `code` |
 | INFO | Support | `Support ticket opened` | `ticketId`, `topic`, `status` |
 | WARNING | Feed | `Failed to load feed` | `scope`, `kind`, `code` |
+| WARNING | Account | `Could not load legal documents` | `kind`, `code` |
+| INFO | Account | `Personal data exported` | `userId`, `byteCount` (isi ekspor tidak pernah dicatat) |
+| INFO | Account | `Community account deleted` | `userId` |
 
 ## Data sensitif
 

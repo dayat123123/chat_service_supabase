@@ -11,6 +11,7 @@ import 'package:rendezvous_community/src/features/chat/presentation/widgets/mess
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_list.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_header.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/typing_text.dart';
+import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
@@ -41,9 +42,13 @@ class CommunityChatRoom extends StatelessWidget {
       context,
       builders,
       BlocProvider(
-        create: (_) =>
-            ChatRoomCubit(chat: repository ?? deps.chat, media: deps.media, me: deps.ensureSignedIn, roomId: roomId)
-              ..load(),
+        create: (_) => ChatRoomCubit(
+          chat: repository ?? deps.chat,
+          media: deps.media,
+          me: deps.ensureSignedIn,
+          roomId: roomId,
+          consent: communityConsentGate(context),
+        )..load(),
         child: _ChatRoomView(showHeader: showHeader, header: header, composer: composer),
       ),
     );

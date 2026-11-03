@@ -60,6 +60,13 @@ class _HomePageState extends State<HomePage> {
     _supportRoute = false;
   }
 
+  Future<void> _openAccountSettings() => openCommunityAccountSettings(
+    context,
+    onAccountDeleted: () {
+      if (mounted) setState(() => _index = 0);
+    },
+  );
+
   Future<void> _logout() async {
     widget.auth.logout();
     await RendezvousCommunity.instance.signOut();
@@ -155,6 +162,11 @@ class _HomePageState extends State<HomePage> {
         tooltip: 'Gaya chat bawaan/kustom',
         onPressed: () => toggleChatStyle(context),
         icon: const Icon(Icons.palette_outlined),
+      ),
+      IconButton(
+        tooltip: context.communityL10n.accountSettingsTitle,
+        onPressed: _openAccountSettings,
+        icon: const Icon(Icons.privacy_tip_outlined),
       ),
       IconButton(tooltip: 'Logout', onPressed: _logout, icon: const Icon(Icons.logout)),
     ];

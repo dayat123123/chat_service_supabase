@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -224,6 +225,27 @@ void main() {
     } finally {
       await budi.feed.deletePost(post.id);
     }
+  }, skip: skip);
+
+  test('legal documents come from get_legal_documents', () async {
+    final documents = await budi.legalDocuments(refresh: true);
+    expect(documents.map((d) => d.id).toSet(), hasLength(documents.length));
+    for (final document in documents) {
+      expect(document.version, greaterThan(0));
+      expect(document.title, isNotEmpty);
+    }
+    expect(await budi.pendingLegalDocuments(), everyElement(predicate<LegalDocument>((d) => d.isPending)));
+  }, skip: skip);
+
+  test('images are uploaded through the media gateway', () async {
+    final png = base64Decode(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    );
+    final attachment = await budi.media.uploadPostImage(png, mimeType: 'image/jpeg');
+    expect(attachment.path, startsWith('posts/${budi.currentUser!.id}/'));
+    expect(attachment.path, endsWith('.png'));
+    expect(attachment.mime, 'image/png');
+    expect((attachment.width, attachment.height), (1, 1));
   }, skip: skip);
 
   test('maps the server rate limit to CommunityErrorKind.rateLimited', () async {

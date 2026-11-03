@@ -31,7 +31,11 @@ const CommunityChatBadge(child: Icon(Icons.chat_bubble_outline));   // badge cha
 const CommunityNotificationList();
 const CommunityNotificationBadge(child: Icon(Icons.notifications));
 const CommunityUserProfile(userId: '...');
+const CommunityAccountSettings();               // "Privasi & akun": dokumen hukum, unduh data, hapus akun
+const CommunityConsentBanner();                 // banner dokumen wajib yang belum disetujui (sudah ada di feed)
 ```
+
+> **Backend wajib menjalankan layanan `media`** (mulai 1.2.0). Semua unggahan nasabah lewat `POST {supabaseUrl}/media/v1/object/{bucket}/{path}`. Backend lama tanpa route `/media/v1` membuat unggahan gambar, PDF, dan foto profil gagal ("Unggahan file sedang tidak tersedia"). Detail di [Unggahan lewat media gateway](#unggahan-lewat-media-gateway).
 
 Tambahkan delegate lokalisasi di `MaterialApp`. Bahasa default Indonesia, tersedia juga Inggris:
 
@@ -55,10 +59,93 @@ supportedLocales: CommunityLocalizations.supportedLocales,
 | Lazy load chat | Pesan dimuat 30 per halaman memakai cursor (bukan offset). Halaman lebih lama diambil saat scroll mendekati pesan tertua, dan otomatis bila halaman pertama belum memenuhi layar. Daftar room juga dimuat 30 per halaman dengan aturan yang sama. Setelah koneksi pulih, pesan yang terlewat disusulkan per 100 sampai habis; bila lebih dari 500, room dimuat ulang dari pesan terbaru dan pesan lama tetap bisa dimuat dengan scroll |
 | Badge tab chat | `CommunityChatBadge` menampilkan jumlah **chat** (DM & grup yang tidak dibisukan) yang punya pesan belum dibaca, seperti tab Chat WhatsApp; `99+` bila lebih. Room saham tidak dihitung. Diperbarui saat pesan masuk dan saat room dibuka |
 | Mengetik & online | "mengetik…" (DM) atau "Budi sedang mengetik…" (grup) tampil di daftar chat dan di room. Titik hijau dan teks "Online" untuk lawan bicara DM |
-| Lampiran | Chat global (DM, grup, room saham) hanya gambar (JPEG, PNG, WebP, GIF). Chat CS (`CommunitySupportChat`) juga menerima PDF maksimal 10 MB lewat `MessageComposer(allowDocuments: true)`. PDF tampil sebagai kartu nama + ukuran dan dibuka di aplikasi PDF perangkat lewat signed URL 5 menit |
+| Lampiran | Chat global (DM, grup, room saham) hanya gambar (JPEG, PNG, WebP, GIF). Chat CS (`CommunitySupportChat`) juga menerima PDF maksimal 10 MB lewat `MessageComposer(allowDocuments: true)`. PDF tampil sebagai kartu nama + ukuran dan dibuka di aplikasi PDF perangkat lewat signed URL 5 menit. Semua unggahan lewat media gateway (lihat di bawah) |
 | Polling | Tombol polling di composer: 2–4 pilihan (maks 40 karakter, tidak boleh sama), durasi 1 jam–7 hari. Satu suara per user dan tidak bisa diubah; pembuat tidak ikut memilih. Hasil (persentase, pilihan Anda, pilihan teratas) tampil setelah memilih, saat polling selesai, atau bagi pembuat |
 | State | Skeleton saat memuat, tampilan kosong, error dengan tombol coba lagi, pull-to-refresh, infinite scroll, banner "N post baru" |
 | Disclaimer | *"Konten ini opini pengguna, bukan rekomendasi investasi."* di composer dan detail post |
+
+## Dokumen hukum & persetujuan
+
+Server menolak post, komentar, dan pesan chat (kecuali chat CS) dengan kode `consent_required` bila ada dokumen wajib (Syarat & Ketentuan, Pedoman Komunitas) versi terbaru yang belum disetujui. Paket menanganinya sendiri:
+
+| Bagian | Perilaku |
+|---|---|
+| Gerbang otomatis | Post, komentar, atau pesan chat yang ditolak `consent_required` membuka alur persetujuan. Setelah "Setuju", aksi yang sama diulang **satu kali** dengan draf yang sama. Bila ditunda ("Nanti"), draf tetap ada (teks composer tidak dihapus, pesan chat menjadi "Gagal terkirim" dan bisa diketuk untuk kirim ulang) dan SnackBar singkat muncul. Chat CS tidak pernah memicu alur ini |
+| Alur persetujuan | Dialog di layar lebar, layar penuh di ponsel. Daftar dokumen wajib yang belum disetujui; tiap dokumen bisa dibaca lengkap (judul, versi, tanggal berlaku, kotak "Yang berubah", teks dengan baris baru apa adanya). Satu kotak centang "Saya telah membaca dan menyetujui …" lalu "Setuju" menyetujui semuanya |
+| Banner | `CommunityConsentBanner` tampil di atas feed, misalnya *"Pedoman Komunitas diperbarui — tinjau dan setujui."* "Tinjau" membuka alur persetujuan; ikon tutup menyembunyikannya sampai ada dokumen wajib baru |
+| Cache | Daftar dokumen (`get_legal_documents`) dimuat sekali per sesi saat login, dimuat ulang setelah menyetujui. Rebuild widget tidak memanggil server |
+
+```dart
+final community = RendezvousCommunity.instance;
+final all = await community.legalDocuments();                 // versi berlaku terbaru per jenis
+final pending = await community.pendingLegalDocuments();     // wajib & belum disetujui
+await community.acceptLegalDocuments([for (final d in pending) d.id]);
+
+final accepted = await showCommunityConsent(context);         // true bila semua sudah disetujui
+await showCommunityLegalDocument(context, all.first);         // pembaca dokumen
+CommunityLegalDocumentReader(document: all.first);            // pembaca sebagai widget
+```
+
+`communityConsentGate(context)` mengembalikan `ConsentGate` yang sama dengan yang dipakai paket, untuk aksi host yang juga bisa ditolak `consent_required`: `await gate.run(() => aksi())`.
+
+## Privasi & akun
+
+`CommunityAccountSettings` (tanpa Scaffold) atau `openCommunityAccountSettings(context)` (halaman dengan AppBar "Privasi & akun") berisi:
+
+- **Dokumen hukum:** tautan ke setiap dokumen yang berlaku, plus banner bila ada yang belum disetujui.
+- **Unduh data saya:** memanggil `export_my_data` dan menyimpan JSON rapi bernama `data-komunitas-<username>-<yyyyMMdd>.json`. Windows/macOS/Linux memakai dialog simpan; Android/iOS/web membagikan file (web mengunduh bila Web Share API tidak ada). Server membatasi 3 kali sehari; batas ini ditampilkan sebagai pesan yang jelas.
+- **Hapus akun komunitas:** menjelaskan dampaknya (post, komentar, dan chat hilang dari tampilan; salinan diarsipkan untuk regulator; pengikut/blokir/bisukan dihapus; riwayat CS tetap; akun trading tidak tersentuh; profil baru yang kosong dibuat saat masuk lagi), meminta mengetik `HAPUS`, menampilkan proses, lalu memanggil `onAccountDeleted`.
+
+```dart
+await openCommunityAccountSettings(
+  context,
+  onAccountDeleted: () => oltRouter.goHome(),    // halaman pengaturan sudah ditutup paket
+);
+
+CommunityAccountSettings(
+  onAccountDeleted: () => Navigator.of(context).pop(),   // tanpa callback: Navigator.maybePop
+  exportSaver: (context, export) async => oltFiles.save(export.fileName, export.bytes),
+);
+
+final export = await RendezvousCommunity.instance.exportMyData();   // CommunityDataExport: bytes + fileName
+await RendezvousCommunity.instance.deleteMyAccount();
+```
+
+`deleteMyAccount()` membersihkan sesi komunitas di perangkat (realtime, pelacak centang, cache dokumen) tanpa login ulang otomatis. Panggilan API komunitas berikutnya menukar token OLT lagi dan server membuat profil komunitas baru yang kosong. Token push dilepas server; token yang terdaftar dipasang lagi otomatis di sesi berikutnya. Karena itu, arahkan pengguna keluar dari layar komunitas di `onAccountDeleted`.
+
+## Unggahan lewat media gateway
+
+Mulai 1.2.0 semua unggahan nasabah lewat layanan `media`, bukan langsung ke Storage:
+
+```
+POST {supabaseUrl}/media/v1/object/{bucket}/{path}
+apikey: <anon key>
+Authorization: Bearer <JWT sosial>
+Content-Type: <tebakan dari nama file>
+x-upsert: true            # hanya foto profil
+```
+
+| Unggahan | Bucket | Path yang diminta | Jenis |
+|---|---|---|---|
+| Gambar post | `attachments` | `posts/<user>/<uuid>.<ext>` | JPEG, PNG, WebP, GIF, maks 5 MB |
+| Gambar chat (termasuk chat CS) | `attachments` | `rooms/<room>/<user>/<uuid>.<ext>` | JPEG, PNG, WebP, GIF, maks 5 MB |
+| PDF chat CS | `cs-documents` | `rooms/<room>/<user>/<uuid>.pdf` | PDF, maks 10 MB |
+| Foto profil | `avatars` | `<user>/avatar-<ms>.<ext>` | JPEG, PNG, WebP (GIF ditolak), maks 2 MB |
+
+Server membaca jenis file dari isinya, membuang metadata (EXIF/GPS dan sejenisnya), dan bisa mengganti ekstensi. Paket memakai `path` dan `mime` dari respons, juga `width`/`height` untuk gambar. Respons 401 memicu refresh sesi lalu satu kali percobaan ulang. Error dipetakan ke `CommunityException` (`kind` + `code` dari server) dan pesan terlokalisasi lewat `context.communityL10n.errorMessage(e)`:
+
+| Kode | Pesan (id) |
+|---|---|
+| `unsupported_type` | Jenis file tidak didukung … |
+| `file_too_large` | File terlalu besar. Batasnya 5 MB untuk gambar, 2 MB untuk foto profil, dan 10 MB untuk PDF. |
+| `invalid_image` / `image_too_large` | Gambar rusak … / Resolusi gambar terlalu besar … |
+| `invalid_pdf` / `pdf_encrypted` / `pdf_active_content` | PDF rusak … / PDF yang dikunci kata sandi … / PDF berisi skrip … |
+| `upload_forbidden` | Anda tidak diizinkan mengunggah file ke sini. |
+| `too_many_uploads` | Batas unggahan hari ini sudah tercapai … |
+| `busy` | Server unggahan sedang sibuk … |
+| `storage_unavailable`, `storage_error`, 404 tanpa kode (backend lama) | Unggahan file sedang tidak tersedia … |
+
+Kong harus mengizinkan header `x-upsert` di CORS untuk app web.
 
 ## Tema
 
@@ -194,11 +281,12 @@ dart run tool/check_logging.dart  # gagal bila library memakai print/debugPrint 
 
 | Test | Isi |
 |---|---|
-| `test/core` | Parser `$KODE`/`@mention` (identik dengan regex di DB), pemetaan error, TokenManager (single-flight, refresh, login gagal) |
+| `test/core` | Parser `$KODE`/`@mention` (identik dengan regex di DB), pemetaan error, TokenManager (single-flight, refresh, login gagal), media gateway (URL, header, `x-upsert`, refresh 401, pemetaan kode error) |
 | `test/features/*/data` | Repository dengan data source mock: parameter RPC, pemetaan baris, pagination, idempotensi, polling, status centang |
 | `test/features/*/domain` | Perhitungan centang (DM & grup), DeliveryTracker, aturan draf polling |
 | `test/features/*/presentation` | Cubit daftar chat (mengetik, centang, online, sinkron ulang setelah reconnect), cubit room, cubit & widget badge chat, tile room, widget polling, composer polling, thread komentar |
-| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit |
+| `test/features/legal`, `test/features/account` | Pemetaan `get_legal_documents`, cache per sesi, gerbang persetujuan (tertunda → setuju → ulang sekali, ditunda, chat CS), alur & pembaca dokumen, banner feed, ekspor data (isi + nama file, batas harian), hapus akun (ketik `HAPUS`, callback, sesi dibersihkan) |
+| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit, dokumen hukum, unggah lewat media gateway |
 | `test/core/logging` | Logger: field terstruktur, level, sanitasi data sensitif, `initialize(logHandler:)` |
 | `test/tool` | Pemeriksa komentar dan pemeriksa `print` untuk CI |
 | `test/support` | Fake dependensi & mock data source bersama |

@@ -38,6 +38,7 @@ SECRETS       := docker/secrets
 export BUILDX_NO_DEFAULT_ATTESTATIONS := 1
 NODE_IMG      := node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85
 GO_IMG        := golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb
+GITLEAKS_IMG  := ghcr.io/gitleaks/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
 TOOLS_IMG     := olt-social/tools:0.1.0
 ALPINE_IMG    := alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
 WEB_IMG       := caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
@@ -46,12 +47,12 @@ ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
                  s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri \
-                 olt_jwks \
+                 olt_jwks backup_db_password \
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
-        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
+        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \n        test-media test-sentinel test-backup check-go-comments secrets-scan \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
@@ -98,7 +99,7 @@ migrate: check-config ## Jalankan migrasi baru di supabase/migrations
 seed: check-config ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-media test-sentinel test-backup check-go-comments ## Tes backend (pgTAP + Go)
 
 test-db: check-config ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -211,6 +212,21 @@ test-notifier: ## Unit test layanan push notifier (Go, di container)
 
 test-janitor: ## Unit test pembersih file storage (Go, di container)
 	docker run --rm -v "$(CURDIR)/services/janitor:/src" -w /src $(GO_IMG) go test ./...
+
+test-media: ## Unit test pintu upload media nasabah (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/media:/src" -w /src $(GO_IMG) go test ./...
+
+test-sentinel: ## Unit test pemantau sistem + alert (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/sentinel:/src" -w /src $(GO_IMG) go test ./...
+
+test-backup: ## Unit test layanan backup (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/backup:/src" -w /src $(GO_IMG) go test ./...
+
+check-go-comments: ## Pastikan kode Go tanpa komentar (selain directive)
+	docker run --rm -v "$(CURDIR):/repo" -w /repo/scripts/check-go-comments $(GO_IMG) go run . /repo/services
+
+secrets-scan: ## Pindai riwayat git dengan gitleaks (.gitleaks.toml)
+	docker run --rm -v "$(CURDIR):/repo" $(GITLEAKS_IMG) git /repo --config /repo/.gitleaks.toml --redact --no-banner
 
 test-flutter-it-dummy: check-config ## Integration test Flutter: login lewat OLT dummy (butuh up DUMMY_OLT=1)
 	cd $(PKG) && OLT_SOCIAL_IT_DUMMY=1 flutter test test/integration/dummy_olt_integration_test.dart

@@ -118,6 +118,30 @@ services:
     deploy:
       <<: *deploy
       replicas: 1
+  media:
+    image: ${REGISTRY}/olt-social/media:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 2
+  # Disk yang diukur adalah node tempat sentinel berjalan: ditaruh di node DB.
+  sentinel:
+    image: ${REGISTRY}/olt-social/sentinel:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 1
+      placement:
+        constraints: [node.labels.olt.db == primary]
+  # File storage cluster ada di SeaweedFS (S3); backup restic di sini hanya untuk database.
+  backup:
+    image: ${REGISTRY}/olt-social/backup:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
+      placement:
+        constraints: [node.labels.olt.db == primary]
   cs-console:
     image: ${REGISTRY}/olt-social/cs-console:0.1.0
     environment:

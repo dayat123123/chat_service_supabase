@@ -96,6 +96,57 @@ export type Database = {
         Args: { p_reason?: string; p_status: string }
         Returns: Json
       }
+      alert_channels_view: { Args: Record<PropertyKey, never>; Returns: Json }
+      alert_send_test: { Args: { p_channel: string }; Returns: Json }
+      alert_set_email: {
+        Args: {
+          p_enabled: boolean
+          p_from: string
+          p_host: string
+          p_password?: string
+          p_port: number
+          p_security: string
+          p_to: string[]
+          p_username: string
+        }
+        Returns: Json
+      }
+      alert_set_options: {
+        Args: { p_console_url: string; p_label: string }
+        Returns: Json
+      }
+      alert_set_telegram: {
+        Args: { p_bot_token?: string; p_chat_ids: string[]; p_enabled: boolean }
+        Returns: Json
+      }
+      backup_overview: { Args: Record<PropertyKey, never>; Returns: Json }
+      backup_request: { Args: { p_kind: string }; Returns: Json }
+      backup_set_schedule: {
+        Args: {
+          p_base_time: string
+          p_offsite_minutes: number
+          p_restore_test: boolean
+          p_restore_test_time: string
+          p_restore_test_weekday: number
+          p_retention_daily: number
+          p_retention_monthly: number
+          p_retention_weekly: number
+          p_wal_days: number
+        }
+        Returns: Json
+      }
+      backup_set_target: {
+        Args: {
+          p_access_key_id: string
+          p_bucket: string
+          p_endpoint: string
+          p_password?: string
+          p_prefix: string
+          p_region: string
+          p_secret_access_key?: string
+        }
+        Returns: Json
+      }
       cancel_transfer: { Args: { p_transfer_id: string }; Returns: undefined }
       check_sensitive: { Args: { p_text: string }; Returns: Json }
       claim_ticket: { Args: { p_ticket_id: string }; Returns: Json }
@@ -313,6 +364,31 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      health_acknowledge: { Args: { p_alert_id: number }; Returns: undefined }
+      legal_cancel_scheduled: { Args: { p_document_id: string }; Returns: Json }
+      legal_document: { Args: { p_id: string }; Returns: Json }
+      legal_draft: { Args: { p_id: string }; Returns: Json }
+      legal_draft_approve: { Args: { p_id: string }; Returns: Json }
+      legal_draft_delete: { Args: { p_id: string }; Returns: undefined }
+      legal_draft_reject: {
+        Args: { p_id: string; p_note: string }
+        Returns: Json
+      }
+      legal_draft_save: {
+        Args: {
+          p_body: string
+          p_change_summary?: string
+          p_effective_at?: string
+          p_id: string
+          p_kind: string
+          p_title: string
+        }
+        Returns: Json
+      }
+      legal_draft_submit: { Args: { p_id: string }; Returns: Json }
+      legal_draft_withdraw: { Args: { p_id: string }; Returns: Json }
+      legal_overview: { Args: Record<PropertyKey, never>; Returns: Json }
+      legal_set_required: { Args: { p_kinds: string[] }; Returns: Json }
       mark_read: { Args: { p_room_id: string }; Returns: undefined }
       my_tickets: { Args: Record<PropertyKey, never>; Returns: Json }
       nasabah_access: { Args: { p_user_id: string }; Returns: Json }
@@ -431,6 +507,8 @@ export type Database = {
       }
       supervisor_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       support_home: { Args: Record<PropertyKey, never>; Returns: Json }
+      system_health: { Args: Record<PropertyKey, never>; Returns: Json }
+      system_health_badge: { Args: Record<PropertyKey, never>; Returns: Json }
       ticket_customer_login: { Args: { p_ticket_id: string }; Returns: Json }
       ticket_detail: { Args: { p_ticket_id: string }; Returns: Json }
       ticket_lists: { Args: Record<PropertyKey, never>; Returns: Json }

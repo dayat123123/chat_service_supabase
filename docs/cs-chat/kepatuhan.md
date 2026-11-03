@@ -12,8 +12,9 @@ Migrasi: `0042_cs_compliance`. Tes: `supabase/tests/030_cs_compliance_test.sql`.
 | **Kasus** (`/compliance/cases`) | Register pengaduan dan penipuan: filter jenis, keadaan, periode, dan pencarian; ekspor CSV untuk laporan berkala. Panel detail berisi transkrip (pesan + catatan internal), riwayat kejadian, tinjauan kepatuhan, perpanjangan tenggat, dan unduh transkrip bersidik SHA-256 |
 | **Jejak Audit** (`/compliance/audit`) | Audit log CS (append-only): filter periode, jenis aksi, dan pencarian pelaku/tiket/nasabah; halaman bertahap; ekspor CSV |
 | **Kebijakan** (`/compliance/policy`) | Nilai yang wajib dikonfirmasi kepatuhan: tenggat pengaduan, perpanjangan tenggat, dan retensi chat. Kepatuhan mengonfirmasi atau mengubah nilainya, beserta riwayat perubahan |
+| **Dokumen hukum** (`/compliance/legal`) | Syarat & Ketentuan, Pedoman Komunitas, dan Kebijakan Privasi yang dibaca dan disetujui nasabah di aplikasi: versi berlaku, jumlah persetujuan, versi terjadwal, riwayat, draf dengan persetujuan empat mata, dan jenis dokumen yang wajib disetujui. Lihat [Dokumen hukum](#dokumen-hukum) |
 
-Akun yang hanya berperan Kepatuhan langsung diarahkan ke Ringkasan. Menu **Kasus** memberi angka merah sejumlah pengaduan yang lewat tenggat atau jatuh tempo ≤ 1 hari kerja. Command palette (Ctrl K) untuk Kepatuhan berisi navigasi ke keempat menu dan preferensi tampilan; pencarian tiket ada di halaman Kasus. Kepatuhan tidak punya status kerja, jadi login dan keluar tidak mengubah status (tidak ada catatan `agent.status` yang tidak berarti).
+Akun yang hanya berperan Kepatuhan langsung diarahkan ke Ringkasan. Menu **Kasus** memberi angka merah sejumlah pengaduan yang lewat tenggat atau jatuh tempo ≤ 1 hari kerja. Command palette (Ctrl K) untuk Kepatuhan berisi navigasi ke semua menu Kepatuhan dan preferensi tampilan; pencarian tiket ada di halaman Kasus. Kepatuhan tidak punya status kerja, jadi login dan keluar tidak mengubah status (tidak ada catatan `agent.status` yang tidak berarti).
 
 Akun dev: `make cs-staff` membuat **Kirana** (`kirana@cs.olt.local`, peran Kepatuhan); passwordnya ada di `scripts/cs-demo/runtime/staff.json` (tidak di-commit).
 
@@ -40,6 +41,28 @@ Dihitung server (`cs.complaint_deadline`) dengan kalender hari kerja WIB yang sa
 | Konfirmasi/ubah kebijakan | `complaint.days` 1–20 hari kerja, `complaint.extension_days` 0–20 hari kerja, `retention.chat_years` 5–30 tahun. Perubahan hanya berlaku untuk pengaduan baru | Tabel `cs.policy_confirmations` (per versi pengaturan), `cs_settings_history`, audit `compliance.policy_confirm` |
 
 Super admin tetap tidak bisa mengubah ketiga kebijakan itu (`cs.admin_editable` tidak berubah). Teks pesan `messages.complaint_extended` bisa diubah super admin seperti pesan otomatis lain.
+
+## Dokumen hukum
+
+Migrasi: `0062_legal_documents`. Tes: `supabase/tests/043_legal_documents_test.sql`.
+
+**Alur:** draf → ajukan → disetujui staf kepatuhan **lain** → terbit (langsung atau pada tanggal berlaku) → nasabah wajib menyetujui sebelum membuat konten.
+
+| Aksi | Aturan | Jejak |
+|---|---|---|
+| Simpan draf | Judul 3–150 karakter, isi 50–100.000 karakter teks biasa (baris baru dipertahankan), ringkasan perubahan opsional ≤ 2.000 karakter, tanggal berlaku opsional (tidak boleh lewat). Draf yang ditolak bisa diperbaiki | Audit `legal.draft_created` |
+| Ajukan / tarik kembali | Draf atau draf yang ditolak → menunggu persetujuan; draf yang sedang ditinjau terkunci | `legal.submitted`, `legal.withdrawn` |
+| Setujui | **Empat mata:** penyusun, pengubah terakhir, dan pengaju tidak bisa menyetujui bila ada ≥ 2 staf kepatuhan aktif. Bila hanya ada satu staf kepatuhan aktif, ia boleh menyetujui sendiri dan audit menandai `self_approved`. Versi baru = versi terakhir + 1. Ditolak bila sudah ada versi terjadwal untuk jenis yang sama | `legal.published` |
+| Tolak | Alasan 5–1.000 karakter, tampil di draf | `legal.rejected` |
+| Batalkan jadwal | Hanya versi yang belum berlaku; drafnya kembali menjadi draf | `legal.schedule_cancelled` |
+| Hapus draf | Hanya draf atau draf yang ditolak | `legal.draft_deleted` |
+| Ubah jenis wajib | Dokumen jenis wajib (default S&K + Pedoman Komunitas) harus disetujui sebelum membuat postingan, komentar, atau pesan | `legal.required_changed` |
+
+**Di aplikasi** ([paket Flutter](../rendezvous-community/README.md)):
+- Nasabah melihat dokumen yang berlaku (`get_legal_documents`), membacanya, lalu menyetujui (`accept_legal_document`).
+- Saat ada versi baru yang wajib, feed menampilkan pemberitahuan. Membuat konten sebelum menyetujui memunculkan layar persetujuan, lalu aksinya diulang otomatis.
+- **Chat CS tidak butuh persetujuan.** Kanal pengaduan tetap terbuka walau nasabah belum menyetujui dokumen baru.
+- Versi yang sudah terbit tidak bisa diubah, dan persetujuan nasabah tersimpan per versi (`public.user_consents`). Persetujuan juga ikut dalam ekspor data nasabah.
 
 ## API
 

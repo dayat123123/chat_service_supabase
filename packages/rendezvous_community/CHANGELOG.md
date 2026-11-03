@@ -1,3 +1,72 @@
+## 1.2.0
+
+* **Wajib backend baru: unggahan lewat media gateway.** Gambar post, gambar chat,
+  PDF chat CS, dan foto profil kini dikirim ke
+  `POST {supabaseUrl}/media/v1/object/{bucket}/{path}` (header `apikey`,
+  `Authorization: Bearer <JWT sosial>`, `Content-Type`), bukan langsung ke Storage.
+  Backend harus menjalankan layanan `media` (route Kong `/media/v1`, migrasi
+  `0063_media_uploads`). Backend lama tanpa `/media/v1` membuat unggahan gagal
+  dengan pesan "Unggahan file sedang tidak tersedia" (kode `media_unavailable`).
+  Paket memakai `path` dan `mime` dari respons, karena server bisa mengganti
+  ekstensi sesuai isi file; `width`/`height` ikut tersimpan di lampiran gambar.
+  Hanya foto profil yang mengirim `x-upsert: true`. GIF tetap boleh untuk gambar
+  post dan chat; foto profil GIF ditolak sebelum diunggah. Sesi kedaluwarsa (401)
+  diperbarui sekali lalu unggahan diulang.
+* Baru: pesan error terlokalisasi (id/en) untuk kode media gateway:
+  `unsupported_type`, `file_too_large`, `empty_file`, `invalid_image`,
+  `image_too_large`, `invalid_pdf`, `pdf_encrypted`, `pdf_active_content`,
+  `upload_forbidden`, `too_many_uploads`, `busy`, `storage_unavailable`,
+  `storage_error`. Kode lokal composer untuk gambar di atas 5 MB berganti dari
+  `image_too_large` menjadi `file_too_large` (sama dengan server); `image_too_large`
+  kini berarti resolusi gambar terlalu besar.
+* Baru: Syarat & Ketentuan, Pedoman Komunitas, dan Kebijakan Privasi.
+  `RendezvousCommunity.instance.legalDocuments()`, `pendingLegalDocuments()`, dan
+  `acceptLegalDocuments(ids)` (RPC `get_legal_documents`, `accept_legal_document`).
+  Daftar dokumen dicache per sesi di `CommunityConsent`: dimuat sekali saat login,
+  dimuat ulang setelah setuju, tidak dipanggil ulang tiap rebuild.
+* Baru: `showCommunityConsent(context)` membuka alur persetujuan (dialog di layar
+  lebar, layar penuh di ponsel) berisi dokumen wajib yang belum disetujui, pembaca
+  teks lengkap (judul, versi, tanggal berlaku, "Yang berubah"), satu kotak centang
+  "Saya telah membaca dan menyetujui …", dan tombol "Setuju" untuk semuanya.
+  Hasilnya `true` bila semua disetujui. Komponen lepas: `CommunityConsentView`,
+  `CommunityLegalDocumentReader`, `showCommunityLegalDocument`.
+* Baru: gerbang persetujuan otomatis. Bila membuat post, komentar, atau mengirim
+  pesan chat ditolak server dengan `consent_required`, alur persetujuan terbuka;
+  setelah setuju, aksi yang sama diulang satu kali (draf dan `client_id` sama).
+  Bila ditunda, draf tetap ada (teks composer tidak dihapus, pesan chat menjadi
+  "Gagal terkirim" dan bisa dikirim ulang) dan muncul pesan singkat. Chat CS tidak
+  pernah memicu alur ini. Kirim ulang otomatis setelah koneksi pulih tidak membuka
+  dialog. Gerbang yang sama bisa dipakai host lewat `communityConsentGate(context)`.
+* Baru: `CommunityConsentBanner` tampil di atas feed (stream, saham, profil) bila
+  ada dokumen wajib yang belum disetujui, misalnya "Pedoman Komunitas diperbarui —
+  tinjau dan setujui." Bisa ditutup untuk sesi ini; muncul lagi bila ada dokumen
+  wajib baru.
+* Baru: privasi & akun (UU PDP). `exportMyData()` mengembalikan
+  `CommunityDataExport` (JSON UTF-8 rapi + nama file
+  `data-komunitas-<username>-<yyyyMMdd>.json`); dibatasi server 3 kali sehari.
+  `deleteMyAccount()` menghapus akun komunitas lalu membersihkan sesi komunitas di
+  perangkat tanpa login ulang otomatis; login berikutnya membuat profil komunitas
+  baru yang kosong. Akun trading tidak tersentuh.
+* Baru: `CommunityAccountSettings` / `openCommunityAccountSettings(context,
+  onAccountDeleted: ...)` ("Privasi & akun"): tautan dokumen hukum, "Unduh data saya"
+  (desktop: dialog simpan `file_selector`; Android/iOS/web: bagikan file, web
+  mengunduh bila Web Share API tidak tersedia), dan "Hapus akun komunitas" dengan
+  penjelasan dampak, konfirmasi mengetik `HAPUS` (`DELETE` di bahasa Inggris), dan
+  indikator proses. Cara menyimpan file bisa diganti lewat `exportSaver`.
+* Dependensi baru: `share_plus` (BSD-3-Clause). Dibutuhkan karena `file_selector`
+  tidak punya dialog simpan di Android, iOS, dan web. Dependensi transitif barunya
+  (`share_plus_platform_interface`, `path_provider*`, `jni_flutter`, `objective_c`,
+  `hooks`, `code_assets`, `record_use`, `pub_semver`, `yaml`) berlisensi BSD/MIT;
+  `tool/license_audit.dart` lulus.
+* Logger baru `RendezvousCommunity.Account`. Isi ekspor dan token tidak pernah
+  masuk log.
+* Tidak ada perubahan yang memecah API Dart: `CommunityDependencies` tidak berubah.
+  Fitur dokumen hukum dan akun lewat antarmuka baru `CommunityAccountDependencies`
+  dan `CommunityAccountScope` (bawaannya `RendezvousCommunity.instance`).
+  `ChatRoomCubit` menerima parameter opsional `consent`.
+* Membutuhkan migrasi `0062_legal_documents` dan `0063_media_uploads` serta
+  layanan `media`.
+
 ## 1.1.0
 
 * Baru: push notification. `RendezvousCommunity.instance.registerPushToken(token,

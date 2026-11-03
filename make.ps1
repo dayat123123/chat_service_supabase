@@ -20,6 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
+                 'test-media', 'test-sentinel', 'test-backup', 'check-go-comments', 'secrets-scan',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
     [string]$Target = 'help',
@@ -49,8 +50,9 @@ $SecretsDir = 'docker/secrets'
 $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
                  'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
                  's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri',
-                 'olt_jwks')
+                 'olt_jwks', 'backup_db_password')
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
+$GitleaksImage = 'ghcr.io/gitleaks/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854'
 $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f'
 $ToolsImage = 'olt-social/tools:0.1.0'
 $NodeImage = 'node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85'
@@ -182,6 +184,11 @@ switch ($Target) {
   test-nasabah-gateway  Unit test gateway menu Nasabah (Go, di container)
   test-notifier  Unit test layanan push notifier (Go, di container)
   test-janitor   Unit test pembersih file storage (Go, di container)
+  test-media     Unit test pintu upload media nasabah (Go, di container)
+  test-sentinel  Unit test pemantau sistem + alert (Go, di container)
+  test-backup    Unit test layanan backup (Go, di container)
+  check-go-comments  Pastikan kode Go tanpa komentar (selain directive)
+  secrets-scan   Pindai riwayat git dengan gitleaks (.gitleaks.toml)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
@@ -232,6 +239,10 @@ switch ($Target) {
         & $PSCommandPath test-nasabah-gateway
         & $PSCommandPath test-notifier
         & $PSCommandPath test-janitor
+        & $PSCommandPath test-media
+        & $PSCommandPath test-sentinel
+        & $PSCommandPath test-backup
+        & $PSCommandPath check-go-comments
     }
     'test-flutter' {
         Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
@@ -375,6 +386,18 @@ switch ($Target) {
     'test-janitor' {
         $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    { $_ -in 'test-media', 'test-sentinel', 'test-backup' } {
+        $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    'check-go-comments' {
+        Invoke-Docker @('run', '--rm', '-v', "${PSScriptRoot}:/repo", '-w', '/repo/scripts/check-go-comments', $GoImage,
+                        'go', 'run', '.', '/repo/services')
+    }
+    'secrets-scan' {
+        Invoke-Docker @('run', '--rm', '-v', "${PSScriptRoot}:/repo", $GitleaksImage, 'git', '/repo',
+                        '--config', '/repo/.gitleaks.toml', '--redact', '--no-banner')
     }
     'test-flutter-it-dummy' {
         Assert-Config

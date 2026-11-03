@@ -1,9 +1,11 @@
 import 'dart:typed_data';
 
+import 'package:http/http.dart' as http;
 import 'package:rendezvous_community/src/core/auth/session_tokens.dart';
 import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/network/authorized_image.dart';
+import 'package:rendezvous_community/src/core/network/media_gateway.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract interface class SocialRemoteDataSource {
@@ -30,7 +32,13 @@ abstract interface class SocialRemoteDataSource {
     int? limit,
   });
 
-  Future<void> upload(String bucket, String path, Uint8List bytes, {required String contentType, bool upsert = false});
+  Future<UploadedObject> upload(
+    String bucket,
+    String path,
+    Uint8List bytes, {
+    required String contentType,
+    bool upsert = false,
+  });
 
   String publicUrl(String bucket, String path);
 
@@ -40,20 +48,28 @@ abstract interface class SocialRemoteDataSource {
 }
 
 class SupabaseSocialDataSource implements SocialRemoteDataSource {
-  SupabaseSocialDataSource(this._client, this._tokens, {required String supabaseUrl, required this._anonKey})
-    : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), ''),
-      _schema = null;
+  SupabaseSocialDataSource(
+    this._client,
+    this._tokens, {
+    required String supabaseUrl,
+    required this._anonKey,
+    http.Client? httpClient,
+  }) : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), ''),
+       _media = MediaGatewayClient(baseUrl: supabaseUrl, anonKey: _anonKey, tokens: _tokens, httpClient: httpClient),
+       _schema = null;
 
   SupabaseSocialDataSource._forSchema(SupabaseSocialDataSource base, String this._schema)
     : _client = base._client,
       _tokens = base._tokens,
       _supabaseUrl = base._supabaseUrl,
-      _anonKey = base._anonKey;
+      _anonKey = base._anonKey,
+      _media = base._media;
 
   final SupabaseClient _client;
   final SessionTokens _tokens;
   final String _supabaseUrl;
   final String _anonKey;
+  final MediaGatewayClient _media;
   final String? _schema;
 
   @override
@@ -129,21 +145,13 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
   });
 
   @override
-  Future<void> upload(
+  Future<UploadedObject> upload(
     String bucket,
     String path,
     Uint8List bytes, {
     required String contentType,
     bool upsert = false,
-  }) => _run(() async {
-    await _client.storage
-        .from(bucket)
-        .uploadBinary(
-          path,
-          bytes,
-          fileOptions: FileOptions(contentType: contentType, upsert: upsert),
-        );
-  });
+  }) => _media.upload(bucket, path, bytes, contentType: contentType, upsert: upsert);
 
   @override
   String publicUrl(String bucket, String path) => _client.storage.from(bucket).getPublicUrl(path);

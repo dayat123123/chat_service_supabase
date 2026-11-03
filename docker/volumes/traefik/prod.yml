@@ -1,8 +1,9 @@
 # Router profil single (dan cluster): HTTPS di entrypoint `websecure`.
 #
 # Ke internet hanya dibuka path yang dipakai app OLT: REST/RPC, Realtime,
-# Storage, Edge Functions, dan auth-bridge. /auth/v1 (GoTrue tidak dipakai
-# client), /graphql/v1, /pg, dan Studio TIDAK dipublikasikan; path lain 404.
+# Storage, upload media (/media/v1), Edge Functions, dan auth-bridge.
+# /auth/v1 (GoTrue tidak dipakai client), /graphql/v1, /pg, dan Studio TIDAK
+# dipublikasikan; path lain 404.
 #
 # Entrypoint `admin` (semua path, termasuk Studio) hanya di-bind ke 127.0.0.1
 # server; akses lewat WireGuard atau SSH tunnel. Lihat docs/PRODUCTION.md.
@@ -20,6 +21,15 @@ http:
     storage-upload:
       entryPoints: [websecure]
       rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/storage/v1`) && (Method(`POST`) || Method(`PUT`))
+      service: kong
+      middlewares: [rate-limit, body-upload, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 95
+
+    media-upload:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/media/v1`)
       service: kong
       middlewares: [rate-limit, body-upload, hsts, security-headers]
       tls:

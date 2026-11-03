@@ -8,6 +8,7 @@ import {
 
 import { communityTabs, type CommunityTab } from '@/features/community/types'
 import { caseStates, type CaseState } from '@/features/compliance/types'
+import { systemTabs, type SystemTab } from '@/features/system/types'
 import {
   canViewTickets,
   hasCommunityAccess,
@@ -132,6 +133,24 @@ const complianceWordsRoute = createRoute({
   ),
 })
 
+const complianceLegalRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance/legal',
+  beforeLoad: complianceOnly,
+  component: lazyRouteComponent(() => import('@/features/legal/components/legal-page'), 'LegalPage'),
+})
+
+const systemRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/system',
+  beforeLoad: superAdminOnly,
+  validateSearch: (search: Record<string, unknown>): { tab?: SystemTab } => {
+    const tab = text(search.tab)
+    return systemTabs.includes(tab as SystemTab) ? { tab: tab as SystemTab } : {}
+  },
+  component: lazyRouteComponent(() => import('@/features/system/components/system-page'), 'SystemPage'),
+})
+
 const nasabahRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/nasabah',
@@ -178,6 +197,8 @@ const routeTree = rootRoute.addChildren([
   complianceAuditRoute,
   compliancePolicyRoute,
   complianceWordsRoute,
+  complianceLegalRoute,
+  systemRoute,
   nasabahRoute,
   communityRoute,
   perfRoute,

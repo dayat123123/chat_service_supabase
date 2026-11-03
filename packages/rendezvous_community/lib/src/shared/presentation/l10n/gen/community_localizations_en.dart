@@ -758,4 +758,166 @@ class CommunityLocalizationsEn extends CommunityLocalizations {
 
   @override
   String get supportUnavailable => 'Support chat is unavailable. Please try again shortly.';
+
+  @override
+  String get errorUnsupportedType =>
+      'This file type is not supported. Use JPEG, PNG, WebP, or GIF images (no GIF for profile photos), or PDFs in support chat.';
+
+  @override
+  String get errorFileTooLarge =>
+      'The file is too large. Limits: 5 MB for images, 2 MB for profile photos, and 10 MB for PDFs.';
+
+  @override
+  String get errorEmptyFile => 'The file is empty. Choose another file.';
+
+  @override
+  String get errorInvalidImage => 'The image is damaged or cannot be read. Try another image.';
+
+  @override
+  String get errorImageTooLarge =>
+      'The image resolution is too high. The maximum is 10,000 pixels per side and 40 megapixels.';
+
+  @override
+  String get errorInvalidPdf => 'The PDF is damaged or cannot be read.';
+
+  @override
+  String get errorPdfEncrypted => 'Password-protected PDFs cannot be sent. Remove the password and send it again.';
+
+  @override
+  String get errorPdfActiveContent =>
+      'The PDF contains scripts, embedded files, or other active content. Save it again as a plain PDF (for example with Print to PDF) and send it again.';
+
+  @override
+  String get errorUploadForbidden => 'You are not allowed to upload files here.';
+
+  @override
+  String get errorTooManyUploads => 'You have reached the upload limit for today. Please try again tomorrow.';
+
+  @override
+  String get errorUploadBusy => 'The upload server is busy. Please try again shortly.';
+
+  @override
+  String get errorStorageUnavailable => 'File uploads are unavailable right now. Please try again later.';
+
+  @override
+  String get errorConsentRequired => 'Accept the latest Terms and Community Guidelines to post content.';
+
+  @override
+  String get consentDeclined => 'Not sent. Accept the latest documents to post; your draft has been kept.';
+
+  @override
+  String get consentTitle => 'Your agreement is needed';
+
+  @override
+  String get consentIntro => 'Before joining the discussion, please read and accept the following documents.';
+
+  @override
+  String consentAgree(String documents) {
+    return 'I have read and agree to $documents.';
+  }
+
+  @override
+  String get consentAccept => 'Agree';
+
+  @override
+  String get consentLater => 'Later';
+
+  @override
+  String get consentRead => 'Read';
+
+  @override
+  String get consentReview => 'Review';
+
+  @override
+  String get consentAccepted => 'Thank you. Your agreement has been saved.';
+
+  @override
+  String consentBannerUpdated(String documents) {
+    return '$documents updated — review and accept.';
+  }
+
+  @override
+  String consentBannerRequired(String documents) {
+    return 'Review and accept $documents to join the discussion.';
+  }
+
+  @override
+  String legalVersion(int version, String date) {
+    return 'Version $version · effective $date';
+  }
+
+  @override
+  String get legalChanges => 'What changed';
+
+  @override
+  String get listAnd => 'and';
+
+  @override
+  String get accountSettingsTitle => 'Privacy & account';
+
+  @override
+  String get accountLegalSection => 'Legal documents';
+
+  @override
+  String get accountDataSection => 'Your data';
+
+  @override
+  String get accountExport => 'Download my data';
+
+  @override
+  String get accountExportHint => 'A copy of your community data in JSON format. Available 3 times a day.';
+
+  @override
+  String get accountExportSaved => 'Your community data has been downloaded.';
+
+  @override
+  String get accountExportLimit => 'Data downloads are limited to 3 per day. Please try again tomorrow.';
+
+  @override
+  String get accountDelete => 'Delete community account';
+
+  @override
+  String get accountDeleteHint => 'Removes your community profile and content. Your trading account is not affected.';
+
+  @override
+  String get accountDeleteTitle => 'Delete your community account?';
+
+  @override
+  String get accountDeleteIntro => 'What happens when you delete your community account:';
+
+  @override
+  String get accountDeleteContent => 'Your posts, comments, and chat messages are removed for everyone.';
+
+  @override
+  String get accountDeleteArchive => 'A copy of the content is archived for the regulator as required by law.';
+
+  @override
+  String get accountDeleteRelations => 'Your followers, the accounts you follow, blocks, and mutes are removed.';
+
+  @override
+  String get accountDeleteSupport =>
+      'Customer service tickets stay on record for compliance, but support chat messages and attachments are deleted too.';
+
+  @override
+  String get accountDeleteTrading => 'Your OLT trading account is not affected.';
+
+  @override
+  String get accountDeleteFresh => 'When you open the community again, a new empty community profile is created.';
+
+  @override
+  String accountDeleteTypeToConfirm(String word) {
+    return 'Type $word to confirm';
+  }
+
+  @override
+  String get accountDeleteWord => 'DELETE';
+
+  @override
+  String get accountDeleteConfirm => 'Delete account';
+
+  @override
+  String get accountDeleteProgress => 'Deleting your community account…';
+
+  @override
+  String get accountDeleted => 'Your community account has been deleted.';
 }

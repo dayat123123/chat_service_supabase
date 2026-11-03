@@ -100,3 +100,32 @@ export function formatRating(value: number | null | undefined) {
     value,
   )
 }
+
+export function formatPercent(ratio: number) {
+  return new Intl.NumberFormat(numberLocale(), {
+    style: 'percent',
+    maximumFractionDigits: ratio > 0 && ratio < 0.1 ? 1 : 0,
+  }).format(ratio)
+}
+
+const byteUnits = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const
+
+export function formatBytes(bytes: number | null | undefined) {
+  if (bytes === null || bytes === undefined || !Number.isFinite(bytes)) return '–'
+  let value = Math.max(0, bytes)
+  let unit = 0
+  while (value >= 1024 && unit < byteUnits.length - 1) {
+    value /= 1024
+    unit += 1
+  }
+  return `${formatNumber(value, unit === 0 || value >= 100 ? 0 : 1)} ${byteUnits[unit]}`
+}
+
+export function durationLabel(milliseconds: number | null | undefined) {
+  if (milliseconds === null || milliseconds === undefined || milliseconds < 0) return '–'
+  const seconds = Math.round(milliseconds / 1000)
+  if (seconds < 60) return `${seconds} ${i18n.t('time.secondShort')}`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} ${i18n.t('time.minuteShort')} ${seconds % 60} ${i18n.t('time.secondShort')}`
+  return `${Math.floor(minutes / 60)} ${i18n.t('time.hourShort')} ${minutes % 60} ${i18n.t('time.minuteShort')}`
+}

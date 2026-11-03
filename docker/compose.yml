@@ -552,6 +552,9 @@ services:
         target: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
       - source: db-jwt
         target: /docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
+      # pg_hba image + izin replikasi untuk layanan backup (role olt_backup)
+      - source: db-hba
+        target: /etc/postgresql/pg_hba.conf
     secrets: [postgres_password]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "docker-entrypoint.sh"]
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
@@ -696,7 +699,7 @@ services:
     configs:
       - source: with-secrets
         target: /opt/olt/with-secrets.sh
-    secrets: [postgres_password]
+    secrets: [postgres_password, backup_db_password]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "bash", "/olt/scripts/tools.sh"]
     command: ["migrate"]
     volumes:
@@ -835,6 +838,82 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
+  # Pintu upload nasabah (services/media): cek isi file dari magic bytes, buang metadata (EXIF/GPS,
+  # XMP, IPTC) tanpa re-encode, periksa PDF, lalu teruskan ke Storage dengan klaim media_verified
+  # (wajib untuk upload nasabah sejak migrasi 0063). Kong: /media/v1/* -> media:8080; port ops 9100
+  # (/livez, /readyz, /metrics) tidak dirutekan.
+  media:
+    <<: *base
+    build:
+      context: ../services/media
+    image: olt-social/media:0.1.0
+    networks: [app]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    stop_grace_period: 30s
+    secrets: [jwt_secret]
+    environment:
+      PORT: 8080
+      OPS_PORT: 9100
+      LOG_LEVEL: ${MEDIA_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      STORAGE_URL: http://storage:5000
+      POSTGREST_URL: http://rest:3000
+      MAX_CONCURRENT: ${MEDIA_MAX_CONCURRENT:-8}
+    healthcheck:
+      # Image distroless: binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/media", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 384M, pids: 64}
+
+  # Pemantau sistem (services/sentinel): probe HTTP/TCP ke layanan internal + pemakaian disk setiap
+  # 30 dtk ke database (aturan alert dihitung di DB, docs/system-health), lalu mengirim alert ke
+  # Telegram/email yang diatur Super Admin dari web CS. Probe web CS dan gateway nasabah ditambahkan
+  # overlay profil CS lewat PROBES_EXTRA.
+  sentinel:
+    <<: *base
+    build:
+      context: ../services/sentinel
+    image: olt-social/sentinel:0.1.0
+    networks: [app, data, egress]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+    stop_grace_period: 30s
+    secrets: [jwt_secret]
+    volumes:
+      - db-data:/mnt/disks/db:ro
+      - storage-data:/mnt/disks/storage:ro
+      - backup-data:/mnt/disks/backup:ro
+    environment:
+      PORT: 8080
+      LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
+      DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup
+    healthcheck:
+      test: ["CMD", "/sentinel", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.25", memory: 64M, pids: 64}
+
   # --- Customer service lewat chat (docs/cs-chat) -------------------------------
   # Profil compose `cs`: selalu aktif di dev; produksi menyalakannya dengan
   # CS=1 (Windows: -Cs).
@@ -955,6 +1034,7 @@ volumes:
   db-data:
   db-config:
   storage-data:
+  backup-data:
   deno-cache:
   traefik-acme:
 
@@ -975,11 +1055,15 @@ configs:
     file: ./volumes/db/roles.sql
   db-jwt:
     file: ./volumes/db/jwt.sql
+  db-hba:
+    file: ./volumes/db/pg_hba.conf
 
 # Dibuat `make gen-secrets`; folder docker/secrets/ tidak pernah di-commit.
 secrets:
   postgres_password:
     file: ./secrets/postgres_password
+  backup_db_password:
+    file: ./secrets/backup_db_password
   jwt_secret:
     file: ./secrets/jwt_secret
   anon_key:

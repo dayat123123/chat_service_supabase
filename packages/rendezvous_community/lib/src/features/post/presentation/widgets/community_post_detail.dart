@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
+import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
 import 'package:rendezvous_community/src/features/post/presentation/cubit/comment_thread_cubit.dart';
 import 'package:rendezvous_community/src/features/post/presentation/widgets/comment_tree.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
@@ -29,6 +30,7 @@ class CommunityPostDetail extends StatelessWidget {
         postId: postId,
         rootCommentId: rootCommentId,
         maxLevels: maxLevels,
+        consent: communityConsentGate(context),
       )..load(),
       child: _PostDetailView(postId: postId, maxLevels: maxLevels),
     );

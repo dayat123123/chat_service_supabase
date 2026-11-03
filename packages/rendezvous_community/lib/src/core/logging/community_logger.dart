@@ -110,6 +110,7 @@ abstract final class CommunityLoggers {
   static const rootName = 'RendezvousCommunity';
 
   static final Logger root = Logger(rootName);
+  static final Logger account = Logger('$rootName.Account');
   static final Logger auth = Logger('$rootName.Auth');
   static final Logger chat = Logger('$rootName.Chat');
   static final Logger feed = Logger('$rootName.Feed');

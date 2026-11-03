@@ -7,6 +7,7 @@ import 'package:rendezvous_community/src/core/media/image_mime.dart';
 import 'package:rendezvous_community/src/features/compose/presentation/cubit/compose_cubit.dart';
 import 'package:rendezvous_community/src/features/compose/presentation/widgets/poll_editor.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_composer_field.dart';
@@ -65,7 +66,7 @@ class CommunityComposePost extends StatelessWidget {
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
     return BlocProvider(
-      create: (_) => ComposeCubit(feed: deps.feed, media: deps.media),
+      create: (_) => ComposeCubit(feed: deps.feed, media: deps.media, consent: communityConsentGate(context)),
       child: _ComposeView(initialStock: initialStock, onPosted: onPosted, autofocus: autofocus),
     );
   }
@@ -126,7 +127,7 @@ class _ComposeViewState extends State<_ComposeView> {
         final code = error is CommunityException ? error.code : null;
         showCommunityMessage(context, switch (code) {
           'too_many_images' => l10n.composeTooManyImages,
-          'image_too_large' => l10n.composeImageTooLarge,
+          'file_too_large' => l10n.composeImageTooLarge,
           'invalid_poll_draft' => l10n.pollInvalidDraft,
           _ => l10n.errorMessage(error!),
         });

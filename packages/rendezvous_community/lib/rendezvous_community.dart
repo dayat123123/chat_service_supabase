@@ -2,6 +2,7 @@ library;
 
 export 'package:logging/logging.dart' show Level, LogRecord;
 
+export 'src/app/community_account_scope.dart';
 export 'src/app/community_dependencies.dart';
 export 'src/app/community_official_scope.dart';
 export 'src/app/community_scope.dart';
@@ -23,6 +24,11 @@ export 'src/core/text/social_text_parser.dart'
         extractCashtags,
         extractMentions,
         parseSocialText;
+export 'src/features/account/domain/entities/community_data_export.dart';
+export 'src/features/account/domain/repositories/account_repository.dart';
+export 'src/features/account/presentation/export_saver.dart' show CommunityExportSaver, saveCommunityDataExport;
+export 'src/features/account/presentation/widgets/community_account_settings.dart'
+    show CommunityAccountSettings, openCommunityAccountSettings;
 export 'src/features/chat/domain/entities/chat_events.dart';
 export 'src/features/chat/domain/entities/chat_message.dart';
 export 'src/features/chat/domain/entities/chat_room.dart';
@@ -45,6 +51,16 @@ export 'src/features/feed/domain/repositories/feed_repository.dart';
 export 'src/features/feed/presentation/widgets/community_feed_list.dart' show CommunityFeedList;
 export 'src/features/feed/presentation/widgets/community_stream_feed.dart' show CommunityFeedTab, CommunityStreamFeed;
 export 'src/features/feed/presentation/widgets/sentiment_badge.dart';
+export 'src/features/legal/domain/entities/legal_document.dart';
+export 'src/features/legal/domain/repositories/legal_repository.dart';
+export 'src/features/legal/domain/services/community_consent.dart';
+export 'src/features/legal/domain/services/consent_gate.dart'
+    show ConsentGate, ConsentGateRun, consentDeclinedCode, consentRequiredCode, isConsentRequired;
+export 'src/features/legal/presentation/widgets/community_consent_banner.dart';
+export 'src/features/legal/presentation/widgets/community_consent_flow.dart'
+    show CommunityConsentView, communityConsentGate, showCommunityConsent;
+export 'src/features/legal/presentation/widgets/community_legal_document_reader.dart'
+    show CommunityLegalDocumentReader, showCommunityLegalDocument;
 export 'src/features/media/domain/repositories/media_repository.dart';
 export 'src/features/media/presentation/widgets/attachment_grid.dart';
 export 'src/features/moderation/domain/entities/report.dart';

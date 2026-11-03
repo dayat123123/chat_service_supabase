@@ -1,9 +1,11 @@
 import { useNavigate } from '@tanstack/react-router'
 import {
+  ActivityIcon,
   ArrowRightLeftIcon,
   BanIcon,
   BarChart3Icon,
   ClockIcon,
+  FileTextIcon,
   FolderSearchIcon,
   GaugeIcon,
   HandIcon,
@@ -110,7 +112,9 @@ type SectionTarget =
   | '/compliance/audit'
   | '/compliance/policy'
   | '/compliance/words'
+  | '/compliance/legal'
   | '/nasabah'
+  | '/system'
 
 function PaletteBody({
   choose,
@@ -170,7 +174,12 @@ function PaletteBody({
         ]
       : []),
     ...(hasNasabah(agent) ? [{ label: t('nav.nasabah'), icon: UsersIcon, to: '/nasabah' as const }] : []),
-    ...(superAdmin ? [{ label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const }] : []),
+    ...(superAdmin
+      ? [
+          { label: t('nav.settings'), icon: SettingsIcon, to: '/settings' as const },
+          { label: t('nav.system'), icon: ActivityIcon, to: '/system' as const },
+        ]
+      : []),
     ...(compliance
       ? [
           { label: t('nav.overview'), icon: GaugeIcon, to: '/compliance' as const },
@@ -178,6 +187,7 @@ function PaletteBody({
           { label: t('nav.audit'), icon: ScrollTextIcon, to: '/compliance/audit' as const },
           { label: t('nav.policy'), icon: ShieldCheckIcon, to: '/compliance/policy' as const },
           { label: t('nav.words'), icon: BanIcon, to: '/compliance/words' as const },
+          { label: t('nav.legal'), icon: FileTextIcon, to: '/compliance/legal' as const },
         ]
       : []),
   ]

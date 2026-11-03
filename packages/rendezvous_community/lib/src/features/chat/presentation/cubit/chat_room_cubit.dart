@@ -14,6 +14,7 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_mess
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
@@ -72,11 +73,13 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     required this.roomId,
     this.pageSize = 30,
     this.maxGapPages = 5,
+    this._consent,
   }) : _meProvider = me,
        super(const ChatRoomState());
 
   final ChatRepository _chat;
   final MediaRepository _media;
+  final ConsentGate? _consent;
   final Future<UserSummary> Function() _meProvider;
   final String roomId;
   final int pageSize;
@@ -321,24 +324,29 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
 
   Future<void> _resendFailed() async {
     for (final message in [...state.messages.reversed]) {
-      if (message.isLocal && message.status == MessageStatus.failed) await retry(message);
+      if (message.isLocal && message.status == MessageStatus.failed) await _retry(message, askConsent: false);
     }
   }
 
-  Future<void> retry(ChatMessage message) async {
+  Future<void> retry(ChatMessage message) => _retry(message, askConsent: true);
+
+  Future<void> _retry(ChatMessage message, {required bool askConsent}) async {
     if (message.status != MessageStatus.failed) return;
     _setStatus(message.clientId, MessageStatus.sending);
-    await _deliver(message);
+    await _deliver(message, askConsent: askConsent);
   }
 
-  Future<void> _deliver(ChatMessage local) async {
+  Future<void> _deliver(ChatMessage local, {bool askConsent = true}) async {
+    final gate = askConsent && state.room?.type != RoomType.support ? _consent : null;
     try {
-      final sent = await _chat.sendMessage(
-        roomId,
-        body: local.body ?? '',
-        clientId: local.clientId!,
-        replyToId: local.replyToId,
-        attachments: local.attachments,
+      final sent = await gate.guard(
+        () => _chat.sendMessage(
+          roomId,
+          body: local.body ?? '',
+          clientId: local.clientId!,
+          replyToId: local.replyToId,
+          attachments: local.attachments,
+        ),
       );
       _upsert(sent);
     } catch (e) {

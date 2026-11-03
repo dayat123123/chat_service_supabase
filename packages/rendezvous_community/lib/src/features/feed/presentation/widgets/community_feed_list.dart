@@ -5,6 +5,7 @@ import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart
 import 'package:rendezvous_community/src/features/feed/presentation/cubit/feed_cubit.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/pinned_post_card.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
+import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_banner.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
@@ -89,6 +90,7 @@ class _FeedListViewState extends State<_FeedListView> {
                 if (index == 0) {
                   return Column(
                     children: [
+                      const CommunityConsentBanner(),
                       ?widget.header,
                       for (final pin in state.pinned)
                         PinnedPostCard(
