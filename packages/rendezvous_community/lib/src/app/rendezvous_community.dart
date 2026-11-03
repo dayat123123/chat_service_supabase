@@ -18,9 +18,11 @@ import 'package:rendezvous_community/src/core/logging/community_logger.dart';
 import 'package:rendezvous_community/src/core/network/community_connectivity.dart';
 import 'package:rendezvous_community/src/core/network/realtime_gateway.dart';
 import 'package:rendezvous_community/src/core/network/social_remote_data_source.dart';
+import 'package:rendezvous_community/src/core/storage/image_disk_cache.dart';
 import 'package:rendezvous_community/src/core/storage/local_values.dart';
 import 'package:rendezvous_community/src/core/storage/offline_cache.dart';
 import 'package:rendezvous_community/src/core/storage/offline_store.dart';
+import 'package:rendezvous_community/src/core/storage/platform_image_disk_cache.dart';
 import 'package:rendezvous_community/src/core/storage/platform_offline_stores.dart';
 import 'package:rendezvous_community/src/features/account/data/repositories/account_repository_impl.dart';
 import 'package:rendezvous_community/src/features/account/domain/entities/community_data_export.dart';
@@ -93,6 +95,7 @@ import 'package:rendezvous_community/src/features/trending/data/repositories/tre
 import 'package:rendezvous_community/src/features/trending/domain/repositories/trending_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:rendezvous_community/src/shared/domain/official_accounts.dart';
+import 'package:rendezvous_community/src/shared/presentation/images/community_image_loader.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 CommunityPlatform? defaultCommunityPlatform() {
@@ -151,6 +154,7 @@ class RendezvousCommunity
     required this.chatCache,
     required this.feedCache,
     required this.outbox,
+    required this.images,
     required bool trackDelivery,
   }) {
     if (trackDelivery) {
@@ -191,6 +195,7 @@ class RendezvousCommunity
     bool trackDelivery = true,
     bool offlineCache = true,
     int offlineMessageLimit = 200,
+    CommunityImageCacheConfig imageCache = const CommunityImageCacheConfig(),
     http.Client? httpClient,
     CommunityLogHandler? logHandler,
     Level? logLevel,
@@ -216,6 +221,7 @@ class RendezvousCommunity
       trackDelivery: trackDelivery,
       offlineCache: offlineCache,
       offlineMessageLimit: offlineMessageLimit,
+      imageCache: imageCache,
       httpClient: httpClient,
     );
     _instance = social;
@@ -246,6 +252,8 @@ class RendezvousCommunity
     bool offlineCache = true,
     int offlineMessageLimit = 200,
     OfflineStoreFactory? offlineStores,
+    CommunityImageCacheConfig imageCache = const CommunityImageCacheConfig(),
+    ImageDiskCache? imageDiskCache,
     http.Client? httpClient,
   }) {
     final baseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), '');
@@ -292,6 +300,16 @@ class RendezvousCommunity
     final feedCache = offline == null ? null : FeedLocalCache(offline);
     final chatImpl = ChatRepositoryImpl(api, realtime, chatCache);
     final LocalValues localValues = offline == null ? MemoryLocalValues() : OfflineLocalValues(offline);
+    final images = CommunityImageLoader(
+      disk: offline == null || !imageCache.persists
+          ? const NoImageDiskCache()
+          : imageDiskCache ??
+                platformImageDiskCache(
+                  owner: () async => tokens.currentUserId ?? (await offline.owner())?.id,
+                  config: imageCache,
+                ),
+      client: httpClient,
+    );
 
     final social = RendezvousCommunity._(
       client: client,
@@ -357,6 +375,7 @@ class RendezvousCommunity
       chatCache: chatCache,
       feedCache: feedCache,
       outbox: offline == null ? null : MessageOutbox(chatImpl, OutboxRepositoryImpl(offline)),
+      images: images,
       trackDelivery: trackDelivery,
     );
 
@@ -365,6 +384,11 @@ class RendezvousCommunity
       final userId = session?.user.id;
       if (userId != social._sessionUserId) {
         social._sessionUserId = userId;
+        final owner = social._imageOwner;
+        if (userId != null) {
+          social._imageOwner = userId;
+          if (owner != null && owner != userId) unawaited(social.images.wipe());
+        }
         social.analytics.reset();
         social.linkPreviews.clear();
         social.notificationReporter.reset();
@@ -399,6 +423,7 @@ class RendezvousCommunity
   StreamSubscription<bool>? _connectivitySub;
   AppLifecycleListener? _lifecycle;
   String? _sessionUserId;
+  String? _imageOwner;
   bool _started = false;
 
   @override
@@ -438,6 +463,8 @@ class RendezvousCommunity
   @override
   final MessageOutbox? outbox;
 
+  final CommunityImageLoader images;
+
   bool get offlineCacheEnabled => _offline != null;
 
   Future<void> reportNotificationOpened(Map<String, Object?> data) =>
@@ -448,6 +475,7 @@ class RendezvousCommunity
 
   Future<void> clearLocalCache() async {
     outbox?.reset();
+    await images.wipe();
     await _offline?.wipe();
     final session = _tokens.currentSession;
     if (session != null) await _offline?.remember(session.user, hostKey: _tokens.hostKey);
@@ -609,6 +637,8 @@ class RendezvousCommunity
     await _delivery?.stop();
     outbox?.reset();
     _tokens.clear();
+    _imageOwner = null;
+    await images.wipe();
     await _offline?.wipe();
     await client.removeAllChannels();
     await client.realtime.disconnect();
@@ -626,6 +656,7 @@ class RendezvousCommunity
     await _connectivitySub?.cancel();
     await outbox?.dispose();
     await _offline?.dispose();
+    images.dispose();
     connectivity.dispose();
     await _delivery?.stop();
     await _chatImpl.dispose();

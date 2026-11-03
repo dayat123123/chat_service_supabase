@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/builders/community_feed_builders.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/builders/community_feed_details.dart';
 import 'package:rendezvous_community/src/features/poll/domain/entities/poll.dart';
 import 'package:rendezvous_community/src/features/poll/presentation/cubit/poll_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_part_builder.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/feedback.dart';
 
@@ -43,26 +46,46 @@ class _CommunityPollViewState extends State<CommunityPollView> {
       child: BlocConsumer<PollCubit, PollState>(
         listenWhen: (a, b) => a.errorId != b.errorId,
         listener: (context, state) => showCommunityError(context, state.error!),
-        builder: (context, state) => _PollBody(state: state, interactive: widget.canVote),
+        builder: (context, state) {
+          final l10n = context.communityL10n;
+          final poll = state.poll;
+          final now = DateTime.now();
+          final closed = poll.isClosedAt(now);
+          final details = CommunityPollDetails(
+            postId: widget.postId,
+            poll: poll,
+            canVote: widget.canVote,
+            closed: closed,
+            showResults: poll.resultsVisible || closed || poll.hasVoted || !widget.canVote,
+            summary: [
+              l10n.pollVotes(poll.totalVotes),
+              if (closed) l10n.pollEnded else l10n.pollEndsIn(l10n.remainingTime(poll.endsAt.difference(now))),
+            ].join(' · '),
+            pendingOptionId: state.pendingOptionId,
+            onVote: widget.canVote && !closed && !poll.hasVoted && state.pendingOptionId == null ? _cubit.vote : null,
+          );
+          return buildCommunityPart(
+            CommunityFeedBuilders.of(context).poll,
+            context,
+            details,
+            _PollBody(details: details),
+          );
+        },
       ),
     );
   }
 }
 
 class _PollBody extends StatelessWidget {
-  const _PollBody({required this.state, required this.interactive});
+  const _PollBody({required this.details});
 
-  final PollState state;
-  final bool interactive;
+  final CommunityPollDetails details;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.communityL10n;
     final theme = Theme.of(context);
-    final poll = state.poll;
-    final now = DateTime.now();
-    final closed = poll.isClosedAt(now);
-    final showResults = poll.resultsVisible || closed || poll.hasVoted || !interactive;
+    final poll = details.poll;
+    final showResults = details.showResults;
     final leading = poll.leadingOptionId;
     final meta = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
 
@@ -84,18 +107,12 @@ class _PollBody extends StatelessWidget {
                     )
                   : _VoteButton(
                       option: option,
-                      pending: state.pendingOptionId == option.id,
-                      enabled: state.pendingOptionId == null,
+                      pending: details.pendingOptionId == option.id,
+                      enabled: details.pendingOptionId == null,
                       onVote: () => context.read<PollCubit>().vote(option),
                     ),
             ),
-          Text(
-            [
-              l10n.pollVotes(poll.totalVotes),
-              if (closed) l10n.pollEnded else l10n.pollEndsIn(l10n.remainingTime(poll.endsAt.difference(now))),
-            ].join(' · '),
-            style: meta,
-          ),
+          Text(details.summary, style: meta),
         ],
       ),
     );

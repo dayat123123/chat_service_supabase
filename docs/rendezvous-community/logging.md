@@ -82,6 +82,9 @@ Di kode: `CommunityLoggers.chat.event(Level.SEVERE, 'Failed to send message', fi
 | INFO | Offline | `Offline cache of a previous user removed` | — |
 | WARNING | Offline | `Offline cache operation failed` | `operation`, `errorType`, error |
 | INFO | Offline | `Network reachability changed` | `online` |
+| INFO | Offline | `Image cache wiped` | — |
+| INFO | Offline | `Image cache of a previous user removed` | — |
+| WARNING | Offline | `Image cache operation failed` | `operation` (`open`, `write`, `wipe`), `errorType`, error |
 
 ## Data sensitif
 

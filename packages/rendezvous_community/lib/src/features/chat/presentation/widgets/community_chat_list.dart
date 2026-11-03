@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_builders.dart';
 import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_offline_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
@@ -78,7 +79,7 @@ class _ChatListLayoutState extends State<_ChatListLayout> {
     final deps = CommunityScope.of(context);
     final callback = deps.callbacks.onRoomTap;
     if (callback != null) return callback(context, roomId);
-    final carry = carryChatBuilders(context);
+    final carry = carryCommunityBuilders(context);
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => carry(

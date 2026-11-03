@@ -7,12 +7,15 @@ import 'package:rendezvous_community/src/features/analytics/domain/entities/anal
 import 'package:rendezvous_community/src/features/config/presentation/widgets/community_banner_host.dart';
 import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/builders/community_feed_builders.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/cubit/feed_cubit.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/pinned_post_card.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_actions.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_banner.dart';
 import 'package:rendezvous_community/src/features/offline/presentation/widgets/community_offline_banner.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_list_state_details.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_part_builder.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
@@ -27,39 +30,44 @@ String feedScopeName(FeedScope scope) => switch (scope) {
 };
 
 class CommunityFeedList extends StatelessWidget {
-  const CommunityFeedList({super.key, required this.scope, required this.emptyMessage, this.header});
+  const CommunityFeedList({super.key, required this.scope, required this.emptyMessage, this.header, this.builders});
 
   final FeedScope scope;
   final String emptyMessage;
 
   final Widget? header;
+  final CommunityFeedBuilders? builders;
 
   @override
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
     final features = context.communityFeatures;
     final offline = CommunityOfflineScope.maybeOf(context);
-    return CommunitySocialGate(
-      child: BlocProvider(
-        create: (_) {
-          context.trackCommunityEvent(CommunityAnalyticsEvent.feedOpen, {
-            'scope': feedScopeName(scope),
-            if (scope is StockFeedScope) 'stock_code': (scope as StockFeedScope).code,
-          });
-          return FeedCubit(
-            feed: deps.feed,
-            scope: scope,
-            currentUserId: () => deps.currentUser?.id,
-            bookmarks: features?.bookmarks,
-            edits: features?.edits,
-            cache: offline?.feedCache,
-            connectivity: offline?.connectivity,
-          )..load();
-        },
-        child: FeedPostList(
-          emptyMessage: emptyMessage,
-          header: header,
-          showBanners: scope is GlobalFeedScope || scope is FollowingFeedScope,
+    return withFeedBuilders(
+      context,
+      builders,
+      CommunitySocialGate(
+        child: BlocProvider(
+          create: (_) {
+            context.trackCommunityEvent(CommunityAnalyticsEvent.feedOpen, {
+              'scope': feedScopeName(scope),
+              if (scope is StockFeedScope) 'stock_code': (scope as StockFeedScope).code,
+            });
+            return FeedCubit(
+              feed: deps.feed,
+              scope: scope,
+              currentUserId: () => deps.currentUser?.id,
+              bookmarks: features?.bookmarks,
+              edits: features?.edits,
+              cache: offline?.feedCache,
+              connectivity: offline?.connectivity,
+            )..load();
+          },
+          child: FeedPostList(
+            emptyMessage: emptyMessage,
+            header: header,
+            showBanners: scope is GlobalFeedScope || scope is FollowingFeedScope,
+          ),
         ),
       ),
     );
@@ -123,9 +131,25 @@ class _FeedPostListState extends State<FeedPostList> {
           for (final post in state.posts)
             if (!pinnedIds.contains(post.id)) post,
         ];
+        final builders = CommunityFeedBuilders.of(context);
+        final empty = CommunityListEmptyDetails(message: widget.emptyMessage);
         final Widget body = switch (state.status) {
-          LoadStatus.initial || LoadStatus.loading => const CommunitySkeleton(),
-          LoadStatus.failure => CommunityErrorView(error: state.error!, onRetry: cubit.load),
+          LoadStatus.initial || LoadStatus.loading => buildCommunityPart(
+            builders.loading,
+            context,
+            const CommunityListLoadingDetails(),
+            const CommunitySkeleton(),
+          ),
+          LoadStatus.failure => buildCommunityPart(
+            builders.error,
+            context,
+            CommunityListErrorDetails(
+              error: state.error!,
+              message: l10n.errorMessage(state.error!),
+              onRetry: cubit.load,
+            ),
+            CommunityErrorView(error: state.error!, onRetry: cubit.load),
+          ),
           LoadStatus.ready => RefreshIndicator(
             onRefresh: cubit.refresh,
             child: ListView.builder(
@@ -146,20 +170,32 @@ class _FeedPostListState extends State<FeedPostList> {
                           onOpen: () => CommunityNavigator.openPost(context, pin.post.id),
                           onToggleBookmark: cubit.canBookmark ? () => cubit.toggleBookmark(pin.post) : null,
                         ),
-                      if (posts.isEmpty && state.pinned.isEmpty) CommunityEmptyView(message: widget.emptyMessage),
+                      if (posts.isEmpty && state.pinned.isEmpty)
+                        buildCommunityPart(
+                          builders.empty,
+                          context,
+                          empty,
+                          CommunityEmptyView(message: widget.emptyMessage),
+                        ),
                     ],
                   );
                 }
                 if (index == posts.length + 1) {
                   return state.loadingMore
-                      ? const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(child: CircularProgressIndicator()),
+                      ? buildCommunityPart(
+                          builders.loading,
+                          context,
+                          const CommunityListLoadingDetails(more: true),
+                          const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
                         )
                       : const SizedBox(height: 32);
                 }
                 final post = posts[index - 1];
                 return Column(
+                  key: ValueKey(post.id),
                   children: [
                     FeedPostCard(post: post, cubit: cubit, source: widget.source),
                     const Divider(height: 1),

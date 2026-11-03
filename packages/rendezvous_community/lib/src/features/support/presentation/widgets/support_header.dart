@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_builders.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
-import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/support/domain/entities/support_ticket.dart';
 import 'package:rendezvous_community/src/features/support/presentation/cubit/support_cubit.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/community_support_tickets.dart';
@@ -131,7 +131,7 @@ class SupportHeader extends StatelessWidget {
       case _MenuAction.myTickets:
         if (!context.mounted) return;
         final deps = CommunityScope.of(context);
-        final carry = carryChatBuilders(context);
+        final carry = carryCommunityBuilders(context);
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => carry(

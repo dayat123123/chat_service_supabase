@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Pemindaian kerentanan dependensi dan image: govulncheck, npm audit, osv-scanner, Trivy.
 # Jalankan dari mana saja (Git Bash / Linux): bash tests/security/scan-deps.sh [--strict] [--third-party] [--only go,npm,osv,trivy,third-party]
+# Ringkas ulang hasil lama tanpa memindai: bash tests/security/scan-deps.sh --summary tests/security/results/deps-<waktu>
 # Semua alat berjalan di container yang di-pin tag + digest. Hasil mentah: tests/security/results/deps-<waktu>/.
 # Kode keluar: 0 = selesai (temuan hanya dilaporkan), 1 = --strict dan ada temuan penghalang, 2 = ada alat yang gagal berjalan.
 set -uo pipefail
@@ -18,13 +19,15 @@ TRIVY_CACHE_VOL=olt-security-trivy
 export MSYS_NO_PATHCONV=1
 
 strict=0
+summary_only=""
 sections="go,npm,osv,trivy"
 while [ $# -gt 0 ]; do
   case "$1" in
     --strict) strict=1 ;;
     --third-party) sections="$sections,third-party" ;;
     --only) sections="${2:?--only butuh daftar bagian}"; shift ;;
-    -h|--help) sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    --summary) summary_only="${2:?--summary butuh direktori hasil}"; shift ;;
+    -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "Argumen tidak dikenal: $1" >&2; exit 2 ;;
   esac
   shift
@@ -32,7 +35,13 @@ done
 
 cd "$(dirname "$0")/../.." || exit 2
 ROOT="$(pwd -W 2>/dev/null || pwd)"
-OUT_REL="tests/security/results/deps-$(date +%Y%m%d-%H%M%S)"
+if [ -n "$summary_only" ]; then
+  OUT_REL="${summary_only%/}"
+  [ -f "$OUT_REL/run-info.txt" ] || { echo "Bukan direktori hasil: $OUT_REL" >&2; exit 2; }
+  sections="$(sed -n 's/^bagian: //p' "$OUT_REL/run-info.txt")"
+else
+  OUT_REL="tests/security/results/deps-$(date +%Y%m%d-%H%M%S)"
+fi
 OUT="$ROOT/$OUT_REL"
 mkdir -p "$OUT_REL"/{go,npm,osv,trivy,third-party}
 HOST_IDS="$(id -u):$(id -g)"
@@ -48,7 +57,7 @@ tool_fail() {
 }
 safe_name() { tr '/:@' '___' <<< "$1"; }
 
-{
+[ -n "$summary_only" ] || {
   echo "tanggal: $(date -Iseconds)"
   echo "git: $(git rev-parse --short HEAD 2>/dev/null) $(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') berkas berubah"
   echo "GO_IMG=$GO_IMG"
@@ -122,7 +131,7 @@ trivy() {
 
 trivy_db() {
   echo "==> trivy: unduh basis data"
-  trivy image --cache-dir /cache --download-db-only > /dev/null 2> "$OUT_REL/trivy/db.log" \
+  trivy image --cache-dir /cache --no-progress --download-db-only > /dev/null 2> "$OUT_REL/trivy/db.log" \
     || { tool_fail "trivy unduh DB (lihat $OUT_REL/trivy/db.log)"; return 1; }
 }
 
@@ -130,9 +139,9 @@ trivy_scan() {
   local dir="$1" ref="$2" label="$3" base
   base="$OUT_REL/$dir/$(safe_name "$label")"
   echo "==> trivy $label"
-  trivy image --cache-dir /cache --skip-db-update --scanners vuln --format json "$ref" \
+  trivy image --cache-dir /cache --no-progress --skip-db-update --scanners vuln --format json "$ref" \
     > "$base.json" 2> "$base.log" || { tool_fail "trivy $label (lihat $base.log)"; return; }
-  trivy image --cache-dir /cache --skip-db-update --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --format table "$ref" \
+  trivy image --cache-dir /cache --no-progress --skip-db-update --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --format table "$ref" \
     > "$base.txt" 2>> "$base.log" || tool_fail "trivy tabel $label (lihat $base.log)"
 }
 
@@ -244,7 +253,7 @@ function goSection() {
       const i = info.get(id);
       const o = osv.get(id) || {};
       const key = `${id}|${i.module}`;
-      if (!byId.has(key)) byId.set(key, { id, aliases: (o.aliases || []).join(','), summary: o.summary || '', module: i.module, version: i.version, fixed: i.fixed, called: [], imported: [], required: [] });
+      if (!byId.has(key)) byId.set(key, { id, aliases: [...new Set(o.aliases || [])].join(','), summary: o.summary || '', module: i.module, version: i.version, fixed: i.fixed, called: [], imported: [], required: [] });
       const rec = byId.get(key);
       const where = l === 3 ? `${mod} (${i.pkg}.${i.fn}${i.entry ? ' <- ' + i.entry : ''})` : mod;
       rec[l === 3 ? 'called' : l === 2 ? 'imported' : 'required'].push(where);
@@ -315,10 +324,17 @@ function osvSection() {
   const j = readJson(path.join(OUT, 'osv', 'osv.json'));
   say('== osv-scanner (mode lockfile) ==');
   if (!j) { say('ERR: osv.json tidak terbaca'); say(); return; }
+  const scanned = new Map();
+  for (const l of lines(path.join(OUT, 'osv', 'osv-json.log'))) {
+    const m = l.match(/^Scanned \/src\/(\S+) file and found (\d+) package/);
+    if (m) scanned.set(m[1], m[2]);
+  }
   const rows = [];
   const details = [];
+  const seenSrc = new Set();
   for (const r of j.results || []) {
-    const src = (r.source?.path || '').replace(/^\/src\//, '');
+    const src = (r.source?.path || '').replace(/^\/?src\//, '');
+    seenSrc.add(src);
     const isGo = src.endsWith('go.mod');
     const c = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0 };
     let stdlib = 0;
@@ -336,25 +352,29 @@ function osvSection() {
         if (fixed.length && src === 'packages/rendezvous_community/pubspec.lock') blocking.push(`osv ${src}: ${pkg.name}@${pkg.version} ${sev}`);
       }
     }
-    rows.push([src, c.CRITICAL, c.HIGH, c.MEDIUM, c.LOW + c.UNKNOWN, isGo ? stdlib : '-']);
+    rows.push([src, scanned.get(src) || '?', c.CRITICAL, c.HIGH, c.MEDIUM, c.LOW + c.UNKNOWN, isGo ? stdlib : '-']);
   }
-  table(['lockfile', 'crit', 'high', 'med', 'low/unk', 'stdlib*'], rows);
+  for (const [src, n] of scanned) if (!seenSrc.has(src)) rows.push([src, n, 0, 0, 0, 0, src.endsWith('go.mod') ? 0 : '-']);
+  rows.sort((a, b) => a[0].localeCompare(b[0]));
+  table(['lockfile', 'paket', 'crit', 'high', 'med', 'low/unk', 'stdlib*'], rows);
   say('* stdlib dari go.mod dihitung terhadap direktif "go", bukan toolchain image; acuan Go = govulncheck.');
   if (details.length) { say(); say('-- osv HIGH/CRITICAL --'); details.forEach((d) => say(d)); }
   say();
 }
 
-function trivySection(dir, title, currentFile, collectBlocking) {
+function trivySection(dir, title, own) {
   const files = list(dir, '.json');
   if (!files.length) return;
-  const current = new Set(lines(path.join(OUT, dir, currentFile || '-')));
+  const current = new Set(own ? lines(path.join(OUT, dir, 'current.txt')) : []);
+  const labels = new Map(lines(path.join(OUT, dir, 'images.txt')).map((l) => [l.includes('@') ? `${l.split(':')[0]}@${l.split('@')[1]}` : l, l.split('@')[0]]));
   const rows = [];
   const agg = new Map();
+  const old = { CRITICAL: 0, HIGH: 0, fixable: 0, images: 0 };
   for (const f of files) {
     const j = readJson(path.join(OUT, dir, f));
-    if (!j) { rows.push([f, 'ERR', '', '', '', '', '', '']); continue; }
-    const name = j.ArtifactName || f;
-    const isCurrent = current.has(name);
+    if (!j) { rows.push([f, 'ERR', '', '', '', '', '']); continue; }
+    const name = labels.get(j.ArtifactName) || j.ArtifactName || f;
+    const isCurrent = !own || current.has(name);
     const seen = new Set();
     const c = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0 };
     let fixedCH = 0;
@@ -367,20 +387,24 @@ function trivySection(dir, title, currentFile, collectBlocking) {
         c[sev]++;
         if (sev !== 'CRITICAL' && sev !== 'HIGH') continue;
         if (v.FixedVersion) fixedCH++;
+        if (!isCurrent) continue;
+        if (!own && sev !== 'CRITICAL') continue;
         if (!agg.has(k)) agg.set(k, { v, sev, cls: `${res.Class}/${res.Type}`, images: [] });
-        agg.get(k).images.push(name + (isCurrent ? '' : ' (lama)'));
-        if (collectBlocking && isCurrent && v.FixedVersion) blocking.push(`trivy ${name}: ${v.VulnerabilityID} ${v.PkgName}@${v.InstalledVersion} ${sev}`);
+        agg.get(k).images.push(name);
+        if (own && v.FixedVersion) blocking.push(`trivy ${name}: ${v.VulnerabilityID} ${v.PkgName}@${v.InstalledVersion} ${sev}`);
       }
     }
+    if (!isCurrent) { old.CRITICAL += c.CRITICAL; old.HIGH += c.HIGH; old.fixable += fixedCH; old.images++; }
     const os = j.Metadata?.OS ? `${j.Metadata.OS.Family} ${j.Metadata.OS.Name}` : '-';
-    rows.push([(currentFile ? (isCurrent ? '* ' : '  ') : '') + name, c.CRITICAL, c.HIGH, c.MEDIUM, c.LOW + c.UNKNOWN, fixedCH, os]);
+    rows.push([(own ? (isCurrent ? '* ' : '  ') : '') + name, c.CRITICAL, c.HIGH, c.MEDIUM, c.LOW + c.UNKNOWN, fixedCH, os]);
   }
   say(`== ${title} ==`);
   table(['image', 'crit', 'high', 'med', 'low/unk', 'C+H fixable', 'os'], rows);
-  if (currentFile) say('* = dirujuk docker/compose*.yml / stack (image yang berjalan); lainnya tag lama di mesin lokal.');
+  if (own) say('* = dirujuk docker/compose*.yml / stack (image yang dipakai); lainnya tag lama/tak terpakai di mesin lokal, tidak dirinci.');
+  if (own && old.images) say(`  tag lama (${old.images} image): ${old.CRITICAL} critical, ${old.HIGH} high, ${old.fixable} fixable -> cukup hapus image lama (docker image rm).`);
   if (agg.size) {
     say();
-    say(`-- ${title}: HIGH/CRITICAL (unik per CVE+paket+versi) --`);
+    say(own ? `-- ${title}: HIGH/CRITICAL image yang dipakai --` : `-- ${title}: CRITICAL saja (HIGH lihat ${dir}/*.txt) --`);
     const sorted = [...agg.values()].sort((a, b) => SEV.indexOf(a.sev) - SEV.indexOf(b.sev) || a.v.VulnerabilityID.localeCompare(b.v.VulnerabilityID));
     for (const a of sorted) say(`${a.sev} ${a.v.VulnerabilityID} ${a.v.PkgName}@${a.v.InstalledVersion} -> fixed ${a.v.FixedVersion || 'none'} (${a.v.Status || '-'}) [${a.cls}] ${a.images.join(', ')}`);
   }
@@ -390,23 +414,25 @@ function trivySection(dir, title, currentFile, collectBlocking) {
 if (sections.has('go')) goSection();
 if (sections.has('npm')) npmSection();
 if (sections.has('osv')) osvSection();
-if (sections.has('trivy')) trivySection('trivy', 'Trivy image sendiri (olt-social/*)', 'current.txt', true);
-if (sections.has('third-party')) trivySection('third-party', 'Trivy image pihak ketiga (docker/compose.yml)', null, false);
-say('== Penghalang --strict (Go called, npm prod HIGH/CRIT, Trivy image aktif HIGH/CRIT fixable, osv pubspec.lock HIGH/CRIT fixable) ==');
+if (sections.has('trivy')) trivySection('trivy', 'Trivy image sendiri (olt-social/*)', true);
+if (sections.has('third-party')) trivySection('third-party', 'Trivy image pihak ketiga (docker/compose.yml, di luar --strict)', false);
+say('== Penghalang --strict (Go called, npm prod HIGH/CRIT, Trivy image dipakai HIGH/CRIT fixable, osv pubspec.lock HIGH/CRIT fixable) ==');
 say(blocking.length ? `${blocking.length} temuan` : 'tidak ada');
 blocking.forEach((b) => say('  ' + b));
 process.stdout.write(out.join('\n') + '\n');
-process.exit(strict && blocking.length ? 3 : 0);
+process.exitCode = strict && blocking.length ? 3 : 0;
 JS
 }
 
-want go && scan_go
-want npm && scan_npm
-want osv && scan_osv
-if want trivy || want third-party; then
-  if trivy_db; then
-    want trivy && scan_trivy
-    want third-party && scan_third_party
+if [ -z "$summary_only" ]; then
+  want go && scan_go
+  want npm && scan_npm
+  want osv && scan_osv
+  if want trivy || want third-party; then
+    if trivy_db; then
+      want trivy && scan_trivy
+      want third-party && scan_third_party
+    fi
   fi
 fi
 

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:rendezvous_community/rendezvous_community.dart';
 
 import 'custom_chat_style.dart';
+import 'custom_feed_style.dart';
 import 'fake_olt_auth.dart';
 import 'stock_directory.dart';
 
@@ -35,6 +36,7 @@ class _ExampleAppState extends State<ExampleApp> {
   ThemeMode _themeMode = ThemeMode.system;
   Locale _locale = const Locale('id');
   bool _customChat = false;
+  bool _customFeed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +62,13 @@ class _ExampleAppState extends State<ExampleApp> {
           _locale = _locale.languageCode == 'id' ? const Locale('en') : const Locale('id');
         }),
         toggleChatStyle: () => setState(() => _customChat = !_customChat),
-        child: CommunityChatBuildersScope(
-          builders: _customChat ? customChatBuilders : const CommunityChatBuilders(),
+        toggleFeedStyle: () => setState(() => _customFeed = !_customFeed),
+        child: CommunityBuildersScope(
+          builders: CommunityBuilders(
+            chat: _customChat ? customChatBuilders : const CommunityChatBuilders(),
+            feed: _customFeed ? customFeedBuilders : const CommunityFeedBuilders(),
+            badges: _customFeed ? customBadgeBuilders : const CommunityBadgeBuilders(),
+          ),
           child: child!,
         ),
       ),
@@ -88,12 +95,14 @@ class _SettingsScope extends InheritedWidget {
     required this.toggleTheme,
     required this.toggleLocale,
     required this.toggleChatStyle,
+    required this.toggleFeedStyle,
     required super.child,
   });
 
   final VoidCallback toggleTheme;
   final VoidCallback toggleLocale;
   final VoidCallback toggleChatStyle;
+  final VoidCallback toggleFeedStyle;
 
   @override
   bool updateShouldNotify(_SettingsScope oldWidget) => false;
@@ -105,6 +114,9 @@ void toggleLocale(BuildContext context) => context.getInheritedWidgetOfExactType
 
 void toggleChatStyle(BuildContext context) =>
     context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleChatStyle();
+
+void toggleFeedStyle(BuildContext context) =>
+    context.getInheritedWidgetOfExactType<_SettingsScope>()?.toggleFeedStyle();
 
 void openStockPage(BuildContext context, String code) {
   Navigator.of(context).push(

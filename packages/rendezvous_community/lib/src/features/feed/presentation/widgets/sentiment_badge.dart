@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_builders.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 
@@ -12,25 +14,54 @@ class SentimentBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = CommunityTheme.of(context);
     final l10n = context.communityL10n;
-    final (bg, fg, label, icon) = switch (sentiment) {
-      Sentiment.bullish => (t.bullish, t.onBullish, l10n.sentimentBullish, Icons.trending_up),
-      Sentiment.bearish => (t.bearish, t.onBearish, l10n.sentimentBearish, Icons.trending_down),
-      Sentiment.neutral => (t.neutral, t.onNeutral, l10n.sentimentNeutral, Icons.trending_flat),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: fg),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w600),
-          ),
-        ],
+    final details = switch (sentiment) {
+      Sentiment.bullish => CommunityLabelBadgeDetails(
+        kind: CommunityBadgeKind.sentimentBullish,
+        label: l10n.sentimentBullish,
+        icon: Icons.trending_up,
+        foreground: t.onBullish,
+        background: t.bullish,
       ),
-    );
+      Sentiment.bearish => CommunityLabelBadgeDetails(
+        kind: CommunityBadgeKind.sentimentBearish,
+        label: l10n.sentimentBearish,
+        icon: Icons.trending_down,
+        foreground: t.onBearish,
+        background: t.bearish,
+      ),
+      Sentiment.neutral => CommunityLabelBadgeDetails(
+        kind: CommunityBadgeKind.sentimentNeutral,
+        label: l10n.sentimentNeutral,
+        icon: Icons.trending_flat,
+        foreground: t.onNeutral,
+        background: t.neutral,
+      ),
+    };
+    return buildLabelBadge(context, details, _DefaultSentimentBadge(details: details));
   }
+}
+
+class _DefaultSentimentBadge extends StatelessWidget {
+  const _DefaultSentimentBadge({required this.details});
+
+  final CommunityLabelBadgeDetails details;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(color: details.background, borderRadius: BorderRadius.circular(12)),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(details.icon, size: 14, color: details.foreground),
+        const SizedBox(width: 4),
+        Text(
+          details.label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: details.foreground, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
 }

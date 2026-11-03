@@ -7,6 +7,7 @@ import 'package:rendezvous_community/src/features/media/presentation/widgets/att
 import 'package:rendezvous_community/src/features/message_requests/domain/entities/message_request.dart';
 import 'package:rendezvous_community/src/features/message_requests/presentation/cubit/message_request_room_cubit.dart';
 import 'package:rendezvous_community/src/features/message_requests/presentation/cubit/message_requests_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
@@ -89,7 +90,7 @@ class _MessageRequestsEntryState extends State<MessageRequestsEntry> {
         return ListTile(
           leading: const CircleAvatar(child: Icon(Icons.mark_email_unread_outlined)),
           title: Text(context.communityL10n.messageRequests),
-          trailing: CommunityCountBadge(count: state.count),
+          trailing: CommunityCountBadge(count: state.count, kind: CommunityCountKind.messageRequests),
           onTap: _open,
         );
       },

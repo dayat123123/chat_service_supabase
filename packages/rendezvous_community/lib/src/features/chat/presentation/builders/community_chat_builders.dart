@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_details.dart';
-
-typedef CommunityPartBuilder<T> = Widget Function(BuildContext context, T details, Widget fallback);
+import 'package:rendezvous_community/src/shared/presentation/builders/community_part_builder.dart';
 
 class CommunityChatBuilders {
   const CommunityChatBuilders({
@@ -53,6 +52,7 @@ class CommunityChatBuilders {
       loading: other.loading ?? loading,
       empty: other.empty ?? empty,
       error: other.error ?? error,
+      stockCard: other.stockCard ?? stockCard,
     );
   }
 }
@@ -67,12 +67,7 @@ class CommunityChatBuildersScope extends InheritedWidget {
 }
 
 Widget buildChatPart<T>(CommunityPartBuilder<T>? builder, BuildContext context, T details, Widget fallback) =>
-    builder == null ? fallback : builder(context, details, fallback);
-
-Widget Function(Widget child) carryChatBuilders(BuildContext context) {
-  final builders = CommunityChatBuilders.of(context, listen: false);
-  return (child) => CommunityChatBuildersScope(builders: builders, child: child);
-}
+    buildCommunityPart(builder, context, details, fallback);
 
 Widget withChatBuilders(BuildContext context, CommunityChatBuilders? builders, Widget child) => builders == null
     ? child

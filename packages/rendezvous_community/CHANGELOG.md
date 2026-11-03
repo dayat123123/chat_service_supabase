@@ -1,3 +1,47 @@
+## 1.4.0
+
+* **Perbaikan:** `CommunityChatBuilders.merge()` kini menyertakan `stockCard`, sehingga scope bersarang
+  (`CommunityChatRoom(builders: ...)`, `withChatBuilders`, scope di halaman yang dibuka package) tidak lagi
+  membuang builder kartu saham milik host. Tes regresi + tes analyzer
+  (`test/tool/merge_completeness_test.dart`) yang memastikan setiap `merge`/`copyWith`/`lerp` di package
+  meneruskan semua field.
+* Baru: builder UI untuk feed, notifikasi, profil, dan badge dengan pola yang sama seperti chat
+  (`CommunityPartBuilder<T>(context, details, fallback)` + scope + `merge`):
+  * `CommunityFeedBuilders`: `postCard`, `postAvatar`, `postHeader`, `postBody`, `attachments`, `linkPreview`,
+    `stockTags`, `actionBar`, `poll`, `pinnedMarker`, `loading`, `empty`, `error`, `comment`
+    (`CommunityPostDetails`, `CommunityLinkPreviewDetails`, `CommunityPollDetails`,
+    `CommunityPinnedMarkerDetails`, `CommunityCommentDetails`) dengan handler like/komentar/bagikan/bookmark/
+    edit/hapus/laporkan/blokir/banding/buka profil/buka saham/buka hashtag/vote.
+  * `CommunityNotificationBuilders`: `item`, `header`, `loading`, `empty`, `error`.
+  * `CommunityProfileBuilders`: `header`, `stats`, `followButton`.
+  * `CommunityBadgeBuilders`: `label` (semua badge label sekaligus), `official`, `supportOfficial`, `bot`,
+    `roomModerator`, `sentiment`, `verified`, `count`, `countOverlay`; dipakai di badge akun resmi, CS resmi,
+    bot, moderator room, sentimen, centang terverifikasi, jumlah belum dibaca room/permintaan pesan, dan badge
+    chat/CS/notifikasi. Widget baru `CommunityCountOverlay`.
+  * `CommunityBuilders` + `CommunityBuildersScope` memasang kelima set sekaligus (bersarang = digabung), dan
+    ikut terbawa ke halaman yang dibuka package. Parameter `builders:` baru di `CommunityFeedList`,
+    `CommunityStreamFeed`, `CommunityNotificationList`, `CommunityUserProfile`.
+  * Detail status daftar bersama: `CommunityListLoadingDetails`, `CommunityListEmptyDetails`,
+    `CommunityListErrorDetails`. `CommunityPartBuilder` kini diekspor dari `shared`.
+  * Tanpa builder, tampilan bawaan tidak berubah.
+* Baru: gambar didekode seukuran tampilan (layout × `devicePixelRatio`, kelipatan 64 px, cover, maks 2048 px)
+  untuk avatar, lampiran (post, chat, post yang dibagikan, permintaan pesan), dan link preview, dengan kunci
+  cache stabil (`storage:<bucket>/<path>`, parameter tanda tangan URL dibuang) lewat `CommunityImageProvider`,
+  `CommunityNetworkImage`, `CommunityImageLoader`, `CommunityImageScope`.
+* Baru: cache gambar di disk per user (`<application support>/rendezvous_community/images/<user id>/`), LRU
+  berdasarkan byte dan kedaluwarsa: `RendezvousCommunity.initialize(imageCache: CommunityImageCacheConfig(
+  maxBytes: 200 MB, maxAge: 30 hari))`, `CommunityImageCacheConfig.disabled()`. Hanya aktif bila
+  `offlineCache: true`. Dihapus bersama cache offline saat `signOut()`, `deleteMyAccount()`,
+  `clearLocalCache()`, dan ganti user. Lampiran chat CS (`cs-documents`, `CommunitySupportChat`, riwayat tiket)
+  tidak pernah disimpan ke disk; host bisa menandai layar lain dengan `CommunityImagePersistence`. Web tanpa
+  cache disk. Tanpa dependensi baru (memakai `http`, `path_provider`, `crypto` yang sudah ada).
+* Baru: tes performa scroll (`example/integration_test/perf_scroll_test.dart` +
+  `example/test_driver/perf_driver.dart`, target `make perf-flutter`) dengan 200 post dan 500 pesan palsu,
+  budget p90 build < 8 ms, p90 raster < 16 ms, tidak ada frame > 32 ms kecuali frame pertama; penjaga murah
+  di `flutter test` untuk daftar lazy dan ukuran dekode gambar.
+* Daftar feed memberi `ValueKey` per post, daftar notifikasi per item.
+* Contoh app: tombol untuk kartu post kustom dan bentuk badge kustom (`example/lib/custom_feed_style.dart`).
+
 ## 1.3.0
 
 * **Butuh backend dengan migrasi `0068`–`0086`** (keamanan konten, permintaan DM, banding,

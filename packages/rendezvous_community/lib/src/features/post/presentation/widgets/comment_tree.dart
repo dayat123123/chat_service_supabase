@@ -5,11 +5,14 @@ import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/features/appeals/domain/entities/appeal.dart';
 import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
 import 'package:rendezvous_community/src/features/edit/presentation/widgets/edit_content_dialog.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/builders/community_feed_builders.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/builders/community_feed_details.dart';
 import 'package:rendezvous_community/src/features/link_preview/presentation/widgets/link_preview_card.dart';
 import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
 import 'package:rendezvous_community/src/features/moderation/presentation/widgets/moderation_actions.dart';
 import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
 import 'package:rendezvous_community/src/features/post/presentation/cubit/comment_thread_cubit.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_part_builder.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
@@ -146,9 +149,44 @@ class _CommentTileState extends State<CommentTile> {
   Widget build(BuildContext context) {
     final c = widget.comment;
     final l10n = context.communityL10n;
-    final theme = Theme.of(context);
     final cubit = context.read<CommentThreadCubit>();
-    final isMine = c.author != null && c.author!.id == CommunityScope.of(context).currentUser?.id;
+    final author = c.author;
+    final isMine = author != null && author.id == CommunityScope.of(context).currentUser?.id;
+    final details = CommunityCommentDetails(
+      comment: c,
+      isMine: isMine,
+      collapsed: widget.collapsed,
+      timeLabel: l10n.relativeTime(c.createdAt),
+      onLike: c.isDeleted ? null : () => cubit.toggleLike(c),
+      onReply: c.isDeleted ? null : () => cubit.setReplyTo(c),
+      onToggleCollapse: widget.showCollapse && c.replyCount > 0 ? () => cubit.toggleCollapse(c.id) : null,
+      onOpenAuthor: author == null ? null : () => CommunityNavigator.openUser(context, author),
+      onEdit: _canEdit(c, isMine, cubit) ? () => _edit(c, cubit) : null,
+      onDelete: isMine && !c.isDeleted
+          ? () async {
+              if (await confirmCommunityAction(context, l10n.deleteCommentConfirm)) await cubit.deleteComment(c);
+            }
+          : null,
+      onReport: isMine || c.isDeleted
+          ? null
+          : () => showReportDialog(context, target: ReportTarget.comment, targetId: c.id),
+      onBlock: isMine || c.isDeleted || author == null
+          ? null
+          : () async {
+              if (await blockUserWithConfirm(context, author)) await cubit.load();
+            },
+      onAppeal: isMine && !c.isDeleted && c.isHidden && context.communityFeatures != null
+          ? () => showCommunityAppealDialog(context, targetType: AppealTargetType.comment, targetId: c.id)
+          : null,
+    );
+    return buildCommunityPart(CommunityFeedBuilders.of(context).comment, context, details, _tile(context, details));
+  }
+
+  Widget _tile(BuildContext context, CommunityCommentDetails d) {
+    final c = d.comment;
+    final l10n = context.communityL10n;
+    final theme = Theme.of(context);
+    final author = c.author;
     final muted = theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant);
 
     return MouseRegion(
@@ -166,36 +204,26 @@ class _CommentTileState extends State<CommentTile> {
           children: [
             Row(
               children: [
-                if (c.author != null) ...[
-                  CommunityAvatar(
-                    user: c.author,
-                    radius: 12,
-                    onTap: () => CommunityNavigator.openUser(context, c.author!),
-                  ),
+                if (author != null) ...[
+                  CommunityAvatar(user: author, radius: 12, onTap: d.onOpenAuthor),
                   const SizedBox(width: 8),
-                  Flexible(child: CommunityUserName(user: c.author!, showUsername: false)),
+                  Flexible(child: CommunityUserName(user: author, showUsername: false)),
                 ],
-                Text(' · ${l10n.relativeTime(c.createdAt)}', style: muted),
-                if (c.editedAt != null && !c.isDeleted) Text(' ${l10n.edited}', style: muted),
+                Text(' · ${d.timeLabel}', style: muted),
+                if (d.edited) Text(' ${l10n.edited}', style: muted),
                 const Spacer(),
-                if (widget.showCollapse && c.replyCount > 0)
+                if (d.onToggleCollapse != null)
                   IconButton(
                     visualDensity: VisualDensity.compact,
                     iconSize: 18,
-                    tooltip: widget.collapsed ? l10n.expand : l10n.collapse,
-                    onPressed: () => cubit.toggleCollapse(c.id),
-                    icon: Icon(widget.collapsed ? Icons.unfold_more : Icons.unfold_less),
+                    tooltip: d.collapsed ? l10n.expand : l10n.collapse,
+                    onPressed: d.onToggleCollapse,
+                    icon: Icon(d.collapsed ? Icons.unfold_more : Icons.unfold_less),
                   ),
               ],
             ),
-            if (isMine && !c.isDeleted)
-              ModerationNotice(
-                status: c.moderationStatus,
-                compact: true,
-                onAppeal: c.isHidden && context.communityFeatures != null
-                    ? () => showCommunityAppealDialog(context, targetType: AppealTargetType.comment, targetId: c.id)
-                    : null,
-              ),
+            if (d.isMine && !c.isDeleted)
+              ModerationNotice(status: c.moderationStatus, compact: true, onAppeal: d.onAppeal),
             Padding(
               padding: const EdgeInsets.only(top: 2),
               child: c.isDeleted
@@ -203,7 +231,7 @@ class _CommentTileState extends State<CommentTile> {
                   : SocialText(c.body ?? '', source: 'comment'),
             ),
             if (!c.isDeleted && (c.body ?? '').isNotEmpty) LinkPreviewCard(text: c.body!),
-            if (widget.collapsed)
+            if (d.collapsed)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(l10n.hiddenReplies(c.replyCount), style: muted),
@@ -216,7 +244,7 @@ class _CommentTileState extends State<CommentTile> {
                       visualDensity: VisualDensity.compact,
                       foregroundColor: c.likedByMe ? theme.colorScheme.error : theme.colorScheme.onSurfaceVariant,
                     ),
-                    onPressed: () => cubit.toggleLike(c),
+                    onPressed: d.onLike,
                     icon: Icon(c.likedByMe ? Icons.favorite : Icons.favorite_border, size: 16),
                     label: Text(c.likeCount > 0 ? '${c.likeCount}' : l10n.like),
                   ),
@@ -225,34 +253,25 @@ class _CommentTileState extends State<CommentTile> {
                       visualDensity: VisualDensity.compact,
                       foregroundColor: theme.colorScheme.onSurfaceVariant,
                     ),
-                    onPressed: () => cubit.setReplyTo(c),
+                    onPressed: d.onReply,
                     icon: const Icon(Icons.reply, size: 16),
                     label: Text(l10n.reply),
                   ),
                   PopupMenuButton<String>(
                     iconSize: 16,
                     tooltip: '',
-                    onSelected: (action) async {
-                      switch (action) {
-                        case 'edit':
-                          await _edit(c, cubit);
-                        case 'delete':
-                          if (await confirmCommunityAction(context, l10n.deleteCommentConfirm)) {
-                            await cubit.deleteComment(c);
-                          }
-                        case 'report':
-                          await showReportDialog(context, target: ReportTarget.comment, targetId: c.id);
-                        case 'block':
-                          if (await blockUserWithConfirm(context, c.author!)) await cubit.load();
-                      }
+                    onSelected: (action) => switch (action) {
+                      'edit' => d.onEdit?.call(),
+                      'delete' => d.onDelete?.call(),
+                      'report' => d.onReport?.call(),
+                      'block' => d.onBlock?.call(),
+                      _ => null,
                     },
                     itemBuilder: (_) => [
-                      if (_canEdit(c, isMine, cubit)) PopupMenuItem(value: 'edit', child: Text(l10n.editAction)),
-                      if (isMine) PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
-                      if (!isMine) ...[
-                        PopupMenuItem(value: 'report', child: Text(l10n.report)),
-                        if (c.author != null) PopupMenuItem(value: 'block', child: Text(l10n.block)),
-                      ],
+                      if (d.onEdit != null) PopupMenuItem(value: 'edit', child: Text(l10n.editAction)),
+                      if (d.onDelete != null) PopupMenuItem(value: 'delete', child: Text(l10n.delete)),
+                      if (d.onReport != null) PopupMenuItem(value: 'report', child: Text(l10n.report)),
+                      if (d.onBlock != null) PopupMenuItem(value: 'block', child: Text(l10n.block)),
                     ],
                   ),
                 ],

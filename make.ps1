@@ -17,13 +17,14 @@ param(
     [Parameter(Position = 0)]
     [ValidateSet('help', 'up', 'down', 'logs', 'ps', 'reset', 'migrate', 'seed',
                  'test', 'test-db', 'test-bridge', 'test-flutter', 'test-flutter-it',
-                 'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
+                 'e2e-windows', 'web-example', 'license-audit', 'perf-flutter', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
                  'test-media', 'test-sentinel', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
-                 'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
+                 'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
+                 'testkit', 'test-security', 'scan-deps', 'load-test', 'load-integration', 'chaos-test', 'loadtest-cleanup')]
     [string]$Target = 'help',
     # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
@@ -42,7 +43,16 @@ param(
     [string]$Name = '',
     [string]$Ttl = '',
     # restore-pitr: waktu target (RFC3339) atau 'latest'.
-    [string]$At = ''
+    [string]$At = '',
+    # load-test: smoke | step | spike | light (docs/testing/README.md).
+    [string]$Load = 'smoke',
+    # chaos-test: daftar eksperimen dipisah spasi (kosong = semua).
+    [string]$Experiments = '',
+    # scan-deps: -Strict gagal bila ada temuan penghalang; -ThirdParty ikut memindai image pihak ketiga.
+    [switch]$Strict,
+    [switch]$ThirdParty,
+    # loadtest-cleanup: -DryRun hanya menampilkan.
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = 'Stop'
@@ -60,6 +70,7 @@ $AlpineImage = 'alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd
 $ToolsImage = 'olt-social/tools:0.1.0'
 $NodeImage = 'node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85'
 $WebImage = 'caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
+$TestkitImage = 'olt-social/testkit:0.1.0'
 $Stack = 'olt-social'
 
 if ($DummyOlt -and $DeployProfile -ne 'dev') { throw 'DummyOlt hanya boleh dipakai di profil dev.' }
@@ -123,6 +134,28 @@ function Update-StaffAccounts {
     [IO.File]::WriteAllText($staffFile, (($staff | Out-String).Trim() + "`n"))
 }
 
+# Alat uji keamanan/beban/chaos (tests/): image olt-social/testkit di network edge+app+data stack dev,
+# docker.sock untuk chaos, hanya secret yang dibutuhkan. Hasil di tests/results/.
+function Invoke-Testkit {
+    param([string[]]$Arguments)
+    if ($DeployProfile -ne 'dev') { throw 'Uji keamanan/beban/chaos hanya untuk profil dev.' }
+    $results = Join-Path $PSScriptRoot 'tests/results'
+    New-Item -ItemType Directory -Force $results | Out-Null
+    Invoke-Docker @('build', '-q', '-t', $TestkitImage, 'tests') | Out-Null
+    if ($Arguments.Count -eq 0) { return }
+    $runArgs = @('run', '--rm', '--network', "${Stack}_app", '--network', "${Stack}_data", '--network', "${Stack}_edge",
+                 '-v', '/var/run/docker.sock:/var/run/docker.sock',
+                 '-v', "$(Join-Path $PSScriptRoot 'tests'):/olt/tests:ro", '-v', "${results}:/olt/results",
+                 '-v', "$(Join-Path $PSScriptRoot 'docker'):/olt/docker:ro", '--mount', 'type=tmpfs,destination=/olt/docker/secrets')
+    foreach ($s in @('anon_key', 'jwt_secret', 'postgres_password', 'olt_dev_signing_key')) {
+        $runArgs += @('-v', "$(Join-Path $PSScriptRoot "$SecretsDir/$s"):/olt/secrets/${s}:ro")
+    }
+    foreach ($e in @('LOAD_STEPS', 'LOAD_HOLD', 'LOAD_RAMP', 'LOAD_MSG_EVERY', 'LOAD_FORCE', 'LOAD_VIA', 'CHAOS_VUS', 'CHAOS_OUTAGE', 'CHAOS_LONG_OUTAGE')) {
+        if (Test-Path "Env:$e") { $runArgs += @('-e', $e) }
+    }
+    Invoke-Docker ($runArgs + @($TestkitImage) + $Arguments)
+}
+
 function Get-AnonKey { (Get-Content -LiteralPath (Join-Path $SecretsDir 'anon_key') -Raw).Trim() }
 
 function Assert-Config {
@@ -171,6 +204,7 @@ switch ($Target) {
   e2e-windows   E2E app example di Windows (butuh Visual Studio)
   web-example   App example versi web di http://localhost:8086 (?user=sari_invest)
   license-audit Audit lisensi dependensi runtime Flutter (tolak GPL/AGPL)
+  perf-flutter  Tes performa scroll Flutter (repository palsu, Windows profile; $env:PERF_DEVICE untuk Android)
   smoke         Smoke test end-to-end lewat Kong (butuh seed + mode mock)
   backup        Backup DB (+ file storage) ke folder backups/
   restore       Restore DB: -File olt-YYYYMMDD-HHMMSS.dump -Yes
@@ -209,6 +243,15 @@ switch ($Target) {
   cs-console-react  Web CS React (container nginx) di http://localhost:8085 (butuh up -DummyOlt)
   test-cs-console   Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
   e2e-cs-console    E2E Playwright web CS React vs stack dev (butuh up -DummyOlt, Node 24 + Chromium Playwright)
+
+  Uji keamanan, beban, dan chaos (hanya stack dev: .make.ps1 up -DummyOlt; docs/testing/README.md)
+  testkit           Build image alat uji (k6, tokengen, psql, docker CLI)
+  test-security     Uji otorisasi, konfigurasi edge statis, routing produksi
+  scan-deps         Pindai kerentanan (govulncheck, npm audit, osv-scanner, Trivy) [-Strict] [-ThirdParty], butuh Git Bash
+  load-test         Uji beban k6 pembukaan pasar: -Load smoke|step|spike|light
+  load-integration  Uji beban API integrasi OLT (notify + siaran, inbox saja)
+  chaos-test        Uji chaos di bawah beban ringan [-Experiments "realtime valkey"]
+  loadtest-cleanup  Hapus data uji lt_* [-DryRun]
 '@
     }
     'up' {
@@ -295,6 +338,14 @@ switch ($Target) {
     'license-audit' {
         Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
         try { Invoke-Native 'dart' @('run', 'tool/license_audit.dart') } finally { Pop-Location }
+    }
+    'perf-flutter' {
+        $device = if ($env:PERF_DEVICE) { $env:PERF_DEVICE } else { 'windows' }
+        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
+        try {
+            Invoke-Native 'flutter' @('drive', '--profile', '-d', $device, '--driver=test_driver/perf_driver.dart',
+                                      '--target=integration_test/perf_scroll_test.dart')
+        } finally { Pop-Location }
     }
     'smoke' { Assert-Config; Invoke-Tools @('smoke') }
     'backup' {
@@ -433,6 +484,28 @@ switch ($Target) {
                          '-c', 'SELECT pg_reload_conf()')
         Invoke-Compose @('exec', '-T', '-u', 'postgres', 'db', 'rm', '-rf', '/var/lib/postgresql/data/restore_wal')
         Write-Host "Database dipulihkan ke $At. Periksa data, lalu: .\make.ps1 up"
+    }
+    'testkit' { Invoke-Testkit @() }
+    'test-security' { Assert-Config; Invoke-Testkit @('security') }
+    'scan-deps' {
+        $scanArgs = @('tests/security/scan-deps.sh')
+        if ($Strict) { $scanArgs += '--strict' }
+        if ($ThirdParty) { $scanArgs += '--third-party' }
+        Invoke-Native 'bash' $scanArgs
+    }
+    'load-test' { Assert-Config; Invoke-Testkit @('load', $Load) }
+    'load-integration' { Assert-Config; Invoke-Testkit @('integration') }
+    'chaos-test' {
+        Assert-Config
+        $chaosArgs = @('chaos')
+        if ($Experiments) { $chaosArgs += ($Experiments -split 's+' | Where-Object { $_ }) }
+        Invoke-Testkit $chaosArgs
+    }
+    'loadtest-cleanup' {
+        Assert-Config
+        $cleanupArgs = @('cleanup')
+        if ($DryRun) { $cleanupArgs += '--dry-run' }
+        Invoke-Testkit $cleanupArgs
     }
     'test-classifier' {
         $src = Join-Path $PSScriptRoot 'services/classifier'

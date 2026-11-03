@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:rendezvous_community/src/app/community_builders.dart';
 import 'package:rendezvous_community/src/app/community_dependencies.dart';
 import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/rendezvous_community.dart';
 import 'package:rendezvous_community/src/features/analytics/domain/entities/analytics_event.dart';
-import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/community_chat_room.dart';
 import 'package:rendezvous_community/src/features/post/presentation/widgets/community_post_detail.dart';
 import 'package:rendezvous_community/src/features/profile/presentation/widgets/community_user_profile.dart';
@@ -66,7 +66,7 @@ abstract final class CommunityNavigator {
   static void _push(BuildContext context, String? title, Widget body) {
     final dependencies = CommunityScope.of(context);
     final features = context.getInheritedWidgetOfExactType<CommunityFeatureScope>()?.dependencies;
-    final carry = carryChatBuilders(context);
+    final carry = carryCommunityBuilders(context);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) {

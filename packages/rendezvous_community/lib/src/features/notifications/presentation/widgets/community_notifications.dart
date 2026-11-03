@@ -10,80 +10,105 @@ import 'package:rendezvous_community/src/features/chat/presentation/widgets/room
 import 'package:rendezvous_community/src/features/notifications/domain/entities/app_notification.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_event.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/entities/notification_preferences.dart';
+import 'package:rendezvous_community/src/features/notifications/presentation/builders/community_notification_builders.dart';
+import 'package:rendezvous_community/src/features/notifications/presentation/builders/community_notification_details.dart';
 import 'package:rendezvous_community/src/features/notifications/presentation/cubit/notifications_cubit.dart';
 import 'package:rendezvous_community/src/features/notifications/presentation/widgets/community_notification_settings.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_list_state_details.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_part_builder.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/community_avatar.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/community_count_badge.dart';
 import 'package:rendezvous_community/src/shared/presentation/widgets/state_views.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class CommunityNotificationList extends StatelessWidget {
-  const CommunityNotificationList({super.key, this.onNotificationTap});
+  const CommunityNotificationList({super.key, this.onNotificationTap, this.builders});
 
   final void Function(BuildContext context, AppNotification notification)? onNotificationTap;
+  final CommunityNotificationBuilders? builders;
 
   @override
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
-    return BlocProvider(
-      create: (_) => NotificationsCubit(notifications: deps.notifications)..load(),
-      child: BlocBuilder<NotificationsCubit, NotificationsState>(
-        builder: (context, state) {
-          final l10n = context.communityL10n;
-          final cubit = context.read<NotificationsCubit>();
-          return switch (state.status) {
-            LoadStatus.initial || LoadStatus.loading => const CommunitySkeleton(),
-            LoadStatus.failure => CommunityErrorView(error: state.error!, onRetry: cubit.load),
-            LoadStatus.ready => Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(l10n.notifications, style: Theme.of(context).textTheme.titleLarge)),
-                      TextButton.icon(
-                        onPressed: state.unread == 0 ? null : cubit.markAllRead,
-                        icon: const Icon(Icons.done_all),
-                        label: Text(l10n.markAllRead),
-                      ),
-                    ],
-                  ),
+    return withNotificationBuilders(
+      context,
+      builders,
+      BlocProvider(
+        create: (_) => NotificationsCubit(notifications: deps.notifications)..load(),
+        child: BlocBuilder<NotificationsCubit, NotificationsState>(
+          builder: (context, state) {
+            final l10n = context.communityL10n;
+            final cubit = context.read<NotificationsCubit>();
+            final parts = CommunityNotificationBuilders.of(context);
+            final header = CommunityNotificationHeaderDetails(
+              title: l10n.notifications,
+              unread: state.unread,
+              onMarkAllRead: state.unread == 0 ? null : cubit.markAllRead,
+            );
+            return switch (state.status) {
+              LoadStatus.initial || LoadStatus.loading => buildCommunityPart(
+                parts.loading,
+                context,
+                const CommunityListLoadingDetails(),
+                const CommunitySkeleton(),
+              ),
+              LoadStatus.failure => buildCommunityPart(
+                parts.error,
+                context,
+                CommunityListErrorDetails(
+                  error: state.error!,
+                  message: l10n.errorMessage(state.error!),
+                  onRetry: cubit.load,
                 ),
-                Expanded(
-                  child: state.items.isEmpty
-                      ? CommunityEmptyView(message: l10n.noNotifications, icon: Icons.notifications_none)
-                      : NotificationListener<ScrollEndNotification>(
-                          onNotification: (n) {
-                            if (n.metrics.extentAfter < 300) cubit.loadMore();
-                            return false;
-                          },
-                          child: ListView.separated(
-                            itemCount: state.items.length,
-                            separatorBuilder: (_, _) => const Divider(height: 1),
-                            itemBuilder: (context, i) {
-                              final n = state.items[i];
-                              return _NotificationTile(
-                                notification: n,
-                                onTap: () {
-                                  cubit.markRead(n);
-                                  final reporter = context.communityFeatures?.notificationReporter;
-                                  final source = NotificationSource(notificationId: n.id);
-                                  unawaited(reporter?.opened(source));
-                                  final custom = onNotificationTap;
-                                  if (custom != null) return custom(context, n);
-                                  if (openCommunityNotification(context, n)) unawaited(reporter?.tapped(source));
-                                },
-                              );
+                CommunityErrorView(error: state.error!, onRetry: cubit.load),
+              ),
+              LoadStatus.ready => Column(
+                children: [
+                  buildCommunityPart(parts.header, context, header, _NotificationHeader(details: header)),
+                  Expanded(
+                    child: state.items.isEmpty
+                        ? buildCommunityPart(
+                            parts.empty,
+                            context,
+                            CommunityListEmptyDetails(message: l10n.noNotifications),
+                            CommunityEmptyView(message: l10n.noNotifications, icon: Icons.notifications_none),
+                          )
+                        : NotificationListener<ScrollEndNotification>(
+                            onNotification: (n) {
+                              if (n.metrics.extentAfter < 300) cubit.loadMore();
+                              return false;
                             },
+                            child: ListView.separated(
+                              itemCount: state.items.length,
+                              separatorBuilder: (_, _) => const Divider(height: 1),
+                              itemBuilder: (context, i) {
+                                final n = state.items[i];
+                                return _NotificationTile(
+                                  key: ValueKey(n.id),
+                                  notification: n,
+                                  onTap: () {
+                                    cubit.markRead(n);
+                                    final reporter = context.communityFeatures?.notificationReporter;
+                                    final source = NotificationSource(notificationId: n.id);
+                                    unawaited(reporter?.opened(source));
+                                    final custom = onNotificationTap;
+                                    if (custom != null) return custom(context, n);
+                                    if (openCommunityNotification(context, n)) unawaited(reporter?.tapped(source));
+                                  },
+                                );
+                              },
+                            ),
                           ),
-                        ),
-                ),
-              ],
-            ),
-          };
-        },
+                  ),
+                ],
+              ),
+            };
+          },
+        ),
       ),
     );
   }
@@ -121,8 +146,29 @@ bool openCommunityNotification(BuildContext context, AppNotification n) {
   return true;
 }
 
+class _NotificationHeader extends StatelessWidget {
+  const _NotificationHeader({required this.details});
+
+  final CommunityNotificationHeaderDetails details;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
+    child: Row(
+      children: [
+        Expanded(child: Text(details.title, style: Theme.of(context).textTheme.titleLarge)),
+        TextButton.icon(
+          onPressed: details.onMarkAllRead,
+          icon: const Icon(Icons.done_all),
+          label: Text(context.communityL10n.markAllRead),
+        ),
+      ],
+    ),
+  );
+}
+
 class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({required this.notification, required this.onTap});
+  const _NotificationTile({super.key, required this.notification, required this.onTap});
 
   final AppNotification notification;
   final VoidCallback onTap;
@@ -174,27 +220,40 @@ class _NotificationTile extends StatelessWidget {
       ].join('\n'),
       _ => n.snippet,
     };
-    return ListTile(
-      tileColor: n.isRead ? null : theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
+    final details = CommunityNotificationDetails(
+      notification: n,
+      title: title,
+      snippet: snippet == null || snippet.isEmpty ? null : snippet,
+      icon: icon,
+      timeLabel: l10n.relativeTime(n.createdAt),
       onTap: onTap,
-      leading: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          CommunityAvatar(user: n.actor),
-          Positioned(
-            right: -4,
-            bottom: -4,
-            child: CircleAvatar(
-              radius: 10,
-              backgroundColor: theme.colorScheme.surface,
-              child: Icon(icon, size: 13, color: CommunityTheme.of(context).link),
+    );
+    return buildCommunityPart(
+      CommunityNotificationBuilders.of(context).item,
+      context,
+      details,
+      ListTile(
+        tileColor: n.isRead ? null : theme.colorScheme.primaryContainer.withValues(alpha: 0.25),
+        onTap: onTap,
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CommunityAvatar(user: n.actor),
+            Positioned(
+              right: -4,
+              bottom: -4,
+              child: CircleAvatar(
+                radius: 10,
+                backgroundColor: theme.colorScheme.surface,
+                child: Icon(icon, size: 13, color: CommunityTheme.of(context).link),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
+        title: Text(title, style: n.isRead ? null : const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: details.snippet == null ? null : Text(details.snippet!, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: Text(details.timeLabel, style: theme.textTheme.bodySmall),
       ),
-      title: Text(title, style: n.isRead ? null : const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: snippet == null || snippet.isEmpty ? null : Text(snippet, maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: Text(l10n.relativeTime(n.createdAt), style: theme.textTheme.bodySmall),
     );
   }
 }
@@ -253,16 +312,30 @@ class _OltNotificationTile extends StatelessWidget {
             notificationPromoType => Icons.local_offer_outlined,
             _ => n.oltCategory == 'promo' ? Icons.local_offer_outlined : Icons.info_outline,
           };
-    return ListTile(
-      tileColor: n.isRead ? null : scheme.primaryContainer.withValues(alpha: 0.25),
+    final details = CommunityNotificationDetails(
+      notification: n,
+      title: title,
+      snippet: body,
+      icon: icon,
+      important: important,
+      timeLabel: l10n.relativeTime(n.createdAt),
       onTap: onTap,
-      leading: CircleAvatar(
-        backgroundColor: important ? scheme.errorContainer : scheme.secondaryContainer,
-        child: Icon(icon, color: important ? scheme.onErrorContainer : scheme.onSecondaryContainer),
+    );
+    return buildCommunityPart(
+      CommunityNotificationBuilders.of(context).item,
+      context,
+      details,
+      ListTile(
+        tileColor: n.isRead ? null : scheme.primaryContainer.withValues(alpha: 0.25),
+        onTap: onTap,
+        leading: CircleAvatar(
+          backgroundColor: important ? scheme.errorContainer : scheme.secondaryContainer,
+          child: Icon(icon, color: important ? scheme.onErrorContainer : scheme.onSecondaryContainer),
+        ),
+        title: Text(title, style: n.isRead ? null : const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: body == null ? null : Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: Text(details.timeLabel, style: theme.textTheme.bodySmall),
       ),
-      title: Text(title, style: n.isRead ? null : const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: body == null ? null : Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
-      trailing: Text(l10n.relativeTime(n.createdAt), style: theme.textTheme.bodySmall),
     );
   }
 }
@@ -279,11 +352,8 @@ class CommunityNotificationBadge extends StatelessWidget {
       create: (_) => NotificationsCubit(notifications: deps.notifications, countOnly: true)..load(),
       child: BlocBuilder<NotificationsCubit, NotificationsState>(
         buildWhen: (a, b) => a.unread != b.unread,
-        builder: (context, state) => Badge(
-          isLabelVisible: state.unread > 0,
-          label: Text(state.unread > 99 ? '99+' : '${state.unread}'),
-          child: child,
-        ),
+        builder: (context, state) =>
+            CommunityCountOverlay(kind: CommunityCountKind.notificationUnread, count: state.unread, child: child),
       ),
     );
   }

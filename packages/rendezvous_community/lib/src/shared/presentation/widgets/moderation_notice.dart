@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_builders.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
 class ModerationNotice extends StatelessWidget {
@@ -106,21 +108,37 @@ class CommunityBotBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final details = CommunityLabelBadgeDetails(
+      kind: CommunityBadgeKind.bot,
+      label: context.communityL10n.botLabel,
+      icon: Icons.smart_toy_outlined,
+      foreground: scheme.onSecondaryContainer,
+      background: scheme.secondaryContainer,
+    );
+    return buildLabelBadge(context, details, _DefaultBotBadge(details: details));
+  }
+}
+
+class _DefaultBotBadge extends StatelessWidget {
+  const _DefaultBotBadge({required this.details});
+
+  final CommunityLabelBadgeDetails details;
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(color: theme.colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(color: details.background, borderRadius: BorderRadius.circular(4)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.smart_toy_outlined, size: 11, color: theme.colorScheme.onSecondaryContainer),
+          Icon(details.icon, size: 11, color: details.foreground),
           const SizedBox(width: 2),
           Text(
-            context.communityL10n.botLabel,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onSecondaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
+            details.label,
+            style: theme.textTheme.labelSmall?.copyWith(color: details.foreground, fontWeight: FontWeight.w700),
           ),
         ],
       ),

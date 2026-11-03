@@ -32,7 +32,8 @@ lib/src/
     drafts/        draf postingan (lokal + server)
       domain/        entitas immutable (freezed), kontrak repository, layanan domain
       data/          model JSON (freezed + json_serializable), implementasi repository
-      presentation/  cubit/ (flutter_bloc), widgets/, dan builders/ (khusus chat: kontrak builder UI)
+      presentation/  cubit/ (flutter_bloc), widgets/, dan builders/ (kontrak builder UI: chat, feed, notifications, profile;
+                     badge dan detail status daftar di shared/presentation/builders, agregat CommunityBuilders di app/)
 ```
 
 Aturan dependensi:
@@ -42,6 +43,8 @@ Aturan dependensi:
 - `app` adalah satu-satunya tempat yang mengenal semua implementasi.
 - Cubit selalu di file sendiri (`presentation/cubit/`), terpisah dari widget.
 - Widget chat bawaan dan builder kustom memakai `details` yang sama. Logika (handler) dibuat sekali di widget pengendali, lalu tampilan bawaan (`_Default*`) maupun builder host hanya menggambarnya.
+- Hal yang sama berlaku untuk feed, kartu post, komentar, polling, notifikasi, profil, dan badge (1.4.0). Setiap set builder punya `of(context)`, `merge` (semua field; dicek `test/tool/merge_completeness_test.dart`), scope InheritedWidget, dan helper `with*Builders`. `CommunityBuildersScope` menggabungkan kelima set dengan scope di atasnya; `carryCommunityBuilders` membawanya ke route yang dibuka package.
+- **Gambar (1.4.0):** `CommunityImageProvider` (shared) memuat byte lewat `CommunityImageLoader` (cache disk → `source()` → HTTP) lalu mendekode dengan `getTargetSize` (cover, kelipatan 64 px, maks 2048 px). Kunci memori = (kunci stabil, ukuran target). Cache disk `ImageDiskCache` (core/storage): `FileImageDiskCache` di `dart:io` (file `<sha256>-<ms dibuat>` per user, indeks di memori dari listing folder, LRU byte, kedaluwarsa dari nama file, tulis lewat file `.tmp` lalu rename, generasi untuk membuang tulisan yang kalah balapan dengan `wipe`), `NoImageDiskCache` di web atau bila `offlineCache: false`. `RendezvousCommunity` memanggil `images.wipe()` di `signOut`/`deleteMyAccount`/`clearLocalCache` dan saat user sesi berganti; pemilik folder = `currentUserId` atau pemilik database offline (buka offline).
 - Import di dalam package memakai `package:rendezvous_community/...` (lint `always_use_package_imports`).
 - Kode tanpa komentar; penjelasan ada di dokumen ini dan di `docs/rendezvous-community/`. CI menolak komentar baru (`tool/check_comments.dart`), kecuali `// ignore:` dan file hasil generate.
 - Library tidak mencetak ke konsol; semua log lewat `CommunityLoggers` ([logging.md](logging.md)). CI menolak `print`/`debugPrint` di luar modul logging (`tool/check_logging.dart`).

@@ -255,6 +255,11 @@ class _HomePageState extends State<HomePage> {
         icon: const Icon(Icons.palette_outlined),
       ),
       IconButton(
+        tooltip: 'Kartu post & badge bawaan/kustom',
+        onPressed: () => toggleFeedStyle(context),
+        icon: const Icon(Icons.style_outlined),
+      ),
+      IconButton(
         tooltip: context.communityL10n.accountSettingsTitle,
         onPressed: _openAccountSettings,
         icon: const Icon(Icons.privacy_tip_outlined),

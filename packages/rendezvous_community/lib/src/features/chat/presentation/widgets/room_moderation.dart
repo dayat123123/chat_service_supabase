@@ -5,6 +5,8 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_mess
 import 'package:rendezvous_community/src/features/chat/domain/entities/room_moderation.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/features/moderation/domain/entities/report.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_builders.dart';
+import 'package:rendezvous_community/src/shared/presentation/builders/community_badge_details.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
 class RoomModerationInput {
@@ -186,26 +188,44 @@ class RoomModeratorBadge extends StatelessWidget {
     final theme = Theme.of(context);
     final label = context.communityL10n.roomModeratorBadge;
     final accent = color ?? theme.colorScheme.primary;
+    final details = CommunityLabelBadgeDetails(
+      kind: CommunityBadgeKind.roomModerator,
+      label: label,
+      icon: Icons.shield_outlined,
+      foreground: accent,
+      background: accent.withValues(alpha: 0.12),
+    );
     return Semantics(
       label: label,
       excludeSemantics: true,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-        decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.shield_outlined, size: 11, color: accent),
-            const SizedBox(width: 2),
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(color: accent, fontSize: 10, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
+      child: buildLabelBadge(context, details, _DefaultModeratorBadge(details: details)),
     );
   }
+}
+
+class _DefaultModeratorBadge extends StatelessWidget {
+  const _DefaultModeratorBadge({required this.details});
+
+  final CommunityLabelBadgeDetails details;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+    decoration: BoxDecoration(color: details.background, borderRadius: BorderRadius.circular(6)),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(details.icon, size: 11, color: details.foreground),
+        const SizedBox(width: 2),
+        Text(
+          details.label,
+          style: Theme.of(
+            context,
+          ).textTheme.labelSmall?.copyWith(color: details.foreground, fontSize: 10, fontWeight: FontWeight.w600),
+        ),
+      ],
+    ),
+  );
 }
 
 class RoomModerationBanner extends StatelessWidget {

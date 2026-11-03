@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_builders.dart';
+import 'package:rendezvous_community/src/app/community_image_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/app/community_support_scope.dart';
-import 'package:rendezvous_community/src/features/chat/presentation/builders/community_chat_builders.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/community_chat_room.dart';
 import 'package:rendezvous_community/src/features/support/presentation/cubit/support_cubit.dart';
 import 'package:rendezvous_community/src/features/support/presentation/widgets/support_composer.dart';
@@ -106,14 +107,17 @@ class _Conversation extends StatelessWidget {
       },
       child: CommunityScope(
         dependencies: deps,
-        child: CommunityChatRoom(
-          key: ValueKey(roomId),
-          roomId: roomId,
-          repository: chat,
-          showHeader: false,
-          composer: ticket == null || ticket.isActive || ticket.reopenable(DateTime.now())
-              ? const SupportComposer()
-              : SupportClosedBar(ticketNumber: ticket.ticketNumber),
+        child: CommunityImagePersistence(
+          persist: false,
+          child: CommunityChatRoom(
+            key: ValueKey(roomId),
+            roomId: roomId,
+            repository: chat,
+            showHeader: false,
+            composer: ticket == null || ticket.isActive || ticket.reopenable(DateTime.now())
+                ? const SupportComposer()
+                : SupportClosedBar(ticketNumber: ticket.ticketNumber),
+          ),
         ),
       ),
     );
@@ -139,7 +143,7 @@ class CommunitySupportPage extends StatelessWidget {
 Future<void> openCommunitySupport(BuildContext context, {String? topic, String? screen}) {
   final deps = CommunityScope.of(context);
   final support = CommunitySupportScope.of(context);
-  final carry = carryChatBuilders(context);
+  final carry = carryCommunityBuilders(context);
   return Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => carry(
