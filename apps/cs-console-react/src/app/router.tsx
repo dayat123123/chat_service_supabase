@@ -16,6 +16,7 @@ import { policyTabs, type PolicyTab } from '@/features/content-policy/types'
 import { caseStates, type CaseState } from '@/features/compliance/types'
 import { systemTabs, type SystemTab } from '@/features/system/types'
 import {
+  canOpenCommunity,
   canViewTickets,
   hasCommunityAccess,
   hasNasabah,
@@ -71,11 +72,10 @@ const dashboardRoute = createRoute({
 const analyticsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/analytics',
-  beforeLoad: superAdminOnly,
-  component: lazyRouteComponent(
-    withStrings(() => import('@/features/analytics/components/analytics-page'), 'platform'),
-    'AnalyticsPage',
-  ),
+  beforeLoad: ({ context }) => {
+    superAdminOnly({ context })
+    throw redirect({ to: '/community', search: { tab: 'analytics' }, replace: true })
+  },
 })
 
 const reportsRoute = createRoute({
@@ -212,7 +212,7 @@ const communityRoute = createRoute({
     }
   },
   beforeLoad: ({ context }) => {
-    if (!hasCommunityAccess(context.agent)) throw redirect({ to: '/' })
+    if (!canOpenCommunity(context.agent)) throw redirect({ to: '/' })
   },
   component: lazyRouteComponent(
     withStrings(() => import('@/features/community/components/community-page'), 'moderation'),

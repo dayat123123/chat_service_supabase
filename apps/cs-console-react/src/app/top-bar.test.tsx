@@ -1,12 +1,16 @@
 import type * as RouterModule from '@tanstack/react-router'
 import { screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { systemApi } from '@/features/system/api'
 import { agentFixture, monitorFixture } from '@/test/fixtures'
 import { renderWithProviders } from '@/test/render'
 
 import { TopBar } from './top-bar'
+
+const nav = vi.hoisted(() => ({ SHOW_SYSTEM_HEALTH_NAV: false }))
+
+vi.mock('@/lib/nav-config', () => nav)
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof RouterModule>()
@@ -40,6 +44,10 @@ vi.mock('@/features/system/api', () => ({
   },
 }))
 
+afterEach(() => {
+  nav.SHOW_SYSTEM_HEALTH_NAV = false
+})
+
 function navLinks() {
   return within(screen.getByRole('navigation', { name: 'Menu' }))
     .getAllByRole('link')
@@ -62,17 +70,11 @@ describe('TopBar', () => {
     expect(screen.getByText('Mode pantau')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Ubah status/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/^Aktif \d+\/\d+$/)).not.toBeInTheDocument()
-    expect(navLinks()).toEqual([
-      'Layanan Nasabah',
-      'Dashboard',
-      'Laporan',
-      'Analitik',
-      'Pengaturan',
-      'Kesehatan sistem',
-    ])
+    expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Komunitas', 'Pengaturan'])
+    expect(screen.getByRole('link', { name: 'Komunitas' })).toHaveAttribute('href', '/community')
   })
 
-  it('places Akun Nasabah right before Pengaturan for CS accounts with customer access', () => {
+  it('places Akun Nasabah and Komunitas before Pengaturan for CS accounts with customer access', () => {
     renderWithProviders(<TopBar attention={0} caseAttention={0} />, {
       ...monitorFixture,
       roles: ['cs_agent', 'cs_super_admin'],
@@ -82,8 +84,29 @@ describe('TopBar', () => {
       'Layanan Nasabah',
       'Dashboard',
       'Laporan',
-      'Analitik',
       'Akun Nasabah',
+      'Komunitas',
+      'Pengaturan',
+    ])
+  })
+
+  it('hides Kesehatan sistem and skips the system badge while the switch is off', () => {
+    vi.mocked(systemApi.badge).mockClear()
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, monitorFixture)
+
+    expect(screen.queryByRole('link', { name: /Kesehatan sistem/ })).not.toBeInTheDocument()
+    expect(systemApi.badge).not.toHaveBeenCalled()
+  })
+
+  it('shows Kesehatan sistem last for Super Admins when the switch is on', () => {
+    nav.SHOW_SYSTEM_HEALTH_NAV = true
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, monitorFixture)
+
+    expect(navLinks()).toEqual([
+      'Layanan Nasabah',
+      'Dashboard',
+      'Laporan',
+      'Komunitas',
       'Pengaturan',
       'Kesehatan sistem',
     ])
@@ -108,6 +131,7 @@ describe('TopBar', () => {
   })
 
   it('marks unhandled critical system alerts in red on Kesehatan sistem', async () => {
+    nav.SHOW_SYSTEM_HEALTH_NAV = true
     vi.mocked(systemApi.badge).mockResolvedValue({ critical: 2, warning: 3, open: 5 })
     renderWithProviders(<TopBar attention={0} caseAttention={0} />, monitorFixture)
 
@@ -118,6 +142,7 @@ describe('TopBar', () => {
   })
 
   it('shows unhandled warnings in amber when nothing is critical', async () => {
+    nav.SHOW_SYSTEM_HEALTH_NAV = true
     vi.mocked(systemApi.badge).mockResolvedValue({ critical: 0, warning: 1, open: 1 })
     renderWithProviders(<TopBar attention={0} caseAttention={0} />, monitorFixture)
 
@@ -126,6 +151,7 @@ describe('TopBar', () => {
   })
 
   it('does not ask for the system badge without Super Admin access', () => {
+    nav.SHOW_SYSTEM_HEALTH_NAV = true
     vi.mocked(systemApi.badge).mockClear()
     renderWithProviders(<TopBar attention={0} caseAttention={0} />, agentFixture)
 

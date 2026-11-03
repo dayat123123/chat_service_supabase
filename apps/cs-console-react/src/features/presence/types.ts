@@ -72,6 +72,8 @@ export const isCompliance = (agent: Pick<AgentProfile, 'roles'>) => agent.roles.
 export const isMonitor = (agent: Pick<AgentProfile, 'roles'>) => isSuperAdmin(agent) && !worksTickets(agent)
 export const hasCommunityAccess = (agent: Pick<AgentProfile, 'community_permissions'>) =>
   agent.community_permissions.length > 0
+export const canOpenCommunity = (agent: Pick<AgentProfile, 'roles' | 'community_permissions'>) =>
+  hasCommunityAccess(agent) || isSuperAdmin(agent)
 export const canViewTickets = (agent: Pick<AgentProfile, 'roles'>) =>
   worksTickets(agent) || isSuperAdmin(agent)
 export const atCapacity = (agent: Pick<AgentProfile, 'active_tickets' | 'max_active_tickets'>) =>

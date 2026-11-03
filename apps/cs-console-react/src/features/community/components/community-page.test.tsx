@@ -1,17 +1,33 @@
+import type * as RouterModule from '@tanstack/react-router'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { AgentProfile } from '@/features/presence/types'
-import { agentFixture } from '@/test/fixtures'
+import { agentFixture, monitorFixture } from '@/test/fixtures'
 import { renderWithProviders } from '@/test/render'
 import { Toaster } from '@/test/toast'
 
 import type * as ApiModule from '../api'
 import { communityApi } from '../api'
-import type { CommunityPost, OfficialAccount, ReportRow } from '../types'
+import type { CommunityPost, CommunityTab, OfficialAccount, ReportRow } from '../types'
+import { CommunityPage } from './community-page'
 import { ModerationTab } from './moderation-tab'
 import { StreamTab } from './stream-tab'
+
+const route = vi.hoisted(() => {
+  const search: { tab?: CommunityTab } = {}
+  return { search, navigate: vi.fn() }
+})
+
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof RouterModule>()
+  return { ...actual, useSearch: () => route.search, useNavigate: () => route.navigate }
+})
+
+vi.mock('@/features/analytics/api', () => ({
+  analyticsApi: { community: vi.fn(() => new Promise(() => undefined)) },
+}))
 
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof ApiModule>()
@@ -95,8 +111,59 @@ const publisher: AgentProfile = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  route.search = {}
   vi.mocked(communityApi.accounts).mockResolvedValue([research])
   vi.mocked(communityApi.posts).mockResolvedValue([])
+  vi.mocked(communityApi.overview).mockResolvedValue({
+    pending_posts: 0,
+    scheduled_posts: 0,
+    pending_campaigns: 0,
+    open_reports: 3,
+    accounts: 1,
+    four_eyes: true,
+    push_ready: false,
+    push_state: 'not_configured',
+  })
+})
+
+function tabNames() {
+  return within(screen.getByRole('tablist', { name: 'Menu komunitas' }))
+    .getAllByRole('tab')
+    .map((tab) => tab.textContent)
+}
+
+describe('CommunityPage', () => {
+  it('opens Analitik as the only tab for a Super Admin without community permissions', async () => {
+    renderWithProviders(<CommunityPage />, monitorFixture)
+
+    expect(tabNames()).toEqual(['Analitik'])
+    expect(screen.getByRole('tab', { name: 'Analitik' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('radio', { name: '30 hari' })).toBeVisible()
+    expect(screen.queryByText('Laporan terbuka')).not.toBeInTheDocument()
+    expect(communityApi.overview).not.toHaveBeenCalled()
+  })
+
+  it('adds Analitik after the permitted tabs for a Super Admin with community permissions', async () => {
+    route.search = { tab: 'analytics' }
+    renderWithProviders(<CommunityPage />, {
+      ...monitorFixture,
+      community_permissions: ['community.post', 'community.accounts'],
+    })
+
+    expect(tabNames()).toEqual(['Stream', 'Notifikasi', 'Akun resmi', 'Analitik'])
+    expect(screen.getByRole('tab', { name: 'Analitik' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByRole('radio', { name: '30 hari' })).toBeVisible()
+  })
+
+  it('keeps the tabs of community staff unchanged and ignores an analytics link', async () => {
+    route.search = { tab: 'analytics' }
+    renderWithProviders(<CommunityPage />, writer)
+
+    expect(tabNames()).toEqual(['Stream', 'Notifikasi'])
+    expect(screen.getByRole('tab', { name: 'Stream' })).toHaveAttribute('aria-selected', 'true')
+    expect(await screen.findByText('Laporan terbuka')).toBeVisible()
+    expect(screen.queryByRole('radio', { name: '30 hari' })).not.toBeInTheDocument()
+  })
 })
 
 describe('StreamTab', () => {

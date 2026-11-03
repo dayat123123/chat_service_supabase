@@ -9,7 +9,14 @@ export const communityPermissions = [
 ] as const
 export type CommunityPermission = (typeof communityPermissions)[number]
 
-export const communityTabs = ['stream', 'notifications', 'moderation', 'rooms', 'accounts'] as const
+export const communityTabs = [
+  'stream',
+  'notifications',
+  'moderation',
+  'rooms',
+  'accounts',
+  'analytics',
+] as const
 export type CommunityTab = (typeof communityTabs)[number]
 
 export type AccountRef = {

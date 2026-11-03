@@ -7,7 +7,7 @@ import { renderWithProviders } from '@/test/render'
 
 import { analyticsApi } from '../api'
 import type { CommunityAnalytics } from '../types'
-import { AnalyticsPage } from './analytics-page'
+import { AnalyticsTab } from './analytics-tab'
 
 vi.mock('../api', () => ({ analyticsApi: { community: vi.fn() } }))
 
@@ -63,9 +63,9 @@ beforeEach(() => {
   vi.mocked(analyticsApi.community).mockResolvedValue(report)
 })
 
-describe('AnalyticsPage', () => {
+describe('AnalyticsTab', () => {
   it('shows active users, retention cohorts, content, top stocks, events, and order taps', async () => {
-    renderWithProviders(<AnalyticsPage />, monitorFixture)
+    renderWithProviders(<AnalyticsTab />, monitorFixture)
 
     expect(await screen.findByText('650')).toBeVisible()
     expect(screen.getByText('20%')).toBeVisible()
@@ -83,7 +83,7 @@ describe('AnalyticsPage', () => {
 
   it('reloads for a preset range', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<AnalyticsPage />, monitorFixture)
+    renderWithProviders(<AnalyticsTab />, monitorFixture)
     await screen.findByText('650')
     await user.click(screen.getByRole('radio', { name: '7 hari' }))
     await waitFor(() => expect(analyticsApi.community).toHaveBeenCalledTimes(2))

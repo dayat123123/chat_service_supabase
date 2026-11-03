@@ -306,71 +306,66 @@ function Report({ report }: { report: CommunityAnalytics }) {
   )
 }
 
-export function AnalyticsPage() {
+export function AnalyticsTab() {
   const { t } = useTranslation()
   const [preset, setPreset] = useState<AnalyticsPreset>('month')
   const [range, setRange] = useState<DateRange>(() => analyticsRange('month'))
   const report = useCommunityAnalytics(range)
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-6 px-4 py-5 lg:px-6">
-        <header className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-lg font-semibold">{t('platform.analytics.title')}</h1>
-            <p className="text-row text-muted-foreground">{rangeLabel(range)}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <ToggleGroup
-              type="single"
-              value={preset === 'custom' ? '' : preset}
-              aria-label={t('platform.analytics.rangeLabel')}
-              onValueChange={(value) => {
-                if (!(analyticsPresets as readonly string[]).includes(value)) return
-                const next = value as Exclude<AnalyticsPreset, 'custom'>
-                setPreset(next)
-                setRange(analyticsRange(next))
-              }}
-            >
-              {analyticsPresets.map((item) => (
-                <ToggleGroupItem key={item} value={item}>
-                  {t(`platform.analytics.presets.${item}`)}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            <DateRangePicker
-              range={range}
-              active={preset === 'custom'}
-              maxDays={MAX_ANALYTICS_DAYS}
-              onApply={(next) => {
-                setPreset('custom')
-                setRange(next)
-              }}
-            />
-          </div>
-        </header>
-        {report.data ? (
-          <div
-            className={cn('flex flex-col gap-6 transition-opacity', report.isPlaceholderData && 'opacity-60')}
-            aria-busy={report.isFetching}
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-row text-muted-foreground">{rangeLabel(range)}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <ToggleGroup
+            type="single"
+            value={preset === 'custom' ? '' : preset}
+            aria-label={t('platform.analytics.rangeLabel')}
+            onValueChange={(value) => {
+              if (!(analyticsPresets as readonly string[]).includes(value)) return
+              const next = value as Exclude<AnalyticsPreset, 'custom'>
+              setPreset(next)
+              setRange(analyticsRange(next))
+            }}
           >
-            <Report report={report.data} />
-          </div>
-        ) : report.isError ? (
-          <ErrorState error={report.error} onRetry={() => void report.refetch()} />
-        ) : (
-          <div className="flex flex-col gap-6" aria-busy="true">
-            <div className="grid grid-cols-2 gap-6 border-y py-4 md:grid-cols-3 xl:grid-cols-6">
-              {Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className="flex flex-col gap-2">
-                  <Skeleton className="h-2 w-20" />
-                  <Skeleton className="h-4 w-12" />
-                </div>
-              ))}
-            </div>
-            <EmptyState title={t('app.loading')} />
-          </div>
-        )}
+            {analyticsPresets.map((item) => (
+              <ToggleGroupItem key={item} value={item}>
+                {t(`platform.analytics.presets.${item}`)}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <DateRangePicker
+            range={range}
+            active={preset === 'custom'}
+            maxDays={MAX_ANALYTICS_DAYS}
+            onApply={(next) => {
+              setPreset('custom')
+              setRange(next)
+            }}
+          />
+        </div>
       </div>
+      {report.data ? (
+        <div
+          className={cn('flex flex-col gap-6 transition-opacity', report.isPlaceholderData && 'opacity-60')}
+          aria-busy={report.isFetching}
+        >
+          <Report report={report.data} />
+        </div>
+      ) : report.isError ? (
+        <ErrorState error={report.error} onRetry={() => void report.refetch()} />
+      ) : (
+        <div className="flex flex-col gap-6" aria-busy="true">
+          <div className="grid grid-cols-2 gap-6 border-y py-4 md:grid-cols-3 xl:grid-cols-6">
+            {Array.from({ length: 6 }, (_, i) => (
+              <div key={i} className="flex flex-col gap-2">
+                <Skeleton className="h-2 w-20" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+            ))}
+          </div>
+          <EmptyState title={t('app.loading')} />
+        </div>
+      )}
     </div>
   )
 }

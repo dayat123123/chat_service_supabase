@@ -1,14 +1,16 @@
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { lazy, Suspense } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { MetricStrip } from '@/components/metric-strip'
 import { EmptyState } from '@/components/states'
 import { useAgent } from '@/features/auth/hooks'
+import { withStrings } from '@/i18n'
 import { formatNumber } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
 import { useCommunityOverview } from '../hooks'
-import { communityTabsFor } from '../logic'
+import { communityPageTabs, hasCommunity } from '../logic'
 import type { CommunityTab, ModerationQueue } from '../types'
 import { AccountsTab } from './accounts-tab'
 import { CampaignsTab } from './campaigns-tab'
@@ -16,13 +18,24 @@ import { ModerationTab } from './moderation-tab'
 import { RoomsTab } from './rooms-tab'
 import { StreamTab } from './stream-tab'
 
+const AnalyticsTab = lazy(
+  withStrings(
+    () =>
+      import('@/features/analytics/components/analytics-tab').then((module) => ({
+        default: module.AnalyticsTab,
+      })),
+    'platform',
+  ),
+)
+
 export function CommunityPage() {
   const { t } = useTranslation()
   const agent = useAgent()
   const navigate = useNavigate()
   const search: { tab?: CommunityTab; queue?: ModerationQueue; stock?: string } = useSearch({ strict: false })
-  const overview = useCommunityOverview()
-  const tabs = communityTabsFor(agent.community_permissions)
+  const staff = hasCommunity(agent)
+  const overview = useCommunityOverview(staff)
+  const tabs = communityPageTabs(agent)
   const tab = search.tab && tabs.includes(search.tab) ? search.tab : tabs[0]
   const data = overview.data
 
@@ -39,30 +52,32 @@ export function CommunityPage() {
           <h1 className="text-lg font-semibold">{t('community.pageTitle')}</h1>
           <p className="text-row text-muted-foreground">{t('community.pageSubtitle')}</p>
         </header>
-        <MetricStrip
-          className="md:grid-cols-4 xl:grid-cols-4"
-          metrics={[
-            {
-              label: t('community.metrics.pendingPosts'),
-              value: data ? formatNumber(data.pending_posts) : '–',
-              tone: data && data.pending_posts > 0 ? 'warn' : undefined,
-            },
-            {
-              label: t('community.metrics.scheduled'),
-              value: data ? formatNumber(data.scheduled_posts) : '–',
-            },
-            {
-              label: t('community.metrics.pendingCampaigns'),
-              value: data ? formatNumber(data.pending_campaigns) : '–',
-              tone: data && data.pending_campaigns > 0 ? 'warn' : undefined,
-            },
-            {
-              label: t('community.metrics.openReports'),
-              value: data ? formatNumber(data.open_reports) : '–',
-              tone: data && data.open_reports > 0 ? 'late' : undefined,
-            },
-          ]}
-        />
+        {staff && tab !== 'analytics' ? (
+          <MetricStrip
+            className="md:grid-cols-4 xl:grid-cols-4"
+            metrics={[
+              {
+                label: t('community.metrics.pendingPosts'),
+                value: data ? formatNumber(data.pending_posts) : '–',
+                tone: data && data.pending_posts > 0 ? 'warn' : undefined,
+              },
+              {
+                label: t('community.metrics.scheduled'),
+                value: data ? formatNumber(data.scheduled_posts) : '–',
+              },
+              {
+                label: t('community.metrics.pendingCampaigns'),
+                value: data ? formatNumber(data.pending_campaigns) : '–',
+                tone: data && data.pending_campaigns > 0 ? 'warn' : undefined,
+              },
+              {
+                label: t('community.metrics.openReports'),
+                value: data ? formatNumber(data.open_reports) : '–',
+                tone: data && data.open_reports > 0 ? 'late' : undefined,
+              },
+            ]}
+          />
+        ) : null}
         <div
           role="tablist"
           aria-label={t('community.tabsLabel')}
@@ -84,7 +99,7 @@ export function CommunityPage() {
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {t(`community.tabs.${item}`)}
+              {item === 'analytics' ? t('nav.analytics') : t(`community.tabs.${item}`)}
             </button>
           ))}
         </div>
@@ -107,6 +122,11 @@ export function CommunityPage() {
             />
           ) : null}
           {tab === 'accounts' ? <AccountsTab /> : null}
+          {tab === 'analytics' ? (
+            <Suspense fallback={<EmptyState title={t('app.loading')} />}>
+              <AnalyticsTab />
+            </Suspense>
+          ) : null}
         </div>
       </div>
     </div>

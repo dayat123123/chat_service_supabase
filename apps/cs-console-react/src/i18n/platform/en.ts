@@ -281,7 +281,6 @@ export const platform: Translated<typeof source> = {
     clearBody: 'Every app version on this platform can be used again without a required update.',
   },
   analytics: {
-    title: 'Community analytics',
     rangeLabel: 'Analytics range',
     presets: { week: '7 days', month: '30 days', quarter: '90 days' },
     avgDau: 'Average DAU',
