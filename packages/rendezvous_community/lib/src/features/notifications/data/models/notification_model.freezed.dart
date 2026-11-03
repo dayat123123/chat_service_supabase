@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$NotificationModel {
 
- String get id; String get type; String? get actorId; String? get actorUsername; String? get actorDisplayName; String? get actorAvatarUrl; Map<String, Object?> get payload; int get eventCount; DateTime? get readAt; DateTime get createdAt; String get cursor;
+ String get id; String get type; String? get actorId; String? get actorUsername; String? get actorDisplayName; String? get actorAvatarUrl; Map<String, Object?> get payload; int get eventCount; DateTime? get readAt; DateTime get createdAt; String get cursor; int? get actorCount; List<Map<String, dynamic>> get actors;
 /// Create a copy of NotificationModel
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $NotificationModelCopyWith<NotificationModel> get copyWith => _$NotificationMode
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationModel&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actorId, actorId) || other.actorId == actorId)&&(identical(other.actorUsername, actorUsername) || other.actorUsername == actorUsername)&&(identical(other.actorDisplayName, actorDisplayName) || other.actorDisplayName == actorDisplayName)&&(identical(other.actorAvatarUrl, actorAvatarUrl) || other.actorAvatarUrl == actorAvatarUrl)&&const DeepCollectionEquality().equals(other.payload, payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotificationModel&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actorId, actorId) || other.actorId == actorId)&&(identical(other.actorUsername, actorUsername) || other.actorUsername == actorUsername)&&(identical(other.actorDisplayName, actorDisplayName) || other.actorDisplayName == actorDisplayName)&&(identical(other.actorAvatarUrl, actorAvatarUrl) || other.actorAvatarUrl == actorAvatarUrl)&&const DeepCollectionEquality().equals(other.payload, payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.actorCount, actorCount) || other.actorCount == actorCount)&&const DeepCollectionEquality().equals(other.actors, actors));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,actorId,actorUsername,actorDisplayName,actorAvatarUrl,const DeepCollectionEquality().hash(payload),eventCount,readAt,createdAt,cursor);
+int get hashCode => Object.hash(runtimeType,id,type,actorId,actorUsername,actorDisplayName,actorAvatarUrl,const DeepCollectionEquality().hash(payload),eventCount,readAt,createdAt,cursor,actorCount,const DeepCollectionEquality().hash(actors));
 
 @override
 String toString() {
-  return 'NotificationModel(id: $id, type: $type, actorId: $actorId, actorUsername: $actorUsername, actorDisplayName: $actorDisplayName, actorAvatarUrl: $actorAvatarUrl, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'NotificationModel(id: $id, type: $type, actorId: $actorId, actorUsername: $actorUsername, actorDisplayName: $actorDisplayName, actorAvatarUrl: $actorAvatarUrl, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor, actorCount: $actorCount, actors: $actors)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $NotificationModelCopyWith<$Res>  {
   factory $NotificationModelCopyWith(NotificationModel value, $Res Function(NotificationModel) _then) = _$NotificationModelCopyWithImpl;
 @useResult
 $Res call({
- String id, String type, String? actorId, String? actorUsername, String? actorDisplayName, String? actorAvatarUrl, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor
+ String id, String type, String? actorId, String? actorUsername, String? actorDisplayName, String? actorAvatarUrl, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor, int? actorCount, List<Map<String, dynamic>> actors
 });
 
 
@@ -65,7 +65,7 @@ class _$NotificationModelCopyWithImpl<$Res>
 
 /// Create a copy of NotificationModel
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? actorId = freezed,Object? actorUsername = freezed,Object? actorDisplayName = freezed,Object? actorAvatarUrl = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? type = null,Object? actorId = freezed,Object? actorUsername = freezed,Object? actorDisplayName = freezed,Object? actorAvatarUrl = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,Object? actorCount = freezed,Object? actors = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -78,7 +78,9 @@ as Map<String, Object?>,eventCount: null == eventCount ? _self.eventCount : even
 as int,readAt: freezed == readAt ? _self.readAt : readAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,actorCount: freezed == actorCount ? _self.actorCount : actorCount // ignore: cast_nullable_to_non_nullable
+as int?,actors: null == actors ? _self.actors : actors // ignore: cast_nullable_to_non_nullable
+as List<Map<String, dynamic>>,
   ));
 }
 
@@ -163,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String type,  String? actorId,  String? actorUsername,  String? actorDisplayName,  String? actorAvatarUrl,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String type,  String? actorId,  String? actorUsername,  String? actorDisplayName,  String? actorAvatarUrl,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor,  int? actorCount,  List<Map<String, dynamic>> actors)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _NotificationModel() when $default != null:
-return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.actorDisplayName,_that.actorAvatarUrl,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.actorDisplayName,_that.actorAvatarUrl,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor,_that.actorCount,_that.actors);case _:
   return orElse();
 
 }
@@ -184,10 +186,10 @@ return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.acto
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String type,  String? actorId,  String? actorUsername,  String? actorDisplayName,  String? actorAvatarUrl,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String type,  String? actorId,  String? actorUsername,  String? actorDisplayName,  String? actorAvatarUrl,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor,  int? actorCount,  List<Map<String, dynamic>> actors)  $default,) {final _that = this;
 switch (_that) {
 case _NotificationModel():
-return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.actorDisplayName,_that.actorAvatarUrl,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.actorDisplayName,_that.actorAvatarUrl,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor,_that.actorCount,_that.actors);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -204,10 +206,10 @@ return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.acto
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String type,  String? actorId,  String? actorUsername,  String? actorDisplayName,  String? actorAvatarUrl,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String type,  String? actorId,  String? actorUsername,  String? actorDisplayName,  String? actorAvatarUrl,  Map<String, Object?> payload,  int eventCount,  DateTime? readAt,  DateTime createdAt,  String cursor,  int? actorCount,  List<Map<String, dynamic>> actors)?  $default,) {final _that = this;
 switch (_that) {
 case _NotificationModel() when $default != null:
-return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.actorDisplayName,_that.actorAvatarUrl,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor);case _:
+return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.actorDisplayName,_that.actorAvatarUrl,_that.payload,_that.eventCount,_that.readAt,_that.createdAt,_that.cursor,_that.actorCount,_that.actors);case _:
   return null;
 
 }
@@ -219,7 +221,7 @@ return $default(_that.id,_that.type,_that.actorId,_that.actorUsername,_that.acto
 @JsonSerializable()
 
 class _NotificationModel extends NotificationModel {
-  const _NotificationModel({required this.id, required this.type, this.actorId, this.actorUsername, this.actorDisplayName, this.actorAvatarUrl, final  Map<String, Object?> payload = const <String, Object?>{}, this.eventCount = 1, this.readAt, required this.createdAt, required this.cursor}): _payload = payload,super._();
+  const _NotificationModel({required this.id, required this.type, this.actorId, this.actorUsername, this.actorDisplayName, this.actorAvatarUrl, final  Map<String, Object?> payload = const <String, Object?>{}, this.eventCount = 1, this.readAt, required this.createdAt, required this.cursor, this.actorCount, final  List<Map<String, dynamic>> actors = const <Map<String, dynamic>>[]}): _payload = payload,_actors = actors,super._();
   factory _NotificationModel.fromJson(Map<String, dynamic> json) => _$NotificationModelFromJson(json);
 
 @override final  String id;
@@ -239,6 +241,14 @@ class _NotificationModel extends NotificationModel {
 @override final  DateTime? readAt;
 @override final  DateTime createdAt;
 @override final  String cursor;
+@override final  int? actorCount;
+ final  List<Map<String, dynamic>> _actors;
+@override@JsonKey() List<Map<String, dynamic>> get actors {
+  if (_actors is EqualUnmodifiableListView) return _actors;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_actors);
+}
+
 
 /// Create a copy of NotificationModel
 /// with the given fields replaced by the non-null parameter values.
@@ -253,16 +263,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationModel&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actorId, actorId) || other.actorId == actorId)&&(identical(other.actorUsername, actorUsername) || other.actorUsername == actorUsername)&&(identical(other.actorDisplayName, actorDisplayName) || other.actorDisplayName == actorDisplayName)&&(identical(other.actorAvatarUrl, actorAvatarUrl) || other.actorAvatarUrl == actorAvatarUrl)&&const DeepCollectionEquality().equals(other._payload, _payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NotificationModel&&(identical(other.id, id) || other.id == id)&&(identical(other.type, type) || other.type == type)&&(identical(other.actorId, actorId) || other.actorId == actorId)&&(identical(other.actorUsername, actorUsername) || other.actorUsername == actorUsername)&&(identical(other.actorDisplayName, actorDisplayName) || other.actorDisplayName == actorDisplayName)&&(identical(other.actorAvatarUrl, actorAvatarUrl) || other.actorAvatarUrl == actorAvatarUrl)&&const DeepCollectionEquality().equals(other._payload, _payload)&&(identical(other.eventCount, eventCount) || other.eventCount == eventCount)&&(identical(other.readAt, readAt) || other.readAt == readAt)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.cursor, cursor) || other.cursor == cursor)&&(identical(other.actorCount, actorCount) || other.actorCount == actorCount)&&const DeepCollectionEquality().equals(other._actors, _actors));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,type,actorId,actorUsername,actorDisplayName,actorAvatarUrl,const DeepCollectionEquality().hash(_payload),eventCount,readAt,createdAt,cursor);
+int get hashCode => Object.hash(runtimeType,id,type,actorId,actorUsername,actorDisplayName,actorAvatarUrl,const DeepCollectionEquality().hash(_payload),eventCount,readAt,createdAt,cursor,actorCount,const DeepCollectionEquality().hash(_actors));
 
 @override
 String toString() {
-  return 'NotificationModel(id: $id, type: $type, actorId: $actorId, actorUsername: $actorUsername, actorDisplayName: $actorDisplayName, actorAvatarUrl: $actorAvatarUrl, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor)';
+  return 'NotificationModel(id: $id, type: $type, actorId: $actorId, actorUsername: $actorUsername, actorDisplayName: $actorDisplayName, actorAvatarUrl: $actorAvatarUrl, payload: $payload, eventCount: $eventCount, readAt: $readAt, createdAt: $createdAt, cursor: $cursor, actorCount: $actorCount, actors: $actors)';
 }
 
 
@@ -273,7 +283,7 @@ abstract mixin class _$NotificationModelCopyWith<$Res> implements $NotificationM
   factory _$NotificationModelCopyWith(_NotificationModel value, $Res Function(_NotificationModel) _then) = __$NotificationModelCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String type, String? actorId, String? actorUsername, String? actorDisplayName, String? actorAvatarUrl, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor
+ String id, String type, String? actorId, String? actorUsername, String? actorDisplayName, String? actorAvatarUrl, Map<String, Object?> payload, int eventCount, DateTime? readAt, DateTime createdAt, String cursor, int? actorCount, List<Map<String, dynamic>> actors
 });
 
 
@@ -290,7 +300,7 @@ class __$NotificationModelCopyWithImpl<$Res>
 
 /// Create a copy of NotificationModel
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? actorId = freezed,Object? actorUsername = freezed,Object? actorDisplayName = freezed,Object? actorAvatarUrl = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? type = null,Object? actorId = freezed,Object? actorUsername = freezed,Object? actorDisplayName = freezed,Object? actorAvatarUrl = freezed,Object? payload = null,Object? eventCount = null,Object? readAt = freezed,Object? createdAt = null,Object? cursor = null,Object? actorCount = freezed,Object? actors = null,}) {
   return _then(_NotificationModel(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
@@ -303,7 +313,9 @@ as Map<String, Object?>,eventCount: null == eventCount ? _self.eventCount : even
 as int,readAt: freezed == readAt ? _self.readAt : readAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,cursor: null == cursor ? _self.cursor : cursor // ignore: cast_nullable_to_non_nullable
-as String,
+as String,actorCount: freezed == actorCount ? _self.actorCount : actorCount // ignore: cast_nullable_to_non_nullable
+as int?,actors: null == actors ? _self._actors : actors // ignore: cast_nullable_to_non_nullable
+as List<Map<String, dynamic>>,
   ));
 }
 

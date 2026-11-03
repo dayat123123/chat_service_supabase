@@ -17,6 +17,7 @@ import (
 	"olt-social/media/internal/config"
 	"olt-social/media/internal/heartbeat"
 	"olt-social/media/internal/metrics"
+	"olt-social/media/internal/moderation"
 	"olt-social/media/internal/server"
 	"olt-social/media/internal/storage"
 	"olt-social/media/internal/store"
@@ -24,7 +25,7 @@ import (
 
 const (
 	service = "media"
-	version = "0.1.0"
+	version = "0.2.0"
 )
 
 func main() {
@@ -49,23 +50,29 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 	defer stop()
 
 	var beats *heartbeat.Loop
+	db := store.NewPostgREST(cfg.PostgRESTURL, cfg.JWTSecret, cfg.JWTIssuer)
+	policy := moderation.NewPolicy(db, log, cfg.ModerationRefresh, func() { beats.Kick() })
 	uploads := server.New(server.Options{
-		Log:            log,
-		Secret:         cfg.JWTSecret,
-		Storage:        storage.New(cfg.StorageURL, cfg.MaxConcurrent),
-		MaxConcurrent:  cfg.MaxConcurrent,
-		RequestTimeout: cfg.RequestTimeout,
-		Notify:         func() { beats.Kick() },
+		Log:               log,
+		Secret:            cfg.JWTSecret,
+		Storage:           storage.New(cfg.StorageURL, cfg.MaxConcurrent),
+		Classifier:        moderation.NewClient(cfg.ClassifierURL, cfg.ClassifierTimeout, cfg.MaxConcurrent),
+		Policy:            policy,
+		Holds:             db,
+		AllowUnclassified: cfg.AllowUnclassified,
+		MaxConcurrent:     cfg.MaxConcurrent,
+		RequestTimeout:    cfg.RequestTimeout,
+		Notify:            func() { beats.Kick() },
 	})
 	beats = heartbeat.New(heartbeat.Options{
-		Store:     store.NewPostgREST(cfg.PostgRESTURL, cfg.JWTSecret, cfg.JWTIssuer),
+		Store:     db,
 		Log:       log,
 		Service:   service,
 		Instance:  cfg.InstanceID,
 		Version:   version,
 		StartedAt: startedAt,
 		Interval:  cfg.HeartbeatInterval,
-		Probe:     uploads.ProbeStorage,
+		Probe:     uploads.Probe,
 		Report:    uploads.Report,
 	})
 
@@ -115,13 +122,21 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 	}
 	log.Info("Media listening", "port", cfg.Port, "ops_port", cfg.OpsPort, "instance", cfg.InstanceID,
 		"version", version, "max_concurrent", cfg.MaxConcurrent)
+	if cfg.AllowUnclassified {
+		log.Warn("MODEL_MISSING_POLICY=allow: images are stored without a check while the classifier has no model")
+	}
 
 	beatCtx, stopBeats := context.WithCancel(context.Background())
+	policy.Refresh(beatCtx)
 	var wg sync.WaitGroup
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		beats.Run(beatCtx)
+	}()
+	go func() {
+		defer wg.Done()
+		policy.Run(beatCtx)
 	}()
 
 	var failure error

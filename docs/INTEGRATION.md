@@ -84,6 +84,14 @@ Yang terjadi di belakang layar:
 - Kode apa pun yang berformat `$KODE` (huruf di depan, 2–12 huruf/angka) diterima sebagai label untuk feed, pantau, dan room saham. Validasi kode yang benar-benar ada adalah tugas app OLT.
 - Nama saham di header `CommunityStockFeed` datang dari parameter `stockName`. Harga dan grafik tetap di halaman saham OLT.
 
+### Klaim `accounts` dan notifikasi transaksi
+
+Server OLT menambahkan klaim `accounts` (cust id rekening **milik** login: LoginType 1 → `TAccountLinked`; sales/cabang/pusat → `[]`) ke token sosial. Aplikasi tidak perlu mengirim daftar rekening; cukup `registerPushToken(...)` seperti biasa. notifEngine lalu mengirim notifikasi per cust id ke `/integration/v1/notify/messages`. Push transaksi (`kind` berawalan `olt.`) tidak dibuka paket: `openCommunityPush` mengembalikan `false` (`isOltPush(data)`), jadi aplikasi OLT memakai `data.screen`/`data.custId` untuk membuka layarnya sendiri. Spesifikasi lengkap: [docs/integration](integration/README.md).
+
+### Konfigurasi klien (1.3.0)
+
+Isi `appVersion` dan `platform` saat `initialize(...)` (termasuk `windows`), plus `onUpdateRequired` untuk mengarahkan ke mekanisme update OLT. Saat kill switch aktif, widget sosial menampilkan placeholder (bisa diganti lewat `CommunityAvailabilityScope`), chat CS tetap jalan. Panggil `RendezvousCommunity.instance.trackOrderTap()` saat nasabah berpindah dari fitur komunitas ke layar order. Fitur 1.3.0 lengkap: [docs/rendezvous-community](rendezvous-community/README.md).
+
 ## 4. Lokalisasi & tema
 
 ```dart

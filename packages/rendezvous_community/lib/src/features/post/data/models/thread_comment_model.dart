@@ -1,5 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/features/post/domain/entities/thread_comment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'thread_comment_model.freezed.dart';
@@ -26,6 +27,7 @@ abstract class ThreadCommentModel with _$ThreadCommentModel {
     DateTime? editedAt,
     required DateTime createdAt,
     required String cursor,
+    String? moderationStatus,
   }) = _ThreadCommentModel;
 
   const ThreadCommentModel._();
@@ -55,5 +57,6 @@ abstract class ThreadCommentModel with _$ThreadCommentModel {
     editedAt: editedAt,
     createdAt: createdAt,
     cursor: cursor,
+    moderationStatus: parseModerationStatus(moderationStatus),
   );
 }

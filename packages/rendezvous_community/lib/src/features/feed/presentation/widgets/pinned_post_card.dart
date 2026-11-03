@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/pinned_post.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_actions.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 
 class PinnedPostCard extends StatelessWidget {
-  const PinnedPostCard({super.key, required this.pinned, required this.onLike, this.onOpen});
+  const PinnedPostCard({super.key, required this.pinned, required this.onLike, this.onOpen, this.onToggleBookmark});
 
   final PinnedPost pinned;
   final VoidCallback onLike;
   final VoidCallback? onOpen;
+  final VoidCallback? onToggleBookmark;
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +54,13 @@ class PinnedPostCard extends StatelessWidget {
               ],
             ),
           ),
-          PostCard(post: pinned.post, onLike: onLike, onOpen: onOpen),
+          PostCard(
+            post: pinned.post,
+            onLike: onLike,
+            onOpen: onOpen,
+            onToggleBookmark: bookmarkPostAction(context, onToggleBookmark),
+            onShare: sharePostAction(context, pinned.post),
+          ),
         ],
       ),
     );

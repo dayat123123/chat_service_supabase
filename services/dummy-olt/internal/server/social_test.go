@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -128,5 +129,81 @@ func TestDevTokenCanIssueSocialTokensForTests(t *testing.T) {
 	claims := socialClaims(t, body["token"].(string))
 	if claims["sub"] != "1009" || claims["aud"] != "olt-trading" {
 		t.Fatalf("claims = %v", claims)
+	}
+}
+
+func TestSocialTokenCarriesTheAccountsOwnedByTheLogin(t *testing.T) {
+	srv, _ := newTestServer(t, Config{AcceptMockTokens: true})
+	cases := map[string]struct {
+		login map[string]any
+		want  any
+	}{
+		"nasabah dengan dua rekening":  {map[string]any{"username": "budi_santoso", "password": users.DefaultPassword}, []any{"W137", "C1626"}},
+		"nasabah dengan satu rekening": {map[string]any{"email": "sari@olt.test", "password": users.DefaultPassword}, []any{"S2001"}},
+		"login tanpa rekening":         {map[string]any{"username": "olt_official", "password": users.DefaultPassword}, []any{}},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			status, body := postJSON(t, srv, "/api/login", tc.login)
+			if status != http.StatusOK {
+				t.Fatalf("status = %d, body = %v", status, body)
+			}
+			if got := socialClaims(t, body["social_token"].(string))["accounts"]; !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("accounts = %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+
+	status, body := postJSON(t, srv, "/api/social-token", map[string]any{"token": "mock:2001:uji_baru"})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d", status)
+	}
+	if _, present := socialClaims(t, body["token"].(string))["accounts"]; present {
+		t.Fatal("user di luar direktori dummy tidak membawa klaim accounts (seperti OLT lama)")
+	}
+}
+
+func TestDevTokenCanOverrideAccounts(t *testing.T) {
+	srv, _ := newTestServer(t, Config{})
+	status, body := postJSON(t, srv, "/api/dev/token", map[string]any{"user": "budi_santoso", "kind": "social", "accounts": []string{"X9"}})
+	if status != http.StatusOK || !reflect.DeepEqual(socialClaims(t, body["token"].(string))["accounts"], []any{"X9"}) {
+		t.Fatalf("status = %d, body = %v", status, body)
+	}
+	status, body = postJSON(t, srv, "/api/dev/token", map[string]any{"user": "budi_santoso", "kind": "social", "accounts": nil})
+	if _, present := socialClaims(t, body["token"].(string))["accounts"]; status != http.StatusOK || present {
+		t.Fatalf("accounts null harus menghilangkan klaim: status = %d", status)
+	}
+	if status, _ := postJSON(t, srv, "/api/dev/token", map[string]any{"user": "budi_santoso", "kind": "social", "accounts": "W137"}); status != http.StatusBadRequest {
+		t.Fatalf("accounts bukan array harus ditolak, status = %d", status)
+	}
+	status, body = postJSON(t, srv, "/api/dev/token", map[string]any{"user": "budi_santoso", "kind": "social"})
+	if status != http.StatusOK || !reflect.DeepEqual(socialClaims(t, body["token"].(string))["accounts"], []any{"W137", "C1626"}) {
+		t.Fatalf("tanpa accounts harus memakai rekening direktori: status = %d", status)
+	}
+}
+
+func TestUsersListShowsAccounts(t *testing.T) {
+	srv, _ := newTestServer(t, Config{})
+	resp, err := http.Get(srv.URL + "/api/users")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Users []struct {
+			Username string   `json:"username"`
+			Accounts []string `json:"accounts"`
+		} `json:"users"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	for _, u := range out.Users {
+		if u.Accounts == nil {
+			t.Fatalf("%s: accounts harus array (boleh kosong)", u.Username)
+		}
+		if u.Username == "budi_santoso" && !reflect.DeepEqual(u.Accounts, []string{"W137", "C1626"}) {
+			t.Fatalf("budi accounts = %v", u.Accounts)
+		}
 	}
 }

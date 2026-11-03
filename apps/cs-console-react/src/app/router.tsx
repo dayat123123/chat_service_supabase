@@ -6,7 +6,13 @@ import {
   redirect,
 } from '@tanstack/react-router'
 
-import { communityTabs, type CommunityTab } from '@/features/community/types'
+import {
+  communityTabs,
+  moderationQueues,
+  type CommunityTab,
+  type ModerationQueue,
+} from '@/features/community/types'
+import { policyTabs, type PolicyTab } from '@/features/content-policy/types'
 import { caseStates, type CaseState } from '@/features/compliance/types'
 import { systemTabs, type SystemTab } from '@/features/system/types'
 import {
@@ -17,6 +23,7 @@ import {
   isSuperAdmin,
   type AgentProfile,
 } from '@/features/presence/types'
+import { withStrings } from '@/i18n'
 import { appEnv } from '@/lib/supabase'
 
 import { Home, NoAccess } from './home'
@@ -61,6 +68,16 @@ const dashboardRoute = createRoute({
   ),
 })
 
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/analytics',
+  beforeLoad: superAdminOnly,
+  component: lazyRouteComponent(
+    withStrings(() => import('@/features/analytics/components/analytics-page'), 'platform'),
+    'AnalyticsPage',
+  ),
+})
+
 const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reports',
@@ -72,7 +89,10 @@ const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/settings',
   beforeLoad: superAdminOnly,
-  component: lazyRouteComponent(() => import('@/features/settings/components/settings-page'), 'SettingsPage'),
+  component: lazyRouteComponent(
+    withStrings(() => import('@/features/settings/components/settings-page'), 'platform'),
+    'SettingsPage',
+  ),
 })
 
 const complianceRoute = createRoute({
@@ -133,6 +153,20 @@ const complianceWordsRoute = createRoute({
   ),
 })
 
+const complianceContentRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/compliance/content',
+  beforeLoad: complianceOnly,
+  validateSearch: (search: Record<string, unknown>): { tab?: PolicyTab } => {
+    const tab = text(search.tab)
+    return policyTabs.includes(tab as PolicyTab) ? { tab: tab as PolicyTab } : {}
+  },
+  component: lazyRouteComponent(
+    withStrings(() => import('@/features/content-policy/components/content-policy-page'), 'policy'),
+    'ContentPolicyPage',
+  ),
+})
+
 const complianceLegalRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/compliance/legal',
@@ -165,15 +199,23 @@ const nasabahRoute = createRoute({
 const communityRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/community',
-  validateSearch: (search: Record<string, unknown>): { tab?: CommunityTab } => {
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { tab?: CommunityTab; queue?: ModerationQueue; stock?: string } => {
     const tab = text(search.tab)
-    return communityTabs.includes(tab as CommunityTab) ? { tab: tab as CommunityTab } : {}
+    const queue = text(search.queue)
+    const stock = text(search.stock)?.trim().toUpperCase()
+    return {
+      tab: communityTabs.includes(tab as CommunityTab) ? (tab as CommunityTab) : undefined,
+      queue: moderationQueues.includes(queue as ModerationQueue) ? (queue as ModerationQueue) : undefined,
+      stock: stock && /^[A-Z][A-Z0-9]{1,11}$/.test(stock) ? stock : undefined,
+    }
   },
   beforeLoad: ({ context }) => {
     if (!hasCommunityAccess(context.agent)) throw redirect({ to: '/' })
   },
   component: lazyRouteComponent(
-    () => import('@/features/community/components/community-page'),
+    withStrings(() => import('@/features/community/components/community-page'), 'moderation'),
     'CommunityPage',
   ),
 })
@@ -191,12 +233,14 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   dashboardRoute,
   reportsRoute,
+  analyticsRoute,
   settingsRoute,
   complianceRoute,
   complianceCasesRoute,
   complianceAuditRoute,
   compliancePolicyRoute,
   complianceWordsRoute,
+  complianceContentRoute,
   complianceLegalRoute,
   systemRoute,
   nasabahRoute,

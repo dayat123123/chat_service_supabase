@@ -19,6 +19,7 @@ type Identity struct {
 	Username string
 	Name     string
 	Email    string
+	Accounts []string
 }
 
 type Signer struct {
@@ -82,6 +83,9 @@ func (s *Signer) SignFor(id Identity, ttl time.Duration, audience string) (strin
 	}
 	if id.Email != "" {
 		claims["email"] = id.Email
+	}
+	if id.Accounts != nil {
+		claims["accounts"] = id.Accounts
 	}
 	payload, err := json.Marshal(claims)
 	if err != nil {

@@ -48,12 +48,14 @@ type NavTarget =
   | '/'
   | '/dashboard'
   | '/reports'
+  | '/analytics'
   | '/settings'
   | '/compliance'
   | '/compliance/cases'
   | '/compliance/audit'
   | '/compliance/policy'
   | '/compliance/words'
+  | '/compliance/content'
   | '/compliance/legal'
   | '/nasabah'
   | '/community'
@@ -220,6 +222,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
           <>
             <NavLink to="/dashboard" label={t('nav.dashboard')} count={attention || undefined} />
             <NavLink to="/reports" label={t('nav.reports')} />
+            <NavLink to="/analytics" label={t('nav.analytics')} />
           </>
         ) : null}
         {hasNasabah(agent) ? <NavLink to="/nasabah" label={t('nav.nasabah')} /> : null}
@@ -261,6 +264,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
             <NavLink to="/compliance/audit" label={t('nav.audit')} />
             <NavLink to="/compliance/policy" label={t('nav.policy')} />
             <NavLink to="/compliance/words" label={t('nav.words')} />
+            <NavLink to="/compliance/content" label={t('nav.contentPolicy')} />
             <NavLink to="/compliance/legal" label={t('nav.legal')} />
           </>
         ) : null}

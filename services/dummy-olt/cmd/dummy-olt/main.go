@@ -154,7 +154,8 @@ func mintToken(args []string) int {
 			fmt.Fprintln(os.Stderr, err)
 			return 1
 		}
-		token, _, err := signer.Sign(social.Identity{ID: strconv.FormatInt(u.ID, 10), Username: u.Username, Name: u.FullName, Email: u.Email}, *ttl)
+		token, _, err := signer.Sign(social.Identity{ID: strconv.FormatInt(u.ID, 10), Username: u.Username, Name: u.FullName,
+			Email: u.Email, Accounts: u.Accounts}, *ttl)
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			return 1

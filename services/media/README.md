@@ -2,6 +2,8 @@
 
 Pintu upload file untuk nasabah. Foto dari HP biasanya membawa metadata EXIF (lokasi GPS, merek dan seri HP, waktu pemotretan), XMP, IPTC, komentar, thumbnail, bahkan video *motion photo* di ujung file. Layanan media memeriksa isi file dari *magic bytes*, membuang metadata itu tanpa re-encode (piksel tidak berubah sedikit pun), memeriksa PDF, lalu meneruskan file ke Supabase Storage dengan JWT baru yang membawa klaim `"media_verified": true`. Kebijakan storage di database (migrasi `0063_media_uploads.sql`) mewajibkan klaim itu untuk upload nasabah, jadi upload langsung ke `/storage/v1` dari aplikasi ditolak RLS. Staf CS tidak terkena aturan ini.
 
+Sejak 0.2.0 setiap gambar juga diperiksa classifier NSFW (`services/classifier`) sebelum disimpan: gambar yang jelas melanggar ditolak, gambar meragukan disimpan tetapi **ditahan** (hanya terlihat oleh pengunggah dan moderator) sampai ditinjau staf. Lihat bagian "Moderasi gambar".
+
 Media hanya memakai standard library Go. Kong meneruskan `/media/v1/*` ke `http://media:8080/*` (strip path, plugin `cors` + `key-auth` apikey). Media langsung menghubungi container `storage` dan `rest` di jaringan internal.
 
 ## Alur `POST /object/{bucket}/{path}`
@@ -15,6 +17,8 @@ Media hanya memakai standard library Go. Kong meneruskan `/media/v1/*` ke `http:
 7. Jenis file ditentukan dari magic bytes. Header `Content-Type` dari klien diabaikan. Jenis tidak dikenal atau tidak diizinkan di bucket itu → 415 `unsupported_type`.
 8. Sanitasi sesuai jenis (lihat di bawah). Hasilnya selalu file baru, input tidak diubah.
 9. Ekstensi segmen terakhir diganti ekstensi kanonik jenis yang terdeteksi (`jpg`, `png`, `webp`, `gif`, `pdf`). Yang dianggap ekstensi adalah teks setelah titik terakhir, kecuali titik di awal nama. Contoh: `foto.jpeg` → `foto.jpg`, `my.photo.HEIC` → `my.photo.jpg`, `avatar` → `avatar.png`, `.hidden` → `.hidden.png`.
+
+   **Moderasi (hanya gambar, bukan PDF).** Gambar hasil sanitasi dikirim ke classifier dan skornya dibandingkan dengan ambang dari database (lihat "Moderasi gambar"). Blokir → 422 `image_blocked`, tidak ada yang disimpan. Tahan → baris `private.media_reviews` dicatat lebih dulu lewat RPC `media_hold`, baru objek diunggah; bila upload ke storage gagal, catatan itu dibatalkan (`media_hold_cancel`). Izinkan → lanjut seperti biasa.
 10. Diteruskan ke `POST {STORAGE_URL}/object/{bucket}/{path-final}` dengan `Content-Type` hasil deteksi, `Cache-Control: max-age=3600`, dan `x-upsert: true` hanya bila klien mengirim `x-upsert: true` **dan** bucket `avatars`. `Authorization` berisi JWT baru: salinan semua klaim JWT nasabah + `"media_verified": true`, `iat` = sekarang, `exp` = min(`exp` asli, sekarang + 120 detik), HS256 dengan secret yang sama.
 11. Respons sukses 200:
 
@@ -22,7 +26,7 @@ Media hanya memakai standard library Go. Kong meneruskan `/media/v1/*` ke `http:
 {"bucket":"attachments","path":"posts/<uuid>/foto.jpg","mime":"image/jpeg","size":951,"width":48,"height":64}
 ```
 
-`path` adalah path final (setelah ekstensi diganti) dan `size` ukuran file yang tersimpan. Klien wajib memakai `path` dan `mime` dari respons. `width`/`height` sesuai tampilan: bila Orientation EXIF 5–8 (foto HP diputar 90°), lebar dan tinggi ditukar. Untuk PDF, `width`/`height` tidak ada.
+`path` adalah path final (setelah ekstensi diganti) dan `size` ukuran file yang tersimpan. Bila gambar ditahan untuk ditinjau, respons memuat `"held": true` (field tidak ada untuk gambar biasa); klien boleh menampilkan "sedang ditinjau" kepada pengunggah. Klien wajib memakai `path` dan `mime` dari respons. `width`/`height` sesuai tampilan: bila Orientation EXIF 5–8 (foto HP diputar 90°), lebar dan tinggi ditukar. Untuk PDF, `width`/`height` tidak ada.
 
 Port 8080 hanya melayani `POST /object/...`. Metode atau path lain → 404 `not_found`. Setiap respons membawa `X-Request-Id` (dari header klien bila aman, `[A-Za-z0-9._-]{1,64}`, atau dibuat acak).
 
@@ -92,10 +96,13 @@ Format error: `{"code":"<kode>","message":"<penjelasan singkat Bahasa Indonesia>
 | 422 | `invalid_pdf` | Header/`%%EOF` tidak ada, object stream rusak atau tidak bisa diperiksa |
 | 422 | `pdf_encrypted` | PDF terenkripsi atau berpassword |
 | 422 | `pdf_active_content` | PDF berisi JavaScript, Launch, file lampiran, RichMedia, atau XFA |
+| 422 | `image_blocked` | Classifier menilai gambar melanggar (skor ≥ ambang blokir), atau gambar perlu ditinjau tetapi tujuannya bucket publik `avatars` |
 | 429 | `too_many_uploads` | Batas upload harian dari database (HTTP/statusCode 429, atau pesan memuat `too_many`, `429`, `rate_limited`) |
 | 502 | `storage_error` | Error lain dari storage, termasuk tanda tangan JWT ditolak (salah konfigurasi `JWT_SECRET`) |
 | 502 | `storage_unavailable` | Storage tidak bisa dihubungi atau tidak menjawab sebelum `REQUEST_TIMEOUT` |
 | 503 | `busy` | Semua slot terpakai lebih dari 5 detik |
+| 503 | `classifier_unavailable` | Classifier tidak bisa dihubungi, timeout, sibuk, atau belum punya model (fail closed). Header `Retry-After: 2` |
+| 503 | `moderation_unavailable` | Ambang belum termuat dari database atau catatan penahanan gagal disimpan |
 | 500 | `internal_error` | Gagal membuat JWT (seharusnya tidak pernah terjadi) |
 
 Storage-api v1.81 menjawab hampir semua error dengan HTTP 400 dan kode aslinya di field `statusCode` (string), misalnya `{"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy","code":"AccessDenied"}`. Media memetakan dari `statusCode` lebih dulu, baru dari status HTTP.
@@ -116,14 +123,18 @@ Storage-api v1.81 menjawab hampir semua error dengan HTTP 400 dan kode aslinya d
 | `REQUEST_TIMEOUT` | `30s` | Batas baca body + kirim ke storage per request (5s–5m) |
 | `HEARTBEAT_INTERVAL` | `30s` | 5s–60s |
 | `SHUTDOWN_TIMEOUT` | `20s` | Waktu menyelesaikan upload yang sedang jalan saat SIGTERM (1s–5m) |
+| `CLASSIFIER_URL` | `http://classifier:8080` | Layanan classifier (network `app`) |
+| `CLASSIFIER_TIMEOUT` | `10s` | Batas satu panggilan classifier (1s–60s); lewat batas → 503 `classifier_unavailable` |
+| `MODERATION_REFRESH` | `30s` | Interval cek revisi ambang di database (5s–10m) |
+| `MODEL_MISSING_POLICY` | `reject` | `reject`: classifier tanpa model = 503 untuk semua gambar. `allow`: gambar disimpan tanpa pemeriksaan (dicatat `decision=unclassified`, peringatan saat start). Classifier yang mati selalu fail closed |
 
-Log berformat JSON. Setiap upload menghasilkan satu baris (`Upload stored`, `Upload rejected`, atau `Upload failed` untuk 5xx) berisi `request_id`, `bucket`, `code`, `status`, `size_in`, `size_out`, `metadata_removed` (jumlah blok yang dibuang), `took_ms`, dan `reason` teknis singkat untuk error. Token, isi JWT, `sub`, path file, dan isi file tidak pernah ditulis ke log.
+Log berformat JSON. Setiap upload menghasilkan satu baris (`Upload stored`, `Upload rejected`, atau `Upload failed` untuk 5xx) berisi `request_id`, `bucket`, `code`, `status`, `size_in`, `size_out`, `metadata_removed` (jumlah blok yang dibuang), `took_ms`, `decision` (`allow`/`hold`/`block`/`unclassified`) beserta `category` dan `score` tertinggi untuk gambar, dan `reason` teknis singkat untuk error. Token, isi JWT, `sub`, path file, dan isi file tidak pernah ditulis ke log.
 
 ## Heartbeat
 
-Media memanggil `public.service_heartbeat('media', instance, version, started_at, status, error, detail)` saat start, setiap `HEARTBEAT_INTERVAL`, dan langsung saat status berubah. `detail` = `{"accepted":n,"rejected":n,"metadata_removed":n}` sejak start: upload yang tersimpan, upload yang ditolak (semua kode error), dan upload tersimpan yang metadatanya dibuang.
+Media memanggil `public.service_heartbeat('media', instance, version, started_at, status, error, detail)` saat start, setiap `HEARTBEAT_INTERVAL`, dan langsung saat status berubah. `detail` = `{"accepted","rejected","metadata_removed","allowed","held","blocked","unclassified","classifier_failures","thresholds_revision"}` sejak start: upload yang tersimpan, upload yang ditolak (semua kode error), upload tersimpan yang metadatanya dibuang, keputusan moderasi per jenis, kegagalan classifier berturut-turut, dan revisi ambang yang dipakai (null bila belum termuat).
 
-Sebelum tiap heartbeat terjadwal, media mengecek `GET {STORAGE_URL}/status`. Kegagalan menghubungi storage (cek ini maupun upload yang gagal tersambung atau timeout) dihitung berturut-turut. Cek `/status` yang tidak menjawab 200 juga dihitung gagal. Mulai 3 kali, status menjadi `degraded` dengan error "Storage tidak bisa dihubungi (n kali berturut-turut)". Upload yang dijawab storage (apa pun statusnya) atau cek `/status` yang menjawab 200 mengembalikan status ke `ok`. Status ini tidak memengaruhi `/readyz`.
+Sebelum tiap heartbeat terjadwal, media mengecek `GET {STORAGE_URL}/status`. Kegagalan menghubungi storage (cek ini maupun upload yang gagal tersambung atau timeout) dihitung berturut-turut. Cek `/status` yang tidak menjawab 200 juga dihitung gagal. Mulai 3 kali, status menjadi `degraded` dengan error "Storage tidak bisa dihubungi (n kali berturut-turut)". Upload yang dijawab storage (apa pun statusnya) atau cek `/status` yang menjawab 200 mengembalikan status ke `ok`. Status ini tidak memengaruhi `/readyz`. Status juga `degraded` bila classifier gagal dipakai 3 kali berturut-turut (upload maupun probe `GET /status` tiap heartbeat; pesan menyebut "Model classifier belum tersedia" bila classifier jalan tanpa model) atau ambang belum termuat.
 
 Heartbeat yang gagal tidak menghentikan layanan. Kegagalan dicatat sekali saat mulai gagal dan sekali saat pulih, bukan di setiap interval.
 
@@ -141,8 +152,32 @@ Heartbeat yang gagal tidak menghentikan layanan. Kegagalan dicatat sekali saat m
 | `media_inflight_uploads` | gauge | Slot yang sedang dipakai |
 | `media_max_concurrent_uploads` | gauge | Nilai `MAX_CONCURRENT` |
 | `media_storage_consecutive_failures` | gauge | Kegagalan menghubungi storage berturut-turut |
+| `media_moderation_total{decision}` | counter | Keputusan moderasi gambar |
+| `media_classifier_duration_seconds` | summary | Waktu menunggu classifier (yang menjawab) |
+| `media_classifier_consecutive_failures` | gauge | Kegagalan classifier berturut-turut |
+| `media_thresholds_revision` | gauge | Revisi ambang yang dipakai, -1 sebelum termuat |
 | `media_last_heartbeat_timestamp_seconds` | gauge | Waktu Unix heartbeat terakhir yang berhasil (0 jika belum ada) |
 
 Saat SIGTERM, `/readyz` menjadi 503, media berhenti menerima koneksi baru, menyelesaikan upload yang sedang jalan dalam batas `SHUTDOWN_TIMEOUT`, lalu keluar dengan kode 0. Atur `stop_grace_period` container lebih panjang dari `SHUTDOWN_TIMEOUT` (misalnya 30s).
+
+
+
+## Moderasi gambar
+
+Diperkenalkan di 0.2.0 bersama migrasi `0079_media_moderation.sql` dan layanan `services/classifier`.
+
+**Ambang.** Tabel `private.media_moderation` (satu baris, `revision` naik setiap perubahan). Bentuknya `{"<kategori>": {"hold": 0–1, "block": 0–1}}`, kategori dari `private.media_categories()` (`drawings`, `hentai`, `neutral`, `porn`, `sexy`), `hold` ≤ `block`, dan `porn` wajib punya minimal satu ambang. Bawaan: porn tahan 0.50 / blokir 0.90, hentai tahan 0.60 / blokir 0.95, sexy tahan 0.85 (alasan di `services/classifier/MODEL.md`). Media membaca lewat RPC `service_role` `public.media_moderation_config(p_revision)` saat start dan setiap `MODERATION_REFRESH`; bila revisi sama, database hanya menjawab `{"revision":n,"unchanged":true}`. Bila database tidak bisa dihubungi, ambang terakhir tetap dipakai. Sebelum ambang pertama termuat, semua gambar ditolak 503 `moderation_unavailable`. Kepatuhan mengubahnya dari web lewat `cs_api.compliance_image_thresholds()` / `cs_api.compliance_set_image_thresholds(p_thresholds, p_note)` (peran `compliance`, audit `media.thresholds_set` berisi nilai lama dan baru).
+
+**Keputusan.** Untuk setiap kategori yang punya ambang: skor ≥ `block` → blokir; selain itu skor ≥ `hold` → tahan; selain itu izinkan. Bila beberapa kategori lewat ambang, yang dicatat adalah kategori dengan skor tertinggi.
+
+**Gambar ditahan.** `public.media_hold` (service_role) mencatat bucket, path, pengunggah (`sub`), model, skor, kategori, dan revisi ambang di `private.media_reviews`. RPC ini menolak path di luar folder pengunggah (403 → `upload_forbidden`) dan path yang objeknya sudah ada (409 → `already_exists`). Kebijakan SELECT storage untuk `attachments` (`olt_attachments_read`, `olt_cs_attachments_read`) ditambah `private.media_visible(bucket_id, name)`: objek berstatus `pending` hanya terlihat oleh pengunggah, objek `removed` tidak terlihat siapa pun, dan staf dengan izin `community.moderate` selalu bisa membaca. Kebijakan baru `olt_media_review_read` memberi moderator akses baca ke semua objek yang ada di antrean (termasuk di room yang bukan miliknya) tanpa signed URL. Karena tidak bisa dibaca, orang lain juga tidak bisa membuat signed URL atau melihatnya di listing folder.
+
+**Avatar.** Bucket `avatars` publik (`/storage/v1/object/public/...` tidak melewati RLS), jadi gambar yang perlu ditinjau tidak bisa disembunyikan di sana. Avatar yang skornya ≥ ambang tahan langsung ditolak 422 `image_blocked`.
+
+**Antrean staf** (izin `community.moderate`): `cs_api.community_media_reviews(p_status 'pending'|'approved'|'removed', p_cursor, p_limit)` → `{items, next_cursor, pending}`; item memuat path, skor, pengunggah, dan konten yang memakai gambar itu (`used_in`: postingan/pesan). Antrean `pending` urut dari yang terlama, lainnya dari yang terbaru. `cs_api.community_media_review_decide(p_id, 'approve'|'remove', p_note)` (alasan 5–500 karakter wajib untuk `remove`, audit `community.media_approve`/`community.media_remove`). Hapus: lampiran dilepas dari `posts.attachments` dan `messages.attachments` (room non-CS) milik pengunggah, objek langsung tidak terbaca, lalu dimasukkan ke `private.storage_cleanup_queue` (prefix = path + `/`; `private.storage_folder_objects` kini juga mencocokkan objek tunggal dengan nama itu) dan dihapus janitor. Pesan chat CS tidak diubah (pesan CS dikunci trigger), gambarnya tetap tidak terbaca lalu terhapus. Trigger `_60_media_review_object_deleted` mencatat `object_deleted_at` saat objeknya dihapus (oleh pengguna, janitor, atau hapus akun). Pembersihan harian `media-reviews-purge`: baris yang objeknya sudah terhapus > 90 hari, disetujui > 180 hari, dan catatan penahanan tanpa objek > 1 hari.
+
+**Fail closed.** Classifier tidak bisa dihubungi, timeout (`CLASSIFIER_TIMEOUT`), sibuk, atau error → 503 `classifier_unavailable` dan tidak ada yang disimpan. Classifier tanpa model → sama, kecuali `MODEL_MISSING_POLICY=allow`. Gambar yang tidak bisa di-decode classifier → 422 `invalid_image`. PDF (`cs-documents`) tidak diperiksa classifier.
+
+Batas yang diketahui: GIF animasi besar dan WebP animasi hanya dinilai dari frame pertama (lihat README classifier); pengunggah sendiri masih bisa membuat signed URL untuk gambarnya yang ditahan dan membagikannya di luar aplikasi.
 
 Tes: `go test ./...` (dengan `-race` lewat container Go, butuh cgo).

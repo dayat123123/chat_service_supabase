@@ -81,6 +81,8 @@ export const settingsSections = [
   'community',
   'push',
   'integration',
+  'apiKeys',
+  'features',
 ] as const
 export type SettingsSection = (typeof settingsSections)[number]
 

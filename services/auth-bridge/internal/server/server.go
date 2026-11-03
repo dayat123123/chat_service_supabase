@@ -51,9 +51,10 @@ type ReadyCheck struct {
 }
 
 type Metrics struct {
-	Requests  *metrics.CounterVec
-	Duration  *metrics.HistogramVec
-	Exchanges *metrics.CounterVec
+	Requests     *metrics.CounterVec
+	Duration     *metrics.HistogramVec
+	Exchanges    *metrics.CounterVec
+	AccountLinks *metrics.CounterVec
 }
 
 func NewMetrics(r *metrics.Registry) *Metrics {
@@ -64,6 +65,8 @@ func NewMetrics(r *metrics.Registry) *Metrics {
 		Exchanges: r.Counter("olt_auth_bridge_exchanges_total",
 			"Hasil exchange token (ok, cached, invalid_token, olt_unavailable, banned, rate_limited_ip, rate_limited_user, error)",
 			"result"),
+		AccountLinks: r.Counter("olt_auth_bridge_account_links_total",
+			"Penyimpanan klaim accounts dari token sosial (ok, malformed, error)", "result"),
 	}
 }
 
@@ -163,6 +166,9 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id, cached, err := s.opts.Resolver.Resolve(r.Context(), req.Token)
+	if err == nil || errors.Is(err, exchange.ErrBanned) {
+		s.recordAccounts(r, id)
+	}
 	switch {
 	case errors.Is(err, olt.ErrInvalidToken):
 		s.countExchange("invalid_token")
@@ -218,6 +224,30 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 		ExpiresAt:   exp.Unix(),
 		User:        id.Profile,
 	})
+}
+
+func (s *Server) recordAccounts(r *http.Request, id exchange.Identity) {
+	links := id.Accounts
+	if !links.Present {
+		return
+	}
+	result := "ok"
+	log := s.logger(r).With("user_id", id.Profile.ID)
+	switch {
+	case links.Malformed:
+		result = "malformed"
+		log.Warn("klaim accounts bukan array, tautan rekening tidak diubah")
+	case links.Err != nil:
+		result = "error"
+		log.Warn("gagal menyimpan tautan rekening", "error", links.Err.Error())
+	case links.Ignored > 0:
+		log.Info("sebagian klaim accounts diabaikan", "accounts", links.Linked, "accounts_ignored", links.Ignored)
+	default:
+		log.Debug("tautan rekening diperbarui", "accounts", links.Linked)
+	}
+	if m := s.opts.Metrics; m != nil && m.AccountLinks != nil {
+		m.AccountLinks.Inc(result)
+	}
 }
 
 func (s *Server) clientIP(r *http.Request) string {

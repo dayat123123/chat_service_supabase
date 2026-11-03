@@ -54,6 +54,10 @@ class SupabaseRoomConnection implements ChatRoomConnection {
           _emit(PresenceChanged(userIds));
         case RoomConnection(:final status):
           _emit(SignalsConnectionChanged(status));
+        case RoomReaction(:final messageId, :final userId, :final emoji, :final counts):
+          _emit(ReactionChanged(messageId: messageId, userId: userId, emoji: emoji, counts: counts));
+        case RoomStateSignal(:final state):
+          _emit(StockRoomStateChanged(state));
       }
     });
   }

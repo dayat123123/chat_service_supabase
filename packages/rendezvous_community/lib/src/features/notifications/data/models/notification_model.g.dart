@@ -18,6 +18,10 @@ _NotificationModel _$NotificationModelFromJson(Map<String, dynamic> json) => _No
   readAt: json['read_at'] == null ? null : DateTime.parse(json['read_at'] as String),
   createdAt: DateTime.parse(json['created_at'] as String),
   cursor: json['cursor'] as String,
+  actorCount: (json['actor_count'] as num?)?.toInt(),
+  actors:
+      (json['actors'] as List<dynamic>?)?.map((e) => e as Map<String, dynamic>).toList() ??
+      const <Map<String, dynamic>>[],
 );
 
 Map<String, dynamic> _$NotificationModelToJson(_NotificationModel instance) => <String, dynamic>{
@@ -32,4 +36,6 @@ Map<String, dynamic> _$NotificationModelToJson(_NotificationModel instance) => <
   'read_at': instance.readAt?.toIso8601String(),
   'created_at': instance.createdAt.toIso8601String(),
   'cursor': instance.cursor,
+  'actor_count': instance.actorCount,
+  'actors': instance.actors,
 };

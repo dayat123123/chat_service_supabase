@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/core/network/realtime_status.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
@@ -9,8 +10,10 @@ import 'package:rendezvous_community/src/features/chat/presentation/builders/com
 import 'package:rendezvous_community/src/features/chat/presentation/cubit/chat_room_cubit.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_composer.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/message_list.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_banners.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/room_header.dart';
 import 'package:rendezvous_community/src/features/chat/presentation/widgets/typing_text.dart';
+import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -38,6 +41,7 @@ class CommunityChatRoom extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
+    final features = repository == null ? context.communityFeatures : null;
     return withChatBuilders(
       context,
       builders,
@@ -48,6 +52,9 @@ class CommunityChatRoom extends StatelessWidget {
           me: deps.ensureSignedIn,
           roomId: roomId,
           consent: communityConsentGate(context),
+          extras: features?.chatExtras,
+          analytics: features?.analytics,
+          requests: features?.messageRequests,
         )..load(),
         child: _ChatRoomView(showHeader: showHeader, header: header, composer: composer),
       ),
@@ -88,21 +95,29 @@ class _ChatRoomView extends StatelessWidget {
             ),
             CommunityErrorView(error: state.error!, onRetry: cubit.load),
           ),
-          LoadStatus.ready => Column(
-            children: [
-              if (header != null) header! else if (showHeader) const RoomHeader(),
-              const _ReconnectBanner(),
-              const Expanded(child: MessageList()),
-              const _TypingIndicator(),
-              const Divider(height: 1),
-              composer ?? const MessageComposer(),
-            ],
+          LoadStatus.ready => _gate(
+            state,
+            Column(
+              children: [
+                if (header != null) header! else if (showHeader) const RoomHeader(),
+                const _ReconnectBanner(),
+                const StockRoomBanner(),
+                const DmRequestNotice(),
+                const Expanded(child: MessageList()),
+                const _TypingIndicator(),
+                const Divider(height: 1),
+                composer ?? const MessageComposer(),
+              ],
+            ),
           ),
         };
       },
     );
   }
 }
+
+Widget _gate(ChatRoomState state, Widget child) =>
+    state.room?.type == RoomType.support ? child : CommunitySocialGate(child: child);
 
 class _ReconnectBanner extends StatelessWidget {
   const _ReconnectBanner();

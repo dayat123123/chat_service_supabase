@@ -26,6 +26,10 @@ type Config struct {
 	RequestTimeout    time.Duration
 	HeartbeatInterval time.Duration
 	ShutdownTimeout   time.Duration
+	ClassifierURL     string
+	ClassifierTimeout time.Duration
+	ModerationRefresh time.Duration
+	AllowUnclassified bool
 }
 
 func Load() (Config, error) {
@@ -42,6 +46,16 @@ func Load() (Config, error) {
 		HeartbeatInterval: durationEnv("HEARTBEAT_INTERVAL", 30*time.Second, &errs),
 		ShutdownTimeout:   durationEnv("SHUTDOWN_TIMEOUT", 20*time.Second, &errs),
 		JWTSecret:         []byte(secretEnv("JWT_SECRET", &errs)),
+		ClassifierURL:     urlEnv("CLASSIFIER_URL", "http://classifier:8080", &errs),
+		ClassifierTimeout: durationEnv("CLASSIFIER_TIMEOUT", 10*time.Second, &errs),
+		ModerationRefresh: durationEnv("MODERATION_REFRESH", 30*time.Second, &errs),
+	}
+	switch policy := stringEnv("MODEL_MISSING_POLICY", "reject"); policy {
+	case "reject":
+	case "allow":
+		cfg.AllowUnclassified = true
+	default:
+		errs = append(errs, errors.New("MODEL_MISSING_POLICY must be reject or allow"))
 	}
 	if err := cfg.LogLevel.UnmarshalText([]byte(stringEnv("LOG_LEVEL", "info"))); err != nil {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
@@ -59,6 +73,8 @@ func Load() (Config, error) {
 		{within(cfg.RequestTimeout, 5*time.Second, 5*time.Minute), "REQUEST_TIMEOUT must be between 5s and 5m"},
 		{within(cfg.HeartbeatInterval, 5*time.Second, time.Minute), "HEARTBEAT_INTERVAL must be between 5s and 60s"},
 		{within(cfg.ShutdownTimeout, time.Second, 5*time.Minute), "SHUTDOWN_TIMEOUT must be between 1s and 5m"},
+		{within(cfg.ClassifierTimeout, time.Second, time.Minute), "CLASSIFIER_TIMEOUT must be between 1s and 60s"},
+		{within(cfg.ModerationRefresh, 5*time.Second, 10*time.Minute), "MODERATION_REFRESH must be between 5s and 10m"},
 	}
 	for _, rule := range rules {
 		if !rule.ok {

@@ -13,6 +13,7 @@ import (
 var keys = []string{
 	"PORT", "OPS_PORT", "LOG_LEVEL", "JWT_SECRET", "JWT_SECRET_FILE", "JWT_ISSUER", "POSTGREST_URL", "STORAGE_URL",
 	"INSTANCE_ID", "MAX_CONCURRENT", "REQUEST_TIMEOUT", "HEARTBEAT_INTERVAL", "SHUTDOWN_TIMEOUT",
+	"CLASSIFIER_URL", "CLASSIFIER_TIMEOUT", "MODERATION_REFRESH", "MODEL_MISSING_POLICY",
 }
 
 func clearEnv(t *testing.T) {
@@ -92,6 +93,10 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		"shutdown":            {map[string]string{"SHUTDOWN_TIMEOUT": "abc"}, "SHUTDOWN_TIMEOUT must be a duration"},
 		"log level":           {map[string]string{"LOG_LEVEL": "loud"}, "LOG_LEVEL"},
 		"instance":            {map[string]string{"INSTANCE_ID": strings.Repeat("i", 101)}, "INSTANCE_ID must be at most 100 characters"},
+		"classifier url":      {map[string]string{"CLASSIFIER_URL": "classifier:8080"}, "CLASSIFIER_URL must be an http(s) URL"},
+		"classifier timeout":  {map[string]string{"CLASSIFIER_TIMEOUT": "2m"}, "CLASSIFIER_TIMEOUT must be between 1s and 60s"},
+		"refresh":             {map[string]string{"MODERATION_REFRESH": "1s"}, "MODERATION_REFRESH must be between 5s and 10m"},
+		"missing policy":      {map[string]string{"MODEL_MISSING_POLICY": "maybe"}, "MODEL_MISSING_POLICY must be reject or allow"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -105,5 +110,30 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 				t.Fatalf("err = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestLoadModerationSettings(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("JWT_SECRET", strings.Repeat("s", 40))
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ClassifierURL != "http://classifier:8080" || cfg.ClassifierTimeout != 10*time.Second ||
+		cfg.ModerationRefresh != 30*time.Second || cfg.AllowUnclassified {
+		t.Fatalf("cfg = %+v", cfg)
+	}
+	t.Setenv("CLASSIFIER_URL", "http://nsfw.local:8081/")
+	t.Setenv("CLASSIFIER_TIMEOUT", "3s")
+	t.Setenv("MODERATION_REFRESH", "10m")
+	t.Setenv("MODEL_MISSING_POLICY", "allow")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ClassifierURL != "http://nsfw.local:8081" || cfg.ClassifierTimeout != 3*time.Second ||
+		cfg.ModerationRefresh != 10*time.Minute || !cfg.AllowUnclassified {
+		t.Fatalf("cfg = %+v", cfg)
 	}
 }

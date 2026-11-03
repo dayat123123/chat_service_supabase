@@ -37,6 +37,8 @@ await RendezvousCommunity.initialize(
 | `RendezvousCommunity.Support` | Chat CS / tiket |
 | `RendezvousCommunity.Push` | Pendaftaran token push |
 | `RendezvousCommunity.Account` | Dokumen hukum, ekspor data, hapus akun |
+| `RendezvousCommunity.Config` | Konfigurasi klien, kill switch, versi minimum |
+| `RendezvousCommunity.Analytics` | Pengiriman batch analitik |
 
 Di kode: `CommunityLoggers.chat.event(Level.SEVERE, 'Failed to send message', fields: {...})`.
 
@@ -66,6 +68,10 @@ Di kode: `CommunityLoggers.chat.event(Level.SEVERE, 'Failed to send message', fi
 | WARNING | Account | `Could not load legal documents` | `kind`, `code` |
 | INFO | Account | `Personal data exported` | `userId`, `byteCount` (isi ekspor tidak pernah dicatat) |
 | INFO | Account | `Community account deleted` | `userId` |
+| WARNING | Config | `Client config refresh failed` | `kind`, `code` |
+| INFO | Config | `Client config changed` | `socialEnabled`, `updateRequired` |
+| FINE | Analytics | `Analytics batch dropped` | `eventCount`, `kind`, `code` (isi event tidak dicatat) |
+| FINE | Analytics | `Analytics disabled by server` | — |
 
 ## Data sensitif
 

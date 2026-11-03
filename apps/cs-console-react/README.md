@@ -14,7 +14,7 @@ Rencana dan keputusan: [docs/PROMPT-CS-CONSOLE-REACT.md](../../docs/PROMPT-CS-CO
 | Super Admin (`cs_super_admin`) | Memantau tanpa menangani tiket, dashboard, laporan, dan pengaturan                                                                   |
 | Kepatuhan (`compliance`)       | Ringkasan, register kasus pengaduan dan penipuan, jejak audit, dan kebijakan (lihat [kepatuhan.md](../../docs/cs-chat/kepatuhan.md)) |
 
-Super Admin menggantikan peran supervisor dan admin CS yang lama. Super Admin bekerja dalam mode pantau: top bar menampilkan "Mode pantau" sebagai ganti status kerja dan jumlah tiket aktif. Super Admin membaca semua tiket hanya-baca (tab Semua aktif dan Terbuka), membaca dan menambah catatan internal, mengubah prioritas tiket aktif, dan lewat "Pindahkan ke…" membagikan tiket terbuka atau memindahkan tiket aktif ke CS. Super Admin tidak mengambil, membalas, melepas, mentransfer, menunggu nasabah, atau menyelesaikan tiket, dan tidak pernah menerima tiket. Pengaturan berisi akun CS (tambah, ubah, nonaktifkan, reset password), topik, quick reply, jam layanan dan libur, pesan otomatis, serta penugasan dan alert. Akun yang juga berperan CS tetap bekerja sebagai CS dan mendapat semua menu Super Admin.
+Super Admin menggantikan peran supervisor dan admin CS yang lama. Super Admin bekerja dalam mode pantau: top bar menampilkan "Mode pantau" sebagai ganti status kerja dan jumlah tiket aktif. Super Admin membaca semua tiket hanya-baca (tab Semua aktif dan Terbuka), membaca dan menambah catatan internal, mengubah prioritas tiket aktif, dan lewat "Pindahkan ke…" membagikan tiket terbuka atau memindahkan tiket aktif ke CS. Super Admin tidak mengambil, membalas, melepas, mentransfer, menunggu nasabah, atau menyelesaikan tiket, dan tidak pernah menerima tiket. Pengaturan berisi akun CS (tambah, ubah, nonaktifkan, reset password), topik, quick reply, jam layanan dan libur, pesan otomatis, penugasan dan alert, **Integrasi OLT** (API key notifEngine/bot resmi: izin, akun resmi bot, IP/CIDR, batas per menit, nonaktif sementara, cabut dengan alasan, statistik per key dan per hari, panduan curl; key hanya ditampilkan sekali dan tidak disimpan di cache), serta **Fitur & versi** (kill switch fitur sosial dengan alasan dan ketik konfirmasi, feature flag, versi minimum aplikasi per platform). Menu **Analitik** berisi DAU/WAU/MAU, stickiness, kohort retensi mingguan, konten, saham terpopuler, event aplikasi, dan ketukan order dari fitur sosial. Akun yang juga berperan CS tetap bekerja sebagai CS dan mendapat semua menu Super Admin.
 
 Kepatuhan tidak menangani tiket dan tidak punya status kerja; login dan keluar tidak mengubah status. Akun yang hanya berperan Kepatuhan langsung masuk ke Ringkasan. Menu:
 
@@ -23,8 +23,11 @@ Kepatuhan tidak menangani tiket dan tidak punya status kerja; login dan keluar t
 - **Jejak Audit**: audit log append-only dengan filter periode, aksi, dan pencarian, halaman bertahap, ekspor CSV (maksimal 5.000 baris).
 - **Kebijakan**: konfirmasi atau ubah tenggat pengaduan, perpanjangan tenggat, dan retensi chat, beserta riwayat perubahan.
 - **Kata terlarang**: daftar kata atau frasa yang disensor atau diblokir di post, komentar, polling, dan chat aplikasi nasabah. Cari, saring per aksi, tambah, ubah aksi, hapus, unduh Excel, dan import Excel (`.xlsx` atau `.csv`, kolom A kata, kolom B sensor/blokir, maksimal 1.000 baris) dengan pratinjau baris baru, aksi berubah, duplikat, dan tidak valid. Template berisi sheet petunjuk. Maksimal 2.000 kata; semua perubahan tercatat di Jejak Audit.
+- **Kebijakan konten**: aksi dan cakupan per kategori, masa akun baru, domain diblokir (domain/kata kunci) dan domain tepercaya, frasa promosi dan istilah pengecualian, ambang moderasi gambar (tahan ≤ blokir), pengaturan anti-manipulasi saham, dan uji teks terhadap aturan yang berlaku (lihat [docs/content-safety.md](../../docs/content-safety.md)).
 
 Menu **Akun Nasabah** (data nasabah online dari csAdmin lewat `nasabah-gateway`, letaknya sebelum Pengaturan) khusus akun berperan CS: Super Admin memberi izin per akun CS di Pengaturan → Akun CS. Ringkasan di atas tab menampilkan jumlah Online ID dan pengajuan yang menunggu. Tab yang tampil mengikuti izin: Online ID (cari, lihat, rekening tertaut, ajukan buat/ubah/hapus, reset password/PIN, ubah status cepat dengan alasan, penanda data belum lengkap), Approval (setujui/tolak pengajuan CS lain; pengajuan sendiri hanya dengan izin approve sendiri), dan Pembukaan rekening (kirim email satu per satu atau beberapa sekaligus). Lihat [docs/nasabah/README.md](../../docs/nasabah/README.md).
+
+Menu **Komunitas** mengikuti izin komunitas per staf. Moderasi berisi antrean Laporan, Konten ditahan, Gambar ditahan (gambar buram sampai dibuka, loloskan atau hapus dengan alasan), Indikasi manipulasi (bukti, tinjau atau tolak dengan catatan), dan Banding (peninjau harus berbeda dari pemberi keputusan awal). Panel pengguna menampilkan riwayat edit konten dan aksi toleransi nol (CSAM) dengan dua tahap konfirmasi. Tab Room saham mengatur slow mode dan pesan yang disematkan.
 
 ## Login dan password
 
@@ -97,7 +100,7 @@ src/
                 (masing-masing api.ts, hooks.ts, types.ts, components/)
   lib/          supabase, realtime (manajer channel), tabs (BroadcastChannel), time (WIB), preferences, errors
   components/   ui/ (shadcn/Radix), badges, states (empty/error/skeleton/error boundary)
-  i18n/         id (default) dan en
+  i18n/         id (default) dan en; teks fitur besar (platform, policy, moderation) dimuat lazy bersama rutenya
 ```
 
 ## Keamanan

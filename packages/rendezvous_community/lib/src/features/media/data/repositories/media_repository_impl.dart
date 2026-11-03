@@ -30,7 +30,7 @@ class MediaRepositoryImpl implements MediaRepository {
   }
 
   Attachment _image(UploadedObject object) =>
-      Attachment(path: object.path, mime: object.mime, width: object.width, height: object.height);
+      Attachment(path: object.path, mime: object.mime, width: object.width, height: object.height, held: object.held);
 
   @override
   Future<AuthorizedImage> attachmentImage(Attachment attachment) =>

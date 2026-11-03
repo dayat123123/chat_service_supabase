@@ -18,6 +18,8 @@ await RendezvousCommunity.initialize(
   tokenProvider: () => hostAuth.freshSocialToken(),  // token sosial (JWT) dari OLT yang masih berlaku
   onStockTap: (context, code) => openStockPage(context, code),
   stockSearch: (query) => stockDirectory.search(query), // saran $KODE dari daftar saham milik app
+  appVersion: '2.4.1',                                  // untuk get_client_config & analitik
+  onUpdateRequired: (config) => oltRouter.showForceUpdate(),
 );
 
 // Widget siap pakai (tanpa Scaffold, tempel di halaman OLT):
@@ -33,6 +35,14 @@ const CommunityNotificationBadge(child: Icon(Icons.notifications));
 const CommunityUserProfile(userId: '...');
 const CommunityAccountSettings();               // "Privasi & akun": dokumen hukum, unduh data, hapus akun
 const CommunityConsentBanner();                 // banner dokumen wajib yang belum disetujui (sudah ada di feed)
+const CommunitySearch();                        // pencarian (1.3.0), atau openCommunitySearch(context)
+const CommunityTrending();                      // saham, naik daun, populer, hashtag
+const CommunityStockSentiment(stockCode: 'BBCA'); // bar bullish/bearish 24 jam/7 hari di halaman saham OLT
+const CommunityBookmarks();                     // post yang disimpan
+const CommunityHashtagFeed(tag: 'dividen');
+const CommunityMessageRequests();               // permintaan pesan DM
+const CommunityAppeals();                       // "Banding saya"
+const CommunityNotificationSettings();          // preferensi notifikasi & jam tenang
 ```
 
 > **Backend wajib menjalankan layanan `media`** (mulai 1.2.0). Semua unggahan nasabah lewat `POST {supabaseUrl}/media/v1/object/{bucket}/{path}`. Backend lama tanpa route `/media/v1` membuat unggahan gambar, PDF, dan foto profil gagal ("Unggahan file sedang tidak tersedia"). Detail di [Unggahan lewat media gateway](#unggahan-lewat-media-gateway).
@@ -63,6 +73,15 @@ supportedLocales: CommunityLocalizations.supportedLocales,
 | Polling | Tombol polling di composer: 2–4 pilihan (maks 40 karakter, tidak boleh sama), durasi 1 jam–7 hari. Satu suara per user dan tidak bisa diubah; pembuat tidak ikut memilih. Hasil (persentase, pilihan Anda, pilihan teratas) tampil setelah memilih, saat polling selesai, atau bagi pembuat |
 | State | Skeleton saat memuat, tampilan kosong, error dengan tombol coba lagi, pull-to-refresh, infinite scroll, banner "N post baru" |
 | Disclaimer | *"Konten ini opini pengguna, bukan rekomendasi investasi."* di composer dan detail post |
+| Tautan & hashtag | `#hashtag` membuka `CommunityHashtagFeed` (atau `onHashtagTap`). Tautan `http(s)` dibuka di browser setelah dialog yang menampilkan domain asli; skema lain (`javascript:`, `tel:`, `www.` tanpa skema) tetap teks biasa |
+| Link preview | Kartu di bawah post, komentar, dan pesan untuk URL pertama: judul, deskripsi, situs, gambar, domain akhir setelah redirect. Satu `get_link_previews` per batch layar, `pending` diulang paling banyak dua kali |
+| Edit | Menu "Edit" di post/komentar sendiri hanya selama `edit_minutes` (15 menit, waktu server); post polling tidak bisa diedit. Label "(diedit)" |
+| Bookmark | Ikon simpan di kartu post dan menu; `CommunityBookmarks` menampilkan daftar, post yang dibatalkan langsung hilang dari daftar |
+| Reaksi pesan | Tekan lama (atau tombol saat hover) → 👍 ❤️ 😂 😮 😢 🔥; chip jumlah di bawah gelembung, sorot bila milik sendiri, realtime. Tidak ada di chat CS |
+| Bagikan post | "Kirim ke chat" di menu post → pilih room → kartu post di pesan ("Post tidak tersedia" bila dihapus/ditahan/blokir) |
+| Label | "Bot" untuk post dari API bot integrasi, "Resmi" untuk akun resmi |
+| Konten ditahan | Post/komentar/pesan sendiri berstatus `held`: "Menunggu tinjauan"; `hidden`: "Disembunyikan moderator" + "Ajukan banding". Gambar yang diunggah dengan `"held": true` juga berlabel |
+| Room saham | Banner slow mode ("1 pesan tiap 10 detik"), hitung mundur di tombol kirim, dan pesan yang disematkan (realtime `room_state`) |
 
 ## Dokumen hukum & persetujuan
 
@@ -144,8 +163,64 @@ Server membaca jenis file dari isinya, membuang metadata (EXIF/GPS dan sejenisny
 | `too_many_uploads` | Batas unggahan hari ini sudah tercapai … |
 | `busy` | Server unggahan sedang sibuk … |
 | `storage_unavailable`, `storage_error`, 404 tanpa kode (backend lama) | Unggahan file sedang tidak tersedia … |
+| `image_blocked` | Gambar ini tidak bisa diunggah karena melanggar Pedoman Komunitas. |
+| `classifier_unavailable`, `moderation_unavailable` | Pemeriksaan gambar sedang tidak tersedia … (`retryAfter` dari `Retry-After`) |
+
+Gambar yang perlu ditinjau tetap tersimpan dan respons memuat `"held": true`; paket menandainya `Attachment.held` dan menampilkan label "Menunggu tinjauan" di composer dan gelembung chat pengunggah.
 
 Kong harus mengizinkan header `x-upsert` di CORS untuk app web.
+
+## Konfigurasi klien & kill switch (1.3.0)
+
+`get_client_config` dipanggil saat `initialize`, saat login/ganti akun, saat aplikasi kembali ke foreground, dan tiap 5 menit. Sebelum login dipanggil dengan anon key (hanya flag 100%). `platform` (`CommunityPlatform`: `android`, `ios`, `web`, `windows`, `macos`, `linux`) default dari platform yang berjalan, dan ikut dikirim ke `track_events`.
+
+```dart
+final config = RendezvousCommunity.instance.clientConfig;          // ClientConfig
+RendezvousCommunity.instance.clientConfigChanges.listen((c) { ... });
+await RendezvousCommunity.instance.refreshClientConfig();
+config.feature(CommunityFlags.search);                               // social_enabled && flag
+```
+
+| Bagian | Perilaku |
+|---|---|
+| Kill switch | `social_enabled = false` atau error `social_disabled` → feed, composer, detail post, pencarian, trending, bookmark, room non-CS menampilkan `CommunityUnavailableView`; daftar chat hanya menampilkan room CS. Chat CS tetap jalan |
+| Placeholder kustom | `CommunityAvailabilityScope(builder: (context, reason, fallback) => ...)` di `MaterialApp.builder`, atau `CommunitySocialGate(unavailableBuilder: ...)` per widget. `reason`: `socialDisabled` / `featureDisabled` |
+| Versi minimum | `update_required` → `initialize(onUpdateRequired:)` dan `CommunityUpdateListener(onUpdateRequired: (context, config) => ...)` dipanggil sekali per transisi |
+| Flag yang dibaca | `search` (pencarian, hashtag), `trending` (trending, sentimen), `bookmarks`, `post_edit`, `message_reactions`, `share_post_to_chat`, `notification_prefs`, `analytics`. Sebelum konfigurasi termuat semua flag dianggap aktif; setelah termuat, flag yang tidak dikenal server dianggap mati |
+| Nilai lain | `edit_minutes`, `message_reactions`, `search_min_length`, `notification_types`, selisih jam server (`clockSkew`) untuk jendela edit |
+
+Detail lengkap fitur 1.3.0: [docs/rendezvous-community/features-1.3.md](../../docs/rendezvous-community/features-1.3.md).
+
+## Pesan langsung, banding, notifikasi (1.3.0)
+
+```dart
+await openCommunityMessageRequests(context);                    // daftar permintaan pesan
+await openCommunityAppeals(context);                            // "Banding saya"
+await showCommunityAppealDialog(context, targetType: AppealTargetType.post, targetId: postId);
+await openCommunityNotificationSettings(context);
+```
+
+- **Permintaan pesan:** DM dari orang yang tidak Anda ikuti masuk ke "Permintaan pesan" di atas daftar chat (jumlah dari `get_message_request_count`). Room permintaan memburamkan gambar sampai diterima; aksi Terima / Tolak / Blokir & laporkan. Saat DM dibuka, `get_dm_request_state` dibaca: pengirim melihat "Pesan Anda masih berupa permintaan (n/3)" lalu pemberitahuan batas, penerima bisa menekan "Terima" langsung dari room.
+- **Privasi & akun** kini juga berisi "Pesan langsung" (semua orang / hanya yang saya ikuti / tidak ada), "Notifikasi" (di aplikasi & push per jenis, jam tenang WIB; transaksi OLT hanya push; pesan CS resmi selalu dikirim), dan "Banding & sanksi".
+- **Banding saya:** sanksi aktif, "Konten yang dimoderasi" (post/komentar/pesan yang disembunyikan atau dihapus moderator dalam 90 hari, dari `get_my_moderated_content`) dengan tombol "Ajukan banding" bila belum dibanding, dan riwayat banding.
+- **Notifikasi gabungan:** "Budi dan 4 lainnya menyukai konten Anda" memakai `actor_count`, bukan `event_count`. Notifikasi `appeal` membuka "Banding saya".
+
+## Analitik (1.3.0)
+
+Paket mencatat `feed_open`, `post_create`, `comment_create`, `message_send`, `stock_tap`, `search`, dan `share_chart` lalu mengirimnya ke `track_events` per batch (maks 50, tiap 60 detik, saat 20 event terkumpul, atau saat aplikasi ke latar belakang). Batch yang gagal dibuang; bila server menjawab `disabled` atau flag `analytics` mati, pencatatan berhenti. Hanya properti whitelist (kode saham, UUID, enum, angka, boolean) yang dikirim; teks post, pesan, dan kata kunci pencarian tidak pernah dikirim.
+
+```dart
+RendezvousCommunity.instance.trackOrderTap(stockCode: 'BBCA', side: 'buy', source: 'stock'); // dari sosial ke layar order
+```
+
+## Push transaksi OLT
+
+Push dari backend OLT (`/integration/v1/notify/messages`) berisi `source: "olt"`, `kind` berawalan `olt.` (mis. `olt.trade`), `message_id`, `cust_id`, dan isi `data` dari OLT (mis. `screen`, `order_id`). `openCommunityPush` mengembalikan `false` untuk push ini supaya app OLT yang membuka layarnya sendiri:
+
+```dart
+if (isOltPush(message.data)) return oltRouter.openTradePush(message.data);
+if (isCommunityPush(message.data)) openCommunityPush(context, message.data);
+```
 
 ## Tema
 
@@ -273,7 +348,7 @@ dart run build_runner build      # setelah mengubah model/state freezed
 flutter gen-l10n                 # setelah mengubah file .arb
 flutter analyze                  # wajib: tanpa issue
 flutter test                     # unit + widget test (integration dilewati)
-OLT_SOCIAL_IT=1 flutter test test/integration   # butuh stack Docker + seed
+OLT_SOCIAL_IT=1 flutter test test/integration   # butuh stack Docker + seed + auth-bridge mode mock
 dart run tool/license_audit.dart # tolak GPL/AGPL/LGPL/MPL
 dart run tool/check_comments.dart # gagal bila ada komentar di kode Dart (kecuali // ignore & file generate)
 dart run tool/check_logging.dart  # gagal bila library memakai print/debugPrint langsung
@@ -286,7 +361,8 @@ dart run tool/check_logging.dart  # gagal bila library memakai print/debugPrint 
 | `test/features/*/domain` | Perhitungan centang (DM & grup), DeliveryTracker, aturan draf polling |
 | `test/features/*/presentation` | Cubit daftar chat (mengetik, centang, online, sinkron ulang setelah reconnect), cubit room, cubit & widget badge chat, tile room, widget polling, composer polling, thread komentar |
 | `test/features/legal`, `test/features/account` | Pemetaan `get_legal_documents`, cache per sesi, gerbang persetujuan (tertunda → setuju → ulang sekali, ditunda, chat CS), alur & pembaca dokumen, banner feed, ekspor data (isi + nama file, batas harian), hapus akun (ketik `HAPUS`, callback, sesi dibersihkan) |
-| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit, dokumen hukum, unggah lewat media gateway |
+| `test/integration` | Ke backend nyata: login, feed keyset, thread, komentar & chat realtime, presence per room, centang terkirim → dibaca, badge chat belum dibaca, polling, rate limit, dokumen hukum, unggah lewat media gateway, konfigurasi klien (anon & login), pencarian/hashtag/trending, bookmark, jendela edit, permintaan DM (akun baru → budi, batas 3, terima), kebijakan DM, slow mode (`slow_mode` + detik), link preview, analitik, reaksi realtime & bagikan post |
+| `test/features/{config,search,trending,bookmarks,chat,message_requests,appeals,link_preview}` | 1.3.0: pemetaan RPC dengan mock, cubit (debounce pencarian, bookmark/edit optimistis, reaksi, slow mode, permintaan pesan, preferensi notifikasi), widget (gate kill switch, sentimen, menu post, chip reaksi, room permintaan, dialog tautan, banding) |
 | `test/core/logging` | Logger: field terstruktur, level, sanitasi data sensitif, `initialize(logHandler:)` |
 | `test/tool` | Pemeriksa komentar dan pemeriksa `print` untuk CI |
 | `test/support` | Fake dependensi & mock data source bersama |

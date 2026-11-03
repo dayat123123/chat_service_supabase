@@ -20,7 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-media', 'test-sentinel', 'test-backup', 'check-go-comments', 'secrets-scan',
+                 'test-media', 'test-sentinel', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console')]
@@ -190,6 +190,9 @@ switch ($Target) {
   test-media     Unit test pintu upload media nasabah (Go, di container)
   test-sentinel  Unit test pemantau sistem + alert (Go, di container)
   test-backup    Unit test layanan backup (Go, di container)
+  test-integration  Unit test gateway integrasi OLT (Go, di container)
+  test-link-preview  Unit test pratinjau link (Go, di container)
+  test-classifier  Unit test classifier NSFW (Go + cgo, di container)
   check-go-comments  Pastikan kode Go tanpa komentar (selain directive)
   secrets-scan   Pindai riwayat git dengan gitleaks (.gitleaks.toml)
   backup-snapshots  Daftar snapshot backup (restic) + rentang waktu PITR
@@ -247,6 +250,9 @@ switch ($Target) {
         & $PSCommandPath test-media
         & $PSCommandPath test-sentinel
         & $PSCommandPath test-backup
+        & $PSCommandPath test-integration
+        & $PSCommandPath test-link-preview
+        & $PSCommandPath test-classifier
         & $PSCommandPath check-go-comments
     }
     'test-flutter' {
@@ -392,7 +398,7 @@ switch ($Target) {
         $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
-    { $_ -in 'test-media', 'test-sentinel', 'test-backup' } {
+    { $_ -in 'test-media', 'test-sentinel', 'test-backup', 'test-integration', 'test-link-preview' } {
         $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
@@ -427,6 +433,11 @@ switch ($Target) {
                          '-c', 'SELECT pg_reload_conf()')
         Invoke-Compose @('exec', '-T', '-u', 'postgres', 'db', 'rm', '-rf', '/var/lib/postgresql/data/restore_wal')
         Write-Host "Database dipulihkan ke $At. Periksa data, lalu: .\make.ps1 up"
+    }
+    'test-classifier' {
+        $src = Join-Path $PSScriptRoot 'services/classifier'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'sh', '-c',
+                        'apk add --no-cache gcc musl-dev >/dev/null && CGO_ENABLED=1 go test ./...')
     }
     'check-go-comments' {
         Invoke-Docker @('run', '--rm', '-v', "${PSScriptRoot}:/repo", '-w', '/repo/scripts/check-go-comments', $GoImage,

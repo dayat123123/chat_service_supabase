@@ -20,7 +20,13 @@ export type Database = {
         Returns: Json
       }
       admin_agents: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_analytics: {
+        Args: { p_from?: string; p_to?: string }
+        Returns: Json
+      }
+      admin_delete_feature_flag: { Args: { p_key: string }; Returns: Json }
       admin_delete_holiday: { Args: { p_day: string }; Returns: Json }
+      admin_feature_flags: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_holidays: { Args: { p_year: number }; Returns: Json }
       admin_options: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_quick_replies: { Args: Record<PropertyKey, never>; Returns: Json }
@@ -55,6 +61,26 @@ export type Database = {
       }
       admin_set_community_permissions: {
         Args: { p_agent_id: string; p_permissions: string[] }
+        Returns: Json
+      }
+      admin_set_feature_flag: {
+        Args: {
+          p_description?: string
+          p_enabled: boolean
+          p_key: string
+          p_min_app_version?: string
+          p_percentage?: number
+          p_platforms?: string[]
+          p_user_ids?: string[]
+        }
+        Returns: Json
+      }
+      admin_set_kill_switch: {
+        Args: { p_enabled: boolean; p_reason: string }
+        Returns: Json
+      }
+      admin_set_min_version: {
+        Args: { p_min_version: string; p_platform: string }
         Returns: Json
       }
       admin_set_nasabah_permissions: {
@@ -152,6 +178,14 @@ export type Database = {
       claim_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       close_ticket: { Args: { p_ticket_id: string }; Returns: Json }
       community_accounts: { Args: Record<PropertyKey, never>; Returns: Json }
+      community_appeal_decide: {
+        Args: { p_accept: boolean; p_id: string; p_note: string }
+        Returns: Json
+      }
+      community_appeals: {
+        Args: { p_limit?: number; p_status?: string }
+        Returns: Json
+      }
       community_audience_size: {
         Args: { p_audience: string; p_stock?: string }
         Returns: number
@@ -166,12 +200,42 @@ export type Database = {
         Args: { p_id: string; p_version?: number }
         Returns: Json
       }
+      community_content: {
+        Args: { p_id: string; p_type: string }
+        Returns: Json
+      }
+      community_content_meta: { Args: { p_targets: Json }; Returns: Json }
       community_delete_post: {
         Args: { p_id: string; p_reason: string }
         Returns: Json
       }
+      community_edit_history: {
+        Args: { p_target_id: string; p_target_type: string }
+        Returns: Json
+      }
       community_find_users: { Args: { p_query: string }; Returns: Json }
+      community_held_content: { Args: { p_limit?: number }; Returns: Json }
+      community_manipulation_alerts: {
+        Args: { p_limit?: number; p_status?: string; p_stock?: string }
+        Returns: Json
+      }
+      community_manipulation_review: {
+        Args: { p_id: string; p_note: string; p_status: string }
+        Returns: Json
+      }
+      community_media_review_decide: {
+        Args: { p_decision: string; p_id: number; p_note?: string }
+        Returns: Json
+      }
+      community_media_reviews: {
+        Args: { p_cursor?: number; p_limit?: number; p_status?: string }
+        Returns: Json
+      }
       community_overview: { Args: Record<PropertyKey, never>; Returns: Json }
+      community_pin_message: {
+        Args: { p_message: string; p_room: string }
+        Returns: Json
+      }
       community_pin_post: {
         Args: {
           p_id: string
@@ -221,6 +285,15 @@ export type Database = {
         Args: { p_reason: string; p_user_id: string }
         Returns: Json
       }
+      community_room_messages: {
+        Args: { p_before?: string; p_code: string; p_limit?: number }
+        Returns: Json
+      }
+      community_room_settings: {
+        Args: { p_code: string; p_slow_mode_seconds: number; p_until?: string }
+        Returns: Json
+      }
+      community_room_state: { Args: { p_code: string }; Returns: Json }
       community_sanction_user: {
         Args: {
           p_duration_hours?: number
@@ -289,10 +362,16 @@ export type Database = {
         Returns: Json
       }
       community_user: { Args: { p_user_id: string }; Returns: Json }
+      community_zero_tolerance: {
+        Args: { p_reason: string; p_user_id: string }
+        Returns: Json
+      }
+      compliance_add_allowlist_term: { Args: { p_term: string }; Returns: Json }
       compliance_add_banned_word: {
         Args: { p_action: string; p_word: string }
         Returns: Json
       }
+      compliance_add_promo_phrase: { Args: { p_phrase: string }; Returns: Json }
       compliance_audit: {
         Args: {
           p_action?: string
@@ -324,20 +403,82 @@ export type Database = {
         Args: { p_key: string; p_note?: string; p_value: Json }
         Returns: Json
       }
+      compliance_content_rules: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      compliance_delete_allowed_domain: {
+        Args: { p_domain: string }
+        Returns: Json
+      }
+      compliance_delete_allowlist_term: {
+        Args: { p_term: string }
+        Returns: Json
+      }
       compliance_delete_banned_word: { Args: { p_word: string }; Returns: Json }
+      compliance_delete_blocked_domain: {
+        Args: { p_domain: string }
+        Returns: Json
+      }
+      compliance_delete_promo_phrase: {
+        Args: { p_phrase: string }
+        Returns: Json
+      }
       compliance_extend_deadline: {
         Args: { p_reason: string; p_ticket_id: string; p_version?: number }
         Returns: Json
       }
+      compliance_image_thresholds: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       compliance_import_banned_words: { Args: { p_rows: Json }; Returns: Json }
+      compliance_manipulation_settings: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       compliance_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       compliance_policies: { Args: Record<PropertyKey, never>; Returns: Json }
       compliance_review: {
         Args: { p_note: string; p_ticket_id: string; p_verdict: string }
         Returns: Json
       }
+      compliance_save_allowed_domain: {
+        Args: { p_domain: string; p_note?: string }
+        Returns: Json
+      }
+      compliance_save_blocked_domain: {
+        Args: {
+          p_action?: string
+          p_category: string
+          p_domain: string
+          p_match?: string
+          p_note?: string
+        }
+        Returns: Json
+      }
       compliance_set_banned_word_action: {
         Args: { p_action: string; p_word: string }
+        Returns: Json
+      }
+      compliance_set_content_rule: {
+        Args: { p_action: string; p_category: string; p_scope?: string }
+        Returns: Json
+      }
+      compliance_set_image_thresholds: {
+        Args: { p_note?: string; p_thresholds: Json }
+        Returns: Json
+      }
+      compliance_set_manipulation_settings: {
+        Args: { p_values: Json }
+        Returns: Json
+      }
+      compliance_set_new_account_days: {
+        Args: { p_days: number }
+        Returns: Json
+      }
+      compliance_test_content: {
+        Args: { p_surface?: string; p_text: string }
         Returns: Json
       }
       compliance_transcript_exported: {
@@ -365,6 +506,42 @@ export type Database = {
         }
       }
       health_acknowledge: { Args: { p_alert_id: number }; Returns: undefined }
+      integration_key_create: {
+        Args: {
+          p_allowed_cidrs?: string[]
+          p_name: string
+          p_official_account_id?: string
+          p_rate_limit_per_minute?: number
+          p_scopes: string[]
+        }
+        Returns: Json
+      }
+      integration_key_revoke: {
+        Args: { p_id: string; p_reason: string }
+        Returns: Json
+      }
+      integration_key_update: {
+        Args: {
+          p_allowed_cidrs?: string[]
+          p_enabled?: boolean
+          p_id: string
+          p_name: string
+          p_official_account_id?: string
+          p_rate_limit_per_minute?: number
+          p_scopes: string[]
+        }
+        Returns: Json
+      }
+      integration_keys: { Args: Record<PropertyKey, never>; Returns: Json }
+      integration_official_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      integration_stats: { Args: { p_days?: number }; Returns: Json }
+      integration_stats_daily: {
+        Args: { p_days?: number; p_key_id?: string }
+        Returns: Json
+      }
       legal_cancel_scheduled: { Args: { p_document_id: string }; Returns: Json }
       legal_document: { Args: { p_id: string }; Returns: Json }
       legal_draft: { Args: { p_id: string }; Returns: Json }

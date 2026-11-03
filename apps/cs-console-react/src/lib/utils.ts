@@ -26,6 +26,12 @@ export function uuid() {
   return crypto.randomUUID()
 }
 
+export function lengthValid(text: string, min: number, max: number, optional = false) {
+  const value = text.trim()
+  if (optional && value === '') return true
+  return value.length >= min && value.length <= max
+}
+
 export function isHttpsUrl(value: string) {
   try {
     return new URL(value).protocol === 'https:'

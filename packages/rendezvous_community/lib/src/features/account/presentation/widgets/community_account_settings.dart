@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:rendezvous_community/src/app/community_account_scope.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/core/error/community_exception.dart';
 import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/features/account/presentation/cubit/account_settings_cubit.dart';
 import 'package:rendezvous_community/src/features/account/presentation/export_saver.dart';
 import 'package:rendezvous_community/src/features/account/presentation/widgets/delete_account_dialog.dart';
+import 'package:rendezvous_community/src/features/appeals/presentation/widgets/community_appeals.dart';
+import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_banner.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_legal_document_reader.dart';
+import 'package:rendezvous_community/src/features/message_requests/presentation/widgets/community_dm_policy_settings.dart';
+import 'package:rendezvous_community/src/features/notifications/presentation/widgets/community_notification_settings.dart';
 import 'package:rendezvous_community/src/shared/presentation/l10n/l10n.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
 import 'package:rendezvous_community/src/shared/presentation/theme/community_theme.dart';
@@ -20,21 +25,25 @@ Future<void> openCommunityAccountSettings(
   CommunityExportSaver? exportSaver,
 }) {
   final account = CommunityAccountScope.of(context);
+  final features = context.getInheritedWidgetOfExactType<CommunityFeatureScope>()?.dependencies;
   final title = context.communityL10n.accountSettingsTitle;
   return Navigator.of(context).push<void>(
     MaterialPageRoute(
-      builder: (pageContext) => CommunityAccountScope(
-        dependencies: account,
-        child: Scaffold(
-          appBar: AppBar(title: Text(title)),
-          body: SafeArea(
-            top: false,
-            child: CommunityAccountSettings(
-              exportSaver: exportSaver,
-              onAccountDeleted: () {
-                Navigator.pop(pageContext);
-                onAccountDeleted?.call();
-              },
+      builder: (pageContext) => _withFeatures(
+        features,
+        CommunityAccountScope(
+          dependencies: account,
+          child: Scaffold(
+            appBar: AppBar(title: Text(title)),
+            body: SafeArea(
+              top: false,
+              child: CommunityAccountSettings(
+                exportSaver: exportSaver,
+                onAccountDeleted: () {
+                  Navigator.pop(pageContext);
+                  onAccountDeleted?.call();
+                },
+              ),
             ),
           ),
         ),
@@ -42,6 +51,9 @@ Future<void> openCommunityAccountSettings(
     ),
   );
 }
+
+Widget _withFeatures(CommunityFeatureDependencies? features, Widget child) =>
+    features == null ? child : CommunityFeatureScope(dependencies: features, child: child);
 
 class CommunityAccountSettings extends StatelessWidget {
   const CommunityAccountSettings({super.key, this.onAccountDeleted, this.exportSaver});
@@ -112,6 +124,8 @@ class _AccountSettingsView extends StatelessWidget {
       },
       builder: (context, state) {
         final cubit = context.read<AccountSettingsCubit>();
+        final features = context.communityFeatures;
+        final social = features == null || features.configService.current.socialEnabled;
         return Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: CommunityBreakpoints.contentMaxWidth),
@@ -144,6 +158,27 @@ class _AccountSettingsView extends StatelessWidget {
                       ),
                   ],
                 },
+                if (features != null && social) ...[
+                  const Divider(height: 24),
+                  _SectionHeader(l10n.accountMessagesSection),
+                  const CommunityDmPolicySettings(),
+                ],
+                if (features != null && social && context.communityFeature(CommunityFlags.notificationPrefs)) ...[
+                  const Divider(height: 24),
+                  _SectionHeader(l10n.notificationSettings),
+                  const CommunityNotificationSettings(),
+                ],
+                if (features != null) ...[
+                  const Divider(height: 24),
+                  _SectionHeader(l10n.accountAppealsSection),
+                  ListTile(
+                    leading: const Icon(Icons.gavel_outlined),
+                    title: Text(l10n.myAppeals),
+                    subtitle: Text(l10n.accountAppealsHint, style: muted),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => openCommunityAppeals(context),
+                  ),
+                ],
                 const Divider(height: 24),
                 _SectionHeader(l10n.accountDataSection),
                 ListTile(

@@ -89,10 +89,13 @@ func (f *fakeStorage) count() int {
 }
 
 type harness struct {
-	srv     *Server
-	storage *fakeStorage
-	logs    *syncBuffer
-	notify  *atomic.Int32
+	srv        *Server
+	storage    *fakeStorage
+	logs       *syncBuffer
+	notify     *atomic.Int32
+	classifier *fakeClassifier
+	policy     *fakePolicy
+	holds      *fakeHolds
 }
 
 type syncBuffer struct {
@@ -114,11 +117,15 @@ func (b *syncBuffer) String() string {
 
 func newHarness(t *testing.T, tweak func(*Options)) *harness {
 	t.Helper()
-	h := &harness{storage: newFakeStorage(t), logs: &syncBuffer{}, notify: &atomic.Int32{}}
+	h := &harness{storage: newFakeStorage(t), logs: &syncBuffer{}, notify: &atomic.Int32{},
+		classifier: &fakeClassifier{}, policy: &fakePolicy{loaded: true, t: defaultThresholds()}, holds: &fakeHolds{}}
 	opts := Options{
 		Log:            slog.New(slog.NewJSONHandler(h.logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		Secret:         secret,
 		Storage:        storage.New(h.storage.srv.URL, 4),
+		Classifier:     h.classifier,
+		Policy:         h.policy,
+		Holds:          h.holds,
 		MaxConcurrent:  4,
 		RequestTimeout: 5 * time.Second,
 		Notify:         func() { h.notify.Add(1) },

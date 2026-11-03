@@ -104,7 +104,7 @@ services:
       <<: *deploy
       replicas: 2
   auth-bridge:
-    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.3.1
+    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.5.0
     deploy:
       <<: *deploy
       replicas: 2
@@ -119,10 +119,25 @@ services:
       <<: *deploy
       replicas: 1
   media:
-    image: ${REGISTRY}/olt-social/media:0.1.0
+    image: ${REGISTRY}/olt-social/media:0.2.0
     deploy:
       <<: *deploy
       replicas: 2
+  classifier:
+    image: ${REGISTRY}/olt-social/classifier:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 2
+  integration:
+    image: ${REGISTRY}/olt-social/integration:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 2
+  link-preview:
+    image: ${REGISTRY}/olt-social/link-preview:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 1
   # Disk yang diukur adalah node tempat sentinel berjalan: ditaruh di node DB.
   sentinel:
     image: ${REGISTRY}/olt-social/sentinel:0.1.0

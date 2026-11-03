@@ -8,6 +8,7 @@ Dokumentasi library Flutter fitur komunitas (feed, komentar, chat, chat CS) untu
 | [INTEGRATION.md](../INTEGRATION.md) | Langkah memasang library di aplikasi OLT |
 | [architecture.md](architecture.md) | Struktur folder, aturan dependensi, alur auth, realtime, centang, error |
 | [logging.md](logging.md) | Logger, level, format pesan, penyamaran data sensitif |
+| [features-1.3.md](features-1.3.md) | Fitur 1.3.0: konfigurasi klien & kill switch, keamanan konten, permintaan DM, banding, room saham, pencarian, link preview, trending, edit, bookmark, reaksi, bagikan, analitik, catatan backend |
 | [migration-1.0.md](migration-1.0.md) | Pindah dari `olt_social` 0.3.0: tabel simbol, nama yang dipertahankan, data perangkat |
 | [backlog.md](backlog.md) | Tempat `TODO`/`FIXME` (kode tanpa komentar) |
 | [PROMPT-RENAME-COMMUNITY.md](../PROMPT-RENAME-COMMUNITY.md) | Spesifikasi refactor 1.0.0 |

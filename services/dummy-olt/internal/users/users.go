@@ -23,6 +23,7 @@ type User struct {
 	Email    string
 	FullName string
 	Status   Status
+	Accounts []string
 
 	SlowLogin bool
 
@@ -40,7 +41,12 @@ type Directory struct {
 
 func Default() *Directory {
 	user := func(id int64, username, email, name string) *User {
-		return &User{ID: id, Username: username, Email: email, FullName: name, Status: StatusActive, password: DefaultPassword}
+		return &User{ID: id, Username: username, Email: email, FullName: name, Status: StatusActive,
+			Accounts: []string{}, password: DefaultPassword}
+	}
+	customer := func(u *User, accounts ...string) *User {
+		u.Accounts = accounts
+		return u
 	}
 	suspended := user(1009, "akun_suspend", "suspend@olt.test", "Akun Ditangguhkan")
 	suspended.Status = StatusSuspended
@@ -48,8 +54,8 @@ func Default() *Directory {
 	slow.SlowLogin = true
 
 	return &Directory{users: []*User{
-		user(1001, "budi_santoso", "budi@olt.test", "Budi Santoso"),
-		user(1002, "sari_invest", "sari@olt.test", "Sari Wulandari"),
+		customer(user(1001, "budi_santoso", "budi@olt.test", "Budi Santoso"), "W137", "C1626"),
+		customer(user(1002, "sari_invest", "sari@olt.test", "Sari Wulandari"), "S2001"),
 		user(1003, "andi_trader", "andi@olt.test", "Andi Pratama"),
 		user(1004, "rina_saham", "rina@olt.test", "Rina Kartika"),
 		user(1005, "dewi_cuan", "dewi@olt.test", "Dewi Lestari"),
@@ -92,7 +98,9 @@ func (d *Directory) Authenticate(identifier, password string) (*User, error) {
 func (d *Directory) All() []User {
 	out := make([]User, 0, len(d.users))
 	for _, u := range d.users {
-		out = append(out, *u)
+		c := *u
+		c.Accounts = append([]string{}, u.Accounts...)
+		out = append(out, c)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	return out

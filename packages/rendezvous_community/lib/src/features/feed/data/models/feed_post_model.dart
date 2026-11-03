@@ -2,6 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:rendezvous_community/src/features/feed/domain/entities/post.dart';
 import 'package:rendezvous_community/src/features/poll/data/models/poll_model.dart';
 import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'feed_post_model.freezed.dart';
@@ -20,7 +21,7 @@ abstract class FeedPostModel with _$FeedPostModel {
     @Default(false) bool authorIsVerified,
     required String body,
     String? sentiment,
-    @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
+    @JsonKey(fromJson: attachmentsFromJson) @Default(<AttachmentModel>[]) List<AttachmentModel> attachments,
     @Default(0) int likeCount,
     @Default(0) int commentCount,
     @Default(<String>[]) List<String> stockCodes,
@@ -28,7 +29,12 @@ abstract class FeedPostModel with _$FeedPostModel {
     PollModel? poll,
     DateTime? editedAt,
     required DateTime createdAt,
-    required String cursor,
+    @Default('') String cursor,
+    bool? isBookmarked,
+    List<String>? hashtags,
+    bool? isBot,
+    bool? authorIsOfficial,
+    String? moderationStatus,
   }) = _FeedPostModel;
 
   const FeedPostModel._();
@@ -55,6 +61,11 @@ abstract class FeedPostModel with _$FeedPostModel {
     editedAt: editedAt,
     createdAt: createdAt,
     cursor: cursor,
+    isBookmarked: isBookmarked ?? false,
+    hashtags: hashtags ?? const [],
+    isBot: isBot ?? false,
+    authorIsOfficial: authorIsOfficial ?? false,
+    moderationStatus: parseModerationStatus(moderationStatus),
   );
 }
 

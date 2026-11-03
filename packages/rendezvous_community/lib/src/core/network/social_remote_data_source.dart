@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -7,6 +8,8 @@ import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/network/authorized_image.dart';
 import 'package:rendezvous_community/src/core/network/media_gateway.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+typedef CommunityErrorListener = void Function(CommunityException error);
 
 abstract interface class SocialRemoteDataSource {
   String? get currentUserId;
@@ -18,6 +21,8 @@ abstract interface class SocialRemoteDataSource {
   Future<List<Map<String, dynamic>>> rpcRows(String fn, [Map<String, Object?> params = const {}]);
 
   Future<Object?> rpcValue(String fn, [Map<String, Object?> params = const {}]);
+
+  Future<Object?> anonymousRpcValue(String fn, [Map<String, Object?> params = const {}]);
 
   Future<void> insert(String table, Map<String, Object?> values);
 
@@ -56,6 +61,8 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
     http.Client? httpClient,
   }) : _supabaseUrl = supabaseUrl.replaceAll(RegExp(r'/+$'), ''),
        _media = MediaGatewayClient(baseUrl: supabaseUrl, anonKey: _anonKey, tokens: _tokens, httpClient: httpClient),
+       _errors = _ErrorListeners(),
+       _httpClient = httpClient,
        _schema = null;
 
   SupabaseSocialDataSource._forSchema(SupabaseSocialDataSource base, String this._schema)
@@ -63,14 +70,20 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
       _tokens = base._tokens,
       _supabaseUrl = base._supabaseUrl,
       _anonKey = base._anonKey,
-      _media = base._media;
+      _media = base._media,
+      _errors = base._errors,
+      _httpClient = base._httpClient;
 
   final SupabaseClient _client;
   final SessionTokens _tokens;
   final String _supabaseUrl;
   final String _anonKey;
   final MediaGatewayClient _media;
+  final _ErrorListeners _errors;
+  final http.Client? _httpClient;
   final String? _schema;
+
+  set errorListener(CommunityErrorListener? listener) => _errors.listener = listener;
 
   @override
   String? get currentUserId => _tokens.currentUserId;
@@ -96,6 +109,15 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
 
   Future<T> _run<T>(Future<T> Function() fn) async {
     try {
+      return await _attempt(fn);
+    } on CommunityException catch (e) {
+      _errors.listener?.call(e);
+      rethrow;
+    }
+  }
+
+  Future<T> _attempt<T>(Future<T> Function() fn) async {
+    try {
       return await fn();
     } on PostgrestException catch (e) {
       if (!jwtErrorCodes.contains(e.code)) throw mapError(e);
@@ -119,6 +141,46 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
   @override
   Future<Object?> rpcValue(String fn, [Map<String, Object?> params = const {}]) =>
       _run(() async => await _rpc<Object?>(fn, params));
+
+  @override
+  Future<Object?> anonymousRpcValue(String fn, [Map<String, Object?> params = const {}]) async {
+    final uri = Uri.parse('$_supabaseUrl/rest/v1/rpc/$fn');
+    final headers = {
+      'apikey': _anonKey,
+      'Authorization': 'Bearer $_anonKey',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (_schema != null) 'Content-Profile': _schema,
+    };
+    final shared = _httpClient;
+    final client = shared ?? http.Client();
+    try {
+      final response = await client
+          .post(uri, headers: headers, body: jsonEncode(params))
+          .timeout(const Duration(seconds: 20));
+      final text = utf8.decode(response.bodyBytes);
+      final body = text.isEmpty ? null : jsonDecode(text);
+      if (response.statusCode >= 400) {
+        final map = body is Map ? body : const <String, Object?>{};
+        throw mapError(
+          PostgrestException(
+            message: map['message']?.toString() ?? 'HTTP ${response.statusCode}',
+            code: map['code']?.toString() ?? '${response.statusCode}',
+            details: map['details']?.toString(),
+            hint: map['hint']?.toString(),
+          ),
+        );
+      }
+      return body;
+    } on CommunityException catch (e) {
+      _errors.listener?.call(e);
+      rethrow;
+    } catch (e) {
+      throw mapError(e);
+    } finally {
+      if (shared == null) client.close();
+    }
+  }
 
   @override
   Future<void> insert(String table, Map<String, Object?> values) =>
@@ -168,6 +230,10 @@ class SupabaseSocialDataSource implements SocialRemoteDataSource {
       'Authorization': 'Bearer $token',
     });
   }
+}
+
+class _ErrorListeners {
+  CommunityErrorListener? listener;
 }
 
 extension SocialRemoteDataSourceInsert on SocialRemoteDataSource {

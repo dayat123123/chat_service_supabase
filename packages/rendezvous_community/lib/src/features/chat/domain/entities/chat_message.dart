@@ -1,5 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/domain/entities/moderation_status.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
 part 'chat_message.freezed.dart';
@@ -32,6 +34,10 @@ abstract class ChatMessage with _$ChatMessage {
     SenderRole? senderRole,
     String? ticketId,
     @Default(<String, Object?>{}) Map<String, Object?> payload,
+    @Default(<MessageReaction>[]) List<MessageReaction> reactions,
+    String? sharedPostId,
+    SharedPost? sharedPost,
+    ModerationStatus? moderationStatus,
   }) = _ChatMessage;
 
   const ChatMessage._();
@@ -43,4 +49,8 @@ abstract class ChatMessage with _$ChatMessage {
   bool get isOfficial => senderRole == SenderRole.agent || senderRole == SenderRole.supervisor;
 
   String? get systemCode => payload['code'] as String?;
+
+  bool get isHeld => moderationStatus == ModerationStatus.held;
+
+  bool get isHidden => moderationStatus == ModerationStatus.hidden;
 }

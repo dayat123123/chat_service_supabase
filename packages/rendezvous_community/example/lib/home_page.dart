@@ -5,6 +5,7 @@ import 'package:rendezvous_community/rendezvous_community.dart';
 
 import 'fake_olt_auth.dart';
 import 'main.dart';
+import 'sample_chart.dart';
 import 'stock_directory.dart';
 import 'support_notifications.dart';
 
@@ -67,6 +68,71 @@ class _HomePageState extends State<HomePage> {
     },
   );
 
+  Future<void> _push(String title, Widget body) => Navigator.of(context).push<void>(
+    MaterialPageRoute(
+      builder: (_) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: SafeArea(top: false, child: body),
+      ),
+    ),
+  );
+
+  Future<void> _shareChart() async {
+    final png = await renderSampleChart(_stock);
+    if (!mounted) return;
+    await showCommunityComposer(
+      context,
+      initialStock: _stock,
+      initialImage: CommunityComposerImage(bytes: png, mimeType: 'image/png'),
+    );
+  }
+
+  Future<void> _explore() async {
+    final l10n = context.communityL10n;
+    final entries = <(IconData, String, Future<void> Function())>[
+      (Icons.search, l10n.searchTitle, () => openCommunitySearch(context)),
+      (Icons.trending_up, l10n.trendingTitle, () => _push(l10n.trendingTitle, const CommunityTrending())),
+      (Icons.bookmark_border, l10n.bookmarksTitle, () => _push(l10n.bookmarksTitle, const CommunityBookmarks())),
+      (Icons.mark_email_unread_outlined, l10n.messageRequests, () => openCommunityMessageRequests(context)),
+      (
+        Icons.notifications_active_outlined,
+        l10n.notificationSettings,
+        () => openCommunityNotificationSettings(context),
+      ),
+      (Icons.gavel_outlined, l10n.myAppeals, () => openCommunityAppeals(context)),
+      (Icons.candlestick_chart_outlined, 'Bagikan chart \$$_stock', _shareChart),
+    ];
+    final action = await showModalBottomSheet<Future<void> Function()>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            for (final (icon, label, open) in entries)
+              ListTile(leading: Icon(icon), title: Text(label), onTap: () => Navigator.pop(sheetContext, open)),
+          ],
+        ),
+      ),
+    );
+    await action?.call();
+  }
+
+  void _orderTap() {
+    RendezvousCommunity.instance.trackOrderTap(stockCode: _stock, side: 'buy', source: 'stock');
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Halaman order OLT · $_stock')));
+  }
+
+  Future<void> _updateRequired(BuildContext context, ClientConfig config) => showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(dialogContext.communityL10n.updateRequiredTitle),
+      content: Text(dialogContext.communityL10n.updateRequiredBody),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(dialogContext.communityL10n.close)),
+      ],
+    ),
+  );
+
   Future<void> _logout() async {
     widget.auth.logout();
     await RendezvousCommunity.instance.signOut();
@@ -122,15 +188,30 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
                 OutlinedButton.icon(
                   onPressed: () => _openSupport(topic: 'orders', screen: 'stock_page'),
                   icon: const Icon(Icons.support_agent, size: 18),
                   label: const Text('Bantuan order'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: _shareChart,
+                  icon: const Icon(Icons.candlestick_chart_outlined, size: 18),
+                  label: const Text('Bagikan chart'),
+                ),
+                FilledButton(onPressed: _orderTap, child: const Text('Beli')),
               ],
             ),
           ),
+          CommunityStockSentiment(key: ValueKey('sentiment-$_stock'), stockCode: _stock),
           Expanded(
             child: CommunityStockFeed(key: ValueKey(_stock), stockCode: _stock, stockName: stockNames[_stock]),
           ),
@@ -152,6 +233,7 @@ class _HomePageState extends State<HomePage> {
     ];
 
     final actions = [
+      IconButton(tooltip: 'Jelajah fitur 1.3', onPressed: _explore, icon: const Icon(Icons.explore_outlined)),
       IconButton(
         tooltip: 'Tema terang/gelap',
         onPressed: () => toggleTheme(context),
@@ -172,61 +254,67 @@ class _HomePageState extends State<HomePage> {
     ];
 
     if (wide) {
-      return Scaffold(
-        body: SafeArea(
-          child: Row(
-            children: [
-              NavigationRail(
-                selectedIndex: _supportOpen ? _supportIndex : _index,
-                onDestinationSelected: select,
-                labelType: NavigationRailLabelType.all,
-                leading: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: CommunityAvatar(user: RendezvousCommunity.instance.currentUser),
-                ),
-                trailing: Expanded(
-                  child: Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Column(mainAxisSize: MainAxisSize.min, children: actions),
+      return CommunityUpdateListener(
+        onUpdateRequired: _updateRequired,
+        child: Scaffold(
+          body: SafeArea(
+            child: Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _supportOpen ? _supportIndex : _index,
+                  onDestinationSelected: select,
+                  labelType: NavigationRailLabelType.all,
+                  leading: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: CommunityAvatar(user: RendezvousCommunity.instance.currentUser),
+                  ),
+                  trailing: Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Column(mainAxisSize: MainAxisSize.min, children: actions),
+                      ),
                     ),
                   ),
+                  destinations: [
+                    for (var i = 0; i < destinations.length; i++)
+                      NavigationRailDestination(icon: icon(i), label: Text(destinations[i].$2)),
+                  ],
                 ),
-                destinations: [
-                  for (var i = 0; i < destinations.length; i++)
-                    NavigationRailDestination(icon: icon(i), label: Text(destinations[i].$2)),
-                ],
-              ),
-              const VerticalDivider(width: 1),
-              Expanded(child: body),
-              if (_supportOpen) ...[
                 const VerticalDivider(width: 1),
-                SizedBox(
-                  width: 420,
-                  child: CommunitySupportChat(
-                    key: ValueKey(_supportPanel),
-                    topic: _supportTopic,
-                    screen: _supportScreen,
-                    onClose: () => setState(() => _supportOpen = false),
+                Expanded(child: body),
+                if (_supportOpen) ...[
+                  const VerticalDivider(width: 1),
+                  SizedBox(
+                    width: 420,
+                    child: CommunitySupportChat(
+                      key: ValueKey(_supportPanel),
+                      topic: _supportTopic,
+                      screen: _supportScreen,
+                      onClose: () => setState(() => _supportOpen = false),
+                    ),
                   ),
-                ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(destinations[_index].$2), actions: [...mobileActions, ...actions]),
-      body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: select,
-        destinations: [
-          for (var i = 0; i < _supportIndex; i++) NavigationDestination(icon: icon(i), label: destinations[i].$2),
-        ],
+    return CommunityUpdateListener(
+      onUpdateRequired: _updateRequired,
+      child: Scaffold(
+        appBar: AppBar(title: Text(destinations[_index].$2), actions: [...mobileActions, ...actions]),
+        body: body,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _index,
+          onDestinationSelected: select,
+          destinations: [
+            for (var i = 0; i < _supportIndex; i++) NavigationDestination(icon: icon(i), label: destinations[i].$2),
+          ],
+        ),
       ),
     );
   }

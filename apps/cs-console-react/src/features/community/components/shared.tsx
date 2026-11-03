@@ -1,26 +1,17 @@
-import { BadgeCheckIcon, LoaderCircleIcon } from 'lucide-react'
+import { BadgeCheckIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dot } from '@/components/badges'
-import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/primitives'
-import { Textarea } from '@/components/ui/textarea'
 import { useSignedUrl } from '@/features/conversation/hooks'
 import { appEnv } from '@/lib/supabase'
 import { cn, initials } from '@/lib/utils'
 
 import { campaignTone, postTone, staffMediaUrl } from '../logic'
 import type { AccountRef, CampaignStatus, PostAttachment, PostStatus } from '../types'
+
+export { ReasonDialog } from '@/components/reason-dialog'
 
 export function OfficialBadge({ className }: { className?: string }) {
   const { t } = useTranslation()
@@ -118,85 +109,6 @@ export function PostImages({ attachments }: { attachments: PostAttachment[] }) {
         <PostImage key={attachment.path} attachment={attachment} />
       ))}
     </div>
-  )
-}
-
-export function ReasonDialog({
-  open,
-  title,
-  description,
-  label,
-  action,
-  destructive,
-  pending,
-  onSubmit,
-  onClose,
-}: {
-  open: boolean
-  title: string
-  description?: string
-  label: string
-  action: string
-  destructive?: boolean
-  pending: boolean
-  onSubmit: (reason: string) => void
-  onClose: () => void
-}) {
-  const { t } = useTranslation()
-  const [reason, setReason] = useState('')
-  const [touched, setTouched] = useState(false)
-  const text = reason.trim()
-  const valid = text.length >= 5 && text.length <= 500
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (next || pending) return
-        setReason('')
-        setTouched(false)
-        onClose()
-      }}
-    >
-      <DialogContent className="sm:max-w-md" closeLabel={t('app.close')}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description ? <DialogDescription>{description}</DialogDescription> : null}
-        </DialogHeader>
-        <form
-          className="flex flex-col gap-3"
-          onSubmit={(event) => {
-            event.preventDefault()
-            setTouched(true)
-            if (valid) onSubmit(text)
-          }}
-        >
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="community-reason">{label}</Label>
-            <Textarea
-              id="community-reason"
-              autoFocus
-              rows={3}
-              maxLength={500}
-              value={reason}
-              aria-invalid={touched && !valid ? true : undefined}
-              onChange={(event) => setReason(event.target.value)}
-            />
-            <p className={cn('text-xs', touched && !valid ? 'text-destructive' : 'text-muted-foreground')}>
-              {t('community.reasonHint')}
-            </p>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
-              {t('app.cancel')}
-            </Button>
-            <Button type="submit" variant={destructive ? 'destructive' : 'default'} disabled={pending}>
-              {pending ? <LoaderCircleIcon className="animate-spin" /> : null}
-              {action}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }
 

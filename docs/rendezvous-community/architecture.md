@@ -6,12 +6,14 @@ Clean Architecture **per fitur**. Setiap fitur berdiri sendiri dengan tiga lapis
 
 ```
 lib/src/
-  app/        RendezvousCommunity (titik komposisi: merakit repository, DeliveryTracker),
+  app/        RendezvousCommunity (titik komposisi: merakit repository, DeliveryTracker,
+              ClientConfigService, CommunityAnalytics, siklus hidup aplikasi),
               CommunityDependencies (kontrak DI), CommunityScope + CommunityNavigator,
-              CommunitySupportScope, CommunityAccountScope (dokumen hukum & akun)
+              CommunitySupportScope, CommunityAccountScope (dokumen hukum & akun),
+              CommunityFeatureScope + CommunityFeatureDependencies (fitur 1.3.0)
   core/       infrastruktur tanpa UI: auth (TokenManager, auth-bridge), error, logging,
-              network (data source Supabase, media gateway, gateway & status realtime, SharedStream),
-              paging, parser $KODE/@mention, MIME gambar
+              network (data source Supabase + RPC anonim, media gateway, gateway & status realtime,
+              SharedStream, helper JSON), paging, parser $KODE/@mention/#hashtag/tautan, MIME gambar
   shared/     entitas bersama (UserSummary, Attachment), model JSON bersama,
               kit UI (tema, lokalisasi ARB, avatar, state view, SocialText, composer)
   features/
@@ -21,6 +23,11 @@ lib/src/
     profile/       profil user                        stocks/        halaman saham & watchlist
     moderation/    laporan & blokir                   media/         unggah & tampilkan lampiran
     legal/         dokumen hukum, persetujuan, banner account/       ekspor data, hapus akun, "Privasi & akun"
+    config/        konfigurasi klien, kill switch     search/        pencarian, feed hashtag, hashtag trending
+    trending/      trending & sentimen saham          bookmarks/     bookmark & daftar simpanan
+    edit/          edit post/komentar                 message_requests/ permintaan DM & kebijakan DM
+    appeals/       banding & sanksi                   link_preview/  kartu & loader link preview
+    analytics/     pencatat event (track_events)
       domain/        entitas immutable (freezed), kontrak repository, layanan domain
       data/          model JSON (freezed + json_serializable), implementasi repository
       presentation/  cubit/ (flutter_bloc), widgets/, dan builders/ (khusus chat: kontrak builder UI)
@@ -29,7 +36,7 @@ lib/src/
 Aturan dependensi:
 - `core` tidak bergantung pada apa pun di package.
 - `shared` hanya bergantung pada `core` (kecuali widget yang butuh navigasi lewat `CommunityScope`).
-- Fitur boleh memakai **domain** fitur lain (mis. `compose` memakai `poll/domain`), tidak pernah lapisan `data`-nya.
+- Fitur boleh memakai **domain** fitur lain (mis. `compose` memakai `poll/domain`), tidak pernah lapisan `data`-nya. Pengecualian: model baris kontrak server yang dipakai bersama (`FeedPostModel` untuk `feed_post`, `ThreadCommentModel` untuk `thread_comment`, `ChatMessageModel` untuk `chat_message`, `HashtagSummaryModel`) boleh dipakai lapisan data fitur lain yang RPC-nya mengembalikan baris yang sama (search, bookmarks, edit, trending, chat extras), seperti `support` memakai model chat.
 - `app` adalah satu-satunya tempat yang mengenal semua implementasi.
 - Cubit selalu di file sendiri (`presentation/cubit/`), terpisah dari widget.
 - Widget chat bawaan dan builder kustom memakai `details` yang sama. Logika (handler) dibuat sekali di widget pengendali, lalu tampilan bawaan (`_Default*`) maupun builder host hanya menggambarnya.
@@ -62,5 +69,9 @@ Aturan dependensi:
   - Widget mencari dependensi lewat `CommunityAccountScope.maybeOf` (fallback `RendezvousCommunity.instance`). Tanpa keduanya (mis. tes dengan `CommunityScope` palsu) banner tidak tampil dan gerbang nonaktif, jadi `CommunityDependencies` tidak perlu berubah.
 - **Hapus akun:** `deleteMyAccount()` memanggil `delete_my_account` (server mengarsipkan konten, menghapus relasi, mencabut sesi, dan menghapus perangkat push), lalu `PushRegistrar.release()` (tanpa RPC, supaya token dipasang lagi di sesi berikutnya) dan mengakhiri sesi lokal seperti `signOut()` tanpa `unregister_push_device`. Tidak ada exchange ulang otomatis; profil kosong baru dibuat saat panggilan API komunitas berikutnya.
 - **Ekspor data:** `exportMyData()` mengubah hasil `export_my_data` menjadi JSON berindentasi UTF-8. Penyimpanan file ada di presentasi (`saveCommunityDataExport`: `file_selector` di desktop, `share_plus` di Android/iOS/web) dan bisa diganti host lewat `exportSaver`. Isi ekspor tidak pernah ditulis ke log.
-- **Idempotensi:** composer memakai `client_id` per draf, jadi kirim ulang setelah koneksi putus tidak membuat post ganda.
+- **Idempotensi:** composer memakai `client_id` per draf, jadi kirim ulang setelah koneksi putus tidak membuat post ganda. Bagikan post ke chat memakai `client_id` per room.
+- **Fitur 1.3.0:** repository baru tidak ditambahkan ke `CommunityDependencies` supaya implementasi host/tes lama tetap valid. Widget mencarinya lewat `CommunityFeatureScope.maybeOf` (fallback `RendezvousCommunity.instance`); bila tidak ada, fitur disembunyikan. Cubit menerima repository baru sebagai parameter opsional (`FeedCubit(bookmarks:, edits:, loader:)`, `CommentThreadCubit(bookmarks:, edits:)`, `ChatRoomCubit(extras:, analytics:)`). Detail perilaku: [features-1.3.md](features-1.3.md).
+- **Konfigurasi klien:** `ClientConfigService` (domain) memegang `ValueNotifier<ClientConfig>` + stream perubahan; `RendezvousCommunity.initialize` memulai timer 5 menit, `AppLifecycleListener` (resume → refresh, hide/pause → flush analitik), dan refresh saat ganti user. `create()` tidak memulai apa pun di latar belakang (tes deterministik). Data source memanggil `errorListener` untuk setiap `CommunityException`; `social_disabled` mematikan UI sosial seketika.
+- **Realtime room:** `RoomChannelHub` kini juga mendengar broadcast `reaction` dan `room_state` di `room:<id>` dan meneruskannya sebagai `RoomReaction`/`RoomStateSignal` → `ReactionChanged`/`StockRoomStateChanged`.
+- **Generalisasi feed:** `FeedCubit` bisa memakai sumber halaman kustom (`PostPageLoader`) untuk feed hashtag dan bookmark; sumber kustom tidak memuat post tersemat dan tidak menghitung "N post baru". `FeedPostList`/`FeedPostCard` dipakai ulang oleh semua daftar post.
 - **Test:** widget bisa diuji tanpa backend dengan membungkusnya di `CommunityScope(dependencies: fake)`.

@@ -19,6 +19,8 @@ abstract class NotificationModel with _$NotificationModel {
     DateTime? readAt,
     required DateTime createdAt,
     required String cursor,
+    int? actorCount,
+    @Default(<Map<String, dynamic>>[]) List<Map<String, dynamic>> actors,
   }) = _NotificationModel;
 
   const NotificationModel._();
@@ -44,6 +46,17 @@ abstract class NotificationModel with _$NotificationModel {
       readAt: readAt,
       createdAt: createdAt,
       cursor: cursor,
+      actorCount: actorCount ?? (actorId == null ? 0 : 1),
+      actors: [
+        for (final a in actors)
+          if (a['id'] is String)
+            UserSummary(
+              id: a['id'] as String,
+              username: a['username'] as String? ?? '',
+              displayName: a['display_name'] as String?,
+              avatarUrl: a['avatar_url'] as String?,
+            ),
+      ],
     );
   }
 }

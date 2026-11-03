@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -25,6 +27,24 @@ class _MessageComposerState extends State<MessageComposer> {
 
   final _controller = TextEditingController();
   final _focus = FocusNode();
+  Timer? _ticker;
+
+  void _syncTicker(Duration cooldown) {
+    if (cooldown > Duration.zero) {
+      _ticker ??= Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        final left = context.read<ChatRoomCubit>().state.cooldownLeft();
+        setState(() {});
+        if (left == Duration.zero) {
+          _ticker?.cancel();
+          _ticker = null;
+        }
+      });
+    } else {
+      _ticker?.cancel();
+      _ticker = null;
+    }
+  }
 
   @override
   void initState() {
@@ -37,6 +57,7 @@ class _MessageComposerState extends State<MessageComposer> {
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _controller.dispose();
     _focus.dispose();
     super.dispose();
@@ -45,6 +66,7 @@ class _MessageComposerState extends State<MessageComposer> {
   Future<void> _send() async {
     final text = _controller.text;
     if (text.trim().isEmpty) return;
+    if (context.read<ChatRoomCubit>().state.cooldownLeft() > Duration.zero) return;
     _controller.clear();
     _focus.requestFocus();
     await context.read<ChatRoomCubit>().send(text);
@@ -82,9 +104,11 @@ class _MessageComposerState extends State<MessageComposer> {
     return BlocConsumer<ChatRoomCubit, ChatRoomState>(
       listenWhen: (a, b) => a.replyTo?.id != b.replyTo?.id && b.replyTo != null,
       listener: (_, _) => _focus.requestFocus(),
-      buildWhen: (a, b) => a.replyTo != b.replyTo || a.uploading != b.uploading,
+      buildWhen: (a, b) => a.replyTo != b.replyTo || a.uploading != b.uploading || a.cooldownUntil != b.cooldownUntil,
       builder: (context, state) {
         final replyTo = state.replyTo;
+        final cooldown = state.cooldownLeft();
+        _syncTicker(cooldown);
         final details = CommunityComposerDetails(
           controller: _controller,
           focusNode: _focus,
@@ -100,6 +124,7 @@ class _MessageComposerState extends State<MessageComposer> {
           onPickImage: state.uploading ? null : _pickImage,
           allowsDocuments: widget.allowDocuments,
           extraActions: widget.leading,
+          cooldown: cooldown,
         );
         return buildChatPart(builder, context, details, _DefaultComposer(details: details));
       },
@@ -168,7 +193,13 @@ class _DefaultComposer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(tooltip: l10n.composeSubmit, onPressed: d.onSend, icon: const Icon(Icons.send)),
+                if (d.coolingDown)
+                  Tooltip(
+                    message: l10n.errorSlowMode(d.cooldownSeconds),
+                    child: FilledButton.tonal(onPressed: null, child: Text(l10n.slowModeWait(d.cooldownSeconds))),
+                  )
+                else
+                  IconButton.filled(tooltip: l10n.composeSubmit, onPressed: d.onSend, icon: const Icon(Icons.send)),
               ],
             ),
           ],

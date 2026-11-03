@@ -162,3 +162,90 @@ export function errorText(error: unknown): string {
 export function legalErrorText(error: unknown): string {
   return toApiError(error).code === 'four_eyes' ? i18n.t('legal.errors.four_eyes') : errorText(error)
 }
+
+const platformCodes = [
+  'invalid_name',
+  'invalid_scopes',
+  'invalid_cidr',
+  'invalid_rate_limit',
+  'official_required',
+  'key_not_found',
+  'key_revoked',
+  'reason_required',
+  'use_kill_switch',
+  'invalid_flag_key',
+  'invalid_flag',
+  'invalid_percentage',
+  'invalid_platform',
+  'too_many_users',
+  'invalid_version',
+  'invalid_description',
+  'flag_not_found',
+  'invalid_kill_switch',
+  'invalid_range',
+] as const
+
+const policyCodes = [
+  'category_not_found',
+  'invalid_action',
+  'invalid_scope',
+  'invalid_match',
+  'invalid_domain',
+  'invalid_category',
+  'invalid_note',
+  'domain_limit',
+  'domain_not_found',
+  'invalid_term',
+  'term_exists',
+  'term_limit',
+  'term_not_found',
+  'invalid_setting',
+  'invalid_surface',
+  'invalid_text',
+  'invalid_image_thresholds',
+] as const
+
+const moderationCodes = [
+  'invalid_action',
+  'invalid_target',
+  'reason_required',
+  'note_required',
+  'invalid_note',
+  'invalid_decision',
+  'invalid_status',
+  'media_review_not_found',
+  'media_review_decided',
+  'appeal_not_found',
+  'appeal_decided',
+  'appeal_reviewer_conflict',
+  'alert_not_found',
+  'alert_reviewed',
+  'invalid_slow_mode',
+  'invalid_until',
+  'room_not_found',
+  'invalid_message',
+  'invalid_stock_code',
+  'user_not_found',
+  'private_message_forbidden',
+  'content_not_found',
+  'invalid_target_type',
+  'invalid_targets',
+] as const
+
+const among = <T extends string>(codes: readonly T[], code: string): code is T =>
+  (codes as readonly string[]).includes(code)
+
+export function platformErrorText(error: unknown): string {
+  const code = toApiError(error).code
+  return among(platformCodes, code) ? i18n.t(`platform.errors.${code}`) : errorText(error)
+}
+
+export function policyErrorText(error: unknown): string {
+  const code = toApiError(error).code
+  return among(policyCodes, code) ? i18n.t(`policy.errors.${code}`) : errorText(error)
+}
+
+export function moderationErrorText(error: unknown): string {
+  const code = toApiError(error).code
+  return among(moderationCodes, code) ? i18n.t(`moderation.errors.${code}`) : errorText(error)
+}

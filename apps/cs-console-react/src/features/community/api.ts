@@ -7,12 +7,26 @@ import { uuid } from '@/lib/utils'
 
 import { avatarPath } from './avatar-crop'
 import type {
+  Appeal,
+  AlertStatus,
+  AppealStatus,
   Campaign,
   CampaignDraft,
   CommunityOverview,
   CommunityPost,
   CommunityUser,
+  CommunityContent,
   CommunityUserRow,
+  ContentMeta,
+  ContentTarget,
+  ContentType,
+  EditVersion,
+  HeldContent,
+  HeldDecision,
+  HeldTarget,
+  ManipulationAlert,
+  MediaPage,
+  MediaStatus,
   OfficialAccount,
   PinScope,
   PostAttachment,
@@ -21,6 +35,9 @@ import type {
   ReportRow,
   ReportStatus,
   ReportTarget,
+  RoomMessages,
+  RoomState,
+  ZeroToleranceResult,
 } from './types'
 import { MAX_AVATAR_BYTES } from './types'
 
@@ -29,6 +46,10 @@ const extension: Record<string, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
   'image/gif': 'gif',
+}
+
+function room(raw: RoomState): RoomState {
+  return { ...raw, open_alerts: raw.open_alerts ?? [] }
 }
 
 function post(raw: CommunityPost): CommunityPost {
@@ -151,6 +172,81 @@ export const communityApi = {
     rpc<CommunityUser>('community_revoke_sanction', { p_sanction_id: id, p_reason: reason }),
   revokeSessions: (id: string, reason: string) =>
     rpc<CommunityUser>('community_revoke_sessions', { p_user_id: id, p_reason: reason }),
+
+  held: async () =>
+    (await rpc<HeldContent[]>('community_held_content', { p_limit: 200 })).map((row) => ({
+      ...row,
+      categories: row.categories ?? [],
+    })),
+  decideHeld: (type: HeldTarget, id: string, action: HeldDecision, reason: string) =>
+    rpc<unknown>('community_resolve_report', {
+      p_target_type: type,
+      p_target_id: id,
+      p_action: action,
+      p_reason: reason,
+    }),
+  editHistory: async (type: 'post' | 'comment', id: string) =>
+    (await rpc<EditVersion[] | null>('community_edit_history', { p_target_type: type, p_target_id: id })) ??
+    [],
+  media: async (status: MediaStatus, cursor: number | null): Promise<MediaPage> => {
+    const raw = await rpc<MediaPage>('community_media_reviews', {
+      p_status: status,
+      p_cursor: cursor,
+      p_limit: 20,
+    })
+    return {
+      ...raw,
+      items: (raw.items ?? []).map((item) => ({
+        ...item,
+        used_in: item.used_in ?? [],
+        stripped: item.stripped ?? [],
+        scores: item.scores ?? {},
+      })),
+    }
+  },
+  decideMedia: (id: number, decision: 'approve' | 'remove', note: string | null) =>
+    rpc<unknown>('community_media_review_decide', { p_id: id, p_decision: decision, p_note: note }),
+  mediaImage: async (bucket: string, path: string) => {
+    const { data, error } = await supabase().storage.from(bucket).download(path)
+    if (error) throw toApiError(error)
+    return data
+  },
+  alerts: (status: AlertStatus, stock: string | null) =>
+    rpc<ManipulationAlert[]>('community_manipulation_alerts', {
+      p_status: status,
+      p_stock: stock,
+      p_limit: 200,
+    }),
+  reviewAlert: (id: string, status: 'reviewed' | 'dismissed', note: string) =>
+    rpc<ManipulationAlert>('community_manipulation_review', { p_id: id, p_status: status, p_note: note }),
+  appeals: (status: AppealStatus) => rpc<Appeal[]>('community_appeals', { p_status: status, p_limit: 200 }),
+  decideAppeal: (id: string, accept: boolean, note: string) =>
+    rpc<Appeal>('community_appeal_decide', { p_id: id, p_accept: accept, p_note: note }),
+  zeroTolerance: (id: string, reason: string) =>
+    rpc<ZeroToleranceResult>('community_zero_tolerance', { p_user_id: id, p_reason: reason }),
+  roomState: async (code: string) => room(await rpc<RoomState>('community_room_state', { p_code: code })),
+  setSlowMode: async (code: string, seconds: number, until: string | null) =>
+    room(
+      await rpc<RoomState>('community_room_settings', {
+        p_code: code,
+        p_slow_mode_seconds: seconds,
+        p_until: until,
+      }),
+    ),
+  roomMessages: async (code: string, before: string | null): Promise<RoomMessages> => {
+    const raw = await rpc<RoomMessages>('community_room_messages', {
+      p_code: code,
+      p_limit: 30,
+      p_before: before,
+    })
+    return { ...raw, items: raw.items ?? [] }
+  },
+  contentMeta: async (targets: ContentTarget[]) =>
+    (await rpc<ContentMeta[] | null>('community_content_meta', { p_targets: targets })) ?? [],
+  content: (type: ContentType, id: string) =>
+    rpc<CommunityContent>('community_content', { p_type: type, p_id: id }),
+  pinMessage: async (roomId: string, messageId: string | null) =>
+    room(await rpc<RoomState>('community_pin_message', { p_room: roomId, p_message: messageId })),
 
   uploadPostImage: async (accountId: string, original: File): Promise<PostAttachment> => {
     const file = await fitImage(original, MAX_FILE_BYTES)

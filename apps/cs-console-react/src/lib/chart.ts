@@ -1,6 +1,9 @@
 export const chartColors = {
   accent: 'var(--primary)',
   neutral: 'var(--chart-neutral)',
+  warning: 'var(--warning)',
+  info: 'var(--info)',
+  success: 'var(--success)',
   grid: 'var(--border)',
   axis: 'var(--text-muted)',
   label: 'var(--text)',

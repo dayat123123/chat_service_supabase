@@ -1,5 +1,7 @@
 # auth-bridge
 
+Versi **0.5.0**: membaca klaim opsional `accounts` (rekening milik login OLT) dan menyimpannya untuk notifikasi transaksi OLT ([docs/integration](../../docs/integration/README.md)). Riwayat versi ada di [bawah](#riwayat-versi).
+
 Service Go yang menukar **token sosial OLT** (JWT yang ditandatangani OLT saat login) menjadi **JWT Supabase**, sehingga user tidak perlu login dua kali. Verifikasinya lokal dengan kunci publik OLT: auth-bridge **tidak memanggil sistem OLT** dan tidak punya akses jaringan keluar.
 
 ```
@@ -10,6 +12,8 @@ App OLT ──POST /bridge/v1/exchange {"token": "<token sosial>"}──▶ Kong
                                                                             │    (docker/secrets/olt_jwks), cek iss, aud, exp, iat;
                                                                             │    tanpa koneksi ke OLT
                                                                             │ 4. upsert profiles (RPC service_role, retry + backoff)
+                                                                            │    lalu, bila token membawa klaim accounts, ganti set
+                                                                            │    rekening profil (RPC set_olt_account_links)
                                                                             │    user yang di-ban ditolak (403)
                                                                             │ 5. rate limit per user OLT
                                                                             ▼ 6. JWT HS256 (role authenticated, 15 mnt)
@@ -75,6 +79,7 @@ Metrik:
 | `olt_auth_bridge_exchanges_total` | `result` | `ok`, `cached`, `invalid_token`, `olt_unavailable`, `banned`, `rate_limited_ip`, `rate_limited_user`, `error` |
 | `olt_auth_bridge_olt_breaker_open` | – | `1` bila circuit breaker ke OLT terbuka |
 | `olt_auth_bridge_valkey_errors_total` | `op` | Error Valkey (`ratelimit`, `cache`) |
+| `olt_auth_bridge_account_links_total` | `result` | Penyimpanan klaim `accounts`: `ok`, `malformed` (bukan array, diabaikan), `error` (RPC gagal) |
 
 ### Ketahanan
 
@@ -91,11 +96,30 @@ OLT menandatangani token sosial dengan kunci privatnya. auth-bridge memverifikas
 
 - **Algoritma:** hanya `EdDSA` (Ed25519) dan `ES256` (P-256). Algoritma di header harus cocok dengan jenis kunci dari `kid`. `none`, `HS*`, dan `RS*` ditolak.
 - **Klaim wajib:** `iss` = `OLT_JWT_ISSUER`, `aud` memuat `OLT_JWT_AUDIENCE`, `sub` (string, ID user OLT), `preferred_username`, `iat`, dan `exp`. `exp - iat` ≤ `OLT_JWT_MAX_TTL`. `nbf` dihormati bila ada. Toleransi jam `OLT_JWT_LEEWAY`.
-- **Klaim opsional:** `name` (nama tampilan) dan `email`.
+- **Klaim opsional:** `name` (nama tampilan), `email`, dan `accounts` (lihat [Klaim `accounts`](#klaim-accounts)).
 - **Kunci dev:** `kid` berawalan `dev-` (kunci OLT dummy dari `make gen-secrets`) ditolak saat `APP_ENV=production`, jadi produksi tidak bisa start dengan JWKS dev.
 - **Rotasi kunci:** tambahkan kunci baru ke JWKS lalu restart auth-bridge. JWKS dibaca sekali saat start.
 
 Untuk mencoba tanpa OLT asli, jalankan `make up DUMMY_OLT=1`. [`services/dummy-olt`](../dummy-olt/) menerbitkan token sosial dengan kunci dev, dan profil itu hanya mengganti `OLT_MODE` ke `jwt`, persis seperti produksi.
+
+### Klaim `accounts`
+
+Daftar cust id (rekening efek) yang **dimiliki** login OLT itu. Dipakai layanan [integration](../integration/README.md) untuk mengirim push notifikasi transaksi (order match) ke HP pemilik rekening. Aturan dari OLT: LoginType 1 (nasabah) berisi rekening di `TAccountLinked`; sales, cabang, dan pusat berisi `[]`. Spesifikasi untuk tim OLT: [docs/integration/README.md](../../docs/integration/README.md).
+
+```jsonc
+{ "sub": "1001", "preferred_username": "budi_santoso", "accounts": ["W137", "C1626"], ... }
+```
+
+| Isi klaim | Perilaku auth-bridge |
+|---|---|
+| Tidak ada atau `null` | Tautan rekening profil **tidak diubah** (kompatibel dengan OLT lama) |
+| Array | Tautan profil **diganti** dengan isi array lewat RPC `set_olt_account_links` (`service_role`, migrasi `0068`). `[]` melepas semua rekening |
+| Bukan array (string, objek, angka) | Diabaikan, tautan tidak diubah, token tetap diterima. Log `warn` + metrik `result="malformed"` |
+
+- Tiap item harus string `^[A-Za-z0-9._-]{1,32}$`. Item lain (angka, kosong, karakter lain, duplikat tanpa memandang huruf besar/kecil) **diabaikan**. Maksimal 50 item; sisanya diabaikan. Token tidak pernah ditolak karena klaim ini.
+- Database menyimpan cust id dalam huruf besar (`private.account_links`) dengan `seen_at`. Tautan yang tidak diperbarui selama `integration.account_link_days` (30 hari) tidak dipakai lagi dan dibersihkan.
+- Penyimpanan dijalankan **setelah** upsert profil di setiap exchange yang tidak berasal dari cache, termasuk untuk user yang di-ban (notifikasi transaksi bukan fitur sosial). Bila RPC gagal (setelah retry), exchange **tetap berhasil**, error dicatat (`gagal menyimpan tautan rekening`), dan hasil exchange tidak di-cache supaya exchange berikutnya mencoba lagi.
+- Log dan metrik hanya memuat **jumlah** rekening (`accounts`, `accounts_ignored`), tidak pernah cust id-nya.
 
 ### `mock` (development)
 
@@ -187,3 +211,10 @@ make test-bridge              # dari root repo, tes di container Go
 ```
 
 Dependensi runtime: Go stdlib (termasuk verifikasi JWT: `crypto/ed25519`, `crypto/ecdsa`), `github.com/gorilla/websocket` (BSD-2-Clause), `github.com/redis/go-redis/v9` (BSD-2-Clause) beserta `cespare/xxhash` (MIT), `go.uber.org/atomic` (MIT), dan `golang.org/x/sys` (BSD-3-Clause). Khusus tes: `github.com/alicebob/miniredis/v2` (MIT).
+
+## Riwayat versi
+
+| Versi | Perubahan |
+|---|---|
+| 0.5.0 | Klaim opsional `accounts` di token sosial disimpan ke `private.account_links` lewat RPC `set_olt_account_links` (migrasi `0068`). Metrik `olt_auth_bridge_account_links_total`. Versi ditulis di log start. Image compose: `olt-social/auth-bridge:0.5.0` |
+| 0.4.0 | Verifikasi lokal token sosial bertanda tangan OLT (mode `jwt`) |

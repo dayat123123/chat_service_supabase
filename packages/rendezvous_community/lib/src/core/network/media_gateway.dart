@@ -14,6 +14,7 @@ class UploadedObject {
     this.size,
     this.width,
     this.height,
+    this.held = false,
   });
 
   final String bucket;
@@ -22,6 +23,7 @@ class UploadedObject {
   final int? size;
   final int? width;
   final int? height;
+  final bool held;
 }
 
 class MediaGatewayClient {
@@ -82,7 +84,12 @@ class MediaGatewayClient {
   UploadedObject _parse(http.Response response, String bucket) {
     final body = _decode(response.body);
     if (response.statusCode != 200) {
-      throw mapMediaError(response.statusCode, code: body?['code'] as String?, message: body?['message'] as String?);
+      throw mapMediaError(
+        response.statusCode,
+        code: body?['code'] as String?,
+        message: body?['message'] as String?,
+        retryAfter: response.headers['retry-after'],
+      );
     }
     final path = body?['path'];
     final mime = body?['mime'];
@@ -100,6 +107,7 @@ class MediaGatewayClient {
       size: (body?['size'] as num?)?.toInt(),
       width: (body?['width'] as num?)?.toInt(),
       height: (body?['height'] as num?)?.toInt(),
+      held: body?['held'] == true,
     );
   }
 

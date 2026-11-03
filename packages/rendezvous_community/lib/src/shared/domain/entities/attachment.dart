@@ -13,6 +13,7 @@ abstract class Attachment with _$Attachment {
     int? size,
     int? width,
     int? height,
+    @Default(false) bool held,
   }) = _Attachment;
 
   const Attachment._();

@@ -4,6 +4,7 @@ select plan(12);
 select tests.create_user('ub_alice') as alice \gset
 select tests.create_user('ub_bob') as bob \gset
 select tests.create_user('ub_carol') as carol \gset
+insert into follows (follower_id, following_id) values (:'bob', :'alice'), (:'bob', :'carol');
 
 select tests.authenticate_as(:'alice');
 select get_or_create_direct_room(:'bob') as dm \gset

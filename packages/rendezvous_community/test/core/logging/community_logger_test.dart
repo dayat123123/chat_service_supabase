@@ -112,6 +112,7 @@ void main() {
 
     CommunityLoggers.support.event(Level.INFO, 'Support ticket opened', fields: {'ticketId': 't-1'});
 
-    expect(records.single.message, 'Support ticket opened {"ticketId":"t-1"}');
+    final support = records.where((record) => record.loggerName == 'RendezvousCommunity.Support');
+    expect(support.single.message, 'Support ticket opened {"ticketId":"t-1"}');
   });
 }

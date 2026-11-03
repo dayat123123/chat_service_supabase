@@ -30,6 +30,10 @@ http:
       buffering:
         maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_UPLOAD" | default "10485760" }}
         memRequestBodyBytes: 1048576
+    body-integration:
+      buffering:
+        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_INTEGRATION" | default "2097152" }}
+        memRequestBodyBytes: 1048576
 
     # Header keamanan untuk respons API (JSON, gambar, WebSocket).
     security-headers:

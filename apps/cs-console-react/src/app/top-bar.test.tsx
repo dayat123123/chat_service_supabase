@@ -62,7 +62,14 @@ describe('TopBar', () => {
     expect(screen.getByText('Mode pantau')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /^Ubah status/ })).not.toBeInTheDocument()
     expect(screen.queryByText(/^Aktif \d+\/\d+$/)).not.toBeInTheDocument()
-    expect(navLinks()).toEqual(['Layanan Nasabah', 'Dashboard', 'Laporan', 'Pengaturan', 'Kesehatan sistem'])
+    expect(navLinks()).toEqual([
+      'Layanan Nasabah',
+      'Dashboard',
+      'Laporan',
+      'Analitik',
+      'Pengaturan',
+      'Kesehatan sistem',
+    ])
   })
 
   it('places Akun Nasabah right before Pengaturan for CS accounts with customer access', () => {
@@ -75,6 +82,7 @@ describe('TopBar', () => {
       'Layanan Nasabah',
       'Dashboard',
       'Laporan',
+      'Analitik',
       'Akun Nasabah',
       'Pengaturan',
       'Kesehatan sistem',
@@ -135,6 +143,7 @@ describe('TopBar', () => {
       'Jejak Audit',
       'Kebijakan',
       'Kata terlarang',
+      'Kebijakan konten',
       'Dokumen hukum',
     ])
   })

@@ -716,7 +716,7 @@ services:
     <<: *base
     build:
       context: ../services/auth-bridge
-    image: olt-social/auth-bridge:0.4.0
+    image: olt-social/auth-bridge:0.5.0
     # Tanpa egress: token OLT diverifikasi lokal dengan kunci publik OLT (mode jwt),
     # jadi auth-bridge tidak memanggil sistem OLT. data: Valkey.
     networks: [app, data]
@@ -838,6 +838,39 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
+  # Klasifikasi gambar NSFW (services/classifier, MODEL.md): MobileNetV4 Apache-2.0 di ONNX Runtime
+  # (CPU). Dipanggil media untuk setiap gambar nasabah sebelum disimpan; bila mati, upload gambar
+  # ditolak (fail closed). Ambang diatur Kepatuhan dari web CS.
+  classifier:
+    <<: *base
+    build:
+      context: ../services/classifier
+    image: olt-social/classifier:0.1.0
+    networks: [app]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+    stop_grace_period: 30s
+    secrets: [jwt_secret]
+    environment:
+      PORT: 8080
+      OPS_PORT: 9100
+      LOG_LEVEL: ${CLASSIFIER_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      MAX_CONCURRENT: ${CLASSIFIER_MAX_CONCURRENT:-2}
+    healthcheck:
+      test: ["CMD", "/classifier", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: 512M, pids: 64}
+
   # Pintu upload nasabah (services/media): cek isi file dari magic bytes, buang metadata (EXIF/GPS,
   # XMP, IPTC) tanpa re-encode, periksa PDF, lalu teruskan ke Storage dengan klaim media_verified
   # (wajib untuk upload nasabah sejak migrasi 0063). Kong: /media/v1/* -> media:8080; port ops 9100
@@ -846,7 +879,7 @@ services:
     <<: *base
     build:
       context: ../services/media
-    image: olt-social/media:0.1.0
+    image: olt-social/media:0.2.0
     networks: [app]
     depends_on:
       migrate:
@@ -854,6 +887,8 @@ services:
       rest:
         condition: service_healthy
       storage:
+        condition: service_healthy
+      classifier:
         condition: service_healthy
     stop_grace_period: 30s
     secrets: [jwt_secret]
@@ -865,6 +900,10 @@ services:
       STORAGE_URL: http://storage:5000
       POSTGREST_URL: http://rest:3000
       MAX_CONCURRENT: ${MEDIA_MAX_CONCURRENT:-8}
+      CLASSIFIER_URL: http://classifier:8080
+      CLASSIFIER_TIMEOUT: ${MEDIA_CLASSIFIER_TIMEOUT:-10s}
+      MODERATION_REFRESH: 30s
+      MODEL_MISSING_POLICY: ${MEDIA_MODEL_MISSING_POLICY:-reject}
     healthcheck:
       # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/media", "healthcheck"]
@@ -923,6 +962,78 @@ services:
       resources:
         limits: {cpus: "1", memory: "${BACKUP_MEMORY:-1G}", pids: 256}
 
+  # Gateway integrasi OLT (services/integration, docs/integration): notifEngine mengirim notifikasi
+  # transaksi per cust_id (dipetakan dari klaim `accounts` token sosial) dan bot resmi memposting
+  # berita, memakai API key yang dibuat Super Admin di web CS. Kong: /integration/v1/* -> :8080;
+  # port ops 9100 tidak dirutekan.
+  integration:
+    <<: *base
+    build:
+      context: ../services/integration
+    image: olt-social/integration:0.1.0
+    networks: [app]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+    stop_grace_period: 30s
+    secrets: [jwt_secret]
+    environment:
+      PORT: 8080
+      OPS_PORT: 9100
+      LOG_LEVEL: ${INTEGRATION_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      MAX_BODY_BYTES: ${INTEGRATION_MAX_BODY_BYTES:-2097152}
+      MAX_CONCURRENT: ${INTEGRATION_MAX_CONCURRENT:-8}
+    healthcheck:
+      # Image distroless: binary menyediakan subcommand healthcheck.
+      test: ["CMD", "/integration", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 128M, pids: 64}
+
+  # Pratinjau link (services/link-preview): satu-satunya layanan yang menghubungi host internet
+  # sembarang. Proteksi SSRF menolak alamat privat (termasuk jaringan Docker), port selain 80/443,
+  # dan lebih dari 3 redirect. Hasil dibaca klien lewat RPC get_link_previews.
+  link-preview:
+    <<: *base
+    build:
+      context: ../services/link-preview
+    image: olt-social/link-preview:0.1.0
+    networks: [app, egress]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    stop_grace_period: 30s
+    secrets: [jwt_secret]
+    environment:
+      PORT: 8080
+      LOG_LEVEL: ${LINK_PREVIEW_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      STORAGE_URL: http://storage:5000
+      USER_AGENT: ${LINK_PREVIEW_USER_AGENT:-OLTSocialLinkPreview/1.0 (+https://olt-social.invalid/link-preview)}
+      CONCURRENCY: ${LINK_PREVIEW_CONCURRENCY:-4}
+    healthcheck:
+      test: ["CMD", "/link-preview", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 128M, pids: 64}
+
   # Pemantau sistem (services/sentinel): probe HTTP/TCP ke layanan internal + pemakaian disk setiap
   # 30 dtk ke database (aturan alert dihitung di DB, docs/system-health), lalu mengirim alert ke
   # Telegram/email yang diatur Super Admin dari web CS. Probe web CS dan gateway nasabah ditambahkan
@@ -949,7 +1060,7 @@ services:
       LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
-      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
+      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
       DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup
     healthcheck:
       test: ["CMD", "/sentinel", "healthcheck"]

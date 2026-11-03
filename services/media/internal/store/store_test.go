@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"olt-social/media/internal/heartbeat"
+	"olt-social/media/internal/moderation"
 )
 
 func TestHeartbeatCallsServiceHeartbeat(t *testing.T) {
@@ -85,6 +87,69 @@ func TestHeartbeatReportsPostgRESTErrors(t *testing.T) {
 	defer srv.Close()
 	err := NewPostgREST(srv.URL, []byte("k"), "supabase").Heartbeat(context.Background(), heartbeat.Beat{})
 	if err == nil || !strings.Contains(err.Error(), "status 404: PGRST202 Could not find the function") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func rpcServer(t *testing.T, status int, reply string, seen *map[string]any, path *string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*path = r.URL.Path
+		*seen = nil
+		_ = json.NewDecoder(r.Body).Decode(seen)
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(reply))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func TestModerationConfig(t *testing.T) {
+	var args map[string]any
+	var path string
+	srv := rpcServer(t, 200, `{"revision":4,"thresholds":{"porn":{"hold":0.45,"block":0.9},"sexy":{"hold":0.75}}}`, &args, &path)
+	p := NewPostgREST(srv.URL, []byte(strings.Repeat("s", 40)), "supabase")
+	cfg, err := p.ModerationConfig(context.Background(), moderation.UnknownRevision)
+	if err != nil || path != "/rpc/media_moderation_config" || args["p_revision"] != nil || cfg.Revision != 4 ||
+		*cfg.Limits["porn"].Hold != 0.45 || *cfg.Limits["porn"].Block != 0.9 || cfg.Limits["sexy"].Block != nil {
+		t.Fatalf("cfg = %+v err = %v args = %v", cfg, err, args)
+	}
+	srv2 := rpcServer(t, 200, `{"revision":4,"unchanged":true}`, &args, &path)
+	cfg, err = NewPostgREST(srv2.URL, []byte("k"), "supabase").ModerationConfig(context.Background(), 4)
+	if err != nil || !cfg.Unchanged || args["p_revision"] != float64(4) {
+		t.Fatalf("cfg = %+v err = %v args = %v", cfg, err, args)
+	}
+	srv3 := rpcServer(t, 200, `{"revision":5}`, &args, &path)
+	if _, err := NewPostgREST(srv3.URL, []byte("k"), "supabase").ModerationConfig(context.Background(), 4); err == nil {
+		t.Fatal("a reply without thresholds must fail")
+	}
+}
+
+func TestRecordAndCancelHold(t *testing.T) {
+	var args map[string]any
+	var path string
+	srv := rpcServer(t, 200, `41`, &args, &path)
+	p := NewPostgREST(srv.URL, []byte("k"), "supabase")
+	id, err := p.RecordHold(context.Background(), moderation.HoldRequest{
+		Bucket: "attachments", Path: "posts/u/a.png", Uploader: "u", Model: "m@1",
+		Scores: map[string]float64{"porn": 0.5}, Category: "porn", Score: 0.5, Revision: 3,
+	})
+	want := map[string]any{
+		"p_bucket": "attachments", "p_name": "posts/u/a.png", "p_uploader": "u", "p_model": "m@1",
+		"p_scores": map[string]any{"porn": 0.5}, "p_category": "porn", "p_score": 0.5, "p_revision": float64(3),
+	}
+	if err != nil || id != 41 || path != "/rpc/media_hold" || !reflect.DeepEqual(args, want) {
+		t.Fatalf("id = %d err = %v args = %v", id, err, args)
+	}
+	srv2 := rpcServer(t, 200, `true`, &args, &path)
+	if err := NewPostgREST(srv2.URL, []byte("k"), "supabase").CancelHold(context.Background(), 41); err != nil ||
+		path != "/rpc/media_hold_cancel" || args["p_id"] != float64(41) {
+		t.Fatalf("err = %v path = %s args = %v", err, path, args)
+	}
+	srv3 := rpcServer(t, 409, `{"code":"PT409","message":"already_exists","details":"x"}`, &args, &path)
+	_, err = NewPostgREST(srv3.URL, []byte("k"), "supabase").RecordHold(context.Background(), moderation.HoldRequest{})
+	var rpcErr *RPCError
+	if !errors.As(err, &rpcErr) || rpcErr.Status != 409 || rpcErr.Message != "already_exists" || rpcErr.Code != "PT409" {
 		t.Fatalf("err = %v", err)
 	}
 }

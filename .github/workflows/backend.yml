@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [auth-bridge, dummy-olt, nasabah-gateway, notifier, janitor, media, sentinel, backup]
+        service: [auth-bridge, dummy-olt, nasabah-gateway, notifier, janitor, media, sentinel, backup, integration, link-preview, classifier]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: gofmt, vet, test -race, tanpa komentar

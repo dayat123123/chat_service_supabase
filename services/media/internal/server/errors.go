@@ -28,32 +28,39 @@ const (
 	codeInternal         = "internal_error"
 	codeCanceled         = "canceled"
 
+	codeImageBlocked          = "image_blocked"
+	codeClassifierUnavailable = "classifier_unavailable"
+	codeModerationUnavailable = "moderation_unavailable"
+
 	framesMessage = "Animasi GIF maksimal 500 frame."
 )
 
 var messages = map[string]string{
-	codeInvalidToken:        "Sesi tidak valid atau sudah kedaluwarsa. Silakan masuk ulang.",
-	codeBucketNotAllowed:    "Tujuan upload tidak diizinkan.",
-	codeInvalidPath:         "Nama atau lokasi file tidak valid.",
-	codeEmptyFile:           "File kosong.",
-	codeFileTooLarge:        "Ukuran file melebihi batas.",
-	codeUnsupportedType:     "Jenis file tidak didukung untuk tujuan ini.",
-	codeInvalidImage:        "Gambar rusak atau tidak bisa dibaca.",
-	codeImageTooLarge:       "Dimensi gambar terlalu besar (maksimal 10000 piksel per sisi dan 40 megapiksel).",
-	codeInvalidPDF:          "PDF rusak atau tidak bisa dibaca.",
-	codePDFEncrypted:        "PDF terkunci atau terenkripsi tidak bisa diterima. Simpan ulang tanpa kata sandi.",
-	codePDFActiveContent:    "PDF berisi konten aktif (JavaScript, lampiran, atau multimedia) dan tidak bisa diterima.",
-	storage.CodeForbidden:   "Anda tidak diizinkan mengunggah file ke lokasi ini.",
-	storage.CodeExists:      "File dengan nama yang sama sudah ada.",
-	storage.CodeTooMany:     "Batas upload harian sudah tercapai. Coba lagi nanti.",
-	storage.CodeError:       "Penyimpanan menolak file. Coba lagi nanti.",
-	storage.CodeUnavailable: "Penyimpanan sedang tidak bisa dihubungi. Coba lagi nanti.",
-	codeBusy:                "Server sedang sibuk. Coba lagi sebentar lagi.",
-	codeNotFound:            "Alamat tidak ditemukan.",
-	codeRequestTimeout:      "Upload terlalu lama. Periksa koneksi lalu coba lagi.",
-	codeInvalidRequest:      "Data upload tidak bisa dibaca.",
-	codeInternal:            "Terjadi kesalahan di server. Coba lagi nanti.",
-	codeCanceled:            "Upload dibatalkan.",
+	codeInvalidToken:          "Sesi tidak valid atau sudah kedaluwarsa. Silakan masuk ulang.",
+	codeBucketNotAllowed:      "Tujuan upload tidak diizinkan.",
+	codeInvalidPath:           "Nama atau lokasi file tidak valid.",
+	codeEmptyFile:             "File kosong.",
+	codeFileTooLarge:          "Ukuran file melebihi batas.",
+	codeUnsupportedType:       "Jenis file tidak didukung untuk tujuan ini.",
+	codeInvalidImage:          "Gambar rusak atau tidak bisa dibaca.",
+	codeImageTooLarge:         "Dimensi gambar terlalu besar (maksimal 10000 piksel per sisi dan 40 megapiksel).",
+	codeInvalidPDF:            "PDF rusak atau tidak bisa dibaca.",
+	codePDFEncrypted:          "PDF terkunci atau terenkripsi tidak bisa diterima. Simpan ulang tanpa kata sandi.",
+	codePDFActiveContent:      "PDF berisi konten aktif (JavaScript, lampiran, atau multimedia) dan tidak bisa diterima.",
+	storage.CodeForbidden:     "Anda tidak diizinkan mengunggah file ke lokasi ini.",
+	storage.CodeExists:        "File dengan nama yang sama sudah ada.",
+	storage.CodeTooMany:       "Batas upload harian sudah tercapai. Coba lagi nanti.",
+	storage.CodeError:         "Penyimpanan menolak file. Coba lagi nanti.",
+	storage.CodeUnavailable:   "Penyimpanan sedang tidak bisa dihubungi. Coba lagi nanti.",
+	codeBusy:                  "Server sedang sibuk. Coba lagi sebentar lagi.",
+	codeNotFound:              "Alamat tidak ditemukan.",
+	codeRequestTimeout:        "Upload terlalu lama. Periksa koneksi lalu coba lagi.",
+	codeInvalidRequest:        "Data upload tidak bisa dibaca.",
+	codeInternal:              "Terjadi kesalahan di server. Coba lagi nanti.",
+	codeCanceled:              "Upload dibatalkan.",
+	codeImageBlocked:          "Gambar ini tidak bisa diunggah karena melanggar pedoman komunitas.",
+	codeClassifierUnavailable: "Pemeriksaan gambar sedang tidak tersedia. Coba lagi beberapa saat lagi.",
+	codeModerationUnavailable: "Pemeriksaan gambar sedang tidak tersedia. Coba lagi beberapa saat lagi.",
 }
 
 type apiError struct {

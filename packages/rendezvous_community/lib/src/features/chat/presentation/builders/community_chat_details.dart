@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:rendezvous_community/src/core/network/realtime_status.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 
@@ -19,6 +20,11 @@ class CommunityMessageDetails {
     this.onRetry,
     this.onSenderTap,
     this.onShowActions,
+    this.reactions = const [],
+    this.reactionChoices = const [],
+    this.onReact,
+    this.onAppeal,
+    this.onOpenSharedPost,
   });
 
   final ChatMessage message;
@@ -33,6 +39,11 @@ class CommunityMessageDetails {
   final VoidCallback? onRetry;
   final VoidCallback? onSenderTap;
   final VoidCallback? onShowActions;
+  final List<MessageReaction> reactions;
+  final List<String> reactionChoices;
+  final ValueChanged<String>? onReact;
+  final VoidCallback? onAppeal;
+  final VoidCallback? onOpenSharedPost;
 }
 
 class CommunityComposerDetails {
@@ -49,6 +60,7 @@ class CommunityComposerDetails {
     this.onPickImage,
     this.allowsDocuments = false,
     this.extraActions = const [],
+    this.cooldown = Duration.zero,
   });
 
   final TextEditingController controller;
@@ -63,6 +75,11 @@ class CommunityComposerDetails {
   final VoidCallback? onPickImage;
   final bool allowsDocuments;
   final List<Widget> extraActions;
+  final Duration cooldown;
+
+  bool get coolingDown => cooldown > Duration.zero;
+
+  int get cooldownSeconds => (cooldown.inMilliseconds + 999) ~/ 1000;
 }
 
 class CommunityRoomHeaderDetails {

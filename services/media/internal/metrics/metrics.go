@@ -25,6 +25,11 @@ type Snapshot struct {
 	Capacity        int
 	StorageFailures int
 	LastHeartbeat   time.Time
+	Verdicts        map[string]uint64
+	ClassifierFails int
+	ClassifySeconds float64
+	Classifications uint64
+	Revision        int64
 }
 
 func Handler(snapshot func() Snapshot) http.Handler {
@@ -62,6 +67,22 @@ func Render(s Snapshot) string {
 	fmt.Fprintf(&b, "media_max_concurrent_uploads %d\n", s.Capacity)
 	header(&b, "media_storage_consecutive_failures", "Consecutive failed attempts to reach Storage (3 or more = degraded).", "gauge")
 	fmt.Fprintf(&b, "media_storage_consecutive_failures %d\n", s.StorageFailures)
+	header(&b, "media_moderation_total", "Classified image uploads by decision (allow, hold, block, unclassified).", "counter")
+	verdicts := make([]string, 0, len(s.Verdicts))
+	for v := range s.Verdicts {
+		verdicts = append(verdicts, v)
+	}
+	slices.Sort(verdicts)
+	for _, v := range verdicts {
+		fmt.Fprintf(&b, "media_moderation_total{decision=%q} %d\n", v, s.Verdicts[v])
+	}
+	header(&b, "media_classifier_duration_seconds", "Time spent waiting for the classifier on answered requests.", "summary")
+	fmt.Fprintf(&b, "media_classifier_duration_seconds_sum %g\n", s.ClassifySeconds)
+	fmt.Fprintf(&b, "media_classifier_duration_seconds_count %d\n", s.Classifications)
+	header(&b, "media_classifier_consecutive_failures", "Consecutive failed attempts to use the classifier (3 or more = degraded).", "gauge")
+	fmt.Fprintf(&b, "media_classifier_consecutive_failures %d\n", s.ClassifierFails)
+	header(&b, "media_thresholds_revision", "Revision of the image thresholds in use, -1 before they are loaded.", "gauge")
+	fmt.Fprintf(&b, "media_thresholds_revision %d\n", s.Revision)
 	header(&b, "media_last_heartbeat_timestamp_seconds", "Unix time of the last successful heartbeat, 0 before the first one.", "gauge")
 	fmt.Fprintf(&b, "media_last_heartbeat_timestamp_seconds %d\n", unix(s.LastHeartbeat))
 	return b.String()

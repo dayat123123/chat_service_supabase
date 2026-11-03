@@ -9,13 +9,20 @@ import 'package:rendezvous_community/src/core/error/error_mapper.dart';
 import 'package:rendezvous_community/src/core/logging/community_logger.dart';
 import 'package:rendezvous_community/src/core/network/realtime_status.dart';
 import 'package:rendezvous_community/src/core/paging/paged.dart';
+import 'package:rendezvous_community/src/features/analytics/domain/entities/analytics_event.dart';
+import 'package:rendezvous_community/src/features/analytics/domain/services/community_analytics.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/stock_room_state.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_extras_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
 import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/features/message_requests/domain/entities/message_request.dart';
+import 'package:rendezvous_community/src/features/message_requests/domain/repositories/message_request_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:rendezvous_community/src/shared/presentation/load_status.dart';
@@ -43,11 +50,33 @@ abstract class ChatRoomState with _$ChatRoomState {
     Object? error,
     Object? actionError,
     @Default(0) int actionErrorId,
+    StockRoomState? stockRoom,
+    DateTime? cooldownUntil,
+    @Default(false) bool dmRequestLimited,
+    DmRequestState? dmRequest,
   }) = _ChatRoomState;
 
   const ChatRoomState._();
 
   bool isMine(ChatMessage m) => m.senderId != null && m.senderId == me?.id;
+
+  bool get supportsReactions => room != null && room!.type != RoomType.support;
+
+  bool get supportsDmRequests => room?.type == RoomType.direct;
+
+  bool get awaitingReply {
+    final room = this.room;
+    if (room == null || room.type != RoomType.direct || nextCursor != null) return false;
+    final mine = messages.where((m) => !m.isSystem && isMine(m));
+    return mine.isNotEmpty && messages.every((m) => m.isSystem || isMine(m));
+  }
+
+  Duration cooldownLeft([DateTime? now]) {
+    final until = cooldownUntil;
+    if (until == null) return Duration.zero;
+    final left = until.difference((now ?? DateTime.now()).toUtc());
+    return left.isNegative ? Duration.zero : left;
+  }
 
   bool get otherOnline {
     final other = room?.otherUser;
@@ -74,12 +103,21 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     this.pageSize = 30,
     this.maxGapPages = 5,
     this._consent,
+    this._extras,
+    this._analytics,
+    this._requests,
+    DateTime Function()? clock,
   }) : _meProvider = me,
+       _clock = clock ?? DateTime.now,
        super(const ChatRoomState());
 
   final ChatRepository _chat;
   final MediaRepository _media;
   final ConsentGate? _consent;
+  final ChatExtrasRepository? _extras;
+  final CommunityAnalytics? _analytics;
+  final MessageRequestRepository? _requests;
+  final DateTime Function() _clock;
   final Future<UserSummary> Function() _meProvider;
   final String roomId;
   final int pageSize;
@@ -119,9 +157,92 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       );
       _connect(me);
       _scheduleMarkRead();
+      unawaited(loadStockRoomState());
+      unawaited(loadDmRequestState());
     } catch (e) {
       if (!isClosed) emit(state.copyWith(status: LoadStatus.failure, error: e));
     }
+  }
+
+  Future<void> loadStockRoomState() async {
+    final extras = _extras;
+    final code = state.room?.stockCode;
+    if (extras == null || state.room?.type != RoomType.stock || code == null) return;
+    try {
+      final stockRoom = await extras.stockRoomState(code);
+      if (isClosed) return;
+      final wait = stockRoom.waitSeconds;
+      emit(
+        state.copyWith(
+          stockRoom: stockRoom,
+          cooldownUntil: wait > 0 ? _now().add(Duration(seconds: wait)) : state.cooldownUntil,
+        ),
+      );
+    } catch (_) {}
+  }
+
+  DateTime _now() => _clock().toUtc();
+
+  Future<void> loadDmRequestState() async {
+    final requests = _requests;
+    if (requests == null || state.room?.type != RoomType.direct) return;
+    try {
+      final dmRequest = await requests.requestState(roomId);
+      if (!isClosed) emit(state.copyWith(dmRequest: dmRequest, dmRequestLimited: dmRequest.limitReached));
+    } catch (_) {}
+  }
+
+  Future<bool> acceptDmRequest() async {
+    final requests = _requests;
+    if (requests == null || !(state.dmRequest?.pendingAsRecipient ?? false)) return false;
+    try {
+      await requests.respond(roomId, MessageRequestAction.accept);
+      if (!isClosed) emit(state.copyWith(dmRequest: const DmRequestState()));
+      return true;
+    } catch (e) {
+      _fail(e);
+      return false;
+    }
+  }
+
+  Future<void> react(ChatMessage message, String emoji) async {
+    final extras = _extras;
+    if (extras == null || !state.supportsReactions || message.isLocal || message.isDeleted) return;
+    final current = state.messages.where((m) => m.id == message.id).firstOrNull ?? message;
+    final previous = myReaction(current.reactions);
+    final next = previous == emoji ? null : emoji;
+    _setReactions(current.id, applyReaction(current.reactions, previous, next));
+    try {
+      final reactions = await extras.react(current.id, next);
+      _setReactions(current.id, reactions);
+    } catch (e) {
+      _setReactions(current.id, current.reactions);
+      _fail(e);
+    }
+  }
+
+  void _setReactions(String messageId, List<MessageReaction> reactions) {
+    if (isClosed) return;
+    emit(
+      state.copyWith(
+        messages: [for (final m in state.messages) m.id == messageId ? m.copyWith(reactions: reactions) : m],
+      ),
+    );
+  }
+
+  void _applyReactionEvent(ReactionChanged event) {
+    final message = state.messages.where((m) => m.id == event.messageId).firstOrNull;
+    if (message == null) return;
+    final mine = event.userId == state.me?.id ? event.emoji : myReaction(message.reactions);
+    _setReactions(event.messageId, [
+      for (final r in event.counts)
+        if (r.count > 0) r.copyWith(mine: r.emoji == mine),
+    ]);
+  }
+
+  void _applyStockRoomState(StockRoomState next) {
+    final previous = state.stockRoom;
+    emit(state.copyWith(stockRoom: next.copyWith(waitSeconds: previous?.waitSeconds ?? 0)));
   }
 
   void _connect(UserSummary me) {
@@ -154,6 +275,10 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
           unawaited(_fillGap());
           unawaited(_resendFailed());
         }
+      case ReactionChanged():
+        _applyReactionEvent(event);
+      case StockRoomStateChanged(:final state):
+        _applyStockRoomState(state);
       case SignalsConnectionChanged(:final status):
         final previous = _signals;
         _signals = status;
@@ -215,12 +340,20 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       );
       if (index >= 0) {
         final old = list[index];
+        final held = {for (final a in old.attachments.where((a) => a.held)) a.path};
         list[index] = message.copyWith(
           sender: message.sender ?? old.sender,
           replyToBody: message.replyToBody ?? old.replyToBody,
           replyToSenderUsername: message.replyToSenderUsername ?? old.replyToSenderUsername,
           cursor: message.cursor ?? old.cursor,
           status: MessageStatus.sent,
+          reactions: message.isDeleted || message.reactions.isNotEmpty ? message.reactions : old.reactions,
+          sharedPost: message.sharedPost ?? (message.sharedPostId == old.sharedPostId ? old.sharedPost : null),
+          sharedPostId: message.sharedPostId ?? old.sharedPostId,
+          moderationStatus: message.moderationStatus ?? old.moderationStatus,
+          attachments: held.isEmpty
+              ? message.attachments
+              : [for (final a in message.attachments) held.contains(a.path) ? a.copyWith(held: true) : a],
         );
       } else {
         list.add(message);
@@ -349,6 +482,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
         ),
       );
       _upsert(sent);
+      _afterSent(local);
     } catch (e) {
       final mapped = mapError(e);
       CommunityLoggers.chat.event(
@@ -361,8 +495,45 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       } else {
         _setStatus(local.clientId, MessageStatus.failed);
       }
+      if (mapped.code == 'slow_mode' && !isClosed) {
+        final wait = mapped.retryAfter ?? Duration(seconds: state.stockRoom?.slowModeSeconds ?? 0);
+        if (wait > Duration.zero) emit(state.copyWith(cooldownUntil: _now().add(wait)));
+      }
+      if (mapped.code == 'dm_request_limit' && !isClosed) {
+        final dmRequest = state.dmRequest;
+        emit(
+          state.copyWith(
+            dmRequestLimited: true,
+            dmRequest: dmRequest != null && dmRequest.pendingAsSender
+                ? dmRequest.copyWith(sent: dmRequest.maxMessages)
+                : dmRequest,
+          ),
+        );
+      }
       _fail(e);
     }
+  }
+
+  void _afterSent(ChatMessage local) {
+    if (isClosed) return;
+    final room = state.room;
+    final stockRoom = state.stockRoom;
+    if (room?.type == RoomType.stock && stockRoom != null && stockRoom.slowModeActive(_now())) {
+      emit(state.copyWith(cooldownUntil: _now().add(Duration(seconds: stockRoom.slowModeSeconds))));
+    }
+    final dmRequest = state.dmRequest;
+    if (dmRequest != null && dmRequest.pendingAsSender) {
+      final next = dmRequest.copyWith(sent: dmRequest.sent + 1);
+      emit(state.copyWith(dmRequest: next, dmRequestLimited: next.limitReached));
+    } else if (dmRequest != null && dmRequest.pendingAsRecipient) {
+      emit(state.copyWith(dmRequest: const DmRequestState()));
+    }
+    if (room == null || room.type == RoomType.support) return;
+    _analytics?.record(CommunityAnalyticsEvent.messageSend, {
+      'room_id': roomId,
+      'type': room.type.name,
+      'has_attachment': local.attachments.isNotEmpty,
+    });
   }
 
   void _removeLocal(String? clientId) {

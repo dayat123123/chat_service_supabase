@@ -11,6 +11,7 @@ import {
   HandIcon,
   KeyboardIcon,
   LayoutDashboardIcon,
+  LineChartIcon,
   ListIcon,
   MessageSquareTextIcon,
   MoonIcon,
@@ -18,6 +19,7 @@ import {
   ScrollTextIcon,
   SettingsIcon,
   ShieldCheckIcon,
+  ShieldIcon,
   SquareCheckBigIcon,
   StickyNoteIcon,
   TicketIcon,
@@ -106,12 +108,14 @@ function Section({
 type SectionTarget =
   | '/dashboard'
   | '/reports'
+  | '/analytics'
   | '/settings'
   | '/compliance'
   | '/compliance/cases'
   | '/compliance/audit'
   | '/compliance/policy'
   | '/compliance/words'
+  | '/compliance/content'
   | '/compliance/legal'
   | '/nasabah'
   | '/system'
@@ -171,6 +175,7 @@ function PaletteBody({
       ? [
           { label: t('nav.dashboard'), icon: LayoutDashboardIcon, to: '/dashboard' as const },
           { label: t('nav.reports'), icon: BarChart3Icon, to: '/reports' as const },
+          { label: t('nav.analytics'), icon: LineChartIcon, to: '/analytics' as const },
         ]
       : []),
     ...(hasNasabah(agent) ? [{ label: t('nav.nasabah'), icon: UsersIcon, to: '/nasabah' as const }] : []),
@@ -187,6 +192,7 @@ function PaletteBody({
           { label: t('nav.audit'), icon: ScrollTextIcon, to: '/compliance/audit' as const },
           { label: t('nav.policy'), icon: ShieldCheckIcon, to: '/compliance/policy' as const },
           { label: t('nav.words'), icon: BanIcon, to: '/compliance/words' as const },
+          { label: t('nav.contentPolicy'), icon: ShieldIcon, to: '/compliance/content' as const },
           { label: t('nav.legal'), icon: FileTextIcon, to: '/compliance/legal' as const },
         ]
       : []),

@@ -11,7 +11,7 @@ enum CommunityErrorKind {
 }
 
 class CommunityException implements Exception {
-  const CommunityException(this.kind, {this.code, this.message, this.cause});
+  const CommunityException(this.kind, {this.code, this.message, this.cause, this.retryAfter});
 
   const CommunityException.unauthenticated([String? message])
     : this(CommunityErrorKind.unauthenticated, message: message);
@@ -23,6 +23,8 @@ class CommunityException implements Exception {
   final String? message;
 
   final Object? cause;
+
+  final Duration? retryAfter;
 
   @override
   String toString() =>

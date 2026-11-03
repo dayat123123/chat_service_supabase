@@ -1,3 +1,93 @@
+## 1.3.0
+
+* **Butuh backend dengan migrasi `0068`–`0085`** (keamanan konten, permintaan DM, banding,
+  integritas pasar, pencarian, trending, edit/bookmark/reaksi/bagikan, preferensi notifikasi,
+  konfigurasi klien, analitik, link preview, `moderation_status`) serta layanan `link-preview`
+  dan `classifier`. Fitur baru dibaca lewat `get_client_config`; backend lama tanpa RPC ini
+  membuat fitur baru tetap tampil tetapi gagal dengan pesan umum.
+* Baru: konfigurasi klien & kill switch. `RendezvousCommunity.initialize(appVersion: ...,
+  platform: CommunityPlatform..., onUpdateRequired: ...)` (`android`, `ios`, `web`, `windows`,
+  `macos`, `linux`; default dari platform yang berjalan) memanggil `get_client_config` saat start, saat login,
+  saat aplikasi kembali ke foreground, dan tiap 5 menit (sebelum login lewat anon key).
+  `clientConfig`, `clientConfigChanges`, `refreshClientConfig()`. Saat `social_enabled = false`
+  feed, composer, detail post, pencarian, trending, bookmark, room non-CS, dan daftar chat (kecuali
+  room CS) menampilkan `CommunityUnavailableView`; host bisa menggantinya lewat
+  `CommunityAvailabilityScope(builder: ...)` atau `CommunitySocialGate(unavailableBuilder: ...)`.
+  Error `social_disabled` dari server langsung mematikan UI sosial. `CommunityUpdateListener`
+  dan `onUpdateRequired` dipanggil sekali saat `update_required` menjadi `true`. Flag yang dibaca:
+  `search`, `trending`, `bookmarks`, `post_edit`, `message_reactions`, `share_post_to_chat`,
+  `notification_prefs`, `analytics` (`CommunityFlags`).
+* Baru: pesan error terlokalisasi untuk `new_account_restricted` (gambar/tautan),
+  `link_blocked`, `contact_blocked`, `content_blocked`, `slow_mode` (dengan hitung mundur dari
+  `details`/`Retry-After`, `CommunityException.retryAfter`), `dm_not_allowed`,
+  `dm_request_limit`, `social_disabled`, `edit_window_expired`, `poll_not_editable`,
+  `image_blocked`, `classifier_unavailable`, `moderation_unavailable`, `appeal_exists`,
+  `appeal_window_closed`, `appeal_not_allowed`, `query_too_short`/`query_too_long`,
+  `share_not_allowed`. Pesan tidak menyebut kategori atau kata yang cocok.
+  `appeal_reviewer_conflict` (khusus staf) tidak diberi pesan khusus.
+* Baru: label "Menunggu tinjauan" untuk post, komentar, dan pesan milik sendiri yang
+  `moderation_status = held`, label "Disembunyikan moderator" + "Ajukan banding" untuk yang
+  `hidden`, serta label pada gambar yang diunggah dengan respons `"held": true`
+  (`Attachment.held`, `UploadedObject.held`).
+* Baru: permintaan pesan DM. Entri "Permintaan pesan" dengan jumlah di atas `CommunityChatList`
+  (`MessageRequestsEntry`), `CommunityMessageRequests` / `openCommunityMessageRequests`,
+  room permintaan dengan gambar diburamkan sampai diterima, aksi Terima / Tolak /
+  Blokir & laporkan. Saat DM dibuka, `get_dm_request_state` menentukan status: pengirim melihat
+  "Pesan Anda masih berupa permintaan (n/3)" lalu pemberitahuan batas, penerima bisa langsung
+  "Terima" dari room (`DmRequestState`, `MessageRequestRepository.requestState`).
+  Pengaturan "Siapa yang bisa mengirim pesan langsung" (`CommunityDmPolicySettings`) di
+  Privasi & akun.
+* Baru: banding. `showCommunityAppealDialog`, `CommunityAppeals` / `openCommunityAppeals`
+  ("Banding saya": sanksi aktif, "Konten yang dimoderasi" dari `get_my_moderated_content`
+  (post/komentar/pesan yang disembunyikan atau dihapus moderator 90 hari terakhir, dengan banding
+  terakhirnya), dan status banding), notifikasi dan push tipe `appeal`
+  (`NotificationType.appeal`).
+* Baru: room saham menampilkan slow mode, hitung mundur di composer, dan pesan yang disematkan
+  (`get_stock_room_state` + event realtime `room_state`).
+* Baru: preferensi notifikasi per jenis (di aplikasi / push), jam tenang WIB
+  (`CommunityNotificationSettings`, bagian "Notifikasi" di Privasi & akun), dan teks notifikasi
+  gabungan ("Budi dan 4 lainnya menyukai konten Anda") dari `actor_count`/`actors`.
+* Baru: pencarian (`CommunitySearch` / `openCommunitySearch`: tab Semua/Post/Pengguna/Saham/
+  Hashtag, debounce 300 ms, paginasi), feed hashtag (`CommunityHashtagFeed`), hashtag trending.
+  `SocialText` kini membuat `#hashtag` dan tautan `http(s)` bisa diketuk; tautan dibuka setelah
+  dialog konfirmasi yang menampilkan domain asli (`openCommunityLink`). Skema lain tidak bisa
+  diketuk. Callback baru `onHashtagTap`.
+* Baru: link preview (`LinkPreviewCard`, `LinkPreviewLoader`) untuk URL pertama di post,
+  komentar, dan pesan: judul, deskripsi, situs, gambar dari bucket `link-previews`, domain akhir.
+  `get_link_previews` dipanggil sekali per batch layar; status `pending` diulang paling banyak
+  dua kali (3 dan 10 detik).
+* Baru: `CommunityTrending` (saham, naik daun, populer, hashtag; jendela 24 jam/7 hari) dan
+  `CommunityStockSentiment(stockCode:)` untuk halaman saham host.
+* Baru: edit post dan komentar dalam jendela edit (menu "Edit" hanya 15 menit pertama, bukan post
+  polling), label "(diedit)".
+* Baru: bookmark (menu dan tombol di kartu post) dan `CommunityBookmarks`.
+* Baru: reaksi pesan chat (tekan lama atau tombol hover → 6 emoji, chip jumlah, realtime
+  `reaction`), tidak tersedia di chat CS.
+* Baru: "Kirim ke chat" di menu post (`showSharePostToChat`) dan kartu post di pesan
+  (`SharedPostCard`, termasuk "Post tidak tersedia").
+* Baru: `showCommunityComposer(context, initialStock:, initialImage: CommunityComposerImage(...))`
+  untuk membagikan chart dari OLT; gambar diunggah lewat media gateway.
+* Baru: label Bot (`Post.isBot`) dan Resmi (`Post.authorIsOfficial`).
+* Baru: analitik ringan (`CommunityAnalytics`): `feed_open`, `post_create`, `comment_create`,
+  `message_send`, `stock_tap`, `search`, `share_chart`, dan `trackOrderTap()` untuk host.
+  Batch maks 50, dikirim tiap 60 detik, saat 20 event terkumpul, atau saat aplikasi ke latar
+  belakang; batch gagal dibuang; berhenti bila server menjawab `disabled`. Hanya properti
+  whitelist yang dikirim, tidak pernah teks konten atau kata kunci.
+* Baru: `isCommunityPush(data)` dan `isOltPush(data)`. `openCommunityPush` mengembalikan `false`
+  untuk push `olt.*` (`source: "olt"`, `cust_id`, `message_id`, plus `data` dari OLT seperti
+  `screen`) supaya host yang menanganinya.
+* Logger baru `RendezvousCommunity.Config` dan `RendezvousCommunity.Analytics`.
+* Kompatibilitas: `CommunityDependencies` tidak berubah; fitur baru lewat antarmuka baru
+  `CommunityFeatureDependencies` dan `CommunityFeatureScope` (bawaannya
+  `RendezvousCommunity.instance`; tanpa keduanya fitur baru tersembunyi). Parameter baru semua
+  opsional. **Perlu perhatian:** subclass baru pada sealed class `RoomSignal` (`RoomReaction`,
+  `RoomStateSignal`), `ChatRoomEvent` (`ReactionChanged`, `StockRoomStateChanged`), dan
+  `SocialTextSegment` (`HashtagSegment`, `LinkSegment`), serta nilai enum
+  `NotificationType.appeal`: `switch` lengkap di kode host perlu cabang baru.
+  `parseSocialText` hanya menghasilkan segmen baru bila `hashtags: true` / `links: true`.
+* Perbaikan: lampiran `{"type": "post"}` dari pesan bagikan post tidak lagi membuat
+  `get_messages` gagal di-parse (versi ≤ 1.2.0 gagal membaca room yang berisi post yang dibagikan).
+
 ## 1.2.0
 
 * **Wajib backend baru: unggahan lewat media gateway.** Gambar post, gambar chat,

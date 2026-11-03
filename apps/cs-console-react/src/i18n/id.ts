@@ -129,6 +129,8 @@ export const id = {
     communityAttention: '{{count}} perlu tindakan di Komunitas',
     legal: 'Dokumen hukum',
     system: 'Kesehatan sistem',
+    analytics: 'Analitik',
+    contentPolicy: 'Kebijakan konten',
     systemCritical: '{{count}} alert kritis belum ditangani',
     systemWarning: '{{count}} peringatan belum ditangani',
   },
@@ -602,6 +604,8 @@ export const id = {
     alertUnclaimed: 'Tiket belum diambil lebih dari (menit)',
     alertP1: 'Tiket P1 belum diambil lebih dari (menit)',
     integration: 'Integrasi API Nasabah',
+    apiKeys: 'Integrasi OLT',
+    features: 'Fitur & versi',
     community: 'Komunitas',
     communityDescription: 'Aturan persetujuan postingan dan notifikasi resmi.',
     fourEyes: 'Aturan empat mata',
@@ -1020,6 +1024,34 @@ export const id = {
       backup_target_set: 'Atur tujuan backup',
       backup_schedule_set: 'Atur jadwal backup',
       backup_requested: 'Minta backup atau uji restore',
+      integration_key_create: 'Buat API key integrasi',
+      integration_key_update: 'Ubah API key integrasi',
+      integration_key_revoke: 'Cabut API key integrasi',
+      feature_flag_set: 'Simpan feature flag',
+      feature_flag_delete: 'Hapus feature flag',
+      kill_switch_set: 'Ubah kill switch fitur sosial',
+      client_min_version_set: 'Ubah versi minimum aplikasi',
+      content_rule_update: 'Ubah aksi kategori konten',
+      content_rule_new_account_days: 'Ubah masa akun baru',
+      blocked_domain_save: 'Simpan domain diblokir',
+      blocked_domain_delete: 'Hapus domain diblokir',
+      allowed_domain_save: 'Simpan domain tepercaya',
+      allowed_domain_delete: 'Hapus domain tepercaya',
+      policy_allowlist_add: 'Tambah istilah pengecualian',
+      policy_allowlist_delete: 'Hapus istilah pengecualian',
+      promo_phrase_add: 'Tambah frasa promosi',
+      promo_phrase_delete: 'Hapus frasa promosi',
+      manipulation_settings: 'Ubah pengaturan anti-manipulasi',
+      media_thresholds_set: 'Ubah ambang moderasi gambar',
+      community_media_approve: 'Loloskan gambar ditahan',
+      community_media_remove: 'Hapus gambar ditahan',
+      community_manipulation_review: 'Tinjau indikasi manipulasi',
+      community_room_settings: 'Ubah slow mode room saham',
+      community_room_pin: 'Sematkan pesan room saham',
+      community_room_unpin: 'Lepas sematan pesan room saham',
+      community_appeal_decide: 'Putuskan banding',
+      community_zero_tolerance: 'Toleransi nol (CSAM)',
+      community_private_message_view: 'Buka pesan pribadi pengguna',
     },
     words: {
       title: 'Kata terlarang',
@@ -1544,7 +1576,13 @@ export const id = {
     pageSubtitle: 'Kelola postingan resmi, pengumuman, notifikasi, dan moderasi stream komunitas.',
     noAccess: 'Akun ini belum punya izin komunitas. Hubungi Super Admin.',
     tabsLabel: 'Menu komunitas',
-    tabs: { stream: 'Stream', notifications: 'Notifikasi', moderation: 'Moderasi', accounts: 'Akun resmi' },
+    tabs: {
+      stream: 'Stream',
+      notifications: 'Notifikasi',
+      moderation: 'Moderasi',
+      rooms: 'Room saham',
+      accounts: 'Akun resmi',
+    },
     metrics: {
       pendingPosts: 'Postingan menunggu persetujuan',
       scheduled: 'Postingan terjadwal',
@@ -1564,8 +1602,9 @@ export const id = {
       community: {
         post: 'Membuat draf postingan, pengumuman, dan notifikasi atas nama akun resmi.',
         publish: 'Menyetujui, menerbitkan, menjadwalkan, menyematkan, dan menghapus postingan resmi.',
-        moderate: 'Antrean laporan: sembunyikan, hapus, atau pulihkan konten.',
-        sanction: 'Peringatan, bisukan, blokir, dan cabut sesi pengguna.',
+        moderate:
+          'Antrean laporan, konten dan gambar ditahan, indikasi manipulasi, banding konten, serta slow mode dan pin room saham.',
+        sanction: 'Peringatan, bisukan, blokir, cabut sesi, banding sanksi, dan toleransi nol.',
         accounts: 'Membuat akun resmi dan memberi badge verifikasi.',
       },
     },
@@ -2527,6 +2566,6 @@ export const id = {
   },
 }
 
-type DeepStrings<T> = { [K in keyof T]: T[K] extends string ? string : DeepStrings<T[K]> }
+export type Translated<T> = { [K in keyof T]: T[K] extends string ? string : Translated<T[K]> }
 
-export type Translation = DeepStrings<typeof id>
+export type Translation = Translated<typeof id>

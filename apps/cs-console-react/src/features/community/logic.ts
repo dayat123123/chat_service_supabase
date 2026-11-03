@@ -1,12 +1,18 @@
 import { format } from '@/lib/time'
 
-import type {
-  Campaign,
-  CampaignStatus,
-  CommunityPermission,
-  CommunityPost,
-  CommunityTab,
-  PostStatus,
+import {
+  SLOW_MODE_MAX,
+  type Appeal,
+  type Campaign,
+  type CampaignStatus,
+  type CommunityPermission,
+  type CommunityPost,
+  type CommunityTab,
+  type CommunityUser,
+  type HeldContent,
+  type HeldDecision,
+  type ModerationQueue,
+  type PostStatus,
 } from './types'
 
 type Perms = readonly string[]
@@ -20,6 +26,7 @@ export function communityTabsFor(perms: Perms): CommunityTab[] {
   const tabs: CommunityTab[] = []
   if (can(perms, 'community.post') || can(perms, 'community.publish')) tabs.push('stream', 'notifications')
   if (can(perms, 'community.moderate') || can(perms, 'community.sanction')) tabs.push('moderation')
+  if (can(perms, 'community.moderate')) tabs.push('rooms')
   if (can(perms, 'community.accounts')) tabs.push('accounts')
   return tabs
 }
@@ -156,4 +163,84 @@ export function cleanStock(value: string) {
 export function excerpt(text: string, max = 160) {
   const single = text.replace(/\s+/g, ' ').trim()
   return single.length > max ? `${single.slice(0, max - 1)}…` : single
+}
+
+export function moderationQueuesFor(perms: Perms): ModerationQueue[] {
+  const moderate = can(perms, 'community.moderate')
+  const sanction = can(perms, 'community.sanction')
+  const queues: ModerationQueue[] = []
+  if (moderate || sanction) queues.push('reports')
+  if (moderate) queues.push('held', 'media', 'alerts')
+  if (moderate || sanction) queues.push('appeals')
+  return queues
+}
+
+export const heldDecisions: HeldDecision[] = ['approve', 'hide', 'remove']
+
+export const canEditHistory = (perms: Perms, type: string): type is 'post' | 'comment' =>
+  can(perms, 'community.moderate') && (type === 'post' || type === 'comment')
+
+export type AppealBlock = 'conflict' | 'needSanction' | 'needModerate' | null
+
+export function appealBlock(appeal: Appeal, me: string, perms: Perms): AppealBlock {
+  if (appeal.status !== 'pending' || appeal.can_decide) return null
+  const needed = appeal.target_type === 'sanction' ? 'community.sanction' : 'community.moderate'
+  if (!can(perms, needed)) return needed === 'community.sanction' ? 'needSanction' : 'needModerate'
+  if (appeal.original_decider?.id === me) return 'conflict'
+  return null
+}
+
+export function hasZeroTolerance(user: Pick<CommunityUser, 'sanctions'>) {
+  return user.sanctions.some((item) => item.active && item.category === 'zero_tolerance')
+}
+
+export function heldAuthorName(row: HeldContent) {
+  return row.author.display_name ?? row.author.username ?? '–'
+}
+
+export type SlowModeProblem = 'seconds' | 'untilPast' | 'untilFar' | 'untilFormat'
+
+export function slowModeProblem(
+  seconds: number,
+  untilInput: string,
+  now: Date = new Date(),
+): SlowModeProblem | null {
+  if (!Number.isInteger(seconds) || seconds < 0 || seconds > SLOW_MODE_MAX) return 'seconds'
+  if (seconds === 0 || untilInput === '') return null
+  const until = fromJakartaInput(untilInput)
+  if (!until) return 'untilFormat'
+  const time = Date.parse(until)
+  if (time <= now.getTime()) return 'untilPast'
+  if (time > now.getTime() + 30 * 24 * 60 * 60 * 1000) return 'untilFar'
+  return null
+}
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export const isUuid = (value: string) => uuidPattern.test(value.trim())
+
+export function scorePercent(score: number) {
+  return Math.round(score * 1000) / 10
+}
+
+export function topScores(scores: Record<string, number>, limit = 3) {
+  return Object.entries(scores)
+    .filter(([, value]) => typeof value === 'number')
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+}
+
+export function evidenceNumber(evidence: Record<string, unknown>, key: string) {
+  const value = evidence[key]
+  return typeof value === 'number' ? value : typeof value === 'string' && value !== '' ? Number(value) : null
+}
+
+export function evidenceText(evidence: Record<string, unknown>, key: string) {
+  const value = evidence[key]
+  return typeof value === 'string' ? value : null
+}
+
+export function evidenceIds(evidence: Record<string, unknown>, key: string) {
+  const value = evidence[key]
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
 }

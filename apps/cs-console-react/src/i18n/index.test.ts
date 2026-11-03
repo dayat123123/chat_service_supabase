@@ -48,6 +48,33 @@ describe('lazy English translations', () => {
     expect(fresh.default.t('app.cancel')).toBe('Cancel')
   })
 
+  it('switches lazily loaded feature strings together with the base language', async () => {
+    vi.resetModules()
+    const fresh = await import('@/i18n')
+    await fresh.loadStrings('platform', 'moderation', 'policy')
+    expect(fresh.default.t('platform.keys.title')).toBe('Integrasi OLT')
+    expect(fresh.default.hasResourceBundle('en', 'translation')).toBe(false)
+
+    await fresh.switchLanguage('en')
+
+    expect(fresh.default.t('platform.keys.title')).toBe('OLT integration')
+    expect(fresh.default.t('moderation.queues.held')).toBe('Held content')
+    expect(fresh.default.t('policy.actions.hold')).toBe('Hold')
+    expect(fresh.default.t('app.cancel')).toBe('Cancel')
+  })
+
+  it('loads a feature bundle in English without hiding the English base strings', async () => {
+    vi.resetModules()
+    window.localStorage.setItem('cs-console.language', 'en')
+    const fresh = await import('@/i18n')
+
+    await fresh.loadStrings('policy')
+
+    expect(fresh.default.t('policy.title')).toBe('Content policy')
+    expect(fresh.default.t('app.cancel')).toBe('Cancel')
+    expect(fresh.default.hasResourceBundle('id', 'translation')).toBe(true)
+  })
+
   it('falls back to Indonesian when the English file cannot be loaded', async () => {
     vi.resetModules()
     vi.doMock('@/i18n/en', () => {

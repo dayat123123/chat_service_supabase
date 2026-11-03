@@ -125,8 +125,13 @@ class ComposeCubit extends Cubit<ComposeState> {
         ),
       );
       _clientId = _uuid.v4();
+      final held = {for (final a in state.attachments.where((a) => a.held)) a.path};
       if (!isClosed) emit(const ComposeState());
-      return post;
+      return held.isEmpty
+          ? post
+          : post.copyWith(
+              attachments: [for (final a in post.attachments) held.contains(a.path) ? a.copyWith(held: true) : a],
+            );
     } catch (e) {
       if (!isClosed) emit(state.copyWith(submitting: false));
       _fail(e);

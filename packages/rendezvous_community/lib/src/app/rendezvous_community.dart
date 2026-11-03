@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 import 'package:logging/logging.dart';
 import 'package:rendezvous_community/src/app/community_account_scope.dart';
 import 'package:rendezvous_community/src/app/community_dependencies.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_support_scope.dart';
 import 'package:rendezvous_community/src/core/auth/auth_bridge_client.dart';
 import 'package:rendezvous_community/src/core/auth/social_session.dart';
@@ -15,20 +18,40 @@ import 'package:rendezvous_community/src/core/network/social_remote_data_source.
 import 'package:rendezvous_community/src/features/account/data/repositories/account_repository_impl.dart';
 import 'package:rendezvous_community/src/features/account/domain/entities/community_data_export.dart';
 import 'package:rendezvous_community/src/features/account/domain/repositories/account_repository.dart';
+import 'package:rendezvous_community/src/features/analytics/data/repositories/analytics_repository_impl.dart';
+import 'package:rendezvous_community/src/features/analytics/domain/entities/analytics_event.dart';
+import 'package:rendezvous_community/src/features/analytics/domain/services/community_analytics.dart';
+import 'package:rendezvous_community/src/features/appeals/data/repositories/appeal_repository_impl.dart';
+import 'package:rendezvous_community/src/features/appeals/domain/repositories/appeal_repository.dart';
+import 'package:rendezvous_community/src/features/bookmarks/data/repositories/bookmark_repository_impl.dart';
+import 'package:rendezvous_community/src/features/bookmarks/domain/repositories/bookmark_repository.dart';
+import 'package:rendezvous_community/src/features/chat/data/repositories/chat_extras_repository_impl.dart';
 import 'package:rendezvous_community/src/features/chat/data/repositories/chat_repository_impl.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_extras_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/services/delivery_tracker.dart';
+import 'package:rendezvous_community/src/features/config/data/repositories/client_config_repository_impl.dart';
+import 'package:rendezvous_community/src/features/config/domain/entities/client_config.dart';
+import 'package:rendezvous_community/src/features/config/domain/services/client_config_service.dart';
+import 'package:rendezvous_community/src/features/edit/data/repositories/content_edit_repository_impl.dart';
+import 'package:rendezvous_community/src/features/edit/domain/repositories/content_edit_repository.dart';
 import 'package:rendezvous_community/src/features/feed/data/repositories/feed_repository_impl.dart';
 import 'package:rendezvous_community/src/features/feed/domain/repositories/feed_repository.dart';
 import 'package:rendezvous_community/src/features/legal/data/repositories/legal_repository_impl.dart';
 import 'package:rendezvous_community/src/features/legal/domain/entities/legal_document.dart';
 import 'package:rendezvous_community/src/features/legal/domain/services/community_consent.dart';
+import 'package:rendezvous_community/src/features/link_preview/data/repositories/link_preview_repository_impl.dart';
+import 'package:rendezvous_community/src/features/link_preview/domain/services/link_preview_loader.dart';
 import 'package:rendezvous_community/src/features/media/data/repositories/media_repository_impl.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
+import 'package:rendezvous_community/src/features/message_requests/data/repositories/message_request_repository_impl.dart';
+import 'package:rendezvous_community/src/features/message_requests/domain/repositories/message_request_repository.dart';
 import 'package:rendezvous_community/src/features/moderation/data/repositories/moderation_repository_impl.dart';
 import 'package:rendezvous_community/src/features/moderation/domain/repositories/moderation_repository.dart';
+import 'package:rendezvous_community/src/features/notifications/data/repositories/notification_preferences_repository_impl.dart';
 import 'package:rendezvous_community/src/features/notifications/data/repositories/notification_repository_impl.dart';
+import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_preferences_repository.dart';
 import 'package:rendezvous_community/src/features/notifications/domain/repositories/notification_repository.dart';
 import 'package:rendezvous_community/src/features/poll/data/repositories/poll_repository_impl.dart';
 import 'package:rendezvous_community/src/features/poll/domain/repositories/poll_repository.dart';
@@ -39,16 +62,37 @@ import 'package:rendezvous_community/src/features/profile/domain/repositories/pr
 import 'package:rendezvous_community/src/features/push/data/repositories/push_repository_impl.dart';
 import 'package:rendezvous_community/src/features/push/domain/entities/community_push_message.dart';
 import 'package:rendezvous_community/src/features/push/domain/services/push_registrar.dart';
+import 'package:rendezvous_community/src/features/search/data/repositories/search_repository_impl.dart';
+import 'package:rendezvous_community/src/features/search/domain/repositories/search_repository.dart';
 import 'package:rendezvous_community/src/features/stocks/data/repositories/stock_repository_impl.dart';
 import 'package:rendezvous_community/src/features/stocks/domain/repositories/stock_repository.dart';
 import 'package:rendezvous_community/src/features/support/data/repositories/support_chat_repository.dart';
 import 'package:rendezvous_community/src/features/support/data/repositories/support_repository_impl.dart';
 import 'package:rendezvous_community/src/features/support/domain/repositories/support_repository.dart';
+import 'package:rendezvous_community/src/features/trending/data/repositories/trending_repository_impl.dart';
+import 'package:rendezvous_community/src/features/trending/domain/repositories/trending_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:rendezvous_community/src/shared/domain/official_accounts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class RendezvousCommunity implements CommunityDependencies, CommunitySupportDependencies, CommunityAccountDependencies {
+CommunityPlatform? defaultCommunityPlatform() {
+  if (kIsWeb) return CommunityPlatform.web;
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android => CommunityPlatform.android,
+    TargetPlatform.iOS => CommunityPlatform.ios,
+    TargetPlatform.windows => CommunityPlatform.windows,
+    TargetPlatform.macOS => CommunityPlatform.macos,
+    TargetPlatform.linux => CommunityPlatform.linux,
+    TargetPlatform.fuchsia => null,
+  };
+}
+
+class RendezvousCommunity
+    implements
+        CommunityDependencies,
+        CommunitySupportDependencies,
+        CommunityAccountDependencies,
+        CommunityFeatureDependencies {
   RendezvousCommunity._({
     required this.client,
     required this._tokens,
@@ -67,6 +111,17 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     required this._push,
     required this.consent,
     required this._account,
+    required this.configService,
+    required this.search,
+    required this.trending,
+    required this.bookmarks,
+    required this.edits,
+    required this.chatExtras,
+    required this.messageRequests,
+    required this.appeals,
+    required this.notificationPreferences,
+    required this.linkPreviews,
+    required this.analytics,
     required bool trackDelivery,
   }) {
     if (trackDelivery) {
@@ -97,6 +152,10 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     CommunityPostTapCallback? onPostTap,
     CommunityRoomTapCallback? onRoomTap,
     CommunityStockSearch? stockSearch,
+    CommunityHashtagTapCallback? onHashtagTap,
+    String? appVersion,
+    CommunityPlatform? platform,
+    CommunityUpdateRequiredCallback? onUpdateRequired,
     bool signInEagerly = true,
     bool trackDelivery = true,
     http.Client? httpClient,
@@ -115,10 +174,15 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
       onPostTap: onPostTap,
       onRoomTap: onRoomTap,
       stockSearch: stockSearch,
+      onHashtagTap: onHashtagTap,
+      appVersion: appVersion,
+      platform: platform ?? defaultCommunityPlatform(),
+      onUpdateRequired: onUpdateRequired,
       trackDelivery: trackDelivery,
       httpClient: httpClient,
     );
     _instance = social;
+    social._startBackgroundWork();
     if (signInEagerly) {
       unawaited(social._tokens.refresh().then<void>((_) {}, onError: (Object _) {}));
     }
@@ -135,6 +199,10 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     CommunityPostTapCallback? onPostTap,
     CommunityRoomTapCallback? onRoomTap,
     CommunityStockSearch? stockSearch,
+    CommunityHashtagTapCallback? onHashtagTap,
+    String? appVersion,
+    CommunityPlatform? platform,
+    CommunityUpdateRequiredCallback? onUpdateRequired,
     bool trackDelivery = true,
     http.Client? httpClient,
   }) {
@@ -159,6 +227,15 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
     final notifications = NotificationRepositoryImpl(api, realtime);
     final cs = api.inSchema('cs_api');
     final support = SupportRepositoryImpl(cs: cs, realtime: realtime, notifications: notifications);
+    final configService = ClientConfigService(
+      ClientConfigRepositoryImpl(api),
+      platform: platform?.name,
+      appVersion: appVersion,
+      onUpdateRequired: onUpdateRequired,
+    );
+    api.errorListener = (error) {
+      if (error.code == 'social_disabled') configService.markSocialDisabled();
+    };
 
     final social = RendezvousCommunity._(
       client: client,
@@ -170,6 +247,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
         onPostTap: onPostTap,
         onRoomTap: onRoomTap,
         stockSearch: stockSearch,
+        onHashtagTap: onHashtagTap,
       ),
       feed: FeedRepositoryImpl(api, realtime),
       comments: CommentRepositoryImpl(api, realtime),
@@ -196,11 +274,35 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
       push: PushRegistrar(PushRepositoryImpl(api), currentUserId: () => tokens.currentSession?.user.id),
       consent: CommunityConsent(LegalRepositoryImpl(api)),
       account: AccountRepositoryImpl(api, currentUsername: () => tokens.currentSession?.user.username),
+      configService: configService,
+      search: SearchRepositoryImpl(api),
+      trending: TrendingRepositoryImpl(api),
+      bookmarks: BookmarkRepositoryImpl(api),
+      edits: ContentEditRepositoryImpl(api),
+      chatExtras: ChatExtrasRepositoryImpl(api),
+      messageRequests: MessageRequestRepositoryImpl(api),
+      appeals: AppealRepositoryImpl(api),
+      notificationPreferences: NotificationPreferencesRepositoryImpl(api),
+      linkPreviews: LinkPreviewLoader(LinkPreviewRepositoryImpl(api)),
+      analytics: CommunityAnalytics(
+        AnalyticsRepositoryImpl(api),
+        enabled: () => configService.current.feature(CommunityFlags.analytics),
+        signedIn: () => tokens.currentSession != null,
+        platform: platform?.name,
+        appVersion: appVersion,
+      ),
       trackDelivery: trackDelivery,
     );
 
     social._sessionSub = tokens.sessionChanges.listen((session) {
       social.consent.onUserChanged(session?.user.id);
+      final userId = session?.user.id;
+      if (userId != social._sessionUserId) {
+        social._sessionUserId = userId;
+        social.analytics.reset();
+        social.linkPreviews.clear();
+        if (social._started && userId != null) unawaited(social.configService.refresh());
+      }
       if (session == null) {
         unawaited(social._delivery?.stop());
         return;
@@ -219,6 +321,55 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
   final AccountRepository _account;
   DeliveryTracker? _delivery;
   StreamSubscription<SocialSession?>? _sessionSub;
+  AppLifecycleListener? _lifecycle;
+  String? _sessionUserId;
+  bool _started = false;
+
+  @override
+  final ClientConfigService configService;
+  @override
+  final SearchRepository search;
+  @override
+  final TrendingRepository trending;
+  @override
+  final BookmarkRepository bookmarks;
+  @override
+  final ContentEditRepository edits;
+  @override
+  final ChatExtrasRepository chatExtras;
+  @override
+  final MessageRequestRepository messageRequests;
+  @override
+  final AppealRepository appeals;
+  @override
+  final NotificationPreferencesRepository notificationPreferences;
+  @override
+  final LinkPreviewLoader linkPreviews;
+  @override
+  final CommunityAnalytics analytics;
+
+  ClientConfig get clientConfig => configService.current;
+
+  Stream<ClientConfig> get clientConfigChanges => configService.changes;
+
+  Future<ClientConfig> refreshClientConfig() => configService.refresh();
+
+  void trackOrderTap({String? stockCode, String? side, String source = 'stock'}) =>
+      analytics.record(CommunityAnalyticsEvent.orderTap, {'stock_code': stockCode, 'side': side, 'source': source});
+
+  void _startBackgroundWork() {
+    if (_started) return;
+    _started = true;
+    unawaited(configService.refresh());
+    configService.start();
+    analytics.start();
+    WidgetsFlutterBinding.ensureInitialized();
+    _lifecycle = AppLifecycleListener(
+      onResume: () => unawaited(configService.refresh()),
+      onHide: () => unawaited(analytics.flush()),
+      onPause: () => unawaited(analytics.flush()),
+    );
+  }
 
   @override
   final CommunityCallbacks callbacks;
@@ -330,6 +481,7 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
   }
 
   Future<void> signOut() async {
+    await analytics.flush();
     await _push.detach();
     await _endSession();
   }
@@ -343,6 +495,11 @@ class RendezvousCommunity implements CommunityDependencies, CommunitySupportDepe
 
   Future<void> dispose() async {
     if (identical(_instance, this)) _instance = null;
+    _lifecycle?.dispose();
+    _lifecycle = null;
+    analytics.dispose();
+    linkPreviews.dispose();
+    await configService.dispose();
     await _sessionSub?.cancel();
     await _delivery?.stop();
     await _chatImpl.dispose();

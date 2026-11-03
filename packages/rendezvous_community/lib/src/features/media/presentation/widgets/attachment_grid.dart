@@ -1,14 +1,18 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
 import 'package:rendezvous_community/src/core/network/authorized_image.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
+import 'package:rendezvous_community/src/shared/presentation/widgets/moderation_notice.dart';
 
 class AttachmentGrid extends StatelessWidget {
-  const AttachmentGrid({super.key, required this.attachments, this.maxHeight = 280});
+  const AttachmentGrid({super.key, required this.attachments, this.maxHeight = 280, this.blurred = false});
 
   final List<Attachment> attachments;
   final double maxHeight;
+  final bool blurred;
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +30,26 @@ class AttachmentGrid extends StatelessWidget {
           crossAxisSpacing: 4,
           childAspectRatio: attachments.length == 1 ? 16 / 9 : 1,
           physics: const NeverScrollableScrollPhysics(),
-          children: [for (final a in attachments) _AttachmentImage(attachment: a, media: media)],
+          children: [
+            for (final a in attachments)
+              Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (blurred)
+                    ClipRect(
+                      child: ImageFiltered(
+                        imageFilter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                        child: _AttachmentImage(attachment: a, media: media),
+                      ),
+                    )
+                  else
+                    _AttachmentImage(attachment: a, media: media),
+                  if (blurred)
+                    const Center(child: Icon(Icons.visibility_off_outlined, color: Colors.white70, size: 32)),
+                  if (a.held) const Positioned(left: 6, top: 6, child: HeldAttachmentLabel()),
+                ],
+              ),
+          ],
         ),
       ),
     );

@@ -52,7 +52,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit smoke backup restore gen-secrets gen-keys psql check-config \
-        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \n        test-media test-sentinel test-backup check-go-comments secrets-scan backup-snapshots restore-pitr \
+        anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \n        test-media test-sentinel test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console
 
 help: ## Tampilkan daftar target
@@ -99,7 +99,7 @@ migrate: check-config ## Jalankan migrasi baru di supabase/migrations
 seed: check-config ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-media test-sentinel test-backup check-go-comments ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-media test-sentinel test-backup test-integration test-link-preview test-classifier check-go-comments ## Tes backend (pgTAP + Go)
 
 test-db: check-config ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -246,6 +246,15 @@ test-sentinel: ## Unit test pemantau sistem + alert (Go, di container)
 
 test-backup: ## Unit test layanan backup (Go, di container)
 	docker run --rm -v "$(CURDIR)/services/backup:/src" -w /src $(GO_IMG) go test ./...
+
+test-integration: ## Unit test gateway integrasi OLT (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/integration:/src" -w /src $(GO_IMG) go test ./...
+
+test-link-preview: ## Unit test pratinjau link (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/link-preview:/src" -w /src $(GO_IMG) go test ./...
+
+test-classifier: ## Unit test classifier NSFW (Go + cgo, di container)
+	docker run --rm -v "$(CURDIR)/services/classifier:/src" -w /src $(GO_IMG) sh -c 'apk add --no-cache gcc musl-dev >/dev/null && CGO_ENABLED=1 go test ./...'
 
 check-go-comments: ## Pastikan kode Go tanpa komentar (selain directive)
 	docker run --rm -v "$(CURDIR):/repo" -w /repo/scripts/check-go-comments $(GO_IMG) go run . /repo/services

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:rendezvous_community/src/app/community_feature_scope.dart';
 import 'package:rendezvous_community/src/app/community_scope.dart';
+import 'package:rendezvous_community/src/features/analytics/domain/entities/analytics_event.dart';
+import 'package:rendezvous_community/src/features/config/presentation/widgets/community_social_gate.dart';
+import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_actions.dart';
 import 'package:rendezvous_community/src/features/feed/presentation/widgets/post_card.dart';
 import 'package:rendezvous_community/src/features/legal/presentation/widgets/community_consent_flow.dart';
 import 'package:rendezvous_community/src/features/post/presentation/cubit/comment_thread_cubit.dart';
@@ -22,17 +26,22 @@ class CommunityPostDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deps = CommunityScope.of(context);
+    final features = context.communityFeatures;
     final maxLevels = CommunityTheme.of(context).maxThreadIndentLevels;
-    return BlocProvider(
-      create: (_) => CommentThreadCubit(
-        feed: deps.feed,
-        comments: deps.comments,
-        postId: postId,
-        rootCommentId: rootCommentId,
-        maxLevels: maxLevels,
-        consent: communityConsentGate(context),
-      )..load(),
-      child: _PostDetailView(postId: postId, maxLevels: maxLevels),
+    return CommunitySocialGate(
+      child: BlocProvider(
+        create: (_) => CommentThreadCubit(
+          feed: deps.feed,
+          comments: deps.comments,
+          postId: postId,
+          rootCommentId: rootCommentId,
+          maxLevels: maxLevels,
+          consent: communityConsentGate(context),
+          bookmarks: features?.bookmarks,
+          edits: features?.edits,
+        )..load(),
+        child: _PostDetailView(postId: postId, maxLevels: maxLevels),
+      ),
     );
   }
 }
@@ -66,6 +75,11 @@ class _PostDetailView extends StatelessWidget {
           PostCard(
             post: post,
             expanded: true,
+            source: 'post',
+            onEdit: editPostAction(context, post, cubit.canEdit ? cubit.editPost : null),
+            onToggleBookmark: bookmarkPostAction(context, cubit.canBookmark ? cubit.togglePostBookmark : null),
+            onShare: sharePostAction(context, post),
+            onAppeal: appealPostAction(context, post),
             onLike: cubit.togglePostLike,
             onDelete: () async {
               if (await cubit.deletePost() && context.mounted) {
@@ -169,7 +183,18 @@ class _ReplyComposerState extends State<_ReplyComposer> {
   }
 
   Future<void> _send() async {
-    if (await context.read<CommentThreadCubit>().send(_controller.text)) _controller.clear();
+    final cubit = context.read<CommentThreadCubit>();
+    final reply = cubit.state.replyTo != null;
+    if (await cubit.send(_controller.text)) {
+      _controller.clear();
+      if (mounted) {
+        context.trackCommunityEvent(CommunityAnalyticsEvent.commentCreate, {
+          'post_id': cubit.postId,
+          'is_reply': reply,
+          'source': 'post',
+        });
+      }
+    }
   }
 
   @override

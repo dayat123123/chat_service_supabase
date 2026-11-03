@@ -25,6 +25,7 @@ _ThreadCommentModel _$ThreadCommentModelFromJson(Map<String, dynamic> json) => _
   editedAt: json['edited_at'] == null ? null : DateTime.parse(json['edited_at'] as String),
   createdAt: DateTime.parse(json['created_at'] as String),
   cursor: json['cursor'] as String,
+  moderationStatus: json['moderation_status'] as String?,
 );
 
 Map<String, dynamic> _$ThreadCommentModelToJson(_ThreadCommentModel instance) => <String, dynamic>{
@@ -46,4 +47,5 @@ Map<String, dynamic> _$ThreadCommentModelToJson(_ThreadCommentModel instance) =>
   'edited_at': instance.editedAt?.toIso8601String(),
   'created_at': instance.createdAt.toIso8601String(),
   'cursor': instance.cursor,
+  'moderation_status': instance.moderationStatus,
 };

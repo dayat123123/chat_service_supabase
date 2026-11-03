@@ -267,3 +267,42 @@ func TestMetricsRecorded(t *testing.T) {
 		t.Fatal("token tidak boleh muncul di metrik")
 	}
 }
+
+type accountsResolver struct{ links exchange.AccountLinks }
+
+func (a accountsResolver) Resolve(_ context.Context, _ string) (exchange.Identity, bool, error) {
+	return exchange.Identity{Profile: exchange.Profile{ID: "uuid-1001", OLTUserID: "1001", Username: "budi"},
+		Accounts: a.links}, false, nil
+}
+
+func TestAccountLinkResultsAreCountedWithoutFailingExchange(t *testing.T) {
+	reg := metrics.NewRegistry()
+	m := NewMetrics(reg)
+	var logs strings.Builder
+	for _, links := range []exchange.AccountLinks{
+		{Present: true, Linked: 2},
+		{Present: true, Malformed: true},
+		{Present: true, Err: errors.New("rpc set_olt_account_links: status 503")},
+		{},
+	} {
+		opts := testOptions(accountsResolver{links}, 100)
+		opts.Metrics = m
+		opts.Log = slog.New(slog.NewTextHandler(&logs, nil))
+		if rec := post(New(opts).Handler(), `{"token":"t"}`, "192.0.2.1:1", ""); rec.Code != http.StatusOK {
+			t.Fatalf("status = %d", rec.Code)
+		}
+	}
+	out := get(New(testOptions(fakeResolver{}, 1)).OpsHandler(reg.Handler()), "/metrics").Body.String()
+	for _, want := range []string{
+		`olt_auth_bridge_account_links_total{result="ok"} 1`,
+		`olt_auth_bridge_account_links_total{result="malformed"} 1`,
+		`olt_auth_bridge_account_links_total{result="error"} 1`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("metrik tidak memuat %q:\n%s", want, out)
+		}
+	}
+	if !strings.Contains(logs.String(), "gagal menyimpan tautan rekening") {
+		t.Errorf("kegagalan tautan rekening harus dicatat:\n%s", logs.String())
+	}
+}
