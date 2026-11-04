@@ -1,5 +1,6 @@
 begin;
 select plan(6);
+update private.settings set value = '0' where key = 'rooms.busy_slow_mode';
 
 select tests.create_agent('Sinta', '{cs_super_admin}', '{}') as sinta \gset
 select tests.create_agent('Maya', '{community}', '{}') as maya \gset

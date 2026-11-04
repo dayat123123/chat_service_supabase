@@ -1,5 +1,6 @@
 begin;
 select plan(54);
+update private.settings set value = '0' where key = 'rooms.busy_slow_mode';
 
 update private.rate_limits set max_count = 1000 where action in ('message', 'stock_room_create', 'report', 'appeal');
 update cs.agents set community_permissions = '{}';

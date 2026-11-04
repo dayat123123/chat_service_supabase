@@ -315,7 +315,7 @@ services:
       # Batas tenant, di-seed ulang dari env setiap start (SEED_SELF_HOST). Pesan chat lewat broadcast
       # dari database (0098): setiap event yang diterima satu klien dihitung. Lihat docs/PRODUCTION.md.
       TENANT_MAX_CONCURRENT_USERS: ${REALTIME_MAX_CONCURRENT_USERS:-10000}
-      TENANT_MAX_EVENTS_PER_SECOND: ${REALTIME_MAX_EVENTS_PER_SECOND:-10000}
+      TENANT_MAX_EVENTS_PER_SECOND: ${REALTIME_MAX_EVENTS_PER_SECOND:-20000}
       TENANT_MAX_CHANNELS_PER_CLIENT: ${REALTIME_MAX_CHANNELS_PER_CLIENT:-100}
       TENANT_MAX_JOINS_PER_SECOND: ${REALTIME_MAX_JOINS_PER_SECOND:-500}
       TENANT_MAX_BYTES_PER_SECOND: ${REALTIME_MAX_BYTES_PER_SECOND:-1000000}
@@ -898,7 +898,7 @@ services:
     <<: *base
     build:
       context: ../services/media
-    image: olt-social/media:0.2.0
+    image: olt-social/media:0.2.1
     networks: [app]
     depends_on:
       migrate:

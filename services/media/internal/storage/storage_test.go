@@ -40,6 +40,26 @@ func TestUploadSendsTheVerifiedRequest(t *testing.T) {
 	}
 }
 
+func TestUploadForwardsTheEdgeMarker(t *testing.T) {
+	for _, edge := range []string{"", "public"} {
+		var got http.Header
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			got = r.Header.Clone()
+			_, _ = w.Write([]byte(`{"Key":"avatars/u/a.jpg","Id":"x"}`))
+		}))
+		err := New(srv.URL, 4).Upload(context.Background(), Upload{
+			Bucket: "avatars", Path: "u/a.jpg", ContentType: "image/jpeg", Body: []byte("jpeg"), Token: "tok", Edge: edge,
+		})
+		srv.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if values := got.Values(EdgeHeader); (edge == "" && len(values) != 0) || (edge != "" && (len(values) != 1 || values[0] != edge)) {
+			t.Fatalf("edge %q -> %v", edge, values)
+		}
+	}
+}
+
 func TestClassifyMapsStorageErrors(t *testing.T) {
 	cases := map[string]struct {
 		status int

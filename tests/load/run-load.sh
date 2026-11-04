@@ -2,6 +2,8 @@
 # Uji beban "pembukaan pasar 09:00 WIB + saham ramai" (k6) terhadap stack DEV.
 # pemakaian: run-load.sh [smoke|step|spike|light] ; env: LOAD_STEPS ("50 100 200 300 400"), LOAD_HOLD (detik),
 # LOAD_RAMP (detik), LOAD_MSG_EVERY (detik), LOAD_FORCE=1 (lanjut walau batas berhenti terlampaui), LOAD_VIA=kong|traefik.
+# TYPING=1 (kirim send_typing seperti aplikasi), LIST_VUS=n (n VU pertama hanya memoll get_room_previews tiap LIST_POLL detik),
+# PRESENCE=0 (tanpa track presence).
 # - User uji: lt_00001.. (token sosial dev ditandatangani kunci OLT dummy, IP sintetis 198.18.0.0/15 per user
 #   lewat X-Forwarded-For yang hanya dipercaya Kong dari network edge, sehingga batas per IP berlaku per user).
 # - Tanpa push: notifier dihentikan selama uji dan dinyalakan lagi di akhir; user lt_ tidak punya perangkat push.
@@ -84,17 +86,33 @@ summary() {
     ] | @tsv' "$2"
 }
 printf 'vus\thttp_p50\thttp_p95\thttp_p99\thttp_err\tsend_p95\texchange_p95\tfeed_p95\tjoin_p95\trt_p50\trt_p95\trt_p99\tsent\tsend_fail\trt_recv\trt_expected\trt_delivered\tsubscribed\trate_limited\tlogin_fail\tws_fail\tjoin_fail\tws_drop\treq_per_s\trt_recv_win\tgap_only\trt_win_pct\teventual_pct\tids_p95\tbyids_p95\tgap_runs\tgap_too_long\tgap_failed\tpgrst003\n' > "$RUN/steps.tsv"
+printf 'vus\tsecs\ttyping_rpc\ttyping_ev\ttyping_ev_s\tsummary_ev\tmsg_ev_s\tpresence_ev\tpresence_kb\tpresence_denied\tlist_polls\tlist_fail\tpreviews_p95\ttyping_p95\trt_limit_logs\n' > "$RUN/realtime.tsv"
+realtime_summary() {
+  jq -r --arg step "$1" --arg logs "$3" '
+    def c(m): (.metrics[m].values.count // 0);
+    def p(m; s): (.metrics[m].values[s] // null) | if . == null then "-" else (. * 10 | round / 10 | tostring) end;
+    ((.state.testRunDurationMs // 1000) / 1000) as $s |
+    [ $step, ($s | round | tostring), c("typing_rpc_sent"), c("rt_typing_events"),
+      ((c("rt_typing_events") / $s * 10 | round) / 10 | tostring), c("rt_typing_summary_events"),
+      ((c("rt_messages_received") / $s * 10 | round) / 10 | tostring),
+      c("rt_presence_events"), ((c("rt_presence_bytes") / 1024) | round | tostring), c("presence_track_denied"),
+      c("list_polls"), c("list_poll_failed"),
+      p("http_req_duration{name:get_room_previews}"; "p(95)"), p("http_req_duration{name:send_typing}"; "p(95)"), $logs
+    ] | @tsv' "$2"
+}
 
 prev_p95=0
 for n in $steps; do
   step="$RUN/step-$n"
   mkdir -p "$step"
   tokengen -prefix lt_ -start 1 -count "$max" -ttl 14m > "$RUN/users.json" || exit 2
+  step_started=$(date -u +%FT%TZ)
   bash /olt/tests/load/sample.sh "$step" 5 &
   sampler=$!
   log "langkah $n VU dimulai"
   k6 run --quiet --log-format raw -e API="$API" -e ANON_KEY="$ANON_KEY" -e USERS="$RUN/users.json" -e VUS="$n" \
     -e RAMP="$ramp" -e HOLD="$hold" -e MSG_EVERY="$msg_every" -e SUMMARY="$step/summary.json" \
+    -e TYPING="${TYPING:-0}" -e LIST_VUS="${LIST_VUS:-0}" -e LIST_POLL="${LIST_POLL:-15}" -e PRESENCE="${PRESENCE:-1}" \
     /olt/tests/load/market-open.js > "$step/k6.log" 2>&1
   kill "$sampler" 2>/dev/null; wait "$sampler" 2>/dev/null; sampler=""
   rm -f "$RUN/users.json"
@@ -102,6 +120,9 @@ for n in $steps; do
     log "k6 gagal pada langkah $n, lihat $step/k6.log"; tail -5 "$step/k6.log"; break
   fi
   summary "$n" "$step/summary.json" >> "$RUN/steps.tsv"
+  limit_logs=$(docker logs --since "$step_started" "$(container realtime)" 2>&1 | grep -c -E "MessagePerSecondRateLimitReached|too_many_requests|RateLimit")
+  realtime_summary "$n" "$step/summary.json" "${limit_logs:-0}" >> "$RUN/realtime.tsv"
+  column -t -s $'\t' "$RUN/realtime.tsv" | tail -1 | sed 's/^/    realtime: /'
   awk -F, 'NR>1 {c[$2]=($3>c[$2]?$3:c[$2]); m[$2]=($4>m[$2]?$4:m[$2])} END {for (k in c) printf "%s\t%.1f\t%.0f\n", k, c[k], m[k]}' "$step/docker.csv" \
     | sort -k2 -n -r > "$step/peak-container.tsv"
   awk -F, 'NR>1 {for (i=2;i<=NF;i++) if ($i>p[i]) p[i]=$i} END {printf "peak conn_total=%d active=%d idle_in_tx=%d lock_waits=%d authenticator=%d\n", p[2], p[3], p[4], p[5], p[6]}' "$step/db.csv" > "$step/peak-db.txt"
@@ -130,4 +151,6 @@ echo "push_queue sebelum=$queued_before sesudah=$queued_after (notifier mati sel
 echo "finished=$(date -u +%FT%TZ)" >> "$RUN/run-info.txt"
 echo
 column -t -s $'\t' "$RUN/steps.tsv"
+echo
+column -t -s $'\t' "$RUN/realtime.tsv"
 echo "hasil: ${RUN#/olt/}"

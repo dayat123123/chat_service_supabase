@@ -2,7 +2,7 @@ import type { Translation } from './id'
 
 export const en: Translation = {
   app: {
-    title: 'CS Console',
+    title: 'Rendezvous Hub',
     loading: 'Loading…',
     retry: 'Try again',
     cancel: 'Cancel',
@@ -55,7 +55,7 @@ export const en: Translation = {
     secondShort: 's',
   },
   auth: {
-    loginTitle: 'Sign in to CS Console',
+    loginTitle: 'Sign in to Rendezvous Hub',
     loginSubtitle: 'For OLT agents and Super Admins only. Access from the office network only.',
     email: 'Email',
     password: 'Password',

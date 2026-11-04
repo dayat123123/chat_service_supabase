@@ -71,6 +71,8 @@ $ToolsImage = 'olt-social/tools:0.1.0'
 $NodeImage = 'node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85'
 $WebImage = 'caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
 $TestkitImage = 'olt-social/testkit:0.1.0'
+# Package Flutter ada di repo terpisah (github.com/dayat123123/rendezvous_community), di-clone di sebelah repo ini; $env:PKG untuk path lain.
+$PackageDir = if ($env:PKG) { $env:PKG } else { Join-Path (Split-Path $PSScriptRoot -Parent) 'rendezvous_community' }
 $Stack = 'olt-social'
 
 if ($DummyOlt -and $DeployProfile -ne 'dev') { throw 'DummyOlt hanya boleh dipakai di profil dev.' }
@@ -146,12 +148,13 @@ function Invoke-Testkit {
     $runArgs = @('run', '--rm', '--network', "${Stack}_app", '--network', "${Stack}_data", '--network', "${Stack}_edge",
                  '-v', '/var/run/docker.sock:/var/run/docker.sock',
                  '-v', "$(Join-Path $PSScriptRoot 'tests'):/olt/tests:ro", '-v', "${results}:/olt/results",
-                 '-v', "$(Join-Path $PSScriptRoot 'docker'):/olt/docker:ro", '--mount', 'type=tmpfs,destination=/olt/docker/secrets',
-                 '-v', "$(Join-Path $PSScriptRoot 'packages/rendezvous_community/lib'):/olt/client-lib:ro")
+                 '-v', "$(Join-Path $PSScriptRoot 'docker'):/olt/docker:ro", '--mount', 'type=tmpfs,destination=/olt/docker/secrets')
+    $clientLib = Join-Path $PackageDir 'lib'
+    if (Test-Path $clientLib) { $runArgs += @('-v', "$((Resolve-Path $clientLib).Path):/olt/client-lib:ro") }
     foreach ($s in @('anon_key', 'jwt_secret', 'postgres_password', 'olt_dev_signing_key')) {
         $runArgs += @('-v', "$(Join-Path $PSScriptRoot "$SecretsDir/$s"):/olt/secrets/${s}:ro")
     }
-    foreach ($e in @('LOAD_STEPS', 'LOAD_HOLD', 'LOAD_RAMP', 'LOAD_MSG_EVERY', 'LOAD_FORCE', 'LOAD_VIA', 'CHAOS_VUS', 'CHAOS_OUTAGE', 'CHAOS_LONG_OUTAGE', 'GAP_EVERY', 'GAP_IDS', 'GAP_OVERLAP', 'RECONNECT_JITTER', 'GAP_RECHECK')) {
+    foreach ($e in @('LOAD_STEPS', 'LOAD_HOLD', 'LOAD_RAMP', 'LOAD_MSG_EVERY', 'LOAD_FORCE', 'LOAD_VIA', 'CHAOS_VUS', 'CHAOS_OUTAGE', 'CHAOS_LONG_OUTAGE', 'GAP_EVERY', 'GAP_IDS', 'GAP_OVERLAP', 'RECONNECT_JITTER', 'GAP_RECHECK', 'TYPING', 'LIST_VUS', 'LIST_POLL', 'PRESENCE')) {
         if (Test-Path "Env:$e") { $runArgs += @('-e', $e) }
     }
     Invoke-Docker ($runArgs + @($TestkitImage) + $Arguments)
@@ -305,7 +308,7 @@ switch ($Target) {
         & $PSCommandPath check-go-comments
     }
     'test-flutter' {
-        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
+        Push-Location $PackageDir
         try {
             Invoke-Native 'flutter' @('analyze')
             Invoke-Native 'flutter' @('test')
@@ -313,7 +316,7 @@ switch ($Target) {
     }
     'test-flutter-it' {
         Assert-Config
-        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
+        Push-Location $PackageDir
         $env:OLT_SOCIAL_IT = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration') }
         finally { Remove-Item Env:OLT_SOCIAL_IT; Pop-Location }
@@ -321,14 +324,14 @@ switch ($Target) {
     'e2e-windows' {
         Assert-Config
         $anon = Get-AnonKey
-        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
+        Push-Location (Join-Path $PackageDir 'example')
         try { Invoke-Native 'flutter' @('test', 'integration_test/app_test.dart', '-d', 'windows', "--dart-define=OLT_SOCIAL_ANON_KEY=$anon") }
         finally { Pop-Location }
     }
     'web-example' {
         Assert-Config
         $anon = Get-AnonKey
-        $example = Join-Path $PSScriptRoot 'packages/rendezvous_community/example'
+        $example = Join-Path $PackageDir 'example'
         Push-Location $example
         try {
             Invoke-Native 'flutter' @('build', 'web', '--release', '--no-web-resources-cdn', '--pwa-strategy=none',
@@ -342,12 +345,12 @@ switch ($Target) {
         Write-Host 'App web: http://localhost:8086  (langsung login: http://localhost:8086/?user=sari_invest)'
     }
     'license-audit' {
-        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
+        Push-Location $PackageDir
         try { Invoke-Native 'dart' @('run', 'tool/license_audit.dart') } finally { Pop-Location }
     }
     'perf-flutter' {
         $device = if ($env:PERF_DEVICE) { $env:PERF_DEVICE } else { 'windows' }
-        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
+        Push-Location (Join-Path $PackageDir 'example')
         try {
             Invoke-Native 'flutter' @('drive', '--profile', '-d', $device, '--driver=test_driver/perf_driver.dart',
                                       '--target=integration_test/perf_scroll_test.dart')
@@ -529,7 +532,7 @@ switch ($Target) {
     }
     'test-flutter-it-dummy' {
         Assert-Config
-        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community')
+        Push-Location $PackageDir
         $env:OLT_SOCIAL_IT_DUMMY = '1'
         try { Invoke-Native 'flutter' @('test', 'test/integration/dummy_olt_integration_test.dart') }
         finally { Remove-Item Env:OLT_SOCIAL_IT_DUMMY; Pop-Location }
@@ -537,7 +540,7 @@ switch ($Target) {
     'e2e-windows-dummy' {
         Assert-Config
         $anon = Get-AnonKey
-        Push-Location (Join-Path $PSScriptRoot 'packages/rendezvous_community/example')
+        Push-Location (Join-Path $PackageDir 'example')
         try {
             Invoke-Native 'flutter' @('test', 'integration_test/dummy_olt_login_test.dart', '-d', 'windows',
                                       '--dart-define=OLT_DUMMY_E2E=true', "--dart-define=OLT_SOCIAL_ANON_KEY=$anon")

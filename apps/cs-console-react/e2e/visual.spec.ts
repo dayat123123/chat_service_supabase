@@ -54,7 +54,7 @@ for (const theme of themes) {
     const page = await context.newPage()
     const errors = watchErrors(page)
     await page.goto('/')
-    await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Masuk ke Rendezvous Hub' })).toBeVisible()
     await shoot(page, `login-${theme}`)
     expect(errors).toEqual([])
     await context.close()

@@ -290,6 +290,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 		Body:        clean,
 		Upsert:      b.upsert && strings.EqualFold(strings.TrimSpace(r.Header.Get("x-upsert")), "true"),
 		Token:       token,
+		Edge:        r.Header.Get(storage.EdgeHeader),
 	})
 	if err == nil {
 		s.noteStorage(true)

@@ -277,9 +277,12 @@ if [ -n "$SEC_A" ] && [ -n "$SEC_B_ID" ]; then
   AUTH[lt_sec_a]=$SEC_A
   call lt_sec_a POST /rest/v1/rpc/get_or_create_direct_room "{\"p_other_user_id\":\"$SEC_B_ID\"}"
   SEC_ROOM=$(jq -r 'if type == "string" then . else empty end' "$BODY" 2>/dev/null)
+  call lt_sec_a POST /rest/v1/rpc/join_stock_room '{"p_stock_code":"LTSEC"}'
+  SEC_STOCK=$(jq -r 'if type == "string" then . else empty end' "$BODY" 2>/dev/null)
 fi
 if [ -n "$SEC_ROOM" ]; then
   if k6 run -q --summary-mode disabled --log-format raw -e API="$API" -e ANON_KEY="$ANON_KEY" -e JWT="${AUTH[nasabah]}" -e VICTIM_JWT="$SEC_A" -e ROOM="$SEC_ROOM" \
+       -e STOCK_ROOM="${SEC_STOCK:-}" \
        /olt/tests/security/realtime-authz.js > "$OUT/realtime-authz.log" 2>&1; then
     sed -n 's/^RESULT //p' "$OUT/realtime-authz.log" | jq -s . > "$OUT/realtime-authz.json"
     jq -r '.[] | [.verdict, .actor, .probe, .status, .detail] | @tsv' "$OUT/realtime-authz.json" >> "$TSV"

@@ -55,9 +55,9 @@ select set_config('realtime.topic', 'online', true) as topic \gset
 select throws_ok($$insert into realtime.messages (topic, extension, payload, event, private)
                    values (realtime.topic(), 'broadcast', '{}', 'x', true)$$,
   '42501', null, 'Broadcast klien di topik online ditolak');
-select lives_ok($$insert into realtime.messages (topic, extension, payload, event, private)
-                  values (realtime.topic(), 'presence', '{}', 'presence', true)$$,
-  'Presence di topik online tetap berjalan');
+select throws_ok($$insert into realtime.messages (topic, extension, payload, event, private)
+                   values (realtime.topic(), 'presence', '{}', 'presence', true)$$,
+  '42501', null, 'Presence di topik online ditolak (topik ditutup, 0105)');
 select tests.authenticate_as(:'eko');
 select set_config('realtime.topic', 'room:' || :'dm', true) as topic \gset
 select throws_ok($$insert into realtime.messages (topic, extension, payload, event, private)

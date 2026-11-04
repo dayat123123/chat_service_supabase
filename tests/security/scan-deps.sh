@@ -46,6 +46,9 @@ OUT="$ROOT/$OUT_REL"
 mkdir -p "$OUT_REL"/{go,npm,osv,trivy,third-party}
 HOST_IDS="$(id -u):$(id -g)"
 SRC_RO=(--mount "type=bind,source=$ROOT,target=/src,readonly")
+PKG_DIR="${PKG:-../rendezvous_community}"
+PKG_RO=()
+[ -d "$PKG_DIR" ] && PKG_RO=(--mount "type=bind,source=$(cd "$PKG_DIR" && { pwd -W 2>/dev/null || pwd; }),target=/src/rendezvous_community,readonly")
 DOCKER_SOCK=(-v /var/run/docker.sock:/var/run/docker.sock)
 
 errors=0
@@ -113,12 +116,15 @@ scan_npm() {
 
 scan_osv() {
   local args=() f fmt rc
-  for f in packages/rendezvous_community/pubspec.lock packages/rendezvous_community/example/pubspec.lock apps/cs-console-react/package-lock.json services/*/go.mod scripts/check-go-comments/go.mod; do
+  for f in rendezvous_community/pubspec.lock rendezvous_community/example/pubspec.lock; do
+    [ -f "$PKG_DIR/${f#rendezvous_community/}" ] && args+=(-L "/src/$f")
+  done
+  for f in apps/cs-console-react/package-lock.json services/*/go.mod scripts/check-go-comments/go.mod; do
     [ -f "$f" ] && args+=(-L "/src/$f")
   done
   for fmt in json table; do
     echo "==> osv-scanner ($fmt)"
-    docker run --rm "${SRC_RO[@]}" "$OSV_IMG" scan source --format "$fmt" "${args[@]}" \
+    docker run --rm "${SRC_RO[@]}" "${PKG_RO[@]}" "$OSV_IMG" scan source --format "$fmt" "${args[@]}" \
       > "$OUT_REL/osv/osv.$fmt" 2> "$OUT_REL/osv/osv-$fmt.log"
     rc=$?
     [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ] || tool_fail "osv-scanner $fmt keluar $rc (lihat $OUT_REL/osv/osv-$fmt.log)"
@@ -349,7 +355,7 @@ function osvSection() {
         if (sev !== 'CRITICAL' && sev !== 'HIGH') continue;
         const fixed = [...new Set(g.ids.flatMap((id) => fixedVersions(vulns.get(id) || {}, pkg.name)))];
         details.push(`${sev} ${g.ids.join(',')} ${pkg.ecosystem}:${pkg.name}@${pkg.version} -> fixed ${fixed.join(',') || 'none'} [${src}] ${v0.summary || ''}`);
-        if (fixed.length && src === 'packages/rendezvous_community/pubspec.lock') blocking.push(`osv ${src}: ${pkg.name}@${pkg.version} ${sev}`);
+        if (fixed.length && src === 'rendezvous_community/pubspec.lock') blocking.push(`osv ${src}: ${pkg.name}@${pkg.version} ${sev}`);
       }
     }
     rows.push([src, scanned.get(src) || '?', c.CRITICAL, c.HIGH, c.MEDIUM, c.LOW + c.UNKNOWN, isGo ? stdlib : '-']);

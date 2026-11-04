@@ -57,6 +57,12 @@ for r in $(routers "$PROD" | awk -F'\t' '$2 ~ /\/rest\/v1/ {print $1}'); do
 done
 check high "middleware public-edge menimpa X-Olt-Edge: public" 'grep -A3 "^    public-edge:" $PROD | grep -q "X-Olt-Edge: public"'
 check high "router cs-api membuang X-Olt-Edge (staf lolos lewat domain CS)" '[[ "$(mw_of "$CS" cs-api)" == *cs-edge* ]] && grep -A3 "^    cs-edge:" $CS | grep -q "X-Olt-Edge: \"\""'
+for r in $(routers "$PROD" | awk -F'\t' '$2 ~ /\/(realtime|storage|media)\/v1/ {print $1}'); do
+  check high "router publik $r memasang X-Olt-Edge: public (RLS Realtime/Storage menolak JWT staf, 0105)" '[[ "$(mw_of "$PROD" "$r")" == *public-edge* ]]' "$(mw_of "$PROD" "$r")"
+done
+for r in $(routers "$CS" | awk -F'\t' '$2 ~ /\/(rest|realtime|storage)\/v1/ {print $1}'); do
+  check high "router CS $r membuang X-Olt-Edge (staf lolos lewat domain CS)" '[[ "$(mw_of "$CS" "$r")" == *cs-edge* ]]' "$(mw_of "$CS" "$r")"
+done
 check medium "/functions/v1 (cs-admin) tersedia di domain CS" '[[ "$(rule_of "$CS" cs-api)" == *"PathPrefix(\`/functions/v1\`)"* ]]'
 check low "fungsi contoh hello tidak ter-deploy (T10)" '[ ! -e $D/volumes/functions/hello ]' "$(ls $D/volumes/functions | tr '\n' ' ')"
 allow_rule=$(rule_of "$PROD" api-cs-customer)
@@ -68,10 +74,10 @@ if [ -d /olt/client-lib ]; then
   used=$(grep -rhoE "_cs\.rpc[A-Za-z]*\('[a-z_]+'" /olt/client-lib | sed -E "s/.*\('([a-z_]+)'/\1/" | sort -u)
   missing=$(comm -23 <(printf '%s\n' "$used") <(printf '%s\n' "$allow"))
   extra=$(comm -13 <(printf '%s\n' "$used") <(printf '%s\n' "$allow"))
-  check high "semua RPC cs_api yang dipanggil packages/rendezvous_community ada di allowlist publik ($(wc -l <<< "$used") fungsi)" '[ -z "$missing" ]' "$(tr '\n' ' ' <<< "$missing")"
+  check high "semua RPC cs_api yang dipanggil rendezvous_community ada di allowlist publik ($(wc -l <<< "$used") fungsi)" '[ -z "$missing" ]' "$(tr '\n' ' ' <<< "$missing")"
   check low "allowlist publik tidak lebih luas dari pemanggilan client" '[ -z "$extra" ]' "$(tr '\n' ' ' <<< "$extra")"
 else
-  res INFO low "packages/rendezvous_community/lib tidak di-mount (/olt/client-lib): allowlist cs_api publik tidak dicocokkan dengan client"
+  res INFO low "repo rendezvous_community tidak ditemukan (PKG, /olt/client-lib): allowlist cs_api publik tidak dicocokkan dengan client"
 fi
 
 echo "== batas per IP (T3) dan per user"

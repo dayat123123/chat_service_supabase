@@ -399,7 +399,7 @@ Pesan chat (room saham, DM, grup, dan chat CS) tidak lagi dikirim lewat `postgre
 
 | Topik | Terima (`SELECT`) | Kirim dari klien (`INSERT`) | Event dari server |
 |---|---|---|---|
-| `room:<room_id>` | anggota room (`chat_members`; nasabah diblokir hanya untuk room CS miliknya) | **presence saja** | `message`, `message_hidden`, `typing`, `receipt`, `reaction`, `room_state` |
+| `room:<room_id>` | anggota room (`chat_members`; nasabah diblokir hanya untuk room CS miliknya) | **presence saja**, dan tidak di room saham atau room non-CS ≥ 50 anggota (`0106`) | `message`, `message_hidden`, `typing`, `typing_summary`, `receipt`, `reaction`, `room_state` |
 | `user:<user_id>` | hanya pemilik | tidak ada | `room_activity` |
 | `cs:room:<room_id>` | nasabah pemilik dan staf yang boleh membaca room (`cs.can_read_room`) | tidak ada | `ticket`, `message` |
 | `cs:queue`, `cs:agent:<id>` | staf (tidak berubah) | tidak ada | tidak berubah |
@@ -437,6 +437,47 @@ Kapan gap-fill berjalan:
 - saat aplikasi kembali ke depan (Flutter `AppLifecycleListener.onResume`, web `visibilitychange`/`focus`): langsung, karena dipicu pengguna dan tidak serentak.
 
 Duplikat digabung lewat `id` dan `client_id`.
+
+### Typing dan presence di room besar (`0106`)
+
+Satu event di `room:<id>` dihitung sekali per subscriber, jadi biayanya ≈ jumlah anggota yang online. Di room saham ramai, typing per orang (±2 siaran per pesan: mulai dan berhenti) lebih mahal dari pesannya sendiri. Contoh: 500 penerima × 25 pesan/dtk menghasilkan ±25.000 event typing/dtk di atas 12.500 event pesan/dtk, padahal batas tenant 10.000. Presence menambah `presence_diff` ke semua anggota setiap kali ada yang join, keluar, atau sambung ulang.
+
+Aturan server (tidak bergantung klien, jadi klien lama tidak bisa membanjiri):
+
+| Setting (`private.settings`) | Bawaan | Arti |
+|---|---|---|
+| `rooms.typing_aggregate_members` | 50 | Room non-CS dengan anggota sebanyak ini atau lebih memakai ringkasan typing |
+| `rooms.typing_summary_seconds` | 3 | Paling sering satu ringkasan per room per interval ini |
+| `rooms.typing_off_members` | 2000 | Mulai jumlah anggota ini typing tidak disiarkan sama sekali |
+| `rooms.presence_max_members` | 50 | `track` presence ditolak di DM dan grup dengan anggota sebanyak ini atau lebih |
+| `rooms.presence_stock_members` | 0 | `track` presence ditolak di room saham dengan anggota sebanyak ini atau lebih (0 = selalu; nilai besar memulihkan perilaku lama untuk uji A/B) |
+
+- **Typing:** `send_typing` di room besar tidak menyiarkan `typing` bernama.
+  - Server mencatat user di `private.typing_throttle` (throttle per user tetap berlaku).
+  - Paling sering sekali per interval per room, server mengirim **`typing_summary`** `{room_id, count, ttl_ms}`: jumlah yang mengetik dalam 2 × interval, maksimal 99, tanpa identitas.
+  - Pengirim ringkasan dipilih lewat `FOR UPDATE SKIP LOCKED` di tabel unlogged `private.typing_rooms`. Tidak ada yang menunggu kunci, jadi tidak ada konvoi seperti T17.
+  - Berhenti mengetik (`p_typing = false`) tidak disiarkan; ringkasan kedaluwarsa sendiri setelah `ttl_ms`.
+  - User yang dibanned atau dibisukan di room tidak dihitung.
+  - Room CS selalu memakai jalur lama (juga `cs_api.agent_typing`).
+- **Ukuran room** dihitung dari `chat_members` dengan batas (`private.room_has_members`: paling banyak n baris index). Jumlah subscriber Realtime tidak terlihat dari Postgres, jadi jumlah anggota dipakai sebagai proksi konservatif.
+- **Presence:** `olt_realtime_send` (dari `0105`) mendapat syarat tambahan `private.can_track_presence(topic)`.
+  - Policy baca tidak berubah: join dan penerimaan broadcast tetap sama.
+  - Realtime menjawab `track` yang ditolak dengan reply `error`, dan channel tetap tersambung (sudah diuji ke Realtime v2.143.3).
+  - Klien 1.5.0 yang tetap `track` di room saham tidak terganggu.
+  - Aplikasi 1.6.0 hanya memakai presence di DM. Web CS tetap memakai presence di room CS.
+- **Biaya di room 500 penerima:** typing ±25.000 → ±167 event/dtk; presence room saham → 0.
+
+### Pratinjau room saham di daftar chat (`0107`)
+
+Room saham tidak mengirim `room_activity` per anggota (terlalu mahal). Daftar chat aplikasi karena itu memoll RPC ringan selama daftar terlihat:
+
+- `get_room_previews(p_room_ids uuid[])` (≤ 50 id, read-only, tanpa kunci baris):
+  - mengembalikan `{poll_seconds, rooms: [{room_id, last_message_at, last_message_preview, last_message_sender_id, unread_count, cursor}]}`;
+  - hanya untuk room saham yang diikuti pemanggil; id lain diabaikan;
+  - `unread_count` dan `cursor` sama dengan `get_my_rooms`, tetapi tanpa hitungan anggota.
+- `rooms.preview_poll_seconds` (bawaan 15) dikirim di respons. Klien menjepitnya ke 5 dtk–5 mnt dan mengacaknya × 0,75–1,25 per putaran. Interval bisa diperlambat dari server saat beban tinggi tanpa rilis aplikasi.
+- **Biaya:** 500 nasabah melihat daftar ≈ 33 req/dtk yang read-only, tanpa event Realtime dan tanpa jalur tulis baru.
+  - Alternatif yang ditolak: subscribe `room:<id>` dari daftar (25 × L event/dtk) dan ringkasan ke `user:<id>` tiap anggota (tulis naik sesuai keanggotaan).
 
 ### Batas tenant
 

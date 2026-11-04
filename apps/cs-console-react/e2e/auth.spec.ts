@@ -6,7 +6,7 @@ import { goOnline, signOut } from './support/staff'
 test('login email + password tanpa TOTP, password salah ditolak, lalu keluar', async ({ page }) => {
   const nadia = member('Nadia')
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Masuk ke Rendezvous Hub' })).toBeVisible()
 
   await page.getByLabel('Email', { exact: true }).fill(nadia.email)
   await page.getByLabel('Password', { exact: true }).fill('password-yang-salah')
@@ -19,7 +19,7 @@ test('login email + password tanpa TOTP, password salah ditolak, lalu keluar', a
   await expect(page.getByRole('menu')).toContainText('Nadia')
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button', { name: 'Ubah status' })).toContainText('Offline')
-  await expect(page).toHaveTitle(/CS Console/)
+  await expect(page).toHaveTitle(/Rendezvous Hub/)
 
   await goOnline(page)
   await signOut(page)
