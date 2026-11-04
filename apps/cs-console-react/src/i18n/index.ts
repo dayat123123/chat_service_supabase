@@ -4,11 +4,14 @@ import { initReactI18next } from 'react-i18next'
 import { logger } from '@/lib/logger'
 import { readLocal } from '@/lib/storage'
 
+import type { account } from './account/id'
 import type { evidence } from './evidence/id'
 import { id } from './id'
+import type { labels } from './labels/id'
 import type { moderation } from './moderation/id'
 import type { platform } from './platform/id'
 import type { policy } from './policy/id'
+import type { replies } from './replies/id'
 
 export const languages = ['id', 'en'] as const
 export type Language = (typeof languages)[number]
@@ -18,6 +21,9 @@ type Bundles = {
   policy: typeof policy
   moderation: typeof moderation
   evidence: typeof evidence
+  account: typeof account
+  labels: typeof labels
+  replies: typeof replies
 }
 export type Bundle = keyof Bundles
 
@@ -44,6 +50,18 @@ const bundleLoaders: { [B in Bundle]: Record<Language, () => Promise<Bundles[B]>
   evidence: {
     id: () => import('./evidence/id').then((module) => module.evidence),
     en: () => import('./evidence/en').then((module) => module.evidence),
+  },
+  account: {
+    id: () => import('./account/id').then((module) => module.account),
+    en: () => import('./account/en').then((module) => module.account),
+  },
+  labels: {
+    id: () => import('./labels/id').then((module) => module.labels),
+    en: () => import('./labels/en').then((module) => module.labels),
+  },
+  replies: {
+    id: () => import('./replies/id').then((module) => module.replies),
+    en: () => import('./replies/en').then((module) => module.replies),
   },
 }
 

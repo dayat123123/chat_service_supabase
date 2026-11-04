@@ -15,7 +15,9 @@ export const auditActions = [
   'agent.bootstrap',
   'agent.community_permissions',
   'agent.create',
+  'agent.password_changed',
   'agent.reset_password',
+  'agent.signed_out_everywhere',
   'agent.status',
   'agent.update',
   'banner.delete',
@@ -129,12 +131,16 @@ export const auditActions = [
   'ticket.fake_cs_reported',
   'ticket.flag',
   'ticket.join',
+  'ticket.label_add',
+  'ticket.label_remove',
   'ticket.priority',
   'ticket.reassign',
   'ticket.release',
   'ticket.resolve',
   'ticket.transfer_accept',
   'ticket.transfer_request',
+  'ticket_label.reorder',
+  'ticket_label.save',
   'topic.save',
 ] as const
 
@@ -174,6 +180,8 @@ export const ticketEvents = [
   'secure_account_done',
   'fake_cs_reported',
   'complaint_extended',
+  'label_added',
+  'label_removed',
 ] as const
 
 export type TicketEvent = (typeof ticketEvents)[number]

@@ -34,6 +34,7 @@ const sameSet = (a: readonly string[], b: readonly string[]) =>
 
 export function useFreshPermissions(enabled = true) {
   const updateAgent = useAuth((state) => state.updateAgent)
+  const signOut = useAuth((state) => state.signOut)
   const me = useQuery({
     queryKey: nasabahKeys.me,
     queryFn: presenceApi.me,
@@ -68,6 +69,9 @@ export function useFreshPermissions(enabled = true) {
       },
     })
   }, [me.data, updateAgent])
+  useEffect(() => {
+    if (me.error && toApiError(me.error).code === 'session_revoked') void signOut('expired')
+  }, [me.error, signOut])
 }
 
 export function useOnlineUsers(page: number, query: string, enabled = true) {

@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { create } from 'zustand'
@@ -20,12 +20,21 @@ import {
   type MessagePages,
 } from './cache'
 import { createGapSchedule } from './gap-schedule'
-import type { ChatMessage, LocalAttachment, PendingMessage, RoomMember, SendKind, SendResult } from './types'
+import type {
+  ChatMessage,
+  LocalAttachment,
+  PendingMessage,
+  PersonalReplyDraft,
+  RoomMember,
+  SendKind,
+  SendResult,
+} from './types'
 
 export const conversationKeys = {
   messages: (roomId: string) => ['messages', roomId] as const,
   members: (roomId: string) => ['members', roomId] as const,
   quickReplies: (language: string) => ['quick-replies', language] as const,
+  myQuickReplies: ['quick-replies', 'mine'] as const,
   signedUrl: (path: string, bucket: string) => ['signed-url', bucket, path] as const,
 }
 
@@ -77,6 +86,26 @@ export function useQuickReplies() {
     queryKey: conversationKeys.quickReplies(language),
     queryFn: () => conversationApi.quickReplies(language),
     staleTime: 5 * 60_000,
+  })
+}
+
+export function useMyQuickReplies() {
+  return useQuery({ queryKey: conversationKeys.myQuickReplies, queryFn: conversationApi.myQuickReplies })
+}
+
+export function useSaveMyQuickReply() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (draft: PersonalReplyDraft) => conversationApi.saveMyQuickReply(draft),
+    onSettled: () => client.invalidateQueries({ queryKey: ['quick-replies'] }),
+  })
+}
+
+export function useDeleteMyQuickReply() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => conversationApi.deleteMyQuickReply(id),
+    onSettled: () => client.invalidateQueries({ queryKey: ['quick-replies'] }),
   })
 }
 

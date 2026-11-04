@@ -75,6 +75,7 @@ export const settingsSections = [
   'accounts',
   'topics',
   'quickReplies',
+  'ticketLabels',
   'hours',
   'messages',
   'assignment',

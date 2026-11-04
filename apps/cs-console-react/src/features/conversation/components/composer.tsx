@@ -5,11 +5,12 @@ import {
   ListChecksIcon,
   LoaderCircleIcon,
   PaperclipIcon,
+  SettingsIcon,
   ShieldAlertIcon,
   SlashIcon,
   XIcon,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -40,8 +41,10 @@ import { useDraft, useQuickReplies, type SendRequest } from '../hooks'
 import {
   applyQuickReply,
   fillVariables,
-  filterQuickReplies,
+  flattenGroups,
+  groupQuickReplies,
   slashToken,
+  type QuickReplyGroups,
   type SlashToken,
 } from '../quick-replies'
 import { ATTACHMENT_TYPES, fileSize, isDocumentFile, mediaLimit, mediaProblem } from '../media'
@@ -60,6 +63,10 @@ import { PendingAttachments } from './pending-attachments'
 import { SpecialMessageDialog, type SpecialKind, type SpecialMessage } from './special-dialogs'
 
 const MAX_INPUT_HEIGHT = 182
+
+const noGroups: QuickReplyGroups = { personal: [], shared: [] }
+
+const PersonalRepliesDialog = lazy(() => import('./personal-replies-dialog'))
 
 function ToolButton({
   label,
@@ -110,10 +117,13 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
   const guard = useActionGuard()
   const offline = useAgent().status === 'offline'
 
-  const matches = useMemo(
-    () => (token && mode === 'reply' ? filterQuickReplies(quickReplies.data ?? [], token.query) : []),
+  const groups = useMemo(
+    () => (token && mode === 'reply' ? groupQuickReplies(quickReplies.data ?? [], token.query) : noGroups),
     [token, mode, quickReplies.data],
   )
+  const matches = useMemo(() => flattenGroups(groups), [groups])
+  const pickerOpen = token !== null && mode === 'reply' && (matches.length > 0 || token.query === '')
+  const [managing, setManaging] = useState(false)
   const secret = mode === 'reply' && requestsSecret(value)
   const note = mode === 'note'
   const locked = offline && !note
@@ -441,37 +451,84 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         }}
       />
       <div className="relative">
-        {matches.length > 0 && token ? (
-          <ul
-            id={listId}
-            role="listbox"
-            aria-label={t('composer.quickReplies')}
-            className={cn(floatClass, 'absolute bottom-full left-0 mb-2 max-h-64 w-full overflow-y-auto p-1')}
+        {pickerOpen ? (
+          <div
+            className={cn(
+              floatClass,
+              'absolute bottom-full left-0 mb-2 flex w-full flex-col overflow-hidden',
+            )}
           >
-            {matches.map((reply, index) => (
-              <li
-                key={reply.id}
-                id={`${listId}-${index}`}
-                role="option"
-                aria-selected={index === highlight}
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  insertQuickReply(index)
-                }}
-                onMouseEnter={() => setHighlight(index)}
-                className={cn(
-                  'cursor-pointer rounded-md px-2 py-1.5 text-sm',
-                  index === highlight && 'bg-muted',
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-muted-foreground">/{reply.shortcut}</span>
-                  <span className="truncate font-medium">{reply.title}</span>
-                </div>
-                <p className="line-clamp-1 text-xs text-muted-foreground">{reply.body}</p>
-              </li>
-            ))}
-          </ul>
+            <div
+              id={listId}
+              role="listbox"
+              aria-label={t('composer.quickReplies')}
+              className="max-h-64 overflow-y-auto p-1"
+            >
+              {(
+                [
+                  ['personal', groups.personal, 0],
+                  ['shared', groups.shared, groups.personal.length],
+                ] as const
+              ).map(([group, replies, offset]) =>
+                replies.length > 0 ? (
+                  <div key={group} role="group" aria-labelledby={`${listId}-${group}`}>
+                    <div
+                      id={`${listId}-${group}`}
+                      role="presentation"
+                      className="px-2 pt-1.5 pb-1 text-label font-medium text-muted-foreground uppercase"
+                    >
+                      {t(`replies.${group}`)}
+                    </div>
+                    {replies.map((reply, position) => {
+                      const index = offset + position
+                      return (
+                        <div
+                          key={reply.id}
+                          id={`${listId}-${index}`}
+                          role="option"
+                          aria-selected={index === highlight}
+                          onMouseDown={(event) => {
+                            event.preventDefault()
+                            insertQuickReply(index)
+                          }}
+                          onMouseEnter={() => setHighlight(index)}
+                          className={cn(
+                            'cursor-pointer rounded-md px-2 py-1.5 text-sm',
+                            index === highlight && 'bg-muted',
+                          )}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-muted-foreground">/{reply.shortcut}</span>
+                            <span className="truncate font-medium">{reply.title}</span>
+                          </div>
+                          <p className="line-clamp-1 text-xs text-muted-foreground">{reply.body}</p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : null,
+              )}
+              {matches.length === 0 ? (
+                <p className="px-2 py-1.5 text-xs text-muted-foreground">{t('replies.noMatches')}</p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onMouseDown={(event) => {
+                event.preventDefault()
+                setToken(null)
+                setManaging(true)
+              }}
+              onClick={() => {
+                setToken(null)
+                setManaging(true)
+              }}
+              className="flex h-8 shrink-0 items-center gap-2 border-t px-3 text-left text-xs text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:bg-muted"
+            >
+              <SettingsIcon className="size-3.5" />
+              {t('replies.manage')}
+            </button>
+          </div>
         ) : null}
         <div
           className={cn(
@@ -487,8 +544,8 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
             disabled={locked}
             aria-label={note ? t('composer.note') : t('composer.reply')}
             aria-autocomplete="list"
-            aria-controls={matches.length > 0 && token ? listId : undefined}
-            aria-activedescendant={matches.length > 0 && token ? `${listId}-${highlight}` : undefined}
+            aria-controls={pickerOpen ? listId : undefined}
+            aria-activedescendant={pickerOpen && matches.length > 0 ? `${listId}-${highlight}` : undefined}
             placeholder={note ? t('composer.notePlaceholder') : t('composer.placeholder')}
             onChange={(event) => onChange(event.target.value, event.target.selectionStart)}
             onKeyDown={onKeyDown}
@@ -581,6 +638,16 @@ export function Composer({ ticket, agent, replyTo, onCancelReply, send, onTyping
         onClose={() => setSpecial(null)}
         onSend={(message) => void sendSpecial(message)}
       />
+      {managing ? (
+        <Suspense fallback={null}>
+          <PersonalRepliesDialog
+            onClose={() => {
+              setManaging(false)
+              requestAnimationFrame(() => textarea.current?.focus())
+            }}
+          />
+        </Suspense>
+      ) : null}
     </div>
   )
 }

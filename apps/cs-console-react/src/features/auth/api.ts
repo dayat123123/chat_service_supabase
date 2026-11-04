@@ -1,5 +1,5 @@
 import { toApiError } from '@/lib/errors'
-import { supabase } from '@/lib/supabase'
+import { rpc, supabase } from '@/lib/supabase'
 
 import type { AuthStep } from './types'
 
@@ -26,6 +26,7 @@ export const authApi = {
 
   changePassword: async (password: string) => {
     await unwrap(supabase().auth.updateUser({ password, data: { must_change_password: false } }))
+    await rpc('agent_password_changed').catch(() => undefined)
   },
 
   signOut: async () => {

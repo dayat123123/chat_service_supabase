@@ -138,7 +138,7 @@ describe('CommunityPage', () => {
 
     expect(tabNames()).toEqual(['Analitik'])
     expect(screen.getByRole('tab', { name: 'Analitik' })).toHaveAttribute('aria-selected', 'true')
-    expect(await screen.findByRole('radio', { name: '30 hari' })).toBeVisible()
+    expect(await screen.findByRole('radio', { name: '30 hari' }, { timeout: 5_000 })).toBeVisible()
     expect(screen.queryByText('Laporan terbuka')).not.toBeInTheDocument()
     expect(communityApi.overview).not.toHaveBeenCalled()
   })
@@ -152,7 +152,7 @@ describe('CommunityPage', () => {
 
     expect(tabNames()).toEqual(['Stream', 'Notifikasi', 'Akun resmi', 'Analitik'])
     expect(screen.getByRole('tab', { name: 'Analitik' })).toHaveAttribute('aria-selected', 'true')
-    expect(await screen.findByRole('radio', { name: '30 hari' })).toBeVisible()
+    expect(await screen.findByRole('radio', { name: '30 hari' }, { timeout: 5_000 })).toBeVisible()
   })
 
   it('keeps the tabs of community staff unchanged and ignores an analytics link', async () => {

@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/menu'
 import { Skeleton } from '@/components/ui/primitives'
+import { LabelsReport } from '@/features/labels/components/labels-report'
 import { downloadText } from '@/lib/download'
 import { formatDay, formatNumber, formatRating, minutesLabel } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -333,6 +334,7 @@ export function ReportsPage() {
             <Skeleton className="h-2 w-2/3" />
           </div>
         )}
+        <LabelsReport range={range} />
         <CustomersSection range={range} />
       </div>
     </div>

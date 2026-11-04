@@ -3,7 +3,7 @@ import type { QueueEvent } from '@/lib/realtime'
 
 import type { Ticket, TicketFilter, TicketLists, TicketTab } from './types'
 
-export const noFilter: TicketFilter = { topic: null, priority: null, flag: null }
+export const noFilter: TicketFilter = { topic: null, priority: null, flag: null, label: null }
 
 export function ticketTabs(agent: Pick<AgentProfile, 'roles'>): TicketTab[] {
   if (!worksTickets(agent)) return isSuperAdmin(agent) ? ['all_active', 'open'] : []
@@ -16,14 +16,15 @@ export function currentTab(tabs: TicketTab[], chosen: TicketTab | null): TicketT
 }
 
 export function isFiltered(filter: TicketFilter) {
-  return filter.topic !== null || filter.priority !== null || filter.flag !== null
+  return filter.topic !== null || filter.priority !== null || filter.flag !== null || filter.label !== null
 }
 
 export function matchesFilter(ticket: Ticket, filter: TicketFilter) {
   return (
     (filter.topic === null || ticket.topic === filter.topic) &&
     (filter.priority === null || ticket.priority === filter.priority) &&
-    (filter.flag === null || ticket.flags.includes(filter.flag))
+    (filter.flag === null || ticket.flags.includes(filter.flag)) &&
+    (filter.label === null || (ticket.labels ?? []).some((label) => label.id === filter.label))
   )
 }
 

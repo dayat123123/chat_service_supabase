@@ -1,3 +1,4 @@
+import type { TicketLabel } from '@/features/labels/types'
 import type { AgentStatus } from '@/features/presence/types'
 
 export type TicketStatus = 'open' | 'claimed' | 'waiting_customer' | 'resolved' | 'closed'
@@ -64,6 +65,7 @@ export type Ticket = {
   unread_count: number
   waiting_since: string | null
   events?: TicketEventItem[]
+  labels?: TicketLabel[]
 }
 
 export type TransferRequest = {
@@ -101,7 +103,12 @@ export const tabLabelKeys = {
   all_active: 'tickets.allActive',
 } as const satisfies Record<TicketTab, string>
 
-export type TicketFilter = { topic: string | null; priority: string | null; flag: string | null }
+export type TicketFilter = {
+  topic: string | null
+  priority: string | null
+  flag: string | null
+  label: string | null
+}
 
 export const emptyLists: TicketLists = {
   open: [],

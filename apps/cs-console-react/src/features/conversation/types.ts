@@ -43,6 +43,14 @@ export type RoomMember = {
 
 export type QuickReply = { id: string; scope: string; shortcut: string; title: string; body: string }
 
+export type PersonalQuickReply = QuickReply & { updated_at: string | null }
+
+export type PersonalReplyDraft = { id: string | null; title: string; body: string; shortcut: string }
+
+export const MAX_PERSONAL_REPLIES = 50
+export const MAX_REPLY_TITLE = 80
+export const MAX_REPLY_BODY = 2000
+
 export type LocalAttachment = { id: string; file: File; preview: string }
 
 export type PendingMessage = {

@@ -1,6 +1,16 @@
 import { Link } from '@tanstack/react-router'
-import { BellIcon, BellOffIcon, KeyboardIcon, LogOutIcon, SearchIcon } from 'lucide-react'
-import { useState } from 'react'
+import {
+  BellIcon,
+  BellOffIcon,
+  GaugeIcon,
+  KeyboardIcon,
+  KeyRoundIcon,
+  LogOutIcon,
+  MonitorSmartphoneIcon,
+  SearchIcon,
+  UserRoundIcon,
+} from 'lucide-react'
+import { lazy, Suspense, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Logo } from '@/components/logo'
@@ -19,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/menu'
 import { Avatar, Kbd } from '@/components/ui/primitives'
+import type { AccountDialog } from '@/features/account/types'
 import { useAgent, useAuth } from '@/features/auth/hooks'
 import { useOverlays } from '@/features/command/bus'
 import {
@@ -40,6 +51,7 @@ import {
 import { isStaffRole } from '@/features/settings/types'
 import { useHealthBadge } from '@/features/system/hooks'
 import { badgeView } from '@/features/system/logic'
+import { withStrings } from '@/i18n'
 import { notificationPermission, playSound, requestNotificationPermission } from '@/lib/alerts'
 import { SHOW_SYSTEM_HEALTH_NAV } from '@/lib/nav-config'
 import { usePreferences, type Density, type Theme, type TicketAlerts } from '@/lib/preferences'
@@ -61,6 +73,16 @@ type NavTarget =
   | '/nasabah'
   | '/community'
   | '/system'
+
+const AccountDialogs = lazy(
+  withStrings(
+    () =>
+      import('@/features/account/components/account-dialogs').then((module) => ({
+        default: module.AccountDialogs,
+      })),
+    'account',
+  ),
+)
 
 function NavLink({
   to,
@@ -130,9 +152,10 @@ function AlertsMenu() {
   )
 }
 
-function AccountMenu() {
+function AccountMenu({ onOpen }: { onOpen: (dialog: AccountDialog) => void }) {
   const { t } = useTranslation()
   const agent = useAgent()
+  const worker = worksTickets(agent)
   const signOut = useAuth((state) => state.signOut)
   const { theme, density, language, setTheme, setDensity, setLanguage } = usePreferences()
   const setShortcuts = useOverlays((state) => state.setShortcuts)
@@ -154,6 +177,21 @@ function AccountMenu() {
             {agent.agent_code} · {roles}
           </span>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => onOpen('profile')}>
+          <UserRoundIcon />
+          {t('nav.myProfile')}
+        </DropdownMenuItem>
+        {worker ? (
+          <DropdownMenuItem onSelect={() => onOpen('performance')}>
+            <GaugeIcon />
+            {t('nav.myPerformance')}
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem onSelect={() => onOpen('password')}>
+          <KeyRoundIcon />
+          {t('nav.changePassword')}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>{t('preferences.theme')}</DropdownMenuSubTrigger>
@@ -194,6 +232,10 @@ function AccountMenu() {
           <Kbd className="ml-auto">?</Kbd>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => onOpen('signOutEverywhere')}>
+          <MonitorSmartphoneIcon />
+          {t('nav.signOutEverywhere')}
+        </DropdownMenuItem>
         <DropdownMenuItem destructive onSelect={() => void signOut('manual')}>
           <LogOutIcon />
           {t('auth.signOut')}
@@ -215,6 +257,7 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
   const showSystem = superAdmin && SHOW_SYSTEM_HEALTH_NAV
   const communityCount = useCommunityBadge()
   const health = badgeView(useHealthBadge(showSystem).data)
+  const [dialog, setDialog] = useState<AccountDialog | null>(null)
   return (
     <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-background px-3 lg:px-4">
       <Logo className="mr-2 hidden sm:flex" />
@@ -288,12 +331,27 @@ export function TopBar({ attention, caseAttention }: { attention: number; caseAt
           <>
             <StatusMenu />
             <ActiveCount />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="hidden md:inline-flex"
+              aria-label={t('nav.myPerformance')}
+              title={t('nav.myPerformance')}
+              onClick={() => setDialog('performance')}
+            >
+              <GaugeIcon />
+            </Button>
           </>
         ) : null}
         {monitor ? <MonitorIndicator /> : null}
         <AlertsMenu />
-        <AccountMenu />
+        <AccountMenu onOpen={setDialog} />
       </div>
+      {dialog ? (
+        <Suspense fallback={null}>
+          <AccountDialogs dialog={dialog} onClose={() => setDialog(null)} />
+        </Suspense>
+      ) : null}
     </header>
   )
 }
