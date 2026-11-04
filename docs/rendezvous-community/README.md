@@ -1,15 +1,15 @@
 # `rendezvous_community`
 
-Dokumentasi library Flutter fitur komunitas (feed, komentar, chat, chat CS) untuk aplikasi Rendezvous OLT. Sebelumnya bernama `olt_social`.
+Catatan backend untuk library Flutter (kode dan dokumentasinya di repo [rendezvous_community](https://github.com/dayat123123/rendezvous_community)). Library fitur komunitas (feed, komentar, chat, chat CS) untuk aplikasi Rendezvous OLT. Sebelumnya bernama `olt_social`.
 
 | Dokumen | Isi |
 |---|---|
-| [README package](../../packages/rendezvous_community/README.md) | Pemakaian singkat, fitur UI, tema, builder chat, perintah pengembangan |
+| [README library](https://github.com/dayat123123/rendezvous_community/blob/main/README.md) | Pemakaian singkat, fitur UI, tema, builder chat, perintah pengembangan |
 | [INTEGRATION.md](../INTEGRATION.md) | Langkah memasang library di aplikasi OLT |
-| [architecture.md](architecture.md) | Struktur folder, aturan dependensi, alur auth, realtime, centang, error |
-| [logging.md](logging.md) | Logger, level, format pesan, penyamaran data sensitif |
+| [architecture.md](https://github.com/dayat123123/rendezvous_community/blob/main/doc/architecture.md) | Struktur folder, aturan dependensi, alur auth, realtime, centang, error |
+| [logging.md](https://github.com/dayat123123/rendezvous_community/blob/main/doc/logging.md) | Logger, level, format pesan, penyamaran data sensitif |
 | [features-1.3.md](features-1.3.md) | Fitur 1.3.0: konfigurasi klien & kill switch, keamanan konten, permintaan DM, banding, room saham, pencarian, link preview, trending, edit, bookmark, reaksi, bagikan, analitik, catatan backend |
-| [migration-1.0.md](migration-1.0.md) | Pindah dari `olt_social` 0.3.0: tabel simbol, nama yang dipertahankan, data perangkat |
+| [migration-1.0.md](https://github.com/dayat123123/rendezvous_community/blob/main/doc/migration-1.0.md) | Pindah dari `olt_social` 0.3.0: tabel simbol, nama yang dipertahankan, data perangkat |
 | [backlog.md](backlog.md) | Tempat `TODO`/`FIXME` (kode tanpa komentar) |
 | [PROMPT-RENAME-COMMUNITY.md](../PROMPT-RENAME-COMMUNITY.md) | Spesifikasi refactor 1.0.0 |
 

@@ -31,7 +31,7 @@ select tests.authenticate_as(:'alice');
 select get_or_create_direct_room(:'bob') as dm \gset
 
 select ok(private.can_access_topic('room:' || :'dm'), 'Anggota boleh join channel room');
-select ok(private.can_access_topic('online'), 'Semua user login boleh join channel online');
+select ok(not private.can_access_topic('online'), 'Channel online ditutup (tidak dipakai klien, 0105)');
 select ok(not private.can_access_topic('room:bukan-uuid'), 'Topic tidak valid ditolak');
 
 select tests.create_user('carol') as carol \gset

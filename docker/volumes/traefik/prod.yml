@@ -8,12 +8,14 @@
 #
 # API staf (T4, docs/testing/report-2026-11-03.md): skema cs_api di domain publik
 # hanya untuk RPC chat CS yang dipanggil app nasabah (api-cs-customer, daftar sama
-# dengan pemanggilan cs_api di packages/rendezvous_community). Permintaan cs_api
+# dengan pemanggilan cs_api di rendezvous_community (repo terpisah)). Permintaan cs_api
 # lain (Accept-Profile/Content-Profile) dijawab 403 (api-cs-staff-block), dan router
 # api membuang header profil sehingga hanya skema public yang terjangkau. RPC agen
 # dan cs-admin hanya lewat CS_CONSOLE_DOMAIN (ipAllowList VPN_SOURCE_RANGES).
-# Router REST publik juga memasang X-Olt-Edge: public (menimpa nilai klien);
-# private.check_request (0100) menolak JWT akun CS yang datang dengan penanda ini.
+# Router REST, Realtime, Storage, dan media publik memasang X-Olt-Edge: public (menimpa
+# nilai klien). JWT akun CS dengan penanda ini ditolak DB: REST oleh private.check_request
+# (0100), Realtime (join/presence) dan Storage (semua bucket) oleh RLS (0105); media
+# meneruskan penanda ke Storage. postgres_changes ditolak untuk akun CS di semua domain.
 #
 # Entrypoint `admin` (semua path, termasuk Studio) hanya di-bind ke 127.0.0.1
 # server; akses lewat WireGuard atau SSH tunnel. Lihat docs/PRODUCTION.md.
@@ -39,7 +41,7 @@ http:
       entryPoints: [websecure]
       rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/realtime/v1`)
       service: kong
-      middlewares: [ws-limit, rate-limit, hsts, security-headers]
+      middlewares: [ws-limit, rate-limit, public-edge, hsts, security-headers]
       tls:
         certResolver: le
       priority: 100
@@ -48,7 +50,7 @@ http:
       entryPoints: [websecure]
       rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/storage/v1`) && (Method(`POST`) || Method(`PUT`))
       service: kong
-      middlewares: [rate-limit, body-upload, hsts, security-headers]
+      middlewares: [rate-limit, public-edge, body-upload, hsts, security-headers]
       tls:
         certResolver: le
       priority: 95
@@ -57,7 +59,7 @@ http:
       entryPoints: [websecure]
       rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/media/v1`)
       service: kong
-      middlewares: [rate-limit, body-upload, hsts, security-headers]
+      middlewares: [rate-limit, public-edge, body-upload, hsts, security-headers]
       tls:
         certResolver: le
       priority: 95
@@ -75,7 +77,7 @@ http:
       entryPoints: [websecure]
       rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/storage/v1`)
       service: kong
-      middlewares: [rate-limit, hsts, security-headers]
+      middlewares: [rate-limit, public-edge, hsts, security-headers]
       tls:
         certResolver: le
       priority: 90

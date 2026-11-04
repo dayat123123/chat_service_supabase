@@ -261,6 +261,25 @@ func verifyMinted(t *testing.T, header http.Header) map[string]any {
 	return claims
 }
 
+func TestUploadForwardsTheEdgeMarkerToStorage(t *testing.T) {
+	h := newHarness(t, nil)
+	tok := token(t, nil, secret)
+	rec := h.post(t, "/object/attachments/posts/"+sub+"/photo.jpg", tok, phoneJPEG(t), map[string]string{"X-Olt-Edge": "public"})
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d %s", rec.Code, rec.Body.String())
+	}
+	if got := h.storage.last(t).headers.Get("X-Olt-Edge"); got != "public" {
+		t.Fatalf("edge = %q", got)
+	}
+	rec = h.post(t, "/object/attachments/posts/"+sub+"/other.jpg", tok, phoneJPEG(t), nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d %s", rec.Code, rec.Body.String())
+	}
+	if got := h.storage.last(t).headers.Values("X-Olt-Edge"); len(got) != 0 {
+		t.Fatalf("edge without marker = %v", got)
+	}
+}
+
 func TestUploadStoresASanitizedPhoto(t *testing.T) {
 	h := newHarness(t, nil)
 	tok := token(t, nil, secret)

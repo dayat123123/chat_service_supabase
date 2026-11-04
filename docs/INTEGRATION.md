@@ -11,16 +11,17 @@ Langkah memasang fitur sosial ke proyek Flutter OLT yang sudah ada (Windows + An
 dependencies:
   rendezvous_community:
     git:
-      url: <url repo internal>
-      path: packages/rendezvous_community
-      ref: v1.5.0            # pin tag/commit; server dengan migrasi 0098 butuh >= 1.5.0
+      url: https://github.com/dayat123123/rendezvous_community.git
+      ref: v1.5.0            # pin tag rilis; server dengan migrasi 0098 butuh >= 1.5.0
   flutter_localizations:
     sdk: flutter
 ```
 
-Untuk pengembangan lokal bisa memakai `path: ../olt-social/packages/rendezvous_community`.
+Paket dirilis ke repo terpisah [`rendezvous_community`](https://github.com/dayat123123/rendezvous_community) (private, hanya paket Flutter). Kode library dikembangkan di repo itu dan setiap rilis diberi tag (`v1.5.0`, `v1.6.0`, ...). Komputer yang menjalankan `flutter pub get` butuh akses baca: login lewat Git Credential Manager di laptop, atau URL SSH + deploy key read-only di CI. Jangan menaruh token GitHub di URL `pubspec.yaml`.
 
-> Package ini sebelumnya bernama `olt_social` (sampai 0.3.0). Bila app OLT masih memakai nama lama, ikuti [panduan migrasi 1.0](rendezvous-community/migration-1.0.md).
+Untuk pengembangan lokal bisa memakai `path: ../rendezvous_community` (clone repo library di sebelah repo backend).
+
+> Package ini sebelumnya bernama `olt_social` (sampai 0.3.0). Bila app OLT masih memakai nama lama, ikuti [panduan migrasi 1.0](https://github.com/dayat123123/rendezvous_community/blob/main/doc/migration-1.0.md).
 
 Kompatibilitas:
 - **Flutter:** ≥ 3.44, Dart ≥ 3.12.
@@ -48,7 +49,7 @@ Yang dibandingkan adalah versi **app OLT** (`appVersion`), bukan versi package. 
   <uses-permission android:name="android.permission.INTERNET" />
   ```
 
-- Produksi memakai HTTPS. Bila staging masih HTTP, izinkan cleartext **hanya** di `src/debug/AndroidManifest.xml`. Contohnya ada di `packages/rendezvous_community/example/android`.
+- Produksi memakai HTTPS. Bila staging masih HTTP, izinkan cleartext **hanya** di `src/debug/AndroidManifest.xml`. Contohnya ada di `example/android` di repo rendezvous_community.
 - Pemilihan gambar memakai `file_selector`, yang membuka pemilih dokumen sistem; tidak perlu izin storage.
 - Bila memakai notifikasi lokal untuk balasan CS (`flutter_local_notifications`):
   - tambahkan izin `android.permission.POST_NOTIFICATIONS` (Android 13+);
@@ -89,7 +90,7 @@ Yang terjadi di belakang layar:
 - **Penerbitan JWT:** auth-bridge memeriksa tanda tangan token sosial dengan kunci publik OLT, lalu menukarnya menjadi JWT Supabase berumur 15 menit. Server sosial tidak menghubungi OLT.
 - **Refresh otomatis:** JWT diperbarui sebelum kedaluwarsa, termasuk untuk koneksi realtime yang sedang berjalan. Saat refresh, `tokenProvider` dipanggil lagi.
 - **Token sosial ditolak** (kedaluwarsa, salah tanda tangan, atau OLT berhenti menerbitkannya karena akun disuspend/logout): semua API melempar `CommunityException(kind: unauthenticated)`, dan UI menampilkan *"Sesi berakhir. Silakan login ulang di OLT."*. OLT sebaiknya mengarahkan user ke login ulang.
-- **Log:** library tidak mencetak ke konsol. Tanpa `logHandler`, log hanya muncul di mode debug. Log berbahasa Inggris, field terstruktur, dan data sensitif disamarkan ([logging.md](rendezvous-community/logging.md)).
+- **Log:** library tidak mencetak ke konsol. Tanpa `logHandler`, log hanya muncul di mode debug. Log berbahasa Inggris, field terstruktur, dan data sensitif disamarkan ([logging.md](https://github.com/dayat123123/rendezvous_community/blob/main/doc/logging.md)).
 - **Memastikan sesi sejak awal:** `await RendezvousCommunity.instance.ensureSignedIn()` melempar error lebih awal, misalnya bila backend tidak terjangkau.
 
 **Data saham dari OLT.** Server tidak menyimpan daftar saham:
@@ -236,7 +237,7 @@ Kontrak lengkapnya ada di `lib/src/features/<fitur>/domain/repositories/` (mis. 
 
 ## 8. Test di proyek OLT
 
-Bungkus widget sosial dengan `CommunityScope` dan berikan implementasi palsu `CommunityDependencies`. Dengan begitu widget test berjalan tanpa backend. Contohnya ada di `packages/rendezvous_community/test/support/fakes.dart`.
+Bungkus widget sosial dengan `CommunityScope` dan berikan implementasi palsu `CommunityDependencies`. Dengan begitu widget test berjalan tanpa backend. Contohnya ada di `test/support/fakes.dart` di repo rendezvous_community.
 
 ## 9. Troubleshooting
 

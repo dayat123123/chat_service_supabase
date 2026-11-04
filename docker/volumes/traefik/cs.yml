@@ -2,6 +2,7 @@
 # Semua router di domain CS_CONSOLE_DOMAIN dibatasi ke IP di VPN_SOURCE_RANGES (LAN kantor atau VPN).
 # Header keamanan halaman web (CSP, HSTS, dsb.) dipasang nginx cs-console.
 # Skema cs_api dan /functions/v1/cs-admin hanya dibuka penuh di domain ini (prod.yml membatasinya, T4).
+# cs-edge membuang X-Olt-Edge di REST, Realtime, dan Storage agar JWT staf diterima (0100, 0105).
 http:
   middlewares:
     cs-edge:
@@ -18,7 +19,7 @@ http:
       entryPoints: [websecure]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/realtime/v1`)
       service: kong
-      middlewares: [vpn-only, ws-limit, rate-limit, hsts, security-headers]
+      middlewares: [vpn-only, cs-edge, ws-limit, rate-limit, hsts, security-headers]
       tls:
         certResolver: le
       priority: 100
@@ -27,7 +28,7 @@ http:
       entryPoints: [websecure]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/storage/v1`) && (Method(`POST`) || Method(`PUT`))
       service: kong
-      middlewares: [vpn-only, rate-limit, body-upload, hsts, security-headers]
+      middlewares: [vpn-only, cs-edge, rate-limit, body-upload, hsts, security-headers]
       tls:
         certResolver: le
       priority: 95

@@ -26,7 +26,7 @@ Hasil ditulis ke `tests/results/<jenis>-<waktu>/` (di-ignore git).
 
 ### Image `olt-social/testkit`
 
-`tests/Dockerfile` membangun satu image berisi k6 2.2.0, `tokengen`, bash, curl, jq, openssl, psql 17, dan docker CLI. Container dijalankan di network `edge`, `app`, dan `data`, sehingga bisa memanggil Kong langsung, membaca Postgres/PgBouncer untuk metrik, dan, lewat `docker.sock`, mematikan atau memutus jaringan container untuk uji chaos. Secret yang di-mount hanya `anon_key`, `jwt_secret`, `postgres_password`, dan `olt_dev_signing_key`. Folder `docker/` di-mount read-only dan `docker/secrets` ditutup tmpfs. `packages/rendezvous_community/lib` di-mount read-only ke `/olt/client-lib` agar `static-config.sh` bisa mencocokkan allowlist `cs_api` publik dengan pemanggilan client.
+`tests/Dockerfile` membangun satu image berisi k6 2.2.0, `tokengen`, bash, curl, jq, openssl, psql 17, dan docker CLI. Container dijalankan di network `edge`, `app`, dan `data`, sehingga bisa memanggil Kong langsung, membaca Postgres/PgBouncer untuk metrik, dan, lewat `docker.sock`, mematikan atau memutus jaringan container untuk uji chaos. Secret yang di-mount hanya `anon_key`, `jwt_secret`, `postgres_password`, dan `olt_dev_signing_key`. Folder `docker/` di-mount read-only dan `docker/secrets` ditutup tmpfs. `lib/` repo library `rendezvous_community` (`../rendezvous_community` atau `PKG=<path>`, bila ada) di-mount read-only ke `/olt/client-lib` agar `static-config.sh` bisa mencocokkan allowlist `cs_api` publik dengan pemanggilan client.
 
 ### User uji `lt_*`
 
@@ -79,6 +79,24 @@ Postingan memakai kode `$LTPOST`, bukan `$LTHOT`. Deteksi manipulasi pasar (`cs.
 
 Env: `LOAD_STEPS`, `LOAD_HOLD`, `LOAD_RAMP`, `LOAD_MSG_EVERY`, `LOAD_FORCE=1` (jangan berhenti otomatis), dan `LOAD_VIA=traefik` (lewat Traefik, sehingga terkena batas per IP edge).
 
+Typing, presence, dan daftar chat (`0106`/`0107`):
+
+- `TYPING=1` meniru aplikasi:
+  - `send_typing(true)` 1–3 dtk sebelum setiap `send_message`, lalu `send_typing(false)` sesudahnya.
+  - Bawaannya 0, agar angka tetap sebanding dengan laporan 3 Nov.
+- `PRESENCE=0` mematikan `track`. Join presence mengirim `enabled: true` seperti klien Dart.
+- `LIST_VUS=n`: n VU pertama tidak join Realtime. Mereka hanya memoll `get_room_previews` seperti daftar chat yang terlihat.
+  - Interval dari `poll_seconds` server, dijepit 5–300 dtk, × 0,75–1,25.
+  - `LIST_POLL` hanya dipakai sebelum respons pertama.
+- `realtime.tsv` per langkah:
+  - `typing_rpc`, `typing_ev`/`typing_ev_s` (event `typing` yang diterima), `summary_ev` (`typing_summary`), `msg_ev_s`;
+  - `presence_ev`/`presence_kb` (`presence_state`/`presence_diff`), `presence_denied` (reply `track` bukan `ok`);
+  - `list_polls`/`list_fail`, p95 `get_room_previews` dan `send_typing`;
+  - `rt_limit_logs` (baris log Realtime `MessagePerSecondRateLimitReached`/`too_many_requests` selama langkah).
+- Perbandingan A/B tanpa migrasi ulang:
+  - perilaku lama: `update private.settings set value = '1000000' where key in ('rooms.typing_aggregate_members', 'rooms.presence_stock_members')`;
+  - kembalikan ke `50` dan `0` sesudahnya.
+
 Bila batas perlu dinaikkan khusus untuk mengukur kapasitas, jangan ubah `docker/.env` atau compose utama. Pakai overlay opt-in [docker/compose.loadtest.yml](../../docker/compose.loadtest.yml). Saat ini overlay itu hanya menaikkan `TENANT_MAX_EVENTS_PER_SECOND` Realtime. Realtime men-seed ulang tenant dari env setiap start, jadi `UPDATE _realtime.tenants` tidak bertahan.
 
 ```bash
@@ -97,8 +115,8 @@ Laporan menandai dengan jelas langkah yang memakai overlay ini.
 |---|---|
 | `authz-probe.sh` | Aktor: anon, nasabah (`joko_prasetyo`), agen CS tanpa izin (`Smoke Agen`), agen nonaktif, dan token palsu (secret salah, `alg: none`, kedaluwarsa, `role: supabase_admin`). Kontrol positif memastikan token uji benar-benar berlaku. Yang diuji ada di daftar di bawah tabel |
 | `realtime-authz.js` | k6: penyerang join kanal privat `room:<DM orang lain>` dan `user:<nasabah lain>` (harus ditolak). Anggota room mengirim event server palsu (`message`, `message_hidden`, `room_state`, `reaction`, `receipt`, `typing`) lewat WebSocket dan REST broadcast: tidak boleh sampai (T2, diperbaiki `0098`). Kontrol: pesan baru sampai lewat broadcast server, aktivitas di `user:<id>`, typing lewat RPC membawa identitas JWT, presence tetap jalan, `postgres_changes` `messages` tidak mengirim apa pun |
-| `static-config.sh` | Router `prod.yml`/`cs.yml`: Host wajib, tanpa `/auth/v1`, `/functions/v1`, `/pg`, `/graphql`, atau Studio. API staf (T4): blok `cs_api` di domain publik, allowlist RPC nasabah = pemanggilan `cs_api` di `packages/rendezvous_community/lib`, header profil dibuang, penanda `X-Olt-Edge`, fungsi `hello` tidak ada. Batas per IP dan per user (T3). Juga TLS (versi, cipher, kurva, SNI), HSTS/CSP/nosniff, batas body, CORS dev vs prod, proxy tepercaya |
-| `prod-routing.sh` | Traefik sementara (image yang sama) memuat `prod.yml` + `cs.yml` + `common.yml` di depan Kong dev (domain CS uji, `VPN_SOURCE_RANGES` = subnet edge). Memeriksa path publik vs 404, redirect HTTP, TLS 1.0/1.1 dan cipher lemah ditolak, header, 413, `%2F`, rate limit edge (429), batas WebSocket per IP (nilai uji 20), dan T4: RPC/tabel staf `cs_api` 403 dan `/functions/v1/*` 404 di domain publik, RPC chat CS nasabah tetap 200, JWT staf ditolak DB di domain publik (`cs_staff_public_edge`) tetapi bekerja lewat domain CS, `cs-admin` terjangkau di domain CS |
+| `static-config.sh` | Router `prod.yml`/`cs.yml`: Host wajib, tanpa `/auth/v1`, `/functions/v1`, `/pg`, `/graphql`, atau Studio. API staf (T4): blok `cs_api` di domain publik, allowlist RPC nasabah = pemanggilan `cs_api` di `lib/` repo library `rendezvous_community`, header profil dibuang, penanda `X-Olt-Edge` di semua router REST/Realtime/Storage/media publik dan dibuang di semua router CS (0100, 0105), fungsi `hello` tidak ada. Batas per IP dan per user (T3). Juga TLS (versi, cipher, kurva, SNI), HSTS/CSP/nosniff, batas body, CORS dev vs prod, proxy tepercaya |
+| `prod-routing.sh` | Traefik sementara (image yang sama) memuat `prod.yml` + `cs.yml` + `common.yml` di depan Kong dev (domain CS uji, `VPN_SOURCE_RANGES` = subnet edge). Memeriksa path publik vs 404, redirect HTTP, TLS 1.0/1.1 dan cipher lemah ditolak, header, 413, `%2F`, rate limit edge (429), batas WebSocket per IP (nilai uji 20), dan T4: RPC/tabel staf `cs_api` 403 dan `/functions/v1/*` 404 di domain publik, RPC chat CS nasabah tetap 200, JWT staf ditolak DB di domain publik (`cs_staff_public_edge`) tetapi bekerja lewat domain CS, `cs-admin` terjangkau di domain CS. Lanjutan T4 (0105): JWT staf tidak bisa upload, list, sign, atau hapus Storage dan upload lewat `/media/v1` di domain publik, tetapi upload/list/hapus lewat domain CS berhasil. Nasabah tetap memakai Storage publik. `realtime-edge.js` (k6, sebelum ws-limit): staf join `cs:queue` ditolak di domain publik (termasuk dengan header palsu) dan berhasil di domain CS, `postgres_changes` staf ditolak, topik `online` ditutup, nasabah tetap join `user:<id>` dan `postgres_changes` |
 | `scan-deps.sh` | Dijalankan di host (bash). Image alat di-pin digest. `--strict` gagal bila ada temuan penghalang. `--third-party` ikut memindai image Supabase dan lainnya |
 
 Yang diuji `authz-probe.sh`:

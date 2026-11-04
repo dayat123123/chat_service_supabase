@@ -27,6 +27,8 @@ const (
 	CodeUnavailable  = "storage_unavailable"
 )
 
+const EdgeHeader = "X-Olt-Edge"
+
 type Upload struct {
 	Bucket      string
 	Path        string
@@ -34,6 +36,7 @@ type Upload struct {
 	Body        []byte
 	Upsert      bool
 	Token       string
+	Edge        string
 }
 
 type Failure struct {
@@ -68,6 +71,9 @@ func (c *Client) Upload(ctx context.Context, u Upload) error {
 	req.Header.Set("Cache-Control", "max-age=3600")
 	if u.Upsert {
 		req.Header.Set("x-upsert", "true")
+	}
+	if u.Edge != "" {
+		req.Header.Set(EdgeHeader, u.Edge)
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {

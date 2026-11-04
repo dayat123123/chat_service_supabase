@@ -42,7 +42,9 @@ GITLEAKS_IMG  := ghcr.io/gitleaks/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6
 TOOLS_IMG     := olt-social/tools:0.1.0
 ALPINE_IMG    := alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
 WEB_IMG       := caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
-PKG           := packages/rendezvous_community
+# Package Flutter ada di repo terpisah (github.com/dayat123123/rendezvous_community); clone di sebelah repo ini
+# atau set PKG=<path>. Target Flutter, web-example, dan pencocokan cs_api static-config memakai path ini.
+PKG           ?= ../rendezvous_community
 TESTKIT_IMG   := olt-social/testkit:0.1.0
 TESTKIT_SECRETS := anon_key jwt_secret postgres_password olt_dev_signing_key
 # Alat uji keamanan/beban/chaos (tests/, docs/testing): k6, psql, docker CLI (docker.sock untuk chaos),
@@ -51,10 +53,11 @@ TESTKIT       = docker run --rm --network $(STACK)_app --network $(STACK)_data -
                   -v /var/run/docker.sock:/var/run/docker.sock -v "$(CURDIR)/tests:/olt/tests:ro" \
                   -v "$(CURDIR)/tests/results:/olt/results" -v "$(CURDIR)/docker:/olt/docker:ro" \
                   --mount type=tmpfs,destination=/olt/docker/secrets \
-                  -v "$(CURDIR)/packages/rendezvous_community/lib:/olt/client-lib:ro" \
+                  $(if $(wildcard $(PKG)/lib),-v "$(abspath $(PKG))/lib:/olt/client-lib:ro") \
                   $(foreach s,$(TESTKIT_SECRETS),-v "$(CURDIR)/$(SECRETS)/$(s):/olt/secrets/$(s):ro") \
                   -e LOAD_STEPS -e LOAD_HOLD -e LOAD_RAMP -e LOAD_MSG_EVERY -e LOAD_FORCE -e LOAD_VIA \
                   -e GAP_EVERY -e GAP_IDS -e GAP_OVERLAP -e RECONNECT_JITTER -e GAP_RECHECK \
+                  -e TYPING -e LIST_VUS -e LIST_POLL -e PRESENCE \
                   -e CHAOS_VUS -e CHAOS_OUTAGE -e CHAOS_LONG_OUTAGE $(TESTKIT_IMG)
 ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
@@ -195,7 +198,7 @@ web-example: check-config ## App example versi web di http://localhost:8086 (?us
 	@# Server statis untuk build/web; container lama diganti. Stop: docker rm -f olt-web-example
 	@docker rm -f olt-web-example >/dev/null 2>&1 || true
 	docker run -d --name olt-web-example --restart unless-stopped -p 127.0.0.1:8086:8086 \
-	  -v "$(CURDIR)/$(PKG)/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8086
+	  -v "$(abspath $(PKG))/example/build/web:/srv:ro" $(WEB_IMG) caddy file-server --root /srv --listen :8086
 	@echo "App web: http://localhost:8086  (langsung login: http://localhost:8086/?user=sari_invest)"
 
 license-audit: ## Audit lisensi dependensi runtime Flutter rendezvous_community (tolak GPL/AGPL)

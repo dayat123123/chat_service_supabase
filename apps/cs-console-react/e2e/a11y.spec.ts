@@ -29,7 +29,7 @@ for (const theme of themes) {
       const { context, page } = await themedPage(browser, theme)
       const person = member('Laras')
       await page.goto('/')
-      await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Masuk ke Rendezvous Hub' })).toBeVisible()
       await audit(page, `login-${theme}`)
       await page.getByLabel('Email', { exact: true }).fill(person.email)
       await page.getByLabel('Password', { exact: true }).fill('password-yang-salah')

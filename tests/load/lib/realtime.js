@@ -12,12 +12,13 @@ export class Realtime {
     this.heartbeatMs = opts.heartbeatMs || 25000;
     this.open = false;
     this.closed = false;
+    this.headers = opts.headers || null;
   }
 
   connect(timeoutMs = 10000) {
     return new Promise((resolve, reject) => {
       const started = Date.now();
-      const ws = new WebSocket(this.url);
+      const ws = this.headers ? new WebSocket(this.url, null, { headers: this.headers }) : new WebSocket(this.url);
       this.ws = ws;
       const timer = setTimeout(() => reject(new Error('ws_connect_timeout')), timeoutMs);
       ws.onopen = () => {
@@ -90,7 +91,7 @@ export class Realtime {
   joinPrivate(name, handlers = {}, presenceKey = '') {
     return this.join(name, {
       broadcast: { self: false, ack: false },
-      presence: { key: presenceKey },
+      presence: { key: presenceKey, enabled: presenceKey !== '' },
       postgres_changes: [],
       private: true,
     }, handlers);

@@ -5,7 +5,7 @@ import { signIn } from './support/staff'
 
 test('login dan ruang kerja tanpa scroll horizontal atau teks terpotong', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: 'Masuk ke CS Console' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Masuk ke Rendezvous Hub' })).toBeVisible()
   await checkLayout(page, 'login')
   await signIn(page, 'Bima')
   await checkLayout(page, 'ruang kerja')

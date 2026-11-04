@@ -1,5 +1,6 @@
 begin;
 select plan(44);
+update private.settings set value = '0' where key = 'rooms.busy_slow_mode';
 
 select tests.create_user('nt_budi') as budi \gset
 select tests.create_user('nt_sari') as sari \gset

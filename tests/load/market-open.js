@@ -28,6 +28,9 @@ const ZERO_ID = '00000000-0000-0000-0000-000000000000';
 const PRESENCE = __ENV.PRESENCE !== '0';
 const RECONNECT = __ENV.RECONNECT !== '0';
 const END_SPREAD = Number(__ENV.END_SPREAD || 10);
+const TYPING = __ENV.TYPING === '1';
+const LIST_VUS = Number(__ENV.LIST_VUS || 0);
+const LIST_POLL = Number(__ENV.LIST_POLL || 15);
 
 const delivery = new Trend('rt_delivery_ms', true);
 const joinTime = new Trend('rt_join_ms', true);
@@ -51,10 +54,18 @@ const gapTooLong = new Counter('gap_too_long');
 const gapFailed = new Counter('gap_failed');
 const reconnected = new Counter('ws_reconnected');
 const countFailed = new Counter('count_failed');
+const typingEvents = new Counter('rt_typing_events');
+const typingSummaries = new Counter('rt_typing_summary_events');
+const presenceEvents = new Counter('rt_presence_events');
+const presenceBytes = new Counter('rt_presence_bytes');
+const presenceDenied = new Counter('presence_track_denied');
+const typingSent = new Counter('typing_rpc_sent');
+const listPolls = new Counter('list_polls');
+const listPollFailed = new Counter('list_poll_failed');
 
 const timed = ['bridge_exchange', 'get_feed', 'get_feed_stock', 'get_trending', 'join_stock_room', 'get_messages', 'send_message',
   'create_post', 'get_notifications', 'get_notification_unread_count', 'get_client_config', 'mark_room_read', 'stock_watchers',
-  'get_message_ids', 'get_messages_by_ids', 'get_messages_gap', 'get_messages_reload'];
+  'get_message_ids', 'get_messages_by_ids', 'get_messages_gap', 'get_messages_reload', 'send_typing', 'get_room_previews'];
 const thresholds = { rt_delivery_ms: ['p(95)<3000'], http_req_failed: ['rate<0.01'] };
 timed.forEach((n) => { thresholds[`http_req_duration{name:${n}}`] = ['p(95)<2000']; });
 
@@ -113,6 +124,21 @@ export default async function () {
   }
   await api.rest('POST', 'stock_watchers', { user_id: api.userId, stock_code: ROOM_CODE },
     { name: 'stock_watchers', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' } });
+  if (vu <= LIST_VUS) {
+    let poll = LIST_POLL;
+    while (Date.now() < deadline) {
+      const res = await api.rpc('get_room_previews', { p_room_ids: [roomId] });
+      const body = json(res);
+      if (res.status === 200 && body && Array.isArray(body.rooms)) {
+        listPolls.add(1);
+        if (Number(body.poll_seconds) > 0) poll = Math.min(Math.max(Number(body.poll_seconds), 5), 300);
+      } else {
+        listPollFailed.add(1, { status: String(res.status) });
+      }
+      await sleepMs(Math.min(poll * 1000 * (0.75 + Math.random() * 0.5), Math.max(0, deadline - Date.now())));
+    }
+    return;
+  }
   const first = await api.rpc('get_messages', { p_room_id: roomId, p_limit: PAGE_SIZE });
   const firstRows = json(first, []);
   await api.rpc('mark_room_read', { p_room_id: roomId });
@@ -138,6 +164,8 @@ export default async function () {
   let horizon = newestCursor(rows0) || `1970-01-01T00:00:00.000Z|${ZERO_ID}`;
   const floor = oldestCursor(rows0);
   const onMessage = (msg) => {
+    if (msg && msg.event === 'typing') typingEvents.add(1);
+    if (msg && msg.event === 'typing_summary') typingSummaries.add(1);
     if (!msg || msg.event !== 'message' || !msg.payload) return;
     const row = msg.payload;
     const at = Date.parse(row.created_at || '') || 0;
@@ -147,6 +175,11 @@ export default async function () {
     received.add(1);
     if (row.id) rtSeen.set(row.id, at);
     delivery.add(Date.now() - parseInt(m[1], 36));
+  };
+  const onPresence = (msg) => {
+    if (msg.event !== 'presence_state' && msg.event !== 'presence_diff') return;
+    presenceEvents.add(1, { event: msg.event });
+    presenceBytes.add(JSON.stringify(msg.payload || {}).length);
   };
   const keep = (rows) => {
     gapFetched.add(rows.length);
@@ -224,14 +257,16 @@ export default async function () {
   };
   const joinRoom = async () => {
     try {
-      const r2 = await rt.joinPrivate(`room:${roomId}`, { broadcast: onMessage }, PRESENCE ? api.userId : '');
+      const r2 = await rt.joinPrivate(`room:${roomId}`, { broadcast: onMessage, other: onPresence }, PRESENCE ? api.userId : '');
       joinTime.add(r2.joinMs, { channel: 'private' });
       if (r2.status !== 'ok') {
         joinFailed.add(1, { stage: 'private' });
         return false;
       }
       if (PRESENCE) {
-        rt.push(`realtime:room:${roomId}`, 'presence', { type: 'presence', event: 'track', payload: { user_id: api.userId } }, rt.ref);
+        rt.request(`realtime:room:${roomId}`, 'presence', { type: 'presence', event: 'track', payload: { user_id: api.userId } }, 10000)
+          .then((reply) => { if (reply.status !== 'ok') presenceDenied.add(1); })
+          .catch(() => presenceDenied.add(1, { reason: 'timeout' }));
       }
       return true;
     } catch (e) {
@@ -273,6 +308,13 @@ export default async function () {
   };
 
   let nextSend = Date.now() + jitter(MSG_EVERY);
+  const typeLead = () => 1000 + Math.random() * 2000;
+  let typeAt = TYPING ? nextSend - typeLead() : Infinity;
+  let typing = false;
+  const sendTyping = async (on) => {
+    const res = await api.rpc('send_typing', { p_room_id: roomId, p_typing: on });
+    if (res.status === 200) typingSent.add(1, { typing: String(on), broadcast: String(json(res) === true) });
+  };
   let nextFeed = Date.now() + jitter(FEED_EVERY);
   const gapInterval = () => GAP_EVERY * 1000 * (0.75 + Math.random() * 0.5);
   let nextGap = GAP_EVERY > 0 ? Date.now() + gapInterval() : Infinity;
@@ -285,12 +327,21 @@ export default async function () {
       continue;
     }
     const now = Date.now();
+    if (now >= typeAt && !typing) {
+      typing = true;
+      await sendTyping(true);
+    }
     if (now >= nextSend) {
       nextSend = now + jitter(MSG_EVERY);
       seq += 1;
       const body = `${pick()} ${pick()} ${pick()} ${vu}x${seq} k${Date.now().toString(36)}`;
       const res = await api.rpc('send_message', { p_room_id: roomId, p_body: body });
       if (res.status === 200) sent.add(1); else sendFailed.add(1, { status: String(res.status) });
+      if (typing) {
+        typing = false;
+        await sendTyping(false);
+      }
+      if (TYPING) typeAt = nextSend - typeLead();
     }
     if (now >= nextFeed) {
       nextFeed = now + jitter(FEED_EVERY);

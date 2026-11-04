@@ -1,5 +1,6 @@
 begin;
 select plan(175);
+update private.settings set value = '0' where key = 'rooms.busy_slow_mode';
 update cs.cs_settings set value = 'false' where key = 'compliance.policy_four_eyes';
 
 update private.rate_limits set max_count = 1000 where action in ('post', 'comment', 'message', 'room_create');

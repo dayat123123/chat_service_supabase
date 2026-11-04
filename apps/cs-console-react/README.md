@@ -1,6 +1,6 @@
-# Web CS (React)
+# Rendezvous Hub (web CS, React)
 
-Konsol customer service OLT untuk CS, Super Admin, dan Kepatuhan, sekaligus satu-satunya web CS. React 19 + TypeScript, dibangun Vite menjadi SPA statis dan disajikan nginx non-root. Backend: Supabase (`cs_api`, GoTrue, Realtime, Storage) dan Edge Function `cs-admin`.
+Rendezvous Hub adalah konsol customer service OLT untuk CS, Super Admin, dan Kepatuhan, sekaligus satu-satunya web CS. React 19 + TypeScript, dibangun Vite menjadi SPA statis dan disajikan nginx non-root. Backend: Supabase (`cs_api`, GoTrue, Realtime, Storage) dan Edge Function `cs-admin`.
 
 Web CS tidak mengambil data bisnis dari OLT. Profil, order, transaksi dana, dan perangkat nasabah tetap milik aplikasi nasabah, jadi panel info nasabah hanya menampilkan identitas nasabah dari data tiket, riwayat tiket (`customer_history`), dan catatan internal (`notes`).
 

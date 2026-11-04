@@ -1,6 +1,6 @@
 export const id = {
   app: {
-    title: 'CS Console',
+    title: 'Rendezvous Hub',
     loading: 'Memuat…',
     retry: 'Coba lagi',
     cancel: 'Batal',
@@ -53,7 +53,7 @@ export const id = {
     secondShort: 'dtk',
   },
   auth: {
-    loginTitle: 'Masuk ke CS Console',
+    loginTitle: 'Masuk ke Rendezvous Hub',
     loginSubtitle: 'Khusus CS dan Super Admin OLT. Akses hanya dari jaringan kantor.',
     email: 'Email',
     password: 'Password',

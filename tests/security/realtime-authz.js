@@ -149,6 +149,32 @@ export default async function () {
     victimChanges, '');
   result(attackerChanges === 0 ? 'ok' : 'FAIL', 'nasabah', 'postgres_changes messages room orang lain tidak terkirim', attackerChanges, '');
   result(attackerBroadcast === 0 ? 'ok' : 'FAIL', 'nasabah', 'broadcast kanal privat room/user orang lain tidak terkirim', attackerBroadcast, '');
+
+  const STOCK = __ENV.STOCK_ROOM;
+  if (STOCK) {
+    const stockGot = { message: false, closed: false };
+    const stockStamp = `probe stock ${Date.now()}`;
+    const stockStatus = await joinStatus(() => victim.joinPrivate(`room:${STOCK}`, {
+      broadcast: (p) => {
+        const data = (p && p.payload) || {};
+        if (p.event === 'message' && data.body === stockStamp) stockGot.message = true;
+      },
+      error: () => { stockGot.closed = true; },
+    }, victimId));
+    let track = 'timeout';
+    try {
+      track = (await victim.request(`realtime:room:${STOCK}`, 'presence',
+        { type: 'presence', event: 'track', payload: { user_id: victimId } }, 5000)).status || 'unknown';
+    } catch (_) {
+      track = 'timeout';
+    }
+    result(stockStatus === 'ok' && track === 'error' ? 'ok' : 'FAIL', 'lt_sec_a',
+      'presence di room saham ditolak server (0106), join tetap diterima', `${stockStatus}/${track}`, '');
+    rpc(__ENV.VICTIM_JWT, 'send_message', { p_room_id: STOCK, p_body: stockStamp });
+    await sleepMs(3000);
+    result(stockGot.message && !stockGot.closed ? 'ok' : 'FAIL', 'lt_sec_a',
+      'channel room saham tetap menerima pesan setelah track ditolak', stockGot.message ? 'diterima' : 'tidak diterima', '');
+  }
   attacker.close();
   victim.close();
 }

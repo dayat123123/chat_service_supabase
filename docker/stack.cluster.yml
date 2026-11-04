@@ -119,7 +119,7 @@ services:
       <<: *deploy
       replicas: 1
   media:
-    image: ${REGISTRY}/olt-social/media:0.2.0
+    image: ${REGISTRY}/olt-social/media:0.2.1
     deploy:
       <<: *deploy
       replicas: 2
