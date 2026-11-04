@@ -26,6 +26,8 @@ type Snapshot struct {
 	LocalBaseBytes    int64
 	DiskTotal         int64
 	DiskAvail         int64
+	RepoDiskTotal     int64
+	RepoDiskAvail     int64
 	LastWALReceived   time.Time
 	LastOffsiteOK     time.Time
 	LastBaseOK        time.Time
@@ -66,6 +68,8 @@ func Render(s Snapshot) string {
 	gauge(&b, "backup_local_base_bytes", "Size of the newest local base backup.", s.LocalBaseBytes)
 	gauge(&b, "backup_disk_total_bytes", "Size of the staging file system.", s.DiskTotal)
 	gauge(&b, "backup_disk_avail_bytes", "Free space of the staging file system.", s.DiskAvail)
+	gauge(&b, "backup_repository_disk_total_bytes", "Size of the file system holding a local repository, 0 for S3.", s.RepoDiskTotal)
+	gauge(&b, "backup_repository_disk_avail_bytes", "Free space of the file system holding a local repository, 0 for S3.", s.RepoDiskAvail)
 	gauge(&b, "backup_wal_last_received_timestamp_seconds", "Unix time WAL was last written locally, 0 if never.", unix(s.LastWALReceived))
 	gauge(&b, "backup_offsite_last_success_timestamp_seconds", "Unix time of the last successful offsite WAL copy, 0 if never.", unix(s.LastOffsiteOK))
 	gauge(&b, "backup_base_last_success_timestamp_seconds", "Unix time of the last successful base backup, 0 if never.", unix(s.LastBaseOK))

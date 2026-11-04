@@ -143,18 +143,26 @@ restore: check-config ## Restore DB: make restore FILE=olt-YYYYMMDD-HHMMSS.dump 
 	$(COMPOSE) run --rm -e CONFIRM=$(CONFIRM) tools restore $(FILE)
 
 backup-snapshots: check-config ## Daftar snapshot backup (restic) + rentang waktu PITR
-	$(COMPOSE) run --rm --no-deps -T backup snapshots
+	$(COMPOSE) run --rm --no-deps -T \
+	  $(if $(RESTIC_REPOSITORY),$(if $(RESTIC_LOCAL),-v "$(abspath $(RESTIC_LOCAL)):/var/lib/olt-backup-repo" -e RESTIC_REPOSITORY=/var/lib/olt-backup-repo,-e RESTIC_REPOSITORY) \
+	    -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION) \
+	  $(if $(RESTIC_PASSWORD_FILE),-v "$(abspath $(RESTIC_PASSWORD_FILE)):/run/secrets/restic_password:ro" -e RESTIC_PASSWORD_FILE=/run/secrets/restic_password) \
+	  backup snapshots
 
-restore-pitr: check-config ## PITR: make restore-pitr AT=<RFC3339|latest> CONFIRM=yes (env RESTIC_*, AWS_*; docs/backup)
+RESTIC_LOCAL = $(if $(filter s3:% sftp:% rest:% swift:% b2:% azure:% gs:% rclone:%,$(RESTIC_REPOSITORY)),,$(RESTIC_REPOSITORY))
+
+restore-pitr: check-config ## PITR: make restore-pitr AT=<RFC3339|latest> CONFIRM=yes (env RESTIC_*, AWS_* untuk S3; docs/backup)
 	@test "$(CONFIRM)" = yes || { echo "Isi database diganti hasil restore. Ulangi dengan CONFIRM=yes"; exit 1; }
 	@test -n "$(AT)" || { echo "Sebutkan AT=2026-11-03T10:15:00+07:00 atau AT=latest"; exit 1; }
-	@test -n "$$RESTIC_REPOSITORY" || { echo "Set RESTIC_REPOSITORY, RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE), AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"; exit 1; }
+	@test -n "$$RESTIC_REPOSITORY" || { echo "Set RESTIC_REPOSITORY (s3:https://host/bucket/prefix atau folder lokal, mis. backups/restic), RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE); untuk S3 juga AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY"; exit 1; }
+	@test -z "$(RESTIC_LOCAL)" || test -f "$(RESTIC_LOCAL)/config" || { echo "$(RESTIC_LOCAL) bukan repositori restic (file config tidak ada)"; exit 1; }
 	$(COMPOSE) build backup
 	$(COMPOSE) stop
 	docker run --rm --user 0:0 --network $(STACK)_egress \
-	  -e RESTIC_REPOSITORY -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
+	  $(if $(RESTIC_LOCAL),-v "$(abspath $(RESTIC_LOCAL)):/var/lib/olt-backup-repo" -e RESTIC_REPOSITORY=/var/lib/olt-backup-repo,-e RESTIC_REPOSITORY) \
+	  -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
 	  $(if $(RESTIC_PASSWORD_FILE),-v "$(abspath $(RESTIC_PASSWORD_FILE)):/run/secrets/restic_password:ro" -e RESTIC_PASSWORD_FILE=/run/secrets/restic_password) \
-	  -v $(STACK)_db-data:/restore olt-social/backup:0.1.0 \
+	  -v $(STACK)_db-data:/restore olt-social/backup:0.2.0 \
 	  restore --target-time "$(AT)" --data-dir /restore --wipe
 	$(COMPOSE) up -d db
 	@echo "Menunggu recovery selesai (pantau: make logs s=db)..."

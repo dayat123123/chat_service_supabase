@@ -462,7 +462,7 @@ Aturan server (tidak bergantung klien, jadi klien lama tidak bisa membanjiri):
 - **Ukuran room** dihitung dari `chat_members` dengan batas (`private.room_has_members`: paling banyak n baris index). Jumlah subscriber Realtime tidak terlihat dari Postgres, jadi jumlah anggota dipakai sebagai proksi konservatif.
 - **Presence:** `olt_realtime_send` (dari `0105`) mendapat syarat tambahan `private.can_track_presence(topic)`.
   - Policy baca tidak berubah: join dan penerimaan broadcast tetap sama.
-  - Realtime menjawab `track` yang ditolak dengan reply `error`, dan channel tetap tersambung (sudah diuji ke Realtime v2.143.3).
+  - Realtime menjawab `track` yang ditolak dengan reply `error`, dan channel tetap tersambung (sudah diuji ke Realtime v2.143.3 dan v2.148.6).
   - Klien 1.5.0 yang tetap `track` di room saham tidak terganggu.
   - Aplikasi 1.6.0 hanya memakai presence di DM. Web CS tetap memakai presence di room CS.
 - **Biaya di room 500 penerima:** typing ±25.000 → ±167 event/dtk; presence room saham → 0.

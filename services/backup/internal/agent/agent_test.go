@@ -27,7 +27,14 @@ import (
 const (
 	secretPassword = "restic-password-0123456789"
 	secretKey      = "s3-secret-access-key"
+	localRepo      = "/var/lib/olt-backup-repo"
 )
+
+func localSettings(rev int64) settings.Settings {
+	s := validSettings(rev)
+	s.Kind, s.Repository, s.S3 = settings.KindLocal, localRepo, settings.S3{}
+	return s
+}
 
 func validSettings(rev int64) settings.Settings {
 	return settings.Settings{
@@ -386,6 +393,10 @@ type harness struct {
 	logs   *syncBuffer
 	disk   atomic.Int64
 	made   atomic.Int32
+	checks atomic.Int32
+	local  atomic.Pointer[error]
+	credMu sync.Mutex
+	creds  []restic.Credentials
 	cancel context.CancelFunc
 	done   chan struct{}
 }
@@ -421,18 +432,35 @@ func (h *harness) start() {
 	h.agent = New(Options{
 		Store:    h.store,
 		Database: h.db,
-		Repository: func(restic.Credentials) Repository {
+		Repository: func(c restic.Credentials) Repository {
 			h.made.Add(1)
+			h.credMu.Lock()
+			h.creds = append(h.creds, c)
+			h.credMu.Unlock()
 			return h.repo
 		},
-		Disk: func(string) (disk.Usage, error) {
+		Disk: func(path string) (disk.Usage, error) {
+			if path == localRepo {
+				return disk.Usage{Total: 200 << 30, Avail: 30 << 30}, nil
+			}
 			return disk.Usage{Total: 100 << 30, Avail: h.disk.Load()}, nil
+		},
+		LocalCheck: func(dir string) error {
+			h.checks.Add(1)
+			if dir != localRepo {
+				return fmt.Errorf("%w: %s", disk.ErrNotDirectory, dir)
+			}
+			if err := h.local.Load(); err != nil {
+				return *err
+			}
+			return nil
 		},
 		Log:                slog.New(slog.NewJSONHandler(h.logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		Instance:           "backup-test",
 		Version:            "0.1.0",
 		DataDir:            h.dir,
 		StorageDir:         h.t.TempDir(),
+		LocalRepoDir:       localRepo,
 		ConfigPoll:         20 * time.Millisecond,
 		HeartbeatInterval:  20 * time.Millisecond,
 		RequestTimeout:     time.Second,

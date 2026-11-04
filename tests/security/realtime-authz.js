@@ -96,14 +96,14 @@ export default async function () {
     },
   }));
   result(victimUser === 'ok' ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: nasabah bisa join kanal privat user miliknya', victimUser, '');
-  victim.push(roomTopic, 'presence', { type: 'presence', event: 'track', payload: { user_id: victimId } }, victim.ref);
+  victim.push(roomTopic, 'presence', { type: 'presence', event: 'track', payload: { user_id: victimId } });
   await sleepMs(1500);
   result(got.presence > 0 ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: presence anggota tetap berjalan', got.presence, '');
 
   for (const event of SPOOFED) {
     victim.push(roomTopic, 'broadcast', {
       type: 'broadcast', event, payload: { probe_spoof: true, message_id: 'x', user_id: 'x', typing: true },
-    }, victim.ref);
+    });
   }
   const restVictim = SPOOFED.map((event) => restBroadcast(__ENV.VICTIM_JWT, `room:${ROOM}`, event,
     { probe_spoof: true, message_id: 'x', user_id: 'x', typing: true }).status);
@@ -127,7 +127,8 @@ export default async function () {
   }
   const typed = rpc(__ENV.VICTIM_JWT, 'send_typing', { p_room_id: ROOM, p_typing: true });
   await sleepMs(4000);
-  result(sent.status === 200 && sentId ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: anggota mengirim pesan', sent.status, '');
+  result(sent.status === 200 && sentId ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: anggota mengirim pesan', sent.status,
+    sent.status === 200 ? '' : String(sent.body).slice(0, 200));
   result(got.message && got.message.room_id === ROOM && typeof got.message.body === 'string' ? 'ok' : 'FAIL', 'lt_sec_a',
     'kontrol: pesan baru sampai lewat broadcast server di room:<id>', got.message ? 'diterima' : 'tidak diterima', '');
   result(got.activity === 1 ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: aktivitas room sampai di user:<id>', got.activity, '');

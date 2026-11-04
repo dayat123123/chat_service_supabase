@@ -2367,9 +2367,10 @@ export const id = {
         service: 'Layanan backup',
         wal: 'Streaming WAL',
         base: 'Backup penuh terakhir',
-        offsite: 'Sinkron ke luar server terakhir',
+        offsite: 'Kiriman WAL terakhir ke repositori',
         restoreTest: 'Uji restore terakhir',
         staging: 'Disk staging backup',
+        repositoryDisk: 'Disk repositori lokal',
       },
       kinds: {
         base: 'Backup penuh',
@@ -2390,9 +2391,27 @@ export const id = {
       requestNeedsConfig: 'Atur tujuan backup dan password enkripsi dulu.',
       pending: 'Menunggu: {{kind}}, diminta {{name}} · {{time}}',
       pendingOffline: 'Layanan backup belum berjalan; permintaan dijalankan saat layanan aktif kembali.',
-      targetTitle: 'Tujuan backup (S3)',
+      targetTitle: 'Tujuan backup',
       targetHint:
-        'Backup dienkripsi lalu dikirim ke object storage S3 di luar server ini. Kunci akses dan password disimpan terenkripsi di database dan tidak bisa dilihat lagi.',
+        'Backup dienkripsi di server sebelum disimpan ke tujuan. Kunci akses dan password disimpan terenkripsi di database dan tidak bisa dilihat lagi.',
+      kind: {
+        legend: 'Jenis tujuan',
+        s3: 'S3',
+        s3Hint: 'Object storage S3 atau S3-compatible di luar server ini. Disarankan.',
+        local: 'Folder lokal di server',
+        localHint:
+          'Repositori di folder server ini. Tanpa endpoint dan kunci akses; cukup password enkripsi.',
+      },
+      localPath:
+        'Disimpan di {{path}} dalam container backup. Folder aslinya di server diatur BACKUP_LOCAL_REPO_DIR di docker/.env (bawaan backups/restic).',
+      localTarget: 'Folder lokal: {{path}}',
+      localRisk: {
+        title: 'Backup hanya tersimpan di server ini',
+        body: 'Folder lokal ada di server yang sama dengan database, jadi tidak melindungi dari server yang rusak, terkena ransomware, atau hilang.',
+        disk: 'Arahkan BACKUP_LOCAL_REPO_DIR ke disk terpisah dari disk database.',
+        copy: 'Salin isi folder itu ke luar server (disk eksternal atau server lain) secara berkala, misalnya dengan restic copy.',
+        s3: 'Pindah ke S3 begitu tersedia: pilih S3 di Tujuan backup.',
+      },
       fields: {
         endpoint: 'Endpoint S3',
         bucket: 'Bucket',
@@ -2415,6 +2434,7 @@ export const id = {
         lockedSince: 'Password enkripsi repositori ini tersimpan sejak {{time}}.',
         lockedHint:
           'Password tidak bisa diganti untuk repositori yang sudah ada. Untuk memakai password baru, isi folder atau bucket baru.',
+        lockedHintLocal: 'Password tidak bisa diganti untuk repositori yang sudah ada.',
         length: 'Minimal {{min}} karakter. Pakai pengelola password.',
         confirmHint: 'Ketik ulang untuk memastikan tidak salah ketik.',
         acknowledge:
@@ -2451,7 +2471,7 @@ export const id = {
         hint: 'Semua jam dalam WIB.',
         baseTime: 'Jam backup penuh harian',
         baseTimeHint: 'Pilih jam sepi pengguna.',
-        offsiteMinutes: 'Sinkron WAL ke luar server (menit)',
+        offsiteMinutes: 'Kirim WAL ke repositori (menit)',
         walDays: 'Simpan WAL (hari)',
         retentionDaily: 'Simpan backup harian',
         retentionWeekly: 'Simpan backup mingguan',
@@ -2578,6 +2598,7 @@ export const id = {
       invalid_backup_schedule: 'Jadwal atau retensi di luar batas.',
       invalid_backup_request: 'Permintaan backup tidak dikenal.',
       backup_not_configured: 'Atur tujuan backup dulu.',
+      invalid_backup_kind: 'Jenis tujuan backup tidak dikenal.',
     },
   },
   perf: {

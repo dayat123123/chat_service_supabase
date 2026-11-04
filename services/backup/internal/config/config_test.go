@@ -12,7 +12,7 @@ import (
 
 var keys = []string{
 	"PORT", "LOG_LEVEL", "JWT_SECRET", "JWT_SECRET_FILE", "JWT_ISSUER", "POSTGREST_URL", "INSTANCE_ID",
-	"PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGPASSWORD_FILE", "PGDATABASE", "DATA_DIR", "STORAGE_DIR",
+	"PGHOST", "PGPORT", "PGUSER", "PGPASSWORD", "PGPASSWORD_FILE", "PGDATABASE", "DATA_DIR", "STORAGE_DIR", "LOCAL_REPO_DIR",
 	"CONFIG_POLL", "HEARTBEAT_INTERVAL", "REQUEST_TIMEOUT", "RESTORE_TEST_TIMEOUT", "SHUTDOWN_TIMEOUT",
 }
 
@@ -55,6 +55,7 @@ func TestLoadUsesDefaults(t *testing.T) {
 		{"pgdatabase", cfg.PGDatabase, "postgres"},
 		{"data", cfg.DataDir, "/var/lib/olt-backup"},
 		{"storage", cfg.StorageDir, "/mnt/storage"},
+		{"local repo", cfg.LocalRepoDir, "/var/lib/olt-backup-repo"},
 		{"poll", cfg.ConfigPoll, 15 * time.Second},
 		{"heartbeat", cfg.HeartbeatInterval, 30 * time.Second},
 		{"request", cfg.RequestTimeout, 10 * time.Second},
@@ -84,6 +85,7 @@ func TestLoadReadsOverridesAndSecretFiles(t *testing.T) {
 	t.Setenv("PGPORT", "6543")
 	t.Setenv("DATA_DIR", "/srv/backup/")
 	t.Setenv("STORAGE_DIR", "/srv/storage")
+	t.Setenv("LOCAL_REPO_DIR", "/mnt/backup/restic/")
 	t.Setenv("CONFIG_POLL", "1s")
 	t.Setenv("HEARTBEAT_INTERVAL", "5s")
 	t.Setenv("RESTORE_TEST_TIMEOUT", "30m")
@@ -97,7 +99,7 @@ func TestLoadReadsOverridesAndSecretFiles(t *testing.T) {
 		t.Fatal("secrets were not read from the files")
 	}
 	if cfg.PostgRESTURL != "http://rest.local:3000" || cfg.InstanceID != "backup-2" || cfg.PGHost != "db.internal" ||
-		cfg.PGPort != 6543 || cfg.DataDir != "/srv/backup" || cfg.StorageDir != "/srv/storage" ||
+		cfg.PGPort != 6543 || cfg.DataDir != "/srv/backup" || cfg.StorageDir != "/srv/storage" || cfg.LocalRepoDir != "/mnt/backup/restic" ||
 		cfg.ConfigPoll != time.Second || cfg.HeartbeatInterval != 5*time.Second ||
 		cfg.RestoreTestTimeout != 30*time.Minute || cfg.LogLevel != slog.LevelDebug {
 		t.Fatalf("cfg = %+v", cfg)
@@ -119,6 +121,10 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		"root data":          {map[string]string{"DATA_DIR": "/"}, "DATA_DIR must be an absolute directory"},
 		"nested dirs":        {map[string]string{"DATA_DIR": "/mnt/storage/backup"}, "must not contain each other"},
 		"same dirs":          {map[string]string{"DATA_DIR": "/mnt/storage"}, "must not contain each other"},
+		"relative repo":      {map[string]string{"LOCAL_REPO_DIR": "restic"}, "LOCAL_REPO_DIR must be an absolute directory"},
+		"root repo":          {map[string]string{"LOCAL_REPO_DIR": "/"}, "LOCAL_REPO_DIR must be an absolute directory"},
+		"repo in data":       {map[string]string{"LOCAL_REPO_DIR": "/var/lib/olt-backup/repo"}, "LOCAL_REPO_DIR must not contain"},
+		"repo over storage":  {map[string]string{"LOCAL_REPO_DIR": "/mnt"}, "LOCAL_REPO_DIR must not contain"},
 		"poll":               {map[string]string{"CONFIG_POLL": "0s"}, "CONFIG_POLL must be between 1s and 10m"},
 		"heartbeat":          {map[string]string{"HEARTBEAT_INTERVAL": "2m"}, "HEARTBEAT_INTERVAL must be between 5s and 60s"},
 		"restore timeout":    {map[string]string{"RESTORE_TEST_TIMEOUT": "1m"}, "RESTORE_TEST_TIMEOUT must be between 5m and 24h"},

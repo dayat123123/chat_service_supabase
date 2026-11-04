@@ -31,13 +31,13 @@ import (
 )
 
 const (
-	version     = "0.1.0"
+	version     = "0.2.0"
 	pingTimeout = 5 * time.Second
 	systemPath  = "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 	usage       = `Pemakaian:
   backup [run]          menjalankan layanan backup (default)
   backup healthcheck    cek /healthz untuk healthcheck container
-  backup snapshots      daftar snapshot di repositori (kredensial dari env RESTIC_*/AWS_* atau dari database)
+  backup snapshots      daftar snapshot di repositori (kredensial dari env RESTIC_* (+ AWS_* untuk S3) atau dari database)
   backup restore --target-time <RFC3339|latest> --data-dir <folder> [--owner 100:101] [--wipe]
 `
 )
@@ -114,6 +114,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		StartedAt:          startedAt,
 		DataDir:            cfg.DataDir,
 		StorageDir:         cfg.StorageDir,
+		LocalRepoDir:       cfg.LocalRepoDir,
 		ConfigPoll:         cfg.ConfigPoll,
 		HeartbeatInterval:  cfg.HeartbeatInterval,
 		RequestTimeout:     cfg.RequestTimeout,
@@ -207,11 +208,10 @@ func resticEnvFromDatabase(ctx context.Context) ([]string, error) {
 	if !s.Configured {
 		return nil, errors.New("backup belum dikonfigurasi di web CS")
 	}
-	if err := s.Validate(); err != nil {
+	if err := s.Validate(cfg.LocalRepoDir); err != nil {
 		return nil, fmt.Errorf("pengaturan backup tidak valid: %v", err)
 	}
-	return restic.Credentials{Repository: s.Repository, Password: s.Password, AccessKeyID: s.S3.AccessKeyID,
-		SecretAccessKey: s.S3.SecretAccessKey, Region: s.Region()}.Env(), nil
+	return s.Credentials().Env(), nil
 }
 
 func snapshots(args []string, out io.Writer) int {
@@ -422,7 +422,7 @@ Langkah berikutnya:
      lalu hapus folder %s di data dir.
   3. Nyalakan semua layanan. Layanan backup membuat slot replikasi baru dan base backup baru otomatis.
   4. Server baru: kunci Vault (volume db-config) tidak ikut backup. Unggah ulang kunci Firebase dan
-     simpan ulang target backup (S3 + password) dari web CS.
+     simpan ulang tujuan backup (S3 atau folder lokal + password) dari web CS.
 `, time.Since(started).Round(time.Second), dataDir, ownerText, prepared.StartWAL, prepared.Segments, size(prepared.WALBytes),
 		restore.WALDir, goal, restore.WALDir)
 	return nil

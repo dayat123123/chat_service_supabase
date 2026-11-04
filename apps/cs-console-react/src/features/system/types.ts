@@ -115,6 +115,8 @@ export type HealthBadge = { critical: number; warning: number; open: number }
 export const backupRunKinds = ['base', 'files', 'wal', 'prune', 'check', 'restore_test'] as const
 export type BackupRunKind = (typeof backupRunKinds)[number]
 export type BackupRequestKind = 'base' | 'restore_test'
+export const backupTargetKinds = ['s3', 'local'] as const
+export type BackupTargetKind = (typeof backupTargetKinds)[number]
 
 export type BackupRun = {
   id: number
@@ -135,11 +137,14 @@ export type BackupState = {
   wal?: { streaming?: boolean; slot_lost?: boolean; error?: string | null }
   offsite?: { last_ok_at?: string | null; last_error?: string | null }
   disk?: { total_bytes?: number; avail_bytes?: number }
+  repository_disk?: { total_bytes?: number; avail_bytes?: number }
 }
 
 export type BackupConfig = {
   configured: boolean
   revision: number
+  kind?: BackupTargetKind
+  local_repository?: string
   endpoint: string | null
   bucket: string | null
   prefix: string | null
@@ -164,6 +169,7 @@ export type BackupConfig = {
 
 export type BackupSummary = {
   configured: boolean
+  kind?: BackupTargetKind
   target: string | null
   live: boolean
   state: BackupState | null
@@ -182,6 +188,7 @@ export type BackupOverview = {
 }
 
 export type BackupTargetInput = {
+  kind: BackupTargetKind
   endpoint: string
   bucket: string
   prefix: string

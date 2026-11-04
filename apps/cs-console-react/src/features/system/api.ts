@@ -37,15 +37,18 @@ export const systemApi = {
     return { ...raw, requests: raw.requests ?? [], runs: raw.runs ?? [] }
   },
   setBackupTarget: (input: BackupTargetInput) =>
-    rpc<BackupConfig>('backup_set_target', {
-      p_endpoint: input.endpoint.trim(),
-      p_bucket: input.bucket.trim(),
-      p_prefix: blank(input.prefix),
-      p_region: blank(input.region),
-      p_access_key_id: input.accessKeyId.trim(),
-      p_secret_access_key: input.secretAccessKey || null,
-      p_password: input.password || null,
-    }),
+    input.kind === 'local'
+      ? rpc<BackupConfig>('backup_set_target', { p_kind: 'local', p_password: input.password || null })
+      : rpc<BackupConfig>('backup_set_target', {
+          p_kind: 's3',
+          p_endpoint: input.endpoint.trim(),
+          p_bucket: input.bucket.trim(),
+          p_prefix: blank(input.prefix),
+          p_region: blank(input.region),
+          p_access_key_id: input.accessKeyId.trim(),
+          p_secret_access_key: input.secretAccessKey || null,
+          p_password: input.password || null,
+        }),
   setBackupSchedule: (input: BackupScheduleInput) =>
     rpc<BackupConfig>('backup_set_schedule', {
       p_base_time: input.baseTime,

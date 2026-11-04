@@ -114,6 +114,7 @@ const systemCodes = [
   'invalid_backup_schedule',
   'invalid_backup_request',
   'backup_not_configured',
+  'invalid_backup_kind',
 ] as const
 
 type SystemCode = (typeof systemCodes)[number]

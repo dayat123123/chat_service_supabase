@@ -5,11 +5,18 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"olt-social/backup/internal/restic"
 )
 
-const UnknownRevision int64 = -1
+const (
+	UnknownRevision int64 = -1
+	KindS3                = "s3"
+	KindLocal             = "local"
+)
 
 type S3 struct {
 	AccessKeyID     string  `json:"access_key_id"`
@@ -36,6 +43,7 @@ type Settings struct {
 	Revision    int64     `json:"revision"`
 	Unchanged   bool      `json:"unchanged"`
 	Configured  bool      `json:"configured"`
+	Kind        string    `json:"kind"`
 	Repository  string    `json:"repository"`
 	S3          S3        `json:"s3"`
 	Password    string    `json:"password"`
@@ -45,7 +53,26 @@ type Settings struct {
 }
 
 func (s Settings) String() string {
-	return fmt.Sprintf("backup settings revision %d (configured=%t, repository=%s)", s.Revision, s.Configured, SafeRepository(s.Repository))
+	return fmt.Sprintf("backup settings revision %d (configured=%t, kind=%s, repository=%s)", s.Revision, s.Configured, s.TargetKind(), SafeRepository(s.Repository))
+}
+
+func (s Settings) TargetKind() string {
+	if s.Kind == "" {
+		return KindS3
+	}
+	return s.Kind
+}
+
+func (s Settings) Local() bool {
+	return s.TargetKind() == KindLocal
+}
+
+func (s Settings) Credentials() restic.Credentials {
+	if s.Local() {
+		return restic.Credentials{Repository: s.Repository, Password: s.Password}
+	}
+	return restic.Credentials{Repository: s.Repository, Password: s.Password, AccessKeyID: s.S3.AccessKeyID,
+		SecretAccessKey: s.S3.SecretAccessKey, Region: s.Region()}
 }
 
 func (s Settings) GoString() string {
@@ -56,6 +83,7 @@ func (s Settings) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.Int64("revision", s.Revision),
 		slog.Bool("configured", s.Configured),
+		slog.String("kind", s.TargetKind()),
 		slog.String("repository", SafeRepository(s.Repository)),
 	)
 }
@@ -80,21 +108,30 @@ func (s Settings) Region() string {
 	return *s.S3.Region
 }
 
-func (s Settings) Validate() error {
+func (s Settings) Validate(localDir string) error {
 	var errs []error
 	add := func(ok bool, msg string) {
 		if !ok {
 			errs = append(errs, errors.New(msg))
 		}
 	}
-	rest, isS3 := strings.CutPrefix(s.Repository, "s3:")
-	u, err := url.Parse(rest)
-	add(isS3 && err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && strings.Trim(u.Path, "/") != "",
-		"alamat repositori harus berbentuk s3:https://host/bucket[/prefix]")
-	add(s.S3.AccessKeyID != "", "access key S3 kosong")
-	add(s.S3.SecretAccessKey != "", "secret access key S3 tidak bisa dibaca (simpan ulang dari web)")
+	switch s.TargetKind() {
+	case KindLocal:
+		add(filepath.IsAbs(s.Repository) && filepath.Clean(s.Repository) == s.Repository && s.Repository != "/",
+			"folder repositori lokal harus berupa path absolut")
+		add(s.Repository == localDir, fmt.Sprintf("folder repositori lokal %q tidak sama dengan LOCAL_REPO_DIR %q layanan backup", s.Repository, localDir))
+	case KindS3:
+		rest, isS3 := strings.CutPrefix(s.Repository, "s3:")
+		u, err := url.Parse(rest)
+		add(isS3 && err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" && strings.Trim(u.Path, "/") != "",
+			"alamat repositori harus berbentuk s3:https://host/bucket[/prefix]")
+		add(s.S3.AccessKeyID != "", "access key S3 kosong")
+		add(s.S3.SecretAccessKey != "", "secret access key S3 tidak bisa dibaca (simpan ulang dari web)")
+	default:
+		add(false, fmt.Sprintf("jenis tujuan backup %q tidak dikenal", s.Kind))
+	}
 	add(s.Password != "", "password enkripsi tidak bisa dibaca (simpan ulang dari web)")
-	_, err = s.Timetable()
+	_, err := s.Timetable()
 	if err != nil {
 		errs = append(errs, err)
 	}

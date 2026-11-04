@@ -7,6 +7,7 @@ import type {
   BackupRun,
   BackupScheduleInput,
   BackupTargetInput,
+  BackupTargetKind,
   EmailInput,
   HealthBadge,
   OverallStatus,
@@ -91,8 +92,7 @@ export function recoveredUntil(run: Pick<BackupRun, 'detail'>) {
   return detailText(run.detail, 'recovered_until')
 }
 
-export function stagingDisk(overview: Pick<BackupOverview, 'summary'>) {
-  const disk = overview.summary.state?.disk
+function diskUsage(disk: { total_bytes?: number; avail_bytes?: number } | undefined) {
   if (!disk?.total_bytes || disk.total_bytes <= 0 || disk.avail_bytes === undefined) return null
   return {
     total: disk.total_bytes,
@@ -100,6 +100,17 @@ export function stagingDisk(overview: Pick<BackupOverview, 'summary'>) {
     used: 1 - disk.avail_bytes / disk.total_bytes,
   }
 }
+
+export function stagingDisk(overview: Pick<BackupOverview, 'summary'>) {
+  return diskUsage(overview.summary.state?.disk)
+}
+
+export function repositoryDisk(overview: Pick<BackupOverview, 'summary'>) {
+  return diskUsage(overview.summary.state?.repository_disk)
+}
+
+export const targetKindOf = (value: { kind?: BackupTargetKind | null }): BackupTargetKind =>
+  value.kind === 'local' ? 'local' : 's3'
 
 export function backupBusy(overview: Pick<BackupOverview, 'summary'>) {
   const busy = overview.summary.state?.busy
@@ -120,10 +131,12 @@ export function normalizeTarget(input: Pick<BackupTargetInput, 'endpoint' | 'buc
   }
 }
 
-export function targetMoved(
-  config: Pick<BackupConfig, 'endpoint' | 'bucket' | 'prefix'>,
-  input: Pick<BackupTargetInput, 'endpoint' | 'bucket' | 'prefix' | 'region'>,
-) {
+type TargetPlace = Pick<BackupConfig, 'kind' | 'endpoint' | 'bucket' | 'prefix'>
+type TargetPlaceInput = Pick<BackupTargetInput, 'kind' | 'endpoint' | 'bucket' | 'prefix' | 'region'>
+
+export function targetMoved(config: TargetPlace, input: TargetPlaceInput) {
+  if (targetKindOf(config) !== input.kind) return true
+  if (input.kind === 'local') return false
   const next = normalizeTarget(input)
   return (
     (config.endpoint ?? '') !== next.endpoint ||
@@ -135,8 +148,8 @@ export function targetMoved(
 export type PasswordMode = 'first' | 'locked' | 'new_repository'
 
 export function passwordMode(
-  config: Pick<BackupConfig, 'password_set' | 'endpoint' | 'bucket' | 'prefix'>,
-  input: Pick<BackupTargetInput, 'endpoint' | 'bucket' | 'prefix' | 'region'>,
+  config: Pick<BackupConfig, 'password_set'> & TargetPlace,
+  input: TargetPlaceInput,
 ): PasswordMode {
   if (!config.password_set) return 'first'
   return targetMoved(config, input) ? 'new_repository' : 'locked'
@@ -158,22 +171,25 @@ export type TargetProblem = 'required' | 'invalid' | 'length' | 'mismatch'
 export function targetProblems(
   input: BackupTargetInput,
   extra: { confirm: string; acknowledged: boolean },
-  config: Pick<BackupConfig, 'password_set' | 'secret_set' | 'endpoint' | 'bucket' | 'prefix'>,
+  config: Pick<BackupConfig, 'password_set' | 'secret_set'> & TargetPlace,
 ): Partial<Record<TargetField, TargetProblem>> {
   const problems: Partial<Record<TargetField, TargetProblem>> = {}
-  const next = normalizeTarget(input)
-  if (!next.endpoint) problems.endpoint = 'required'
-  else if (!ENDPOINT.test(next.endpoint)) problems.endpoint = 'invalid'
-  if (!next.bucket) problems.bucket = 'required'
-  else if (!BUCKET.test(next.bucket)) problems.bucket = 'invalid'
-  if (next.prefix && !PREFIX.test(next.prefix)) problems.prefix = 'invalid'
-  if (next.region && !REGION.test(next.region)) problems.region = 'invalid'
-  const keyId = input.accessKeyId.trim().length
-  if (keyId === 0) problems.accessKeyId = 'required'
-  else if (keyId < 3 || keyId > 200) problems.accessKeyId = 'length'
-  const secret = input.secretAccessKey.trim().length
-  if (secret === 0 && !config.secret_set) problems.secretAccessKey = 'required'
-  else if (secret > 500) problems.secretAccessKey = 'length'
+  if (input.kind === 's3') {
+    const next = normalizeTarget(input)
+    if (!next.endpoint) problems.endpoint = 'required'
+    else if (!ENDPOINT.test(next.endpoint)) problems.endpoint = 'invalid'
+    if (!next.bucket) problems.bucket = 'required'
+    else if (!BUCKET.test(next.bucket)) problems.bucket = 'invalid'
+    if (next.prefix && !PREFIX.test(next.prefix)) problems.prefix = 'invalid'
+    if (next.region && !REGION.test(next.region)) problems.region = 'invalid'
+    const keyId = input.accessKeyId.trim().length
+    if (keyId === 0) problems.accessKeyId = 'required'
+    else if (keyId < 3 || keyId > 200) problems.accessKeyId = 'length'
+    const secret = input.secretAccessKey.trim().length
+    const secretStored = config.secret_set && targetKindOf(config) === 's3'
+    if (secret === 0 && !secretStored) problems.secretAccessKey = 'required'
+    else if (secret > 500) problems.secretAccessKey = 'length'
+  }
   if (passwordMode(config, input) !== 'locked') {
     const password = input.password.length
     if (password === 0) problems.password = 'required'

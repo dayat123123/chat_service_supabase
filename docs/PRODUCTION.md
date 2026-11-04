@@ -20,7 +20,7 @@ Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per
  127.0.0.1:8000 ─┘ entrypoint admin: Studio & semua path (SSH tunnel / WireGuard)
 
 Latar belakang: notifier (push FCM), janitor (bersihkan file), sentinel (pantau + alert),
-link-preview (pratinjau link, aman SSRF), backup (WAL + backup penuh ──restic──▶ S3 di luar server)
+link-preview (pratinjau link, aman SSRF), backup (WAL + backup penuh ──restic──▶ S3 di luar server, atau folder lokal bila S3 belum ada)
 ```
 
 - Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet. Yang tersambung ke network `egress` hanya Traefik, Edge Functions, notifier (push ke Google FCM), sentinel (alert ke Telegram/SMTP), link-preview (mengambil halaman untuk pratinjau link), dan backup (S3). auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
@@ -105,7 +105,7 @@ Catatan:
 - **Upload media nasabah**: aplikasi mengunggah foto dan PDF lewat `/media/v1`, bukan langsung ke Storage. Layanan `media` memeriksa isi file (bukan nama atau header), membuang EXIF/GPS, XMP, dan metadata teks tanpa menurunkan kualitas gambar, serta menolak PDF terenkripsi atau berisi JavaScript. Storage menolak upload nasabah yang tidak lewat layanan ini (migrasi `0063`). Staf di web CS tetap mengunggah langsung. Tidak perlu konfigurasi. Detail: [services/media](../services/media/README.md).
 - **Dokumen hukum (S&K, Pedoman Komunitas, Kebijakan Privasi)** diterbitkan staf Kepatuhan dari web CS (**Kepatuhan → Dokumen hukum**) dengan persetujuan empat mata. Selama belum ada dokumen yang terbit, nasabah tidak diminta menyetujui apa pun. Detail: [kepatuhan.md](cs-chat/kepatuhan.md#dokumen-hukum).
 - **Kesehatan sistem dan alert**: Super Admin membuka **Kesehatan sistem** di web CS untuk melihat status semua layanan, disk, database, antrean, dan backup. Isi kanal alert Telegram dan/atau email di tab **Alert**, lalu tekan **Kirim uji**. Detail: [docs/system-health](system-health/README.md).
-- **Backup**: isi tujuan S3 dan password enkripsi di **Kesehatan sistem → Backup** segera setelah deploy. Sebelum itu muncul alert "Backup belum diatur". Simpan password enkripsi dan salinan `pgsodium_root.key` di luar server. Detail: [docs/backup](backup/README.md).
+- **Backup**: isi tujuan (S3, atau sementara **Folder lokal di server** dengan `BACKUP_LOCAL_REPO_DIR` di disk terpisah) dan password enkripsi di **Kesehatan sistem → Backup** segera setelah deploy. Sebelum itu muncul alert "Backup belum diatur". Simpan password enkripsi dan salinan `pgsodium_root.key` di luar server. Detail: [docs/backup](backup/README.md).
 - **Moderasi gambar**: layanan `classifier` (model NSFW MobileNetV4, Apache-2.0, CPU) dipanggil `media` untuk setiap gambar nasabah sebelum disimpan. Gambar porno ditolak, gambar meragukan ditahan (hanya terlihat pengunggah dan moderator) dan masuk antrean **Komunitas → Moderasi → Gambar ditahan**. Bila `classifier` mati, upload gambar ditolak (fail closed) dan Kesehatan sistem memberi alert. Ambang diatur Kepatuhan (**Kepatuhan → Kebijakan konten → Ambang gambar**). Detail: [services/classifier](../services/classifier/README.md).
 - **Keamanan konten & anti goreng saham**: filter kata ternormalisasi, domain/link, kontak dan frasa promosi, batasan akun baru, permintaan pesan DM, banding, deteksi manipulasi, dan slow mode room saham berjalan otomatis; kebijakannya diatur Kepatuhan dari web. Detail: [docs/content-safety.md](content-safety.md).
 - **Kill switch & versi minimum**: Super Admin dapat mematikan fitur sosial seketika (wajib alasan; chat CS tetap jalan), membuka fitur bertahap lewat feature flag, dan mewajibkan update aplikasi di **Pengaturan → Fitur & versi**. Selama kill switch aktif, tulis konten dan chat non-CS dari nasabah ditolak dengan **`403 social_disabled`** (SQLSTATE `PT403`, migrasi `0109`; sebelumnya `503`, lihat T24 di bawah). Paket Flutter mengenali kode `social_disabled`, bukan statusnya. Detail: [docs/social](social/README.md).
@@ -119,7 +119,7 @@ Catatan:
 Backup berkelanjutan dijalankan layanan `backup`, dan diatur Super Admin dari web CS (**Kesehatan sistem → Backup**). Prosesnya:
 - WAL dialirkan terus lewat replikasi.
 - Backup penuh harian dan file storage dibuat otomatis.
-- Semuanya dikirim ke repositori restic terenkripsi di S3 di luar server.
+- Semuanya dikirim ke repositori restic terenkripsi di S3 di luar server. Bila S3 belum ada, pilih **Folder lokal di server**: repositori disimpan di `BACKUP_LOCAL_REPO_DIR` (`docker/.env`, arahkan ke disk terpisah, mis. `/mnt/backup/restic` milik uid 10001). Folder lokal tidak melindungi dari server rusak/hilang, jadi salin isinya ke luar server secara berkala (`restic copy` atau salin folder saat backup berhenti) dan pindah ke S3 begitu tersedia. Detail: [docs/backup → Tujuan folder lokal](backup/README.md#tujuan-folder-lokal).
 - Uji restore berjalan otomatis setiap minggu.
 
 Arsitektur, jadwal, retensi, alert, dan pemulihan ke titik waktu tertentu dijelaskan di [docs/backup](backup/README.md). Perintah teknisnya ada di [services/backup](../services/backup/README.md).
@@ -161,6 +161,16 @@ Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Setelah me
 **Rilis alert kapasitas (migrasi `0104`, sentinel 0.2.0, image PgBouncer `1.24.0-4`):** rilis ini menambah Docker secret `pgbouncer_stats_password` (user konsol admin PgBouncer `olt_stats` untuk sentinel). Jalankan `make gen-secrets` (Windows: `.\make.ps1 gen-secrets`) sebelum `make up`; secret yang sudah ada dipertahankan dan hanya yang belum ada dibuat. Tanpa secret ini `check-config` gagal dan PgBouncer tidak mau start.
 
 **Rilis batas CGNAT dan latensi alert (migrasi `0108`, sentinel 0.3.0, image PgBouncer `1.24.0-5`, 4 Nov):** sebelum `make up`, periksa `docker/.env` server. Baris `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` atau `EDGE_WS_PER_IP` yang lebih kecil dari 1.000 (mis. sisa 30/300/150 dari rilis lama) membuat `check-config` profil `single`/`cluster` gagal; hapus barisnya agar default baru (1.500) dipakai. Traefik kini dibatasi 768M (sebelumnya 256M). PgBouncer dan sentinel di-build ulang otomatis oleh `make up`.
+
+**Rilis image pihak ketiga (T5, 4 Nov):** Postgres `17.6.1.136` → `17.11.0.008` (PostgreSQL 17.6 → 17.11, major sama, tanpa dump/restore), Realtime `v2.148.6`, Storage `v1.84.32`, Studio `2026.10.26-sha-478bd88`, edge-runtime `v1.77.9`, Kong `3.9.4`, Traefik `v3.7.16`. Rincian dan alasan per image: [laporan uji 12.7](testing/report-2026-11-03.md#127-t5-versi-image-pihak-ketiga-4-nov).
+
+- Wajib `make backup PROFILE=single` sebelum `make up`. Image `db` berganti, jadi `db` dan layanan yang bergantung padanya dibuat ulang. Di dev, semua service healthy lagi dalam ±2 menit.
+- PostgreSQL 17.11 hanya mengizinkan output plugin di `output_plugin_libraries`. `postgresql.conf` image sudah berisi `pgoutput, test_decoding, wal2json`. Bila config Postgres diganti sendiri, `wal2json` wajib ada; tanpa itu `postgres_changes` Realtime berhenti.
+- Tidak perlu `REINDEX`: tidak ada `btree_gist`, `comments.path` (ltree) jauh di bawah 14.653 label, dan tidak ada fungsi kita yang memakai PGP pgcrypto.
+- Volume `db-config` (`/etc/postgresql-custom`) tidak diperbarui otomatis. Isinya tetap berkas image lama (`supautils.conf`, `extension-custom-scripts/`, tanpa `conf.d/pg_net.conf`), sama seperti upstream. Server baru mendapat versi baru. Jangan hapus volume ini (berisi `pgsodium_root.key`).
+- `make up --wait` bisa gagal sekali dengan `rest is unhealthy`: PgBouncer ikut dibuat ulang, listener PostgREST mundur 8 → 16 → 32 dtk, dan `/ready` 503 ±70 dtk. Tunggu sebentar, lalu jalankan `make up` lagi.
+- Storage `v1.84.32` tidak menambah migrasi internal (terakhir tetap `74 unlock-object-versioning`), jadi kembali ke `v1.81.0` masih aman.
+- Realtime `v2.148.6` memakai Phoenix 1.8.15: pesan WebSocket dengan `join_ref` yang tidak cocok dengan join channel diabaikan diam-diam. Klien Dart (`realtime_client`) dan realtime-js aman. Klien buatan sendiri wajib mengirim `join_ref` = `ref` dari `phx_join` channel itu.
 
 **Rilis Realtime Broadcast (migrasi `0098`, `rendezvous_community` 1.5.0) memutus klien lama.** Klien 1.4.x tetap tersambung, tetapi tidak lagi menerima pesan baru secara realtime (hanya saat memuat ulang) dan typing-nya tidak sampai. Urutan rilis:
 
@@ -249,7 +259,7 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
   - `/readyz` bernilai `degraded` bila Valkey bermasalah (rate limit jatuh ke per-instance) atau circuit breaker OLT terbuka.
   - Metrik dan alert yang disarankan ada di [services/auth-bridge/README.md](../services/auth-bridge/README.md#port-ops-internal).
 - **Yang perlu dipantau:**
-  - disk (volume `db-data`, `storage-data`, folder `backups/`)
+  - disk (volume `db-data`, `storage-data`, folder `backups/`, repositori backup lokal `BACKUP_LOCAL_REPO_DIR`)
   - koneksi Postgres (PgBouncer membatasi maks 80 koneksi server)
   - error 5xx dan 429 di log Traefik/Kong
   - error `olt_unavailable` di auth-bridge (server OLT bermasalah), `olt_auth_bridge_olt_breaker_open = 1`, dan kenaikan `olt_auth_bridge_valkey_errors_total`
@@ -270,7 +280,7 @@ Sentinel membaca metrik internal setiap `REPORT_INTERVAL` (30 dtk) lewat `METRIC
 | `queue:room_preview` | `private.room_preview_queue` (migrasi `0102`) | Baris tertua ≥ 60 dtk | ≥ 300 dtk | Job `chat-room-preview` (tiap 10 dtk) mati atau macet. Kegagalan job itu sendiri juga muncul sebagai `cron:chat-room-preview` (aturan cron 0064 mencakup semua job aktif) |
 | `metrics:<sumber>` | Status baca sumber metrik | Sumber gagal dibaca pada laporan terakhir, atau ≥ 2 sampel gagal dibaca dalam 5 menit (`health.metrics_missed_warn`, `health.metrics_missed_window_seconds`), termasuk kegagalan di laporan yang tidak terkirim | — | Supaya alert di atas tidak diam-diam mati (mis. secret salah, port admin tertutup, `rest` terlalu sibuk menjawab `/metrics`) |
 
-- **Kenapa Realtime lewat metrik, bukan log.** Realtime v2.143 tidak punya counter khusus `MessagePerSecondRateLimitReached`/`UnableToBroadcastChanges` di `/metrics`; keduanya hanya ada di log. Membaca log butuh akses Docker socket atau pengiriman log, yang tidak diberikan ke sentinel. Batas tenant dihitung Realtime dari rata-rata bergerak counter event yang sama dengan `realtime_channel_global_events`, jadi laju counter itu dibanding `max_events_per_second` memberi peringatan **sebelum** event dibuang. Di cluster, laju dijumlah dari semua node (lebih awal waspada bila batas ternyata per node).
+- **Kenapa Realtime lewat metrik, bukan log.** Realtime v2.143–v2.148 tidak punya counter khusus `MessagePerSecondRateLimitReached`/`UnableToBroadcastChanges` di `/metrics`; keduanya hanya ada di log. Membaca log butuh akses Docker socket atau pengiriman log, yang tidak diberikan ke sentinel. Batas tenant dihitung Realtime dari rata-rata bergerak counter event yang sama dengan `realtime_channel_global_events`, jadi laju counter itu dibanding `max_events_per_second` memberi peringatan **sebelum** event dibuang. Di cluster, laju dijumlah dari semua node (lebih awal waspada bila batas ternyata per node).
 - **Endpoint internal saja.** Admin server PostgREST (`PGRST_ADMIN_SERVER_HOST: 0.0.0.0`, port 3001: `/live`, `/ready`, `/metrics`, `/schema_cache`), `/metrics` Realtime, dan konsol PgBouncer hanya ada di network Docker `app`/`data`. Tidak ada yang di-publish ke host atau di-route Kong/Traefik; `make test-security` (static-config) memeriksanya.
 - **User `olt_stats`** hanya ada di `userlist.txt` PgBouncer dan di `stats_users` (perintah `SHOW` saja). Role ini tidak ada di Postgres, jadi tidak bisa membuka database. Password dari Docker secret `pgbouncer_stats_password`, seperti rahasia infrastruktur lain (bukan kredensial operasional yang dikelola dari web).
 - **Cluster:** `stack.cluster.yml` memakai `tasks.rest`, `tasks.realtime`, `tasks.pgbouncer`, sehingga setiap replika dibaca terpisah (bukan lewat VIP yang bergantian).
@@ -302,7 +312,7 @@ Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat d
 - Pesan chat dikirim lewat Broadcast dari database (`0098`, [docs/social](social/README.md#pengiriman-pesan-realtime-0098)). Setiap event yang **diterima** satu klien dihitung ke batas ini: satu pesan di room berisi 400 orang = 400 event. Room saham ramai dengan 12 pesan/detik dan 400 penerima ≈ 4.800 event/detik.
 - Bawaan 20.000/detik (sebelumnya 10.000). Fan-out satu room saham ≈ penerima × pesan/dtk ke room itu, kira-kira N²/20 pada room ramai: 10.000 habis di ±450 penerima aktif, 20.000 cukup untuk ±630. Butuh `realtime` 2 vCPU (batas di compose); uji 40.000 tanpa event dibuang dengan CPU `realtime` ≤ 53% (laporan uji bagian 10). Naikkan bersama CPU bila room terbesar lebih ramai. Di atas batas, Realtime membuang event diam-diam (log `MessagePerSecondRateLimitReached`, lalu `UnableToBroadcastChanges: too_many_requests`). Alert `realtime:events` (Kesehatan sistem) terbuka mulai 70% batas, kritis mulai 90%. Klien Flutter dan web CS mengisi celah lewat `get_messages(p_after)` saat tersambung, tiap 45 detik, dan saat kembali ke aplikasi. Pesan tidak hilang, hanya terlambat.
 - Naikkan bertahap sambil memantau CPU container `realtime` (laporan uji: CPU Realtime rendah, bottleneck sebelumnya adalah RLS `postgres_changes` di Postgres, yang kini tidak dipakai untuk pesan).
-- `REALTIME_MAX_BYTES_PER_SECOND` tidak ditegakkan oleh Realtime v2.143. `max_presence_events_per_second` (1.000) tidak bisa diatur lewat env.
+- `REALTIME_MAX_BYTES_PER_SECOND` tidak ditegakkan oleh Realtime v2.143–v2.148 (diperiksa ulang di sumber v2.148.6). `max_presence_events_per_second` (1.000) tidak bisa diatur lewat env.
 - Typing dan presence di room besar dibatasi server (`0106`, [docs/social](social/README.md#typing-dan-presence-di-room-besar-0106)). Room non-CS mulai 50 anggota hanya menerima `typing_summary` (maksimal 1 per 3 dtk per room), sehingga di room 500 penerima typing turun dari ±25.000 menjadi ±167 event/dtk. Presence di room saham ditolak. Settingnya `rooms.typing_*` dan `rooms.presence_*` di `private.settings`.
 - Daftar chat aplikasi memoll `get_room_previews` untuk room saham (`0107`, bawaan 15 dtk, `rooms.preview_poll_seconds`). Polling ini tidak memakai anggaran Realtime. Bila REST/DB sedang berat, naikkan nilainya; klien mengikuti mulai poll berikutnya.
 
@@ -339,7 +349,7 @@ Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat d
 - [ ] `retention.archive_days` (arsip regulator) sudah ditetapkan bersama tim legal. Default sementara: 5 tahun.
 
 **Data & operasional**
-- [ ] Tujuan backup S3 diatur di web (**Kesehatan sistem → Backup**), backup penuh pertama berhasil, dan uji restore berhasil. Password enkripsi dan salinan `pgsodium_root.key` disimpan di luar server.
+- [ ] Tujuan backup diatur di web (**Kesehatan sistem → Backup**): S3, atau folder lokal di disk terpisah yang disalin ke luar server secara berkala, backup penuh pertama berhasil, dan uji restore berhasil. Password enkripsi dan salinan `pgsodium_root.key` disimpan di luar server.
 - [ ] Kanal alert (Telegram dan/atau email) diisi, dan **Kirim uji** sudah diterima tim operasional. Pemantau uptime dari luar server sudah dipasang.
 - [ ] Halaman **Kesehatan sistem** tidak menampilkan masalah kritis, dan tidak ada "Metrik … tidak bisa dibaca" (sumber `rest`, `realtime`, `pgbouncer` terbaca sentinel).
 - [ ] `docker/.env` server tidak menurunkan `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` atau `EDGE_WS_PER_IP` di bawah 1.000 (`check-config` menolaknya) dan `/bridge/v1/health` menunjukkan `olt_mode: jwt`.

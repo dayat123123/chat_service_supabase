@@ -2359,9 +2359,10 @@ export const en: Translation = {
         service: 'Backup service',
         wal: 'WAL streaming',
         base: 'Last full backup',
-        offsite: 'Last offsite sync',
+        offsite: 'Last WAL upload to the repository',
         restoreTest: 'Last restore test',
         staging: 'Backup staging disk',
+        repositoryDisk: 'Local repository disk',
       },
       kinds: {
         base: 'Full backup',
@@ -2382,9 +2383,27 @@ export const en: Translation = {
       requestNeedsConfig: 'Set up the backup target and encryption password first.',
       pending: 'Waiting: {{kind}}, requested by {{name}} · {{time}}',
       pendingOffline: 'The backup service is not running; the request runs once the service is back.',
-      targetTitle: 'Backup target (S3)',
+      targetTitle: 'Backup target',
       targetHint:
-        'Backups are encrypted and sent to S3 object storage outside this server. Access keys and the password are stored encrypted in the database and cannot be viewed again.',
+        'Backups are encrypted on the server before they are stored. Access keys and the password are stored encrypted in the database and cannot be viewed again.',
+      kind: {
+        legend: 'Target type',
+        s3: 'S3',
+        s3Hint: 'S3 or S3-compatible object storage outside this server. Recommended.',
+        local: 'Local folder on the server',
+        localHint:
+          'A repository in a folder on this server. No endpoint or access keys; only the encryption password.',
+      },
+      localPath:
+        'Stored at {{path}} inside the backup container. The real folder on the server is set by BACKUP_LOCAL_REPO_DIR in docker/.env (default backups/restic).',
+      localTarget: 'Local folder: {{path}}',
+      localRisk: {
+        title: 'Backups are only stored on this server',
+        body: 'The local folder is on the same server as the database, so it does not protect against a broken, ransomware-hit, or lost server.',
+        disk: 'Point BACKUP_LOCAL_REPO_DIR at a disk separate from the database disk.',
+        copy: 'Copy that folder off the server (an external disk or another server) regularly, for example with restic copy.',
+        s3: 'Move to S3 as soon as it is available: choose S3 under Backup target.',
+      },
       fields: {
         endpoint: 'S3 endpoint',
         bucket: 'Bucket',
@@ -2406,6 +2425,7 @@ export const en: Translation = {
         lockedSince: 'The encryption password for this repository has been stored since {{time}}.',
         lockedHint:
           'The password cannot be changed for an existing repository. To use a new password, enter a new folder or bucket.',
+        lockedHintLocal: 'The password cannot be changed for an existing repository.',
         length: 'At least {{min}} characters. Use a password manager.',
         confirmHint: 'Type it again to rule out typos.',
         acknowledge: 'I have stored this password somewhere safe; without it the backups cannot be restored.',
@@ -2447,7 +2467,7 @@ export const en: Translation = {
         hint: 'All times are WIB.',
         baseTime: 'Daily full backup time',
         baseTimeHint: 'Pick a quiet hour.',
-        offsiteMinutes: 'Offsite WAL sync (minutes)',
+        offsiteMinutes: 'Send WAL to the repository (minutes)',
         walDays: 'Keep WAL (days)',
         retentionDaily: 'Keep daily backups',
         retentionWeekly: 'Keep weekly backups',
@@ -2579,6 +2599,7 @@ export const en: Translation = {
       invalid_backup_schedule: 'Schedule or retention out of range.',
       invalid_backup_request: 'Unknown backup request.',
       backup_not_configured: 'Set up the backup target first.',
+      invalid_backup_kind: 'Unknown backup target type.',
     },
   },
   perf: {

@@ -76,6 +76,7 @@ type Options struct {
 	Database           Database
 	Repository         func(restic.Credentials) Repository
 	Disk               func(path string) (disk.Usage, error)
+	LocalCheck         func(dir string) error
 	Log                *slog.Logger
 	Now                func() time.Time
 	Instance           string
@@ -83,6 +84,7 @@ type Options struct {
 	StartedAt          time.Time
 	DataDir            string
 	StorageDir         string
+	LocalRepoDir       string
 	ConfigPoll         time.Duration
 	HeartbeatInterval  time.Duration
 	RequestTimeout     time.Duration
@@ -155,6 +157,9 @@ func New(opts Options) *Agent {
 	}
 	if opts.Disk == nil {
 		opts.Disk = disk.Stat
+	}
+	if opts.LocalCheck == nil {
+		opts.LocalCheck = disk.CheckRepository
 	}
 	if opts.StartedAt.IsZero() {
 		opts.StartedAt = opts.Now()
@@ -320,7 +325,7 @@ func (a *Agent) apply(s settings.Settings) {
 		a.mu.Unlock()
 		a.log.Info("Backup is not configured; only heartbeats are sent", "revision", s.Revision)
 	default:
-		if err := s.Validate(); err != nil {
+		if err := s.Validate(a.opts.LocalRepoDir); err != nil {
 			a.configured, a.off, a.dropped = false, false, false
 			a.configErr = "Konfigurasi backup tidak valid: " + strings.ReplaceAll(err.Error(), "\n", "; ")
 			a.repo, a.repoReady = nil, false
@@ -330,8 +335,7 @@ func (a *Agent) apply(s settings.Settings) {
 			break
 		}
 		table, _ := s.Timetable()
-		creds := restic.Credentials{Repository: s.Repository, Password: s.Password, AccessKeyID: s.S3.AccessKeyID,
-			SecretAccessKey: s.S3.SecretAccessKey, Region: s.Region()}
+		creds := s.Credentials()
 		a.current, a.table = s, table
 		a.configured, a.off, a.dropped, a.configErr = true, false, false, ""
 		if creds != a.creds {
@@ -406,9 +410,10 @@ func (a *Agent) report() state.Report {
 	files, _ := wal.List(a.walDir())
 	detached, _ := wal.List(a.detachedDirs()...)
 	usage, diskErr := a.opts.Disk(a.opts.DataDir)
+	repoDisk := a.repositoryDisk()
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	r := state.Report{RepositoryReady: a.configured && a.repoReady}
+	r := state.Report{RepositoryReady: a.configured && a.repoReady, RepositoryDisk: repoDisk}
 	r.WAL.Streaming = a.streaming
 	r.WAL.SlotLost = !a.persist.SlotLostAt.IsZero()
 	r.WAL.LocalBytes = wal.Bytes(files) + wal.Bytes(detached)
@@ -432,6 +437,20 @@ func (a *Agent) report() state.Report {
 	r.Busy = state.Text(busyName(a.running))
 	r.Error = state.Text(a.topErrorLocked())
 	return r
+}
+
+func (a *Agent) repositoryDisk() *state.Disk {
+	a.mu.Lock()
+	local := a.configured && a.current.Local()
+	a.mu.Unlock()
+	if !local {
+		return nil
+	}
+	usage, err := a.opts.Disk(a.opts.LocalRepoDir)
+	if err != nil {
+		return nil
+	}
+	return &state.Disk{TotalBytes: usage.Total, AvailBytes: usage.Avail}
 }
 
 func newest(files []wal.File) (string, time.Time) {
@@ -585,6 +604,9 @@ func (a *Agent) Metrics() metrics.Snapshot {
 	}
 	if r.WAL.LastReceivedAt != nil {
 		s.LastWALReceived = *r.WAL.LastReceivedAt
+	}
+	if r.RepositoryDisk != nil {
+		s.RepoDiskTotal, s.RepoDiskAvail = r.RepositoryDisk.TotalBytes, r.RepositoryDisk.AvailBytes
 	}
 	return s
 }

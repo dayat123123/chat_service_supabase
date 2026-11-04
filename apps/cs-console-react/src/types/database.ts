@@ -198,12 +198,13 @@ export type Database = {
       }
       backup_set_target: {
         Args: {
-          p_access_key_id: string
-          p_bucket: string
-          p_endpoint: string
+          p_access_key_id?: string
+          p_bucket?: string
+          p_endpoint?: string
+          p_kind?: string
           p_password?: string
-          p_prefix: string
-          p_region: string
+          p_prefix?: string
+          p_region?: string
           p_secret_access_key?: string
         }
         Returns: Json
