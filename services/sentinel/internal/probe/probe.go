@@ -39,6 +39,7 @@ type Result struct {
 	Status    *int    `json:"status"`
 	LatencyMS int64   `json:"latency_ms"`
 	Error     *string `json:"error"`
+	Missed    int     `json:"missed,omitempty"`
 }
 
 func ValidName(name string) bool {

@@ -92,9 +92,9 @@ services:
       # Edge Functions boleh berjalan hingga ~150 detik (idle timeout runtime).
       TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_RESPONSEHEADERTIMEOUT: 170s
       # Batas edge per IP (docs/PRODUCTION.md bagian Batas & rate limit), dipakai volumes/traefik/common.yml.
-      EDGE_RATE_AVERAGE: ${EDGE_RATE_AVERAGE:-300}
-      EDGE_RATE_BURST: ${EDGE_RATE_BURST:-600}
-      EDGE_WS_PER_IP: ${EDGE_WS_PER_IP:-150}
+      EDGE_RATE_AVERAGE: ${EDGE_RATE_AVERAGE:-600}
+      EDGE_RATE_BURST: ${EDGE_RATE_BURST:-1200}
+      EDGE_WS_PER_IP: ${EDGE_WS_PER_IP:-1500}
       EDGE_BODY_MAX_API: ${EDGE_BODY_MAX_API:-262144}
       EDGE_BODY_MAX_UPLOAD: ${EDGE_BODY_MAX_UPLOAD:-10485760}
     healthcheck:
@@ -105,7 +105,9 @@ services:
       retries: 3
     deploy:
       resources:
-        limits: {cpus: "1", memory: 256M, pids: 256}
+        # ±0,26 MiB per WebSocket yang diteruskan (uji 4 Nov: 300 → 122 MiB, 800 → 254 MiB).
+        # 768M menampung EDGE_WS_PER_IP 1500 dari satu IP plus koneksi IP lain (T3).
+        limits: {cpus: "1", memory: 768M, pids: 256}
 
   kong:
     <<: *base
@@ -599,7 +601,7 @@ services:
     <<: *base
     build:
       context: ./pgbouncer
-    image: olt-social/pgbouncer:1.24.0-4
+    image: olt-social/pgbouncer:1.24.0-5
     networks: [data]
     depends_on:
       db:
@@ -616,9 +618,11 @@ services:
       PGBOUNCER_AUTH_PASSWORD: "{{secret:postgres_password}}"
       # User `olt_stats`: hanya SHOW di konsol admin, dipakai sentinel (alert antrean PgBouncer).
       PGBOUNCER_STATS_PASSWORD: "{{secret:pgbouncer_stats_password}}"
-      PGBOUNCER_SERVER_LOGIN_RETRY: ${PGBOUNCER_SERVER_LOGIN_RETRY:-1}
+      PGBOUNCER_SERVER_LOGIN_RETRY: ${PGBOUNCER_SERVER_LOGIN_RETRY:-0.25}
       PGBOUNCER_DB_HOST: ${POSTGRES_HOST:-db}
       PGBOUNCER_DB_PORT: ${POSTGRES_PORT:-5432}
+      # Cek IP host database tiap N dtk; IP baru dipakai tanpa menunggu cache DNS c-ares (T6).
+      PGBOUNCER_DB_WATCH_SECONDS: ${PGBOUNCER_DB_WATCH_SECONDS:-2}
       PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-session}
       PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-500}
       PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
@@ -763,7 +767,7 @@ services:
       VALKEY_ADDR: valkey:6379
       VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
       VERIFY_CACHE_TTL: ${AUTH_BRIDGE_CACHE_TTL:-60}
-      RATE_LIMIT_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE:-300}
+      RATE_LIMIT_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE:-1500}
       RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-10}
       BREAKER_FAILURE_THRESHOLD: ${AUTH_BRIDGE_BREAKER_FAILURE_THRESHOLD:-5}
       BREAKER_COOLDOWN: ${AUTH_BRIDGE_BREAKER_COOLDOWN:-30}
@@ -1068,7 +1072,7 @@ services:
     <<: *base
     build:
       context: ../services/sentinel
-    image: olt-social/sentinel:0.2.0
+    image: olt-social/sentinel:0.3.0
     networks: [app, data, egress]
     depends_on:
       migrate:

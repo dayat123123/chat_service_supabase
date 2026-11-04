@@ -5,6 +5,7 @@ update private.rate_limits set max_count = 1000
  where action in ('message', 'post', 'comment', 'follow', 'room_create', 'stock_room_create', 'notification_prefs');
 update private.settings set value = '0' where key = 'rooms.busy_slow_mode';
 delete from private.watchlist_digest_runs;
+delete from private.followed_post_queue;
 
 select tests.create_user('n66_budi') as budi \gset
 select tests.create_user('n66_sari') as sari \gset
@@ -85,7 +86,9 @@ select ok(not exists (select 1 from private.followed_post_queue where post_id = 
   'Postingan yang ditahan tidak memberi notifikasi pengikut');
 select is(private.followed_post_tick() ->> 'notifications', '2', 'Job mengirim notifikasi ke pengikut');
 select is((select string_agg(p.username::text, ',' order by p.username) from public.notifications n
-           join public.profiles p on p.id = n.user_id where n.type = 'followed_post'), 'n66_joko,n66_sari',
+           join public.profiles p on p.id = n.user_id
+           where n.type = 'followed_post' and n.actor_id = :'budi'),
+  'n66_joko,n66_sari',
   'Pengikut yang membisukan penulis tidak diberi notifikasi');
 select is((select payload from public.notifications where user_id = :'sari' and type = 'followed_post'),
   jsonb_build_object('post_id', :'post1', 'author_id', :'budi', 'snippet', 'Postingan baru Budi tentang $NTSA'),

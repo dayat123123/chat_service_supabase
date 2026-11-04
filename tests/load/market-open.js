@@ -144,15 +144,21 @@ export default async function () {
   await api.rpc('mark_room_read', { p_room_id: roomId });
 
   let dropped = false;
-  let rt = new Realtime(API, ANON, api.jwt, { onClose: () => { dropped = true; } });
-  try {
-    await rt.connect();
-    connectTime.add(rt.connectMs);
-  } catch (e) {
-    wsFailed.add(1, { reason: String(e.message || e).slice(0, 40) });
-    await sleepMs(3000);
-    return;
-  }
+  let rt = null;
+  const openSocket = async (reason) => {
+    dropped = false;
+    rt = new Realtime(API, ANON, api.jwt, { onClose: () => { dropped = true; } });
+    try {
+      await rt.connect();
+      connectTime.add(rt.connectMs, { attempt: reason ? 'retry' : 'first' });
+      return true;
+    } catch (e) {
+      wsFailed.add(1, { reason: reason || String(e.message || e).slice(0, 40) });
+      rt.close();
+      return false;
+    }
+  };
+  const firstOpen = await openSocket('');
   const rtSeen = new Map();
   const gapSeen = new Map();
   const known = new Set();
@@ -274,28 +280,27 @@ export default async function () {
       return false;
     }
   };
-  await joinRoom();
-  subscribed.add(1);
+  let everSubscribed = firstOpen;
+  if (firstOpen) {
+    await joinRoom();
+    subscribed.add(1);
+  } else {
+    dropped = true;
+  }
   const subscribedAt = new Date().toISOString();
   await fillGap('join');
   let gapFirst = Infinity;
   let gapSecond = Infinity;
   const reconnect = async () => {
-    wsDropped.add(1);
+    if (everSubscribed) wsDropped.add(1);
     let wait = 1000;
     while (Date.now() < deadline - 2000) {
       await sleepMs(wait + Math.random() * 1000);
-      wait = Math.min(wait * 2, 8000);
-      dropped = false;
-      rt = new Realtime(API, ANON, api.jwt, { onClose: () => { dropped = true; } });
-      try {
-        await rt.connect();
-      } catch (e) {
-        wsFailed.add(1, { reason: 'reconnect' });
-        rt.close();
-        continue;
-      }
+      wait = Math.min(wait * 2, 10000);
+      if (!(await openSocket(everSubscribed ? 'reconnect' : 'first_retry'))) continue;
       if (await joinRoom()) {
+        if (!everSubscribed) subscribed.add(1);
+        everSubscribed = true;
         reconnected.add(1);
         const delay = RECONNECT_JITTER * 1000 * Math.random();
         gapFirst = Date.now() + delay;
@@ -371,7 +376,7 @@ export default async function () {
     }
     await sleepMs(250);
   }
-  if (gaveUp && !RECONNECT) wsDropped.add(1);
+  if (gaveUp && !RECONNECT && everSubscribed) wsDropped.add(1);
   const until = new Date().toISOString();
   await sleepMs(3000 + Math.random() * END_SPREAD * 1000);
   await fillGap('final');

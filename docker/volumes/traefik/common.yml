@@ -9,18 +9,19 @@ http:
     # rate limit per user di DB (private.rate_limits) dan auth-bridge (per user OLT).
     rate-limit:
       rateLimit:
-        average: {{ env "EDGE_RATE_AVERAGE" | default "300" }}
-        burst: {{ env "EDGE_RATE_BURST" | default "600" }}
+        average: {{ env "EDGE_RATE_AVERAGE" | default "600" }}
+        burst: {{ env "EDGE_RATE_BURST" | default "1200" }}
         period: 1s
         sourceCriterion:
           ipStrategy:
             depth: 0
 
-    # Maksimum koneksi WebSocket Realtime bersamaan per IP. Total koneksi, join, dan
-    # event tetap dijaga batas tenant Realtime (REALTIME_* di compose.yml).
+    # Maksimum koneksi WebSocket Realtime bersamaan per IP. Default 1500: ±1.000 nasabah
+    # di balik satu IP CGNAT/kantor (1 WebSocket per nasabah) plus ruang sambung ulang.
+    # Total koneksi, join, dan event tetap dijaga batas tenant Realtime (REALTIME_* di compose.yml).
     ws-limit:
       inFlightReq:
-        amount: {{ env "EDGE_WS_PER_IP" | default "150" }}
+        amount: {{ env "EDGE_WS_PER_IP" | default "1500" }}
         sourceCriterion:
           ipStrategy:
             depth: 0

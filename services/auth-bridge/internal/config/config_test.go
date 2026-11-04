@@ -42,7 +42,7 @@ func TestLoadDefaults(t *testing.T) {
 	if len(cfg.TrustedProxies) == 0 {
 		t.Fatal("TRUSTED_PROXIES default kosong")
 	}
-	if cfg.RateLimitPerMinute != 300 || cfg.RateLimitPerUserPerMinute != 10 || cfg.BreakerThreshold != 5 || cfg.BreakerCooldown.Seconds() != 30 ||
+	if cfg.RateLimitPerMinute != 1500 || cfg.RateLimitPerUserPerMinute != 10 || cfg.BreakerThreshold != 5 || cfg.BreakerCooldown.Seconds() != 30 ||
 		cfg.OpsPort != 9100 || cfg.ValkeyAddr != "" || cfg.ValkeyDB != 0 {
 		t.Fatalf("default tahap 3 salah: %+v", cfg)
 	}

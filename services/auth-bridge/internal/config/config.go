@@ -84,7 +84,7 @@ func Load() (Config, error) {
 		JWTIssuer:                 envOr("JWT_ISSUER", "olt-auth-bridge"),
 		PostgRESTURL:              strings.TrimRight(envOr("POSTGREST_URL", "http://rest:3000"), "/"),
 		VerifyCacheTTL:            secondsEnv("VERIFY_CACHE_TTL", 60, &errs),
-		RateLimitPerMinute:        intEnv("RATE_LIMIT_PER_MINUTE", 300, &errs),
+		RateLimitPerMinute:        intEnv("RATE_LIMIT_PER_MINUTE", 1500, &errs),
 		RateLimitPerUserPerMinute: intEnv("RATE_LIMIT_PER_USER_PER_MINUTE", 10, &errs),
 		ValkeyAddr:                os.Getenv("VALKEY_ADDR"),
 		ValkeyPassword:            secretEnv("VALKEY_PASSWORD", &errs),

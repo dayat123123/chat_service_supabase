@@ -219,7 +219,7 @@ if k6 run -q --summary-mode disabled --log-format raw --insecure-skip-tls-verify
      -e ANON_KEY="$ANON_KEY" /olt/tests/security/ws-limit.js > "$OUT/ws-limit.log" 2>&1; then
   r=$(sed -n 's/^RESULT //p' "$OUT/ws-limit.log" | tail -1)
   opened=$(jq -r .opened <<< "$r"); rejected=$(jq -r .rejected <<< "$r")
-  [ "$opened" -le 20 ] && [ "$rejected" -gt 0 ] && res ok "ws-limit: $opened WebSocket terbuka, $rejected ditolak dari 1 IP (batas uji 20; default EDGE_WS_PER_IP 150)" \
+  [ "$opened" -le 20 ] && [ "$rejected" -gt 0 ] && res ok "ws-limit: $opened WebSocket terbuka, $rejected ditolak dari 1 IP (batas uji 20; default EDGE_WS_PER_IP 1500)" \
     || res FAIL "ws-limit tidak membatasi ($opened terbuka, $rejected ditolak)"
 else
   res FAIL "k6 ws-limit gagal (lihat ws-limit.log)"
