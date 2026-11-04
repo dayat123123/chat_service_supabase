@@ -1,10 +1,10 @@
 # sentinel
 
-Pemantau sistem dan pengirim alert. Sentinel memeriksa layanan internal (HTTP/TCP) dan sisa ruang disk, lalu melaporkannya ke database lewat RPC PostgREST `health_report`. Aturan alert dihitung di database (migrasi `0064_system_health.sql`). Sentinel tidak memutuskan apa pun: ia hanya mengumpulkan data, lalu mengirim pesan yang sudah disusun database ke Telegram dan email. Satu-satunya pengecualian: saat API/database sendiri tidak bisa dihubungi, sentinel mengirim alert sendiri lewat kanal terakhir yang tersimpan di memori. Sentinel hanya memakai standard library Go.
+Pemantau sistem dan pengirim alert. Sentinel memeriksa layanan internal (HTTP/TCP), sisa ruang disk, dan metrik kapasitas (pool PostgREST, laju event Realtime, antrean PgBouncer), lalu melaporkannya ke database lewat RPC PostgREST `health_report`. Aturan alert dihitung di database (migrasi `0064_system_health.sql`). Sentinel tidak memutuskan apa pun: ia hanya mengumpulkan data, lalu mengirim pesan yang sudah disusun database ke Telegram dan email. Satu-satunya pengecualian: saat API/database sendiri tidak bisa dihubungi, sentinel mengirim alert sendiri lewat kanal terakhir yang tersimpan di memori. Sentinel hanya memakai standard library Go.
 
 ## Alur
 
-1. **Laporan kesehatan** (setiap `REPORT_INTERVAL`, pertama kali langsung saat start): semua probe dijalankan paralel, disk diukur dengan `statfs`, lalu dikirim lewat `health_report(p_instance, p_version, p_started_at, p_probes, p_disks)`. Database mencatat heartbeat `sentinel`, menyimpan hasil probe dan disk, lalu langsung mengevaluasi aturan alert.
+1. **Laporan kesehatan** (setiap `REPORT_INTERVAL`, pertama kali langsung saat start): semua probe dan sumber metrik dijalankan paralel, disk diukur dengan `statfs`, lalu dikirim lewat `health_report(p_instance, p_version, p_started_at, p_probes, p_disks, p_metrics)` (`p_metrics` hanya dikirim bila `METRICS_SOURCES` terisi; migrasi `0104`). Database mencatat heartbeat `sentinel`, menyimpan hasil probe dan disk, lalu langsung mengevaluasi aturan alert.
 2. **Kanal alert** (setiap `ALERT_POLL`): `alert_channels(p_revision)` dipanggil dengan revisi yang sedang dipakai. Bila sama, database hanya menjawab `unchanged` tanpa mengirim token atau password. Bila berubah, kanal di memori diganti tanpa restart dan dicatat sekali di log (jumlah chat, host SMTP, jumlah penerima; tanpa token/password).
 3. **Pengiriman** (setelah cek kanal, di putaran yang sama): `alert_claim(p_instance, p_limit, p_lease_seconds)` mengambil maksimal `BATCH_SIZE` pesan. Telegram dan email dikirim bersamaan (masing-masing berurutan), lalu semua hasil dilaporkan sekaligus lewat `alert_report`. Bila claim penuh, sentinel langsung claim lagi. Laporan yang gagal dicoba lagi setelah 250 ms, 500 ms, dan 1 detik. Bila tetap gagal, pesan kembali ke antrean setelah lease habis.
 4. **Database tidak bisa dihubungi**: lihat bagian di bawah.
@@ -24,6 +24,8 @@ Pengiriman bersifat *at-least-once*. Sentinel tidak memulai kiriman baru setelah
 | `PROBES` | kosong | Daftar probe, lihat di bawah |
 | `PROBES_EXTRA` | kosong | Probe tambahan yang digabung ke `PROBES`. Dipakai overlay compose profil CS (web CS, gateway nasabah) agar server tanpa CS tidak memunculkan alert palsu |
 | `DISKS` | kosong | Daftar disk, lihat di bawah |
+| `METRICS_SOURCES` | kosong | Sumber metrik kapasitas, lihat [Metrik kapasitas](#metrik-kapasitas) |
+| `PGBOUNCER_STATS_PASSWORD` / `PGBOUNCER_STATS_PASSWORD_FILE` | wajib bila ada sumber `pgbouncer://` | Password user konsol admin PgBouncer (`olt_stats`) |
 | `REPORT_INTERVAL` | `30s` | Jeda antar laporan kesehatan (5s–10m) |
 | `PROBE_TIMEOUT` | `5s` | Batas waktu per probe (1s–60s, harus lebih pendek dari `REPORT_INTERVAL`) |
 | `ALERT_POLL` | `5s` | Jeda cek revisi kanal dan claim alert (1s–5m) |
@@ -58,6 +60,24 @@ db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379
 ```
 
 `DISKS` berisi pasangan `nama=/path` dipisah koma (nama maks. 40 karakter, maksimal 20 disk). Path adalah titik mount di dalam container sentinel; volume dipasang read-only, misalnya `db-data:/mnt/disks/db:ro`. Yang dikirim hanya `total_bytes`, `free_bytes` (termasuk cadangan root), dan `avail_bytes` (yang bisa dipakai proses non-root); path tidak dikirim. Disk yang gagal diukur tidak ikut dilaporkan (supaya tidak terbaca sebagai disk penuh) dan dicatat sekali di log. Volume Docker yang berada di filesystem yang sama melaporkan angka yang sama. Pengukuran hanya tersedia di Linux.
+
+## Metrik kapasitas
+
+`METRICS_SOURCES` berisi pasangan `nama=url` dipisah koma (aturan nama sama dengan probe, maksimal 20). Nama dipakai sebagai label di database (`rest`, `realtime`, `pgbouncer`).
+
+| Bentuk | Dibaca |
+|---|---|
+| `http://host:port/path`, `https://...` | Teks Prometheus. Hanya family yang dipakai aturan alert yang dikirim (dijumlah lintas label): `pgrst_db_pool_timeouts_total`, `pgrst_db_pool_waiting`, `pgrst_db_pool_available`, `pgrst_db_pool_max`, `realtime_channel_global_events`, `realtime_connections_global_connected` |
+| `jwt+http://...`, `jwt+https://...` | Sama, dengan header `Authorization: Bearer` token `service_role` 1 menit yang ditandatangani `JWT_SECRET` (Realtime memverifikasinya dengan `METRICS_JWT_SECRET`, di compose sama dengan `jwt_secret`) |
+| `pgbouncer://user@host:port` | Konsol admin PgBouncer (database `pgbouncer`), `SHOW POOLS`. Protokol Postgres ditulis sendiri dengan standard library: autentikasi SCRAM-SHA-256 (tanda tangan server diverifikasi) atau md5. User bawaan `olt_stats`. Dikirim: `pgbouncer_cl_active`, `pgbouncer_cl_waiting`, `pgbouncer_sv_active`, `pgbouncer_sv_idle` (jumlah semua pool), `pgbouncer_maxwait_seconds` (terlama), `pgbouncer_pools`; pool konsol `pgbouncer` diabaikan |
+
+URL dengan password ditolak saat start. Nama host di-resolve setiap putaran dan **setiap alamat dibaca terpisah** (`instance` = IP), jadi `tasks.rest` di Swarm membaca tiap replika, bukan VIP yang bergantian. Batas waktu per sumber `PROBE_TIMEOUT`. Hasil per sumber: `{"source","instance","ok","error","values":{...}}`. Kegagalan dicatat sekali per perubahan keadaan di log dan menjadi alert `metrics:<sumber>` di database. Aturan alert dan ambangnya: [docs/system-health](../../docs/system-health/README.md#yang-diperiksa).
+
+Contoh stack ini (default `docker/compose.yml`):
+
+```
+rest=http://rest:3001/metrics,realtime=jwt+http://realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@pgbouncer:6432
+```
 
 ## Telegram
 
@@ -116,6 +136,7 @@ Setiap panggilan RPC (`health_report`, `alert_channels`, `alert_claim`, `alert_r
 | `sentinel_probe_up{probe}` | gauge | 1 bila probe terakhir berhasil |
 | `sentinel_probe_latency_seconds{probe}` | gauge | Durasi probe terakhir |
 | `sentinel_disk_total_bytes{disk}`, `sentinel_disk_free_bytes{disk}`, `sentinel_disk_avail_bytes{disk}` | gauge | Hasil `statfs` terakhir |
+| `sentinel_scrape_up{source,instance}` | gauge | 1 bila pembacaan terakhir sumber metrik berhasil |
 | `sentinel_health_reports_total{outcome}` | counter | `ok`, `failed` |
 | `sentinel_last_report_timestamp_seconds` | gauge | Waktu Unix laporan terakhir yang diterima (0 jika belum ada) |
 | `sentinel_alerts_total{channel,outcome}` | counter | `telegram`/`email`/`other` × `sent`/`retry`/`failed` |

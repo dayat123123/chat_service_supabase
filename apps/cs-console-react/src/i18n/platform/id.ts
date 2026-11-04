@@ -70,7 +70,7 @@ export const platform = {
     cidrsHint:
       'Satu per baris, sesuai IP server sistem pengirim yang terlihat dari server sosial (mis. 10.20.0.0/16). Kosongkan untuk semua IP. Maksimal {{max}}.',
     rate: 'Batas request per menit',
-    rateHint: '1–100.000. Bawaan 600.',
+    rateHint: '1–100.000. Bawaan 3.000 (50 request/detik). Kirim hingga 500 pesan per request.',
     enabled: 'Key aktif',
     enabledHint: 'Matikan untuk menonaktifkan sementara tanpa mencabut key.',
     saved: 'API key disimpan',

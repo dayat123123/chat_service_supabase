@@ -17,13 +17,13 @@ SUP_JWT=$(staff_jwt "$SUPER" 1800)
 rpc_cs() { curl -sS -X POST "$API/rest/v1/rpc/$1" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $SUP_JWT" \
   -H 'Content-Type: application/json' -H 'Content-Profile: cs_api' -d "$2"; }
 
-created=$(rpc_cs integration_key_create '{"p_name":"lt_loadtest","p_scopes":["notify","notify_broadcast"],"p_rate_limit_per_minute":600}')
+created=$(rpc_cs integration_key_create "{\"p_name\":\"lt_loadtest\",\"p_scopes\":[\"notify\",\"notify_broadcast\"]${INTEGRATION_RATE:+,\"p_rate_limit_per_minute\":$INTEGRATION_RATE}}")
 KEY=$(jq -r '.key // empty' <<< "$created")
 KEY_ID=$(jq -r '.id // .key_id // empty' <<< "$created")
 [ -n "$KEY" ] || { echo "gagal membuat key uji: $(jq -c 'del(.key)' <<< "$created" 2>/dev/null)" >&2; exit 2; }
 revoke() { [ -n "$KEY_ID" ] && rpc_cs integration_key_revoke "{\"p_id\":\"$KEY_ID\",\"p_reason\":\"uji beban selesai\"}" > /dev/null && log "key uji dicabut"; }
 trap revoke EXIT
-log "key uji dibuat ($KEY_ID)"
+log "key uji dibuat ($KEY_ID), batas $(sql "select rate_limit_per_minute from private.integration_keys where id = '$KEY_ID'")/menit ($( [ -n "${INTEGRATION_RATE:-}" ] && echo "INTEGRATION_RATE" || echo "default"))" | tee -a "$RUN/summary.txt"
 
 run_k6() {
   k6 run --quiet --log-format raw -e API="$API" -e ANON_KEY="$ANON_KEY" -e KEY="$KEY" -e RUN="$(date +%s)" \
@@ -37,6 +37,7 @@ run_k6() {
 log "throughput per cust_id (rekening tak tertaut, kanal inbox)"
 run_k6 5 1 60s
 run_k6 20 1 60s
+run_k6 60 1 60s
 run_k6 5 100 60s
 
 watchers=$(sql "select count(*) from public.stock_watchers where stock_code = '$STOCK'")

@@ -49,7 +49,7 @@ Tanpa `CommunityFeatureScope` dan tanpa `RendezvousCommunity.initialize` (misaln
 
 - `CommunityException.retryAfter` diisi dari `details` angka (PostgREST, `slow_mode`) atau header `Retry-After` (media gateway).
 - Pesan `content_blocked`/`link_blocked`/`contact_blocked` (422) menghapus pesan chat lokal seperti sebelumnya; error lain (termasuk `slow_mode`, `dm_request_limit`, `new_account_restricted`) menandai pesan "Gagal terkirim" agar bisa dikirim ulang.
-- `moderation_status` hanya terisi pada baris milik pemanggil (`0083`): `held` → "Menunggu tinjauan", `hidden` → "Disembunyikan moderator" + "Ajukan banding". Pesan realtime (`messages` dari `postgres_changes`) membawa kolom mentah; label hanya ditampilkan untuk pesan sendiri.
+- `moderation_status` hanya terisi pada baris milik pemanggil (`0083`): `held` → "Menunggu tinjauan", `hidden` → "Disembunyikan moderator" + "Ajukan banding". Pesan realtime (event `message` dari server, `0098`) tidak membawa `moderation_status`; pesan `held`/`hidden` tidak pernah disiarkan, dan label hanya ditampilkan untuk pesan sendiri.
 - Unggahan dengan `"held": true` → `Attachment.held` (tidak ikut dikirim ke server). Status ini dipertahankan saat pesan lokal diganti baris server dan saat post baru masuk ke feed.
 
 ## Permintaan pesan & kebijakan DM

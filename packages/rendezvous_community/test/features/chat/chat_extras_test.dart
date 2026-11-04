@@ -300,6 +300,7 @@ void main() {
         me: () async => me,
         roomId: 'r',
         extras: features.chatExtras,
+        gapFillInterval: Duration.zero,
       );
       await cubit.load();
       addTearDown(cubit.close);

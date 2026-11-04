@@ -25,6 +25,16 @@ export function newestCursor(data: MessagePages | undefined) {
 
 export const AFTER_LIMIT = 100
 
+export const GAP_OVERLAP_MS = 10_000
+
+const ZERO_ID = '00000000-0000-0000-0000-000000000000'
+
+export function overlapCursor(cursor: string, overlapMs = GAP_OVERLAP_MS) {
+  const at = Date.parse(cursor.split('|')[0] ?? '')
+  if (Number.isNaN(at)) return cursor
+  return `${new Date(at - overlapMs).toISOString()}|${ZERO_ID}`
+}
+
 export async function collectAfter(
   fetchAfter: (cursor: string) => Promise<ChatMessage[]>,
   cursor: string,

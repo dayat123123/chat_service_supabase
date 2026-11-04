@@ -108,8 +108,8 @@ Fitur sosial & chat untuk **Rendezvous OLT**. Isinya:
 - **Retensi otomatis** lewat `pg_cron`, dan akses ke data pribadi dicatat.
 
 **Realtime.**
-- `postgres_changes` (tunduk RLS) untuk `messages`, `posts`, `comments`, `reactions`, `notifications`.
-- Channel *private* `room:<id>` untuk presence per room, indikator mengetik, dan tanda terima (centang ✓ / ✓✓ / ✓✓ biru) yang disiarkan **server** lewat `realtime.send`. Otorisasinya lewat policy `realtime.messages`.
+- `postgres_changes` (tunduk RLS) untuk `posts`, `comments`, `reactions`, `notifications`.
+- Pesan chat lewat Broadcast dari database (`0098`) ke channel *private* `room:<id>`: pesan baru/diubah/dihapus/disembunyikan, indikator mengetik (RPC `send_typing`), tanda terima (centang ✓ / ✓✓ / ✓✓ biru), reaksi, dan status room saham, semuanya disiarkan **server**. Klien hanya boleh presence. Aktivitas room per user di `user:<id>`. Otorisasinya lewat policy `realtime.messages`; klien mengisi celah lewat `get_messages(p_after)`.
 
 **Storage.**
 - `avatars`: publik, maksimal 2 MB.

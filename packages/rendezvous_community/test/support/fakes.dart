@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:mocktail/mocktail.dart';
 import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/gap_horizon.dart';
 
 const me = UserSummary(id: 'u-me', username: 'budi_santoso', displayName: 'Budi Santoso');
 const alice = UserSummary(id: 'u-a', username: 'alice', displayName: 'Alice');
@@ -191,8 +192,16 @@ class FakeChatRepository extends Fake implements ChatRepository {
   @override
   Future<Paged<ChatMessage>> getMessagesAfter(String roomId, String cursor, {int limit = 100}) async {
     afterCursors.add(cursor);
+    final at = DateTime.parse(cursor.split('|').first);
+    final afterId = cursor.split('|').last;
     final oldestFirst = [...messages]..sort(_byTime);
-    final items = oldestFirst.skip(_indexOf(oldestFirst, cursor) + 1).take(limit).toList();
+    final items = oldestFirst
+        .where((m) {
+          final time = m.createdAt.compareTo(at);
+          return time > 0 || (time == 0 && m.id.compareTo(afterId) > 0);
+        })
+        .take(limit)
+        .toList();
     return Paged(items.reversed.toList(), nextCursor: items.length < limit ? null : messageCursor(items.last));
   }
 
@@ -263,6 +272,37 @@ class FakeChatRepository extends Fake implements ChatRepository {
     await activity.close();
     await roomEvents.close();
     await unreadChanges.close();
+  }
+}
+
+class IndexedFakeChatRepository extends FakeChatRepository implements MessageIndexRepository {
+  IndexedFakeChatRepository({super.rooms, super.members, super.messages});
+
+  final idCursors = <String>[];
+  final idRequests = <List<String>>[];
+  Object? indexError;
+
+  @override
+  Future<MessageIdPage> getMessageIdsAfter(String roomId, String cursor, {int limit = 1000}) async {
+    idCursors.add(cursor);
+    final error = indexError;
+    if (error != null) throw error;
+    final start = GapHorizon.parse(cursor)!;
+    final items = ([
+      ...messages,
+    ]..sort(FakeChatRepository._byTime)).where((m) => GapHorizon.of(m).isAfter(start)).take(limit).toList();
+    return MessageIdPage(
+      [for (final m in items) m.id],
+      last: items.isEmpty ? null : messageCursor(items.last),
+      hasMore: items.length >= limit,
+    );
+  }
+
+  @override
+  Future<List<ChatMessage>> getMessagesByIds(String roomId, List<String> ids) async {
+    idRequests.add(ids);
+    final wanted = ids.toSet();
+    return [...messages.where((m) => wanted.contains(m.id))]..sort((a, b) => FakeChatRepository._byTime(b, a));
   }
 }
 

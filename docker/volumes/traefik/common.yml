@@ -4,19 +4,23 @@
 http:
   middlewares:
     # Rate limit per IP: rata-rata EDGE_RATE_AVERAGE req/detik, burst EDGE_RATE_BURST.
+    # Default longgar untuk nasabah di balik CGNAT/Wi-Fi kantor saat 09:00 (T3,
+    # docs/testing/report-2026-11-03.md). Penyalahgunaan per akun tetap dibatasi
+    # rate limit per user di DB (private.rate_limits) dan auth-bridge (per user OLT).
     rate-limit:
       rateLimit:
-        average: {{ env "EDGE_RATE_AVERAGE" | default "100" }}
-        burst: {{ env "EDGE_RATE_BURST" | default "200" }}
+        average: {{ env "EDGE_RATE_AVERAGE" | default "300" }}
+        burst: {{ env "EDGE_RATE_BURST" | default "600" }}
         period: 1s
         sourceCriterion:
           ipStrategy:
             depth: 0
 
-    # Maksimum koneksi WebSocket Realtime bersamaan per IP.
+    # Maksimum koneksi WebSocket Realtime bersamaan per IP. Total koneksi, join, dan
+    # event tetap dijaga batas tenant Realtime (REALTIME_* di compose.yml).
     ws-limit:
       inFlightReq:
-        amount: {{ env "EDGE_WS_PER_IP" | default "20" }}
+        amount: {{ env "EDGE_WS_PER_IP" | default "150" }}
         sourceCriterion:
           ipStrategy:
             depth: 0

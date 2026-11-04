@@ -17,6 +17,7 @@ import (
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/jwt"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 )
 
 const (
@@ -98,6 +99,7 @@ type Health struct {
 	StartedAt time.Time
 	Probes    []probe.Result
 	Disks     []disk.Usage
+	Metrics   []scrape.Result
 }
 
 func (p *PostgREST) HealthReport(ctx context.Context, h Health) (time.Time, error) {
@@ -114,6 +116,9 @@ func (p *PostgREST) HealthReport(ctx context.Context, h Health) (time.Time, erro
 		"p_started_at": h.StartedAt.UTC().Format(time.RFC3339),
 		"p_probes":     probes,
 		"p_disks":      disks,
+	}
+	if h.Metrics != nil {
+		args["p_metrics"] = h.Metrics
 	}
 	var reply struct {
 		EvaluatedAt time.Time `json:"evaluated_at"`

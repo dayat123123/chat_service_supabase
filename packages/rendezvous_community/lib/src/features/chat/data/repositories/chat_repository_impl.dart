@@ -13,14 +13,22 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/chat_even
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/chat/domain/repositories/message_index_repository.dart';
 import 'package:rendezvous_community/src/shared/data/models/attachment_model.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/attachment.dart';
 import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ChatRepositoryImpl implements ChatRepository {
+class ChatRepositoryImpl implements ChatRepository, MessageIndexRepository {
   ChatRepositoryImpl(this._api, [this._realtime, this._cache])
-    : _hub = _realtime == null ? null : RoomChannelHub(_realtime);
+    : _hub = _realtime == null
+          ? null
+          : RoomChannelHub(
+              _realtime,
+              typing: (roomId, {required isTyping}) async {
+                await _api.rpcValue('send_typing', {'p_room_id': roomId, 'p_typing': isTyping});
+              },
+            );
 
   final SocialRemoteDataSource _api;
   final RealtimeGateway? _realtime;
@@ -66,6 +74,27 @@ class ChatRepositoryImpl implements ChatRepository {
     final items = [for (final row in rows) ChatMessageModel.fromJson(row).toEntity()];
     await _cache?.saveMessages(roomId, rows, items);
     return newerPage(items, limit);
+  }
+
+  @override
+  Future<MessageIdPage> getMessageIdsAfter(String roomId, String cursor, {int limit = 1000}) async {
+    final value = await _api.rpcValue('get_message_ids', {'p_room_id': roomId, 'p_after': cursor, 'p_limit': limit});
+    final data = value is Map ? value : const {};
+    final ids = data['ids'];
+    return MessageIdPage(
+      [if (ids is List) ...ids.whereType<String>()],
+      last: data['last'] as String?,
+      hasMore: data['more'] == true,
+    );
+  }
+
+  @override
+  Future<List<ChatMessage>> getMessagesByIds(String roomId, List<String> ids) async {
+    if (ids.isEmpty) return const [];
+    final rows = await _api.rpcRows('get_messages_by_ids', {'p_room_id': roomId, 'p_ids': ids});
+    final items = [for (final row in rows) ChatMessageModel.fromJson(row).toEntity()];
+    await _cache?.saveMessages(roomId, rows, items);
+    return items;
   }
 
   @override
@@ -154,7 +183,13 @@ class ChatRepositoryImpl implements ChatRepository {
     final realtime = _realtime;
     final hub = _hub;
     if (realtime == null || hub == null) return NoopRoomConnection();
-    return SupabaseRoomConnection(realtime, hub, roomId, me, _muteNotices.stream);
+    return SupabaseRoomConnection(
+      hub,
+      roomId,
+      me,
+      muteNotices: _muteNotices.stream,
+      fetchAfter: (cursor) => getMessagesAfter(roomId, cursor),
+    );
   }
 
   @override
@@ -173,11 +208,14 @@ class ChatRepositoryImpl implements ChatRepository {
     await _unreadChanges.close();
   }
 
-  Stream<RoomActivity> _createActivityStream() =>
-      _realtime!.tableChanges(table: 'messages', event: PostgresChangeEvent.insert).map((p) {
-        final row = MessageRowModel.fromJson(p.newRecord);
-        return RoomActivity(roomId: row.roomId, senderId: row.senderId, preview: row.body, createdAt: row.createdAt);
-      });
+  Stream<RoomActivity> _createActivityStream() async* {
+    final me = await _api.requireUserId();
+    yield* _realtime!
+        .serverBroadcasts('user:$me', event: 'room_activity')
+        .map(parseRoomActivity)
+        .where((activity) => activity != null)
+        .cast<RoomActivity>();
+  }
 
   Stream<RoomMuteNotice> _createMuteNoticeStream() async* {
     final me = await _api.requireUserId();

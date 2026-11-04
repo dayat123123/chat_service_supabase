@@ -16,6 +16,7 @@ class CommunityConnectivity {
   final Duration maxProbeDelay;
   final _online = ValueNotifier<bool>(true);
   final _changes = StreamController<bool>.broadcast();
+  final _resumes = StreamController<void>.broadcast();
   Timer? _timer;
   Duration? _delay;
   bool _disposed = false;
@@ -25,6 +26,12 @@ class CommunityConnectivity {
   bool get isOnline => _online.value;
 
   Stream<bool> get changes => _changes.stream;
+
+  Stream<void> get resumes => _resumes.stream;
+
+  void notifyResumed() {
+    if (!_disposed) _resumes.add(null);
+  }
 
   void report({required bool reachable}) {
     if (_disposed) return;
@@ -69,5 +76,6 @@ class CommunityConnectivity {
     _timer?.cancel();
     _online.dispose();
     unawaited(_changes.close());
+    unawaited(_resumes.close());
   }
 }

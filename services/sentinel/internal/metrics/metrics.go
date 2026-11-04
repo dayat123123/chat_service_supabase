@@ -8,6 +8,7 @@ import (
 
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 )
 
 var (
@@ -20,6 +21,7 @@ var (
 type Snapshot struct {
 	Probes             []probe.Result
 	Disks              []disk.Usage
+	Scrapes            []scrape.Result
 	Reports            map[string]uint64
 	LastReport         time.Time
 	Alerts             map[string]map[string]uint64
@@ -60,6 +62,10 @@ func Render(s Snapshot) string {
 	header(&b, "sentinel_disk_avail_bytes", "Bytes available to unprivileged users on the filesystem.", "gauge")
 	for _, d := range s.Disks {
 		fmt.Fprintf(&b, "sentinel_disk_avail_bytes{disk=%q} %d\n", d.Name, d.AvailBytes)
+	}
+	header(&b, "sentinel_scrape_up", "1 when the last read of the metrics source instance succeeded.", "gauge")
+	for _, r := range s.Scrapes {
+		fmt.Fprintf(&b, "sentinel_scrape_up{source=%q,instance=%q} %d\n", r.Source, r.Instance, flag(r.OK))
 	}
 	header(&b, "sentinel_health_reports_total", "Health reports sent to the database, by outcome.", "counter")
 	for _, outcome := range ReportOutcomes {

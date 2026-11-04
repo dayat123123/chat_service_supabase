@@ -52,6 +52,40 @@ class RealtimeGateway {
   RealtimeChannel privateChannel(String topic, {String? presenceKey}) =>
       _client.channel(topic, opts: RealtimeChannelConfig(private: true, key: presenceKey ?? ''));
 
+  Stream<Map<String, dynamic>> serverBroadcasts(
+    String topic, {
+    required String event,
+    void Function(RealtimeStatus status)? onStatus,
+  }) {
+    RealtimeChannel? channel;
+    late final StreamController<Map<String, dynamic>> controller;
+    controller = StreamController<Map<String, dynamic>>(
+      onListen: () {
+        onStatus?.call(RealtimeStatus.connecting);
+        final created = privateChannel(topic);
+        channel = created;
+        created
+          ..onBroadcast(
+            event: event,
+            callback: (payload) {
+              if (!controller.isClosed) controller.add(broadcastPayload(payload));
+            },
+          )
+          ..subscribe((status, error) {
+            _logChannelStatus(topic, status, error);
+            onStatus?.call(mapSubscribeStatus(status));
+          });
+      },
+      onCancel: () async {
+        final ch = channel;
+        channel = null;
+        if (ch != null) await remove(ch);
+        await controller.close();
+      },
+    );
+    return controller.stream;
+  }
+
   Future<void> remove(RealtimeChannel channel) => _client.removeChannel(channel);
 }
 
@@ -63,6 +97,11 @@ void _logChannelStatus(String channel, RealtimeSubscribeStatus status, Object? e
     RealtimeSubscribeStatus.timedOut => (Level.WARNING, 'Realtime channel interrupted, retrying'),
   };
   CommunityLoggers.realtime.event(level, message, fields: {'channel': channel, 'status': status}, error: error);
+}
+
+Map<String, dynamic> broadcastPayload(Map<String, dynamic> payload) {
+  final inner = payload['payload'];
+  return inner is Map ? Map<String, dynamic>.from(inner) : payload;
 }
 
 RealtimeStatus mapSubscribeStatus(RealtimeSubscribeStatus status) => switch (status) {

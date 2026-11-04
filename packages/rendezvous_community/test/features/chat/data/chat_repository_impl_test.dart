@@ -138,6 +138,43 @@ void main() {
     expect(partial.nextCursor, isNull);
   });
 
+  test('the message index lists ids after a cursor and fetches rows by id', () async {
+    when(() => api.rpcValue('get_message_ids', any())).thenAnswer(
+      (_) async => {
+        'ids': ['m-2', 'm-3'],
+        'last': '2026-10-29T03:03:00.000000Z|m-3',
+        'more': true,
+      },
+    );
+    when(() => api.rpcRows('get_messages_by_ids', any())).thenAnswer((_) async => [messageRow('m-2')]);
+    final repo = ChatRepositoryImpl(api);
+
+    final page = await repo.getMessageIdsAfter('r-1', 'c-0', limit: 2);
+    final rows = await repo.getMessagesByIds('r-1', ['m-2']);
+
+    verify(() => api.rpcValue('get_message_ids', {'p_room_id': 'r-1', 'p_after': 'c-0', 'p_limit': 2})).called(1);
+    verify(
+      () => api.rpcRows('get_messages_by_ids', {
+        'p_room_id': 'r-1',
+        'p_ids': ['m-2'],
+      }),
+    ).called(1);
+    expect(page.ids, ['m-2', 'm-3']);
+    expect(page.last, '2026-10-29T03:03:00.000000Z|m-3');
+    expect(page.hasMore, isTrue);
+    expect(rows.single.id, 'm-2');
+  });
+
+  test('an empty message index page has no cursor and no continuation', () async {
+    when(() => api.rpcValue('get_message_ids', any())).thenAnswer((_) async => {'ids': <Object?>[], 'last': null});
+
+    final page = await ChatRepositoryImpl(api).getMessageIdsAfter('r-1', 'c-0');
+
+    expect(page.ids, isEmpty);
+    expect(page.last, isNull);
+    expect(page.hasMore, isFalse);
+  });
+
   test('markDelivered forwards the room list to the RPC', () async {
     when(() => api.rpcValue('mark_rooms_delivered', any())).thenAnswer((_) async => 2);
 

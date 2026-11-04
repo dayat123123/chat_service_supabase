@@ -91,10 +91,10 @@ services:
       TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_DIALTIMEOUT: 5s
       # Edge Functions boleh berjalan hingga ~150 detik (idle timeout runtime).
       TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_RESPONSEHEADERTIMEOUT: 170s
-      # Batas edge (docs/PROMPT-PRODUCTION.md bagian 3), dipakai volumes/traefik/common.yml.
-      EDGE_RATE_AVERAGE: ${EDGE_RATE_AVERAGE:-100}
-      EDGE_RATE_BURST: ${EDGE_RATE_BURST:-200}
-      EDGE_WS_PER_IP: ${EDGE_WS_PER_IP:-20}
+      # Batas edge per IP (docs/PRODUCTION.md bagian Batas & rate limit), dipakai volumes/traefik/common.yml.
+      EDGE_RATE_AVERAGE: ${EDGE_RATE_AVERAGE:-300}
+      EDGE_RATE_BURST: ${EDGE_RATE_BURST:-600}
+      EDGE_WS_PER_IP: ${EDGE_WS_PER_IP:-150}
       EDGE_BODY_MAX_API: ${EDGE_BODY_MAX_API:-262144}
       EDGE_BODY_MAX_UPLOAD: ${EDGE_BODY_MAX_UPLOAD:-10485760}
     healthcheck:
@@ -227,15 +227,29 @@ services:
     stop_grace_period: 15s
     # Image tanpa shell: secret dibaca langsung dari file (sintaks @file PostgREST).
     secrets: [jwt_secret, postgrest_db_uri]
+    configs:
+      - source: rest-pg-service
+        target: /etc/olt/pg_service.conf
     environment:
       PGRST_DB_URI: "@/run/secrets/postgrest_db_uri"
+      # Keepalive/tcp_user_timeout libpq: koneksi menggantung terdeteksi ±8 dtk, /ready jadi 503
+      # dan healthcheck di bawah menandai rest unhealthy (volumes/rest/pg_service.conf).
+      PGSERVICEFILE: /etc/olt/pg_service.conf
+      PGSERVICE: rest
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public,cs_api}
       PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
       PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
       PGRST_DB_POOL: ${PGRST_DB_POOL:-10}
+      # Pool habis: gagal cepat (PGRST003, 504) setelah 2 dtk, bukan antre 10 dtk (T17, docs/PRODUCTION.md).
+      PGRST_DB_POOL_ACQUISITION_TIMEOUT: ${PGRST_DB_POOL_ACQUISITION_TIMEOUT:-2}
+      # Runtime GHC: jumlah capability = batas CPU di bawah. Bawaan image (-N) membuat satu capability
+      # per core host; di kuota 1 vCPU rest runtuh pada ±90 req/dtk dan tidak pulih (T20).
+      GHCRTS: ${PGRST_GHCRTS:--N1}
       PGRST_DB_ANON_ROLE: anon
+      # Admin server (/live, /ready, /metrics, /schema_cache) di network internal saja: tidak
+      # di-publish dan tidak di-route Kong/Traefik. Sentinel membaca /metrics (pool PostgREST).
       PGRST_ADMIN_SERVER_PORT: 3001
-      PGRST_ADMIN_SERVER_HOST: localhost
+      PGRST_ADMIN_SERVER_HOST: 0.0.0.0
       PGRST_JWT_SECRET: "@/run/secrets/jwt_secret"
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
@@ -298,9 +312,10 @@ services:
       REGION: us-east-1
       RUN_JANITOR: "true"
       DISABLE_HEALTHCHECK_LOGGING: "true"
-      # Batas tenant saat tenant dibuat (lihat juga migrasi realtime).
+      # Batas tenant, di-seed ulang dari env setiap start (SEED_SELF_HOST). Pesan chat lewat broadcast
+      # dari database (0098): setiap event yang diterima satu klien dihitung. Lihat docs/PRODUCTION.md.
       TENANT_MAX_CONCURRENT_USERS: ${REALTIME_MAX_CONCURRENT_USERS:-10000}
-      TENANT_MAX_EVENTS_PER_SECOND: ${REALTIME_MAX_EVENTS_PER_SECOND:-1000}
+      TENANT_MAX_EVENTS_PER_SECOND: ${REALTIME_MAX_EVENTS_PER_SECOND:-10000}
       TENANT_MAX_CHANNELS_PER_CLIENT: ${REALTIME_MAX_CHANNELS_PER_CLIENT:-100}
       TENANT_MAX_JOINS_PER_SECOND: ${REALTIME_MAX_JOINS_PER_SECOND:-500}
       TENANT_MAX_BYTES_PER_SECOND: ${REALTIME_MAX_BYTES_PER_SECOND:-1000000}
@@ -584,7 +599,7 @@ services:
     <<: *base
     build:
       context: ./pgbouncer
-    image: olt-social/pgbouncer:1.24.0-3
+    image: olt-social/pgbouncer:1.24.0-4
     networks: [data]
     depends_on:
       db:
@@ -594,11 +609,14 @@ services:
     configs:
       - source: with-secrets
         target: /opt/olt/with-secrets.sh
-    secrets: [postgres_password]
+    secrets: [postgres_password, pgbouncer_stats_password]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "/bin/sh", "/usr/local/bin/pgbouncer-entrypoint.sh"]
     environment:
       # Password user `pgbouncer` (diset sama dengan POSTGRES_PASSWORD oleh volumes/db/roles.sql).
       PGBOUNCER_AUTH_PASSWORD: "{{secret:postgres_password}}"
+      # User `olt_stats`: hanya SHOW di konsol admin, dipakai sentinel (alert antrean PgBouncer).
+      PGBOUNCER_STATS_PASSWORD: "{{secret:pgbouncer_stats_password}}"
+      PGBOUNCER_SERVER_LOGIN_RETRY: ${PGBOUNCER_SERVER_LOGIN_RETRY:-1}
       PGBOUNCER_DB_HOST: ${POSTGRES_HOST:-db}
       PGBOUNCER_DB_PORT: ${POSTGRES_PORT:-5432}
       PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-session}
@@ -745,7 +763,7 @@ services:
       VALKEY_ADDR: valkey:6379
       VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
       VERIFY_CACHE_TTL: ${AUTH_BRIDGE_CACHE_TTL:-60}
-      RATE_LIMIT_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE:-30}
+      RATE_LIMIT_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE:-300}
       RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-10}
       BREAKER_FAILURE_THRESHOLD: ${AUTH_BRIDGE_BREAKER_FAILURE_THRESHOLD:-5}
       BREAKER_COOLDOWN: ${AUTH_BRIDGE_BREAKER_COOLDOWN:-30}
@@ -846,7 +864,7 @@ services:
     <<: *base
     build:
       context: ../services/classifier
-    image: olt-social/classifier:0.1.0
+    image: olt-social/classifier:0.1.1
     networks: [app]
     depends_on:
       migrate:
@@ -1050,7 +1068,7 @@ services:
     <<: *base
     build:
       context: ../services/sentinel
-    image: olt-social/sentinel:0.1.0
+    image: olt-social/sentinel:0.2.0
     networks: [app, data, egress]
     depends_on:
       migrate:
@@ -1058,7 +1076,7 @@ services:
       rest:
         condition: service_healthy
     stop_grace_period: 30s
-    secrets: [jwt_secret]
+    secrets: [jwt_secret, pgbouncer_stats_password]
     volumes:
       - db-data:/mnt/disks/db:ro
       - storage-data:/mnt/disks/storage:ro
@@ -1070,6 +1088,10 @@ services:
       POSTGREST_URL: http://rest:3000
       PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
       DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup
+      # Metrik untuk alert pool PostgREST, laju event Realtime (JWT dari jwt_secret = METRICS_JWT_SECRET),
+      # dan antrean PgBouncer (SHOW POOLS sebagai olt_stats). services/sentinel/README.md.
+      METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://rest:3001/metrics,realtime=jwt+http://realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@pgbouncer:6432}
+      PGBOUNCER_STATS_PASSWORD_FILE: /run/secrets/pgbouncer_stats_password
     healthcheck:
       test: ["CMD", "/sentinel", "healthcheck"]
       interval: 10s
@@ -1092,7 +1114,7 @@ services:
     profiles: [cs]
     build:
       context: ../apps/cs-console-react
-    image: olt-social/cs-console:0.1.0
+    image: olt-social/cs-console:0.1.1
     user: "101:101"
     networks: [edge]
     stop_grace_period: 10s
@@ -1223,6 +1245,8 @@ configs:
     file: ./volumes/db/jwt.sql
   db-hba:
     file: ./volumes/db/pg_hba.conf
+  rest-pg-service:
+    file: ./volumes/rest/pg_service.conf
 
 # Dibuat `make gen-secrets`; folder docker/secrets/ tidak pernah di-commit.
 secrets:
@@ -1254,6 +1278,8 @@ secrets:
     file: ./secrets/valkey_password
   postgrest_db_uri:
     file: ./secrets/postgrest_db_uri
+  pgbouncer_stats_password:
+    file: ./secrets/pgbouncer_stats_password
   olt_jwks:
     file: ./secrets/olt_jwks
   csadmin_signing_key:

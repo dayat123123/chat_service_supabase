@@ -4,10 +4,12 @@ import { messageFixture } from '@/test/fixtures'
 
 import {
   collectAfter,
+  GAP_OVERLAP_MS,
   insertMessages,
   latestCustomerMessage,
   newestCursor,
   orderedMessages,
+  overlapCursor,
   type MessagePages,
 } from './cache'
 
@@ -99,5 +101,44 @@ describe('collectAfter', () => {
     expect(calls).toBe(2)
     expect(result.messages).toHaveLength(200)
     expect(result.complete).toBe(false)
+  })
+})
+
+describe('overlapCursor', () => {
+  it('steps back ten seconds so a message committed late with an earlier time is still fetched', () => {
+    expect(GAP_OVERLAP_MS).toBe(10_000)
+    expect(overlapCursor('2026-11-03T09:00:05.123456Z|8f0c2a8e-0000-4000-8000-000000000001')).toBe(
+      '2026-11-03T08:59:55.123Z|00000000-0000-0000-0000-000000000000',
+    )
+  })
+
+  it('keeps an unreadable cursor untouched', () => {
+    expect(overlapCursor('bukan-cursor')).toBe('bukan-cursor')
+  })
+})
+
+describe('horizon catch-up', () => {
+  const stamp = (second: number) => new Date(Date.UTC(2026, 10, 4, 9, 0, second)).toISOString()
+  const row = (id: string, second: number) =>
+    messageFixture({ id, created_at: stamp(second), cursor: `${stamp(second)}|${id}` })
+  const server = [row('a', 0), row('b', 20), row('c', 60)]
+  const fetchAfter = (cursor: string) => {
+    const from = cursor.split('|')[0] ?? ''
+    return Promise.resolve(server.filter((message) => message.created_at > from).reverse())
+  }
+
+  it('starts from the newest fetched row, so a message far older than the newest one shown is not skipped', async () => {
+    const sent = { ...row('c', 60), local: true }
+    const data = insertMessages({ pages: [[row('a', 0)]], pageParams: [undefined] }, [sent])
+    const horizon = newestCursor(data)
+    expect(horizon).toBe(`${stamp(0)}|a`)
+
+    const { messages, complete } = await collectAfter(fetchAfter, overlapCursor(horizon!))
+    const synced = insertMessages(data, messages)
+
+    expect(complete).toBe(true)
+    expect(orderedMessages(synced).map((message) => message.id)).toEqual(['a', 'b', 'c'])
+    expect(orderedMessages(synced).some((message) => message.local)).toBe(false)
+    expect(newestCursor(synced)).toBe(`${stamp(60)}|c`)
   })
 })

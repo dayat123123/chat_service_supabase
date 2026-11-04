@@ -19,7 +19,14 @@ import 'package:rendezvous_community/src/shared/domain/entities/user.dart';
 class SupportChatRepository implements ChatRepository {
   SupportChatRepository(this._cs, {RealtimeGateway? realtime, required this._rooms})
     : _realtime = realtime,
-      _hub = realtime == null ? null : RoomChannelHub(realtime);
+      _hub = realtime == null
+          ? null
+          : RoomChannelHub(
+              realtime,
+              typing: (roomId, {required isTyping}) async {
+                await _cs.inSchema('public').rpcValue('send_typing', {'p_room_id': roomId, 'p_typing': isTyping});
+              },
+            );
 
   final SocialRemoteDataSource _cs;
   final RealtimeGateway? _realtime;
@@ -120,7 +127,7 @@ class SupportChatRepository implements ChatRepository {
     final realtime = _realtime;
     final hub = _hub;
     if (realtime == null || hub == null) return NoopRoomConnection();
-    return SupabaseRoomConnection(realtime, hub, roomId, me);
+    return SupabaseRoomConnection(hub, roomId, me, fetchAfter: (cursor) => getMessagesAfter(roomId, cursor));
   }
 
   @override

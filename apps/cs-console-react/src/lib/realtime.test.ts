@@ -63,6 +63,12 @@ class FakeChannel {
 class FakeRealtime {
   channels: FakeChannel[] = []
   private leaves: (() => void)[] = []
+  readonly calls: { name: string; args: unknown }[] = []
+
+  rpc(name: string, args: unknown) {
+    this.calls.push({ name, args })
+    return Promise.resolve({ data: true, error: null, status: 200 })
+  }
 
   channel(topic: string) {
     const existing = this.channels.find((channel) => channel.topic === topic)
@@ -102,6 +108,7 @@ const fake = vi.hoisted(() => ({ client: undefined as FakeRealtime | undefined }
 vi.mock('@/lib/supabase', async (importOriginal) => ({
   ...(await importOriginal<typeof SupabaseModule>()),
   supabase: () => fake.client,
+  rpc: (name: string, args: unknown) => fake.client!.rpc(name, args).then((result) => result.data),
 }))
 
 const me = { id: 'a1', username: 'CS-0001', displayName: 'Nadia' }
@@ -241,8 +248,46 @@ describe('realtime manager', () => {
     const room = realtime.room('r1', me, roomHandlers(), { signals: false })
     await vi.advanceTimersByTimeAsync(0)
 
-    expect(socket.channels.map((channel) => channel.topic).sort()).toEqual(['cs:room:r1', 'room-messages:r1'])
+    expect(socket.channels.map((channel) => channel.topic).sort()).toEqual(['cs:room:r1'])
     room.sendTyping(true)
+    expect(socket.channels.flatMap((channel) => channel.sent)).toEqual([])
+    expect(socket.calls).toEqual([])
+  })
+
+  it('receives new messages as server broadcasts on the private cs:room topic, not postgres_changes', async () => {
+    const handlers = roomHandlers()
+    realtime.room('r1', me, handlers, { signals: false })
+    await vi.advanceTimersByTimeAsync(0)
+
+    const status = socket.joined('cs:room:r1')!
+    expect(status.bindings.some((binding) => binding.type === 'postgres_changes')).toBe(false)
+    expect(handlers.onMessagesJoined).toHaveBeenCalledTimes(1)
+    status.broadcast('message', { id: 'm1', room_id: 'r1', client_id: 'c1', ticket_id: 't1' })
+    status.broadcast('message', { id: 'm2', room_id: 'r2' })
+    status.broadcast('message', { room_id: 'r1' })
+    expect(handlers.onMessage).toHaveBeenCalledTimes(1)
+    expect(handlers.onMessage).toHaveBeenCalledWith({ id: 'm1', client_id: 'c1' })
+  })
+
+  it('tells the room whether its message channel joined for the first time or recovered', async () => {
+    const handlers = roomHandlers()
+    realtime.room('r1', me, handlers, { signals: false })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(handlers.onMessagesJoined).toHaveBeenLastCalledWith(false)
+
+    socket.joined('cs:room:r1')!.closed()
+    await vi.advanceTimersByTimeAsync(30_000)
+
+    expect(handlers.onMessagesJoined).toHaveBeenCalledTimes(2)
+    expect(handlers.onMessagesJoined).toHaveBeenLastCalledWith(true)
+  })
+
+  it('sends typing through the server RPC so the identity comes from the session', async () => {
+    const room = realtime.room('r1', me, roomHandlers(), { signals: true })
+    await vi.advanceTimersByTimeAsync(0)
+
+    room.sendTyping(true)
+    expect(socket.calls).toEqual([{ name: 'agent_typing', args: { p_room_id: 'r1', p_typing: true } }])
     expect(socket.channels.flatMap((channel) => channel.sent)).toEqual([])
   })
 
@@ -256,7 +301,8 @@ describe('realtime manager', () => {
     await vi.advanceTimersByTimeAsync(0)
 
     expect(handlers.onMessagesJoined).toHaveBeenCalledTimes(1)
+    expect(socket.joined('room:r1')).toBeDefined()
     room.sendTyping(true)
-    expect(socket.joined('room:r1')!.sent).toHaveLength(1)
+    expect(socket.calls).toHaveLength(1)
   })
 })

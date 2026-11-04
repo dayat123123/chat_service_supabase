@@ -62,6 +62,7 @@ export 'src/features/chat/domain/entities/stock_room_state.dart';
 export 'src/features/chat/domain/repositories/chat_cache_repository.dart';
 export 'src/features/chat/domain/repositories/chat_extras_repository.dart';
 export 'src/features/chat/domain/repositories/chat_repository.dart';
+export 'src/features/chat/domain/repositories/message_index_repository.dart';
 export 'src/features/chat/domain/services/message_outbox.dart'
     show
         MessageOutbox,

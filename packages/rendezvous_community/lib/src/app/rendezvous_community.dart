@@ -510,6 +510,7 @@ class RendezvousCommunity
       onResume: () {
         unawaited(configService.refresh());
         unawaited(outbox?.flush(force: true));
+        connectivity.notifyResumed();
       },
       onHide: () => unawaited(analytics.flush()),
       onPause: () => unawaited(analytics.flush()),

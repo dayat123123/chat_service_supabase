@@ -1,7 +1,7 @@
 import { REALTIME_SUBSCRIBE_STATES, type RealtimeChannel } from '@supabase/supabase-js'
 import { create } from 'zustand'
 
-import { reconnectDelay, supabase } from '@/lib/supabase'
+import { reconnectDelay, rpc, supabase } from '@/lib/supabase'
 
 export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'offline'
 
@@ -44,13 +44,17 @@ export type RoomHandlers = {
   onReceipt: (receipt: RoomReceipt) => void
   onPresence: (userIds: string[]) => void
   onTicket: () => void
-  onMessagesJoined: () => void
+  onMessagesJoined: (recovered: boolean) => void
 }
 
 export type RoomHandle = { sendTyping: (typing: boolean) => void; close: () => void }
 
 type Setup = (channel: RealtimeChannel) => RealtimeChannel
-type OpenOptions = { private?: boolean; presenceKey?: string; onJoined?: (channel: RealtimeChannel) => void }
+type OpenOptions = {
+  private?: boolean
+  presenceKey?: string
+  onJoined?: (channel: RealtimeChannel, recovered: boolean) => void
+}
 type Tracked = {
   channel: RealtimeChannel | null
   joined: boolean
@@ -121,6 +125,12 @@ export function parseQueueEvent(kind: string, payload: Payload): QueueEvent | nu
   return null
 }
 
+export function parseRoomMessage(roomId: string, payload: Payload) {
+  const id = text(payload?.id)
+  if (!id || payload.room_id !== roomId) return null
+  return { id, client_id: text(payload.client_id) ?? null }
+}
+
 class RealtimeManager {
   private readonly tracked = new Map<string, Tracked>()
   private readonly leaving = new Map<string, Promise<unknown>>()
@@ -180,7 +190,6 @@ class RealtimeManager {
     { signals: withSignals }: { signals: boolean },
   ): RoomHandle {
     const signals = `room:${roomId}`
-    const messages = `room-messages:${roomId}`
     const status = `cs:room:${roomId}`
     if (withSignals) {
       this.open(
@@ -213,34 +222,24 @@ class RealtimeManager {
       )
     }
     this.open(
-      messages,
+      status,
       false,
       (channel) =>
-        channel.on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'messages', filter: `room_id=eq.${roomId}` },
-          (change) => {
-            const row = change.new as Payload | undefined
-            const id = text(row?.id)
-            if (id) handlers.onMessage({ id, client_id: text(row?.client_id) ?? null })
-          },
-        ),
-      { private: false, onJoined: () => handlers.onMessagesJoined() },
-    )
-    this.open(status, false, (channel) =>
-      channel.on('broadcast', { event: 'ticket' }, () => handlers.onTicket()),
+        channel
+          .on('broadcast', { event: 'ticket' }, () => handlers.onTicket())
+          .on('broadcast', { event: 'message' }, ({ payload }) => {
+            const message = parseRoomMessage(roomId, payload as Payload)
+            if (message) handlers.onMessage(message)
+          }),
+      { onJoined: (_, recovered) => handlers.onMessagesJoined(recovered) },
     )
     return {
       sendTyping: (typing) => {
-        void this.tracked.get(signals)?.channel?.send({
-          type: 'broadcast',
-          event: 'typing',
-          payload: { user_id: me.id, username: me.username, display_name: me.displayName, typing },
-        })
+        if (!withSignals) return
+        void rpc<boolean>('agent_typing', { p_room_id: roomId, p_typing: typing }).catch(() => undefined)
       },
       close: () => {
         this.close(signals)
-        this.close(messages)
         this.close(status)
       },
     }
@@ -287,7 +286,7 @@ class RealtimeManager {
         entry.joined = true
         entry.everJoined = true
         entry.tries = 0
-        options.onJoined?.(channel)
+        options.onJoined?.(channel, recovered)
         if (recovered && entry.core) this.scheduleResync()
       } else {
         entry.joined = false

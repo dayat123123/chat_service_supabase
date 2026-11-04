@@ -31,7 +31,7 @@ await RendezvousCommunity.initialize(
 | Logger | Isi |
 |---|---|
 | `RendezvousCommunity.Auth` | Penerbitan dan refresh sesi sosial |
-| `RendezvousCommunity.Realtime` | Status channel `postgres_changes` |
+| `RendezvousCommunity.Realtime` | Status channel realtime (`postgres_changes` dan topik broadcast privat) |
 | `RendezvousCommunity.Chat` | Pengiriman pesan |
 | `RendezvousCommunity.Feed` | Pemuatan feed |
 | `RendezvousCommunity.Support` | Chat CS / tiket |

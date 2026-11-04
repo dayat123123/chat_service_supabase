@@ -128,7 +128,7 @@ CI: [.github/workflows/cs-console-react.yml](../../.github/workflows/cs-console-
 make up PROFILE=single CS=1      # Windows: .\make.ps1 up -Profile single -Cs
 ```
 
-Web CS dan API agen berada di satu domain (tanpa CORS) yang hanya menerima IP di `VPN_SOURCE_RANGES` (`docker/compose.cs.yml`, `docker/volumes/traefik/cs.yml`). Profil cluster memakai image `${REGISTRY}/olt-social/cs-console:0.1.0`. Lihat [docs/PRODUCTION.md](../../docs/PRODUCTION.md).
+Web CS dan API agen berada di satu domain (tanpa CORS) yang hanya menerima IP di `VPN_SOURCE_RANGES` (`docker/compose.cs.yml`, `docker/volumes/traefik/cs.yml`). Profil cluster memakai image `${REGISTRY}/olt-social/cs-console:0.1.1`. Lihat [docs/PRODUCTION.md](../../docs/PRODUCTION.md).
 
 ## Catatan
 

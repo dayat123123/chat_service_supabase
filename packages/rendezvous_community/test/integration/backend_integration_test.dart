@@ -8,6 +8,7 @@ import 'dart:io';
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rendezvous_community/rendezvous_community.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show RealtimeChannelConfig, RealtimeSubscribeStatus;
 import 'package:uuid/uuid.dart';
 
 final _enabled = Platform.environment['OLT_SOCIAL_IT'] == '1';
@@ -147,6 +148,49 @@ void main() {
     } finally {
       await budiSub.cancel();
       await budiRoom.close();
+      await sariRoom.close();
+    }
+  }, skip: skip);
+
+  test('room members cannot inject server events and new messages arrive by server broadcast', () async {
+    final roomId = await budi.chat.getOrCreateDirectRoom(sari.currentUser!.id);
+    final sariRoom = sari.chat.connectRoom(roomId, me: sari.currentUser!);
+    final sariEvents = sariRoom.events.asBroadcastStream();
+    final spoofed = <ChatRoomEvent>[];
+    final sub = sariEvents.listen((e) {
+      final serverOnly = e is MessageHidden || e is StockRoomStateChanged || e is ReactionChanged;
+      if (serverOnly || e is TypingChanged) spoofed.add(e);
+    });
+    final raw = budi.client.channel('room:$roomId', opts: const RealtimeChannelConfig(private: true, self: true));
+    final echoed = <String>[];
+    try {
+      await _waitFor(sariEvents, (e) => e is ConnectionChanged && e.status == RealtimeStatus.connected);
+      final joined = Completer<void>();
+      raw
+        ..onBroadcast(event: 'message_hidden', callback: (_) => echoed.add('message_hidden'))
+        ..subscribe((status, _) {
+          if (status == RealtimeSubscribeStatus.subscribed && !joined.isCompleted) joined.complete();
+        });
+      await joined.future.timeout(const Duration(seconds: 15));
+      for (final event in ['message_hidden', 'room_state', 'reaction', 'typing', 'message']) {
+        await raw.sendBroadcastMessage(
+          event: event,
+          payload: {'room_id': roomId, 'message_id': 'spoof', 'user_id': budi.currentUser!.id, 'typing': true},
+        );
+      }
+      await Future<void>.delayed(const Duration(seconds: 3));
+      expect(spoofed, isEmpty);
+      expect(echoed, isEmpty);
+
+      final clientId = const Uuid().v4();
+      final received = _waitFor(sariEvents, (e) => e is MessageUpserted && e.message.clientId == clientId);
+      final sent = await budi.chat.sendMessage(roomId, body: 'Siaran server $clientId', clientId: clientId);
+      final event = await received as MessageUpserted;
+      expect(event.message.id, sent.id);
+      expect(event.message.sender?.id, budi.currentUser!.id);
+    } finally {
+      await sub.cancel();
+      await budi.client.removeChannel(raw);
       await sariRoom.close();
     }
   }, skip: skip);
@@ -792,6 +836,34 @@ void main() {
       );
     } finally {
       await budi.chat.deleteMessage(sent.id);
+    }
+  }, skip: skip);
+
+  test('gap fill through the message index finds rows missed in the middle of the stream', () async {
+    final roomId = await budi.chat.getOrCreateDirectRoom(sari.currentUser!.id);
+    final start = (await budi.chat.getMessages(roomId, limit: 1)).items.firstOrNull;
+    final horizon = start?.cursor ?? '1970-01-01T00:00:00.000Z|00000000-0000-0000-0000-000000000000';
+    final sent = <ChatMessage>[];
+    for (var i = 0; i < 3; i++) {
+      sent.add(await sari.chat.sendMessage(roomId, body: 'Celah $i', clientId: const Uuid().v4()));
+    }
+    try {
+      final index = budi.chat as MessageIndexRepository;
+      final page = await index.getMessageIdsAfter(roomId, horizon, limit: 2);
+      expect(page.ids, [sent[0].id, sent[1].id]);
+      expect(page.hasMore, isTrue);
+      final rest = await index.getMessageIdsAfter(roomId, page.last!, limit: 2);
+      expect(rest.ids, [sent[2].id]);
+      expect(rest.hasMore, isFalse);
+      expect(rest.last, sent[2].cursor);
+
+      final missing = await index.getMessagesByIds(roomId, [sent[1].id]);
+      expect(missing.single.body, 'Celah 1');
+      expect(missing.single.cursor, sent[1].cursor);
+    } finally {
+      for (final message in sent) {
+        await sari.chat.deleteMessage(message.id);
+      }
     }
   }, skip: skip);
 }

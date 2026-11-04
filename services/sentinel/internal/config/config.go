@@ -14,6 +14,7 @@ import (
 
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 )
 
 type Config struct {
@@ -25,6 +26,8 @@ type Config struct {
 	InstanceID      string
 	Probes          []probe.Target
 	Disks           []disk.Target
+	Metrics         []scrape.Source
+	StatsPassword   string
 	ReportInterval  time.Duration
 	ProbeTimeout    time.Duration
 	AlertPoll       time.Duration
@@ -65,6 +68,15 @@ func Load() (Config, error) {
 	}
 	if cfg.Disks, err = disk.Parse(os.Getenv("DISKS")); err != nil {
 		errs = append(errs, fmt.Errorf("DISKS: %w", err))
+	}
+	if cfg.Metrics, err = scrape.Parse(os.Getenv("METRICS_SOURCES")); err != nil {
+		errs = append(errs, fmt.Errorf("METRICS_SOURCES: %w", err))
+	}
+	if scrape.NeedsPgBouncerPassword(cfg.Metrics) {
+		cfg.StatsPassword = secretEnv("PGBOUNCER_STATS_PASSWORD", &errs)
+		if cfg.StatsPassword == "" {
+			errs = append(errs, errors.New("PGBOUNCER_STATS_PASSWORD or PGBOUNCER_STATS_PASSWORD_FILE is required for pgbouncer:// metrics sources"))
+		}
 	}
 	rules := []struct {
 		ok      bool

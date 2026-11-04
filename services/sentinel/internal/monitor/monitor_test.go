@@ -13,6 +13,7 @@ import (
 
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 	"olt-social/sentinel/internal/store"
 )
 
@@ -193,5 +194,69 @@ func TestRunStopsWithTheContext(t *testing.T) {
 	case <-done:
 	case <-time.After(2 * time.Second):
 		t.Fatal("Run did not stop")
+	}
+}
+
+type fakeScraper struct {
+	mu      sync.Mutex
+	results []scrape.Result
+	calls   int
+}
+
+func (s *fakeScraper) Run(_ context.Context, sources []scrape.Source) []scrape.Result {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls++
+	return append([]scrape.Result{}, s.results...)
+}
+
+func (s *fakeScraper) set(results ...scrape.Result) {
+	s.mu.Lock()
+	s.results = results
+	s.mu.Unlock()
+}
+
+func TestRoundReportsMetricsSources(t *testing.T) {
+	st := &fakeStore{}
+	logs := &syncBuffer{}
+	sc := &fakeScraper{}
+	m := New(Options{
+		Store:          st,
+		Prober:         &fakeProber{},
+		Scraper:        sc,
+		Sources:        []scrape.Source{{Name: "rest", Kind: scrape.Prometheus}},
+		Log:            slog.New(slog.NewJSONHandler(logs, nil)),
+		Interval:       30 * time.Second,
+		RequestTimeout: time.Second,
+	})
+	bad := scrape.Result{Source: "rest", Instance: "10.0.0.4", Error: text("HTTP 503"), Values: map[string]float64{}}
+	sc.set(bad)
+	m.Round(context.Background())
+	m.Round(context.Background())
+	if len(st.reports) != 2 || !reflect.DeepEqual(st.reports[0].Metrics, []scrape.Result{bad}) {
+		t.Fatalf("reports = %+v", st.reports)
+	}
+	if n := strings.Count(logs.String(), "Could not read a metrics source"); n != 1 {
+		t.Fatalf("scrape failure logged %d times: %s", n, logs.String())
+	}
+	good := scrape.Result{Source: "rest", Instance: "10.0.0.4", OK: true, Values: map[string]float64{"pgrst_db_pool_waiting": 1}}
+	sc.set(good)
+	m.Round(context.Background())
+	if !strings.Contains(logs.String(), "Metrics source can be read again") {
+		t.Fatalf("logs = %s", logs.String())
+	}
+	if snap := m.Snapshot(); !reflect.DeepEqual(snap.Metrics, []scrape.Result{good}) {
+		t.Fatalf("snapshot = %+v", snap.Metrics)
+	}
+}
+
+func TestRoundLeavesMetricsOutWithoutSources(t *testing.T) {
+	st := &fakeStore{}
+	sc := &fakeScraper{}
+	m := New(Options{Store: st, Prober: &fakeProber{}, Scraper: sc, Log: slog.New(slog.NewJSONHandler(&syncBuffer{}, nil)),
+		Interval: 30 * time.Second, RequestTimeout: time.Second})
+	m.Round(context.Background())
+	if sc.calls != 0 || st.reports[0].Metrics != nil {
+		t.Fatalf("scraper called %d times, metrics %+v", sc.calls, st.reports[0].Metrics)
 	}
 }

@@ -13,16 +13,18 @@ import (
 	"olt-social/sentinel/internal/config"
 	"olt-social/sentinel/internal/dispatch"
 	"olt-social/sentinel/internal/email"
+	"olt-social/sentinel/internal/jwt"
 	"olt-social/sentinel/internal/metrics"
 	"olt-social/sentinel/internal/monitor"
 	"olt-social/sentinel/internal/outage"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 	"olt-social/sentinel/internal/store"
 	"olt-social/sentinel/internal/telegram"
 )
 
 const (
-	version     = "0.1.0"
+	version     = "0.2.0"
 	userAgent   = "olt-sentinel/" + version
 	pingTimeout = 5 * time.Second
 )
@@ -57,8 +59,17 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		Observe: detector.Observe,
 	})
 	mon := monitor.New(monitor.Options{
-		Store:          db,
-		Prober:         probe.New(cfg.ProbeTimeout, userAgent),
+		Store:  db,
+		Prober: probe.New(cfg.ProbeTimeout, userAgent),
+		Scraper: scrape.New(scrape.Options{
+			Timeout:   cfg.ProbeTimeout,
+			UserAgent: userAgent,
+			Password:  cfg.StatsPassword,
+			Token: func() (string, error) {
+				return jwt.ServiceRole(cfg.JWTSecret, cfg.JWTIssuer, time.Now())
+			},
+		}),
+		Sources:        cfg.Metrics,
 		Log:            log,
 		Probes:         cfg.Probes,
 		Disks:          cfg.Disks,
@@ -103,6 +114,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		return metrics.Snapshot{
 			Probes:             health.Probes,
 			Disks:              health.Disks,
+			Scrapes:            health.Metrics,
 			Reports:            health.Reports,
 			LastReport:         health.LastReport,
 			Alerts:             alerts.Alerts,
@@ -127,7 +139,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("Sentinel listening", "port", cfg.Port, "instance", cfg.InstanceID, "version", version,
-			"probes", len(cfg.Probes), "disks", len(cfg.Disks))
+			"probes", len(cfg.Probes), "disks", len(cfg.Disks), "metrics_sources", len(cfg.Metrics))
 		errCh <- server.ListenAndServe()
 	}()
 	monitorDone := make(chan struct{})

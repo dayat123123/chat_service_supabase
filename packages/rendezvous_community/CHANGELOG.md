@@ -1,3 +1,34 @@
+## 1.5.0
+
+* **Realtime pesan lewat Broadcast dari server (backend `0098`).** Pesan baru, diubah, dihapus, dan disembunyikan
+  (room saham, DM, grup, dan chat CS) datang sebagai event `message`/`message_hidden` di topik privat `room:<id>`,
+  bukan lagi `postgres_changes` tabel `messages`. Daftar chat dan `DeliveryTracker` mendengarkan `room_activity`
+  di topik privat `user:<id>` milik sendiri. Tidak ada perubahan API publik; host tidak perlu mengubah kode.
+* **Keamanan:** klien tidak lagi mengirim broadcast. Typing dikirim lewat RPC `send_typing` (identitas dari JWT).
+  Server menolak broadcast klien ke topik room, dan event dengan `room_id` room lain diabaikan.
+* **Mengisi celah berbasis horizon (backend `0103`, temuan T18/T19):** `ChatRoomCubit` menambal pesan yang
+  dibuang Realtime saat channel room tersambung, berkala selama room terbuka, dan saat aplikasi kembali ke depan.
+  * Titik awal adalah **horizon** per room: `(created_at, id)` terbaru yang sudah dikonfirmasi server (halaman
+    pertama, muat ulang, atau gap-fill sebelumnya), dikurangi `gapOverlap`. Pesan yang hanya datang lewat
+    Realtime tidak memajukan horizon, sehingga lubang di tengah aliran (event dibuang batas tenant, atau pesan
+    yang commit saat Realtime membuat ulang slot replikasi) ikut tertambal, bukan hanya ekornya.
+  * Room saham, DM, dan grup memakai `get_message_ids` (hanya id) lalu `get_messages_by_ids` untuk pesan yang
+    belum ada. Chat CS memakai `get_messages(p_after)`. Maksimal 5 halaman; lebih dari itu room dimuat ulang
+    dari pesan terbaru. Duplikat digabung lewat `id`/`client_id`.
+  * Setelah sambung ulang, gap-fill menunggu jeda acak 0–5 dtk (ratusan klien yang sambung ulang serentak tidak
+    lagi memanggil RPC bersamaan), lalu berjalan sekali lagi 5–10 dtk kemudian. Gap-fill berkala diacak
+    45 dtk ± 25% per putaran. Join pertama dan resume tetap langsung.
+  * Parameter opsional `ChatRoomCubit(gapFillInterval: 45 dtk, gapOverlap: 10 dtk, reconnectJitter: 5 dtk,
+    gapRecheckDelay: 5 dtk, random:)`; `Duration.zero` mematikan masing-masing.
+  * Baru: `MessageIndexRepository` + `MessageIdPage` (diekspor). Repository chat buatan host yang
+    mengimplementasikannya ikut memakai jalur id; yang tidak tetap memakai `getMessagesAfter`.
+  * Pesan dari pengirim yang terlibat blokir datang sebagai referensi dan diambil lewat `get_messages` (RLS tetap
+    menyaring). Cache offline tidak berubah.
+  * Baru: `CommunityConnectivity.resumes` dan `notifyResumed()`; `RendezvousCommunity` memanggilnya saat
+    `onResume`.
+* Butuh backend dengan migrasi `0098` dan `0103`. Klien 1.4.x tetap tersambung, tetapi tidak menerima pesan baru secara
+  realtime (hanya saat memuat ulang) dan typing-nya tidak sampai.
+
 ## 1.4.0
 
 * **Perbaikan:** `CommunityChatBuilders.merge()` kini menyertakan `stockCard`, sehingga scope bersarang

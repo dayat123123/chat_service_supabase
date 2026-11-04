@@ -94,7 +94,7 @@ load_stop() {
     jq -r '
       def c(m): (.metrics[m].values.count // 0);
       def p(m; s): ((.metrics[m].values[s] // 0) | round);
-      "k6: req=\(c("http_reqs")) err=\(((.metrics.http_req_failed.values.rate // 0) * 1000 | round) / 10)% sent=\(c("msg_sent")) send_fail=\(c("msg_send_failed")) recv=\(c("rt_messages_received"))/\(c("rt_expected"))rt_p95=\(p("rt_delivery_ms"; "p(95)"))ms ws_drop=\(c("ws_dropped")) ws_fail=\(c("ws_failed")) join_fail=\(c("rt_join_failed")) login_fail=\(c("login_failed")) sessions=\(c("sessions"))"
+      "k6: req=\(c("http_reqs")) err=\(((.metrics.http_req_failed.values.rate // 0) * 1000 | round) / 10)% sent=\(c("msg_sent")) send_fail=\(c("msg_send_failed")) recv=\(c("rt_messages_received"))/\(c("rt_expected")) rt_window=\(c("rt_recv_window")) gap_only=\(c("rt_gap_only")) eventual=\(if c("rt_expected") > 0 then (((c("rt_recv_window") + c("rt_gap_only")) / c("rt_expected") * 1000 | round) / 10) else "-" end)% reconnected=\(c("ws_reconnected")) gap_runs=\(c("gap_runs")) gap_too_long=\(c("gap_too_long")) gap_failed=\(c("gap_failed")) pgrst003=\(c("pgrst003")) rt_p95=\(p("rt_delivery_ms"; "p(95)"))ms ws_drop=\(c("ws_dropped")) ws_fail=\(c("ws_failed")) join_fail=\(c("rt_join_failed")) login_fail=\(c("login_failed")) sessions=\(c("sessions"))"
     ' "$EXP_DIR/k6-summary.json" > "$EXP_DIR/k6-line.txt"
     note info "beban ringan" "$(cat "$EXP_DIR/k6-line.txt")"
   fi
@@ -158,7 +158,7 @@ exp_classifier() {
 }
 
 exp_realtime() {
-  begin_exp realtime "crash Realtime (kill -9): klien tersambung ulang, pesan tetap tersimpan, sinkron ulang lewat get_messages"
+  begin_exp realtime "crash Realtime (kill -9): klien tersambung ulang, pesan tetap tersimpan, isi celah dari horizon (get_message_ids + get_messages_by_ids)"
   load_start $((OUTAGE + 120))
   t0=$(now_ms)
   crash realtime
@@ -191,9 +191,13 @@ exp_valkey() {
   c=$(exchange_code 1 198.51.100.63)
   [ "$c" = 200 ] && note ok "exchange tetap berhasil saat Valkey mati (fail open ke limiter lokal per instance)" "$c" \
     || note info "exchange saat Valkey mati" "$c"
-  codes=$(for i in $(seq 1 35); do exchange_code 2 198.51.100.64; echo; done | sort | uniq -c | tr '\n' ' ')
-  [[ "$codes" == *429* ]] && note ok "batas per IP tetap berlaku lewat limiter lokal (35 exchange dari 1 IP)" "$codes" \
-    || note FAIL "batas per IP hilang saat Valkey mati" "$codes"
+  env_ab=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$(container auth-bridge)")
+  lim_ip=$(sed -n 's/^RATE_LIMIT_PER_MINUTE=//p' <<< "$env_ab"); lim_user=$(sed -n 's/^RATE_LIMIT_PER_USER_PER_MINUTE=//p' <<< "$env_ab")
+  burst=$(( ${lim_ip:-300} < ${lim_user:-10} ? ${lim_ip:-300} : ${lim_user:-10} ))
+  burst=$(( burst + 5 ))
+  codes=$(for i in $(seq 1 "$burst"); do exchange_code 2 198.51.100.64; echo; done | sort | uniq -c | tr '\n' ' ')
+  [[ "$codes" == *429* ]] && note ok "batas per IP/per user tetap berlaku lewat limiter lokal ($burst exchange satu user dari 1 IP; batas IP ${lim_ip:-300}, user ${lim_user:-10})" "$codes" \
+    || note FAIL "batas rate limit hilang saat Valkey mati" "$codes"
   sleep $(( OUTAGE > 10 ? OUTAGE - 8 : 1 ))
   docker start "$(container valkey)" > /dev/null
   wait_state valkey healthy 60

@@ -11,6 +11,7 @@ import (
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/logstate"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 	"olt-social/sentinel/internal/store"
 )
 
@@ -27,9 +28,15 @@ type Prober interface {
 	Run(ctx context.Context, targets []probe.Target) []probe.Result
 }
 
+type Scraper interface {
+	Run(ctx context.Context, sources []scrape.Source) []scrape.Result
+}
+
 type Options struct {
 	Store          Store
 	Prober         Prober
+	Scraper        Scraper
+	Sources        []scrape.Source
 	Measure        func(disk.Target) (disk.Usage, error)
 	Log            *slog.Logger
 	Probes         []probe.Target
@@ -45,6 +52,7 @@ type Options struct {
 type Snapshot struct {
 	Probes     []probe.Result
 	Disks      []disk.Usage
+	Metrics    []scrape.Result
 	Reports    map[string]uint64
 	LastReport time.Time
 }
@@ -59,6 +67,8 @@ type Monitor struct {
 	mu         sync.Mutex
 	probes     []probe.Result
 	usage      []disk.Usage
+	metrics    []scrape.Result
+	scrapeOK   map[string]bool
 	up         map[string]bool
 	reports    map[string]uint64
 	lastReport time.Time
@@ -77,12 +87,13 @@ func New(opts Options) *Monitor {
 		disks[d.Name] = &logstate.Latch{}
 	}
 	return &Monitor{
-		opts:    opts,
-		log:     opts.Log,
-		now:     now,
-		disks:   disks,
-		up:      map[string]bool{},
-		reports: map[string]uint64{},
+		opts:     opts,
+		log:      opts.Log,
+		now:      now,
+		disks:    disks,
+		up:       map[string]bool{},
+		scrapeOK: map[string]bool{},
+		reports:  map[string]uint64{},
 	}
 }
 
@@ -102,12 +113,22 @@ func (m *Monitor) Run(ctx context.Context) {
 }
 
 func (m *Monitor) Round(ctx context.Context) {
+	var metrics []scrape.Result
+	scraped := make(chan struct{})
+	go func() {
+		defer close(scraped)
+		if m.opts.Scraper != nil && len(m.opts.Sources) > 0 {
+			metrics = m.opts.Scraper.Run(ctx, m.opts.Sources)
+		}
+	}()
 	results := m.opts.Prober.Run(ctx, m.opts.Probes)
 	usage := m.measure()
+	<-scraped
 	if ctx.Err() != nil {
 		return
 	}
 	m.remember(results, usage)
+	m.rememberMetrics(metrics)
 	call, cancel := context.WithTimeout(ctx, m.opts.RequestTimeout)
 	_, err := m.opts.Store.HealthReport(call, store.Health{
 		Instance:  m.opts.Instance,
@@ -115,6 +136,7 @@ func (m *Monitor) Round(ctx context.Context) {
 		StartedAt: m.opts.StartedAt,
 		Probes:    results,
 		Disks:     usage,
+		Metrics:   metrics,
 	})
 	cancel()
 	if ctx.Err() != nil {
@@ -192,6 +214,28 @@ func (m *Monitor) remember(results []probe.Result, usage []disk.Usage) {
 	}
 }
 
+func (m *Monitor) rememberMetrics(results []scrape.Result) {
+	m.mu.Lock()
+	m.metrics = slices.Clone(results)
+	var changed []scrape.Result
+	for _, r := range results {
+		key := r.Source + "@" + r.Instance
+		before, known := m.scrapeOK[key]
+		if (!known && !r.OK) || (known && before != r.OK) {
+			changed = append(changed, r)
+		}
+		m.scrapeOK[key] = r.OK
+	}
+	m.mu.Unlock()
+	for _, r := range changed {
+		if r.OK {
+			m.log.Info("Metrics source can be read again", "source", r.Source, "instance", r.Instance)
+			continue
+		}
+		m.log.Warn("Could not read a metrics source", "source", r.Source, "instance", r.Instance, "error", deref(r.Error))
+	}
+}
+
 func (m *Monitor) Failing() []string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -210,6 +254,7 @@ func (m *Monitor) Snapshot() Snapshot {
 	return Snapshot{
 		Probes:     slices.Clone(m.probes),
 		Disks:      slices.Clone(m.usage),
+		Metrics:    slices.Clone(m.metrics),
 		Reports:    maps.Clone(m.reports),
 		LastReport: m.lastReport,
 	}

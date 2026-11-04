@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
@@ -386,3 +387,15 @@ RoomModerationResult parseRoomModerationResult(Map<String, dynamic> json) => Roo
   muteUntil: DateTime.tryParse(json['mute_until'] as String? ?? '')?.toUtc(),
   reportId: json['report_id'] as String?,
 );
+
+RoomActivity? parseRoomActivity(Map<String, dynamic> json) {
+  final roomId = json['room_id'];
+  final createdAt = DateTime.tryParse(json['created_at'] as String? ?? '');
+  if (roomId is! String || createdAt == null) return null;
+  return RoomActivity(
+    roomId: roomId,
+    senderId: json['sender_id'] as String?,
+    preview: json['preview'] as String? ?? '',
+    createdAt: createdAt.toUtc(),
+  );
+}
