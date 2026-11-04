@@ -92,7 +92,7 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 - Hanya penulis, dalam `content.edit_minutes` (15) menit sejak dibuat. Postingan berpolling tidak bisa diedit. Lampiran dan sentimen tidak berubah. Isi baru melewati validasi dan kebijakan konten yang sama dengan isi baru (kata terlarang, link, mention). Baris memuat `edited_at` → klien menampilkan label "diedit".
 - Batas waktu juga ditegakkan untuk `UPDATE` langsung lewat REST (trigger `posts_40_edit`, `comments_40_edit`).
 - Versi lama disimpan di `private.content_edits` (arsip, retensi `retention.archive_days`, mendukung `legal_hold`; lihat [Catatan operasional](#catatan-operasional)). Moderator (`community.moderate`) membaca riwayat lewat `cs_api.community_edit_history(p_target_type 'post'|'comment', p_target_id)` → `[{body, edited_at, edited_by}]`.
-- Error: `404 post_not_found` / `comment_not_found`, `403 forbidden`, `403 edit_window_expired`, `409 poll_not_editable`, `400 empty_body`, `400 body_too_long`, `422 content_blocked` (dll. dari kebijakan konten), `503 social_disabled`, `429 rate_limited` (`content_edit` 20/menit).
+- Error: `404 post_not_found` / `comment_not_found`, `403 forbidden`, `403 edit_window_expired`, `409 poll_not_editable`, `400 empty_body`, `400 body_too_long`, `422 content_blocked` (dll. dari kebijakan konten), `403 social_disabled` (sebelum `0109`: `503`), `429 rate_limited` (`content_edit` 20/menit).
 
 ### Bookmark
 
@@ -161,7 +161,7 @@ Daftar flag **tetap**: aplikasi hanya membaca delapan kunci `search`, `trending`
 
 - Panggil saat aplikasi dibuka (sebelum login boleh). `p_platform`: `android|ios|web` (`400 invalid_platform`), `p_app_version` berformat angka `2.4.1` (boleh akhiran build `+57`; `400 invalid_version`). Perbandingan versi per angka (2.10.0 > 2.9.9).
 - Flag aktif bila `enabled` dan cocok platform (kosong = semua) dan versi ≥ `min_app_version`, lalu: persentase 100, **atau** user ada di `user_ids`, **atau** `md5(key:sub)` jatuh di bawah persentase (deterministik per user, berbeda per flag). Pengguna anonim hanya mendapat flag 100%.
-- **Kill switch** (`social_enabled = false`): klien menyembunyikan UI sosial. Server menolak postingan, komentar, edit, dan pesan chat **non-CS** baru dari pengguna aplikasi dengan `503 social_disabled`. Chat CS tetap berjalan. Membaca, like, follow, reaksi tetap jalan. Postingan staf/akun resmi/bot (bukan pengguna aplikasi) tidak diblokir.
+- **Kill switch** (`social_enabled = false`): klien menyembunyikan UI sosial. Server menolak postingan, komentar, edit, dan pesan chat **non-CS** baru dari pengguna aplikasi dengan `403 social_disabled` (SQLSTATE `PT403`, migrasi `0109`; sebelumnya `503`, yang membuat PostgREST mengira database putus, T24). Chat CS tetap berjalan. Membaca, like, follow, reaksi tetap jalan. Postingan staf/akun resmi/bot (bukan pengguna aplikasi) tidak diblokir.
 
 ### RPC Super Admin (`cs_api`, peran `cs_super_admin`, semua tercatat di audit)
 
@@ -217,7 +217,7 @@ Trigger `profiles_40_social_forget` (saat `profiles.deleted_at` terisi) menghapu
 
 ## Catatan untuk pengembang klien
 
-1. Panggil `get_client_config(platform, versi)` saat start dan saat kembali ke foreground; hormati `update_required`, `social_enabled`, dan `flags`. Tangani `503 social_disabled` dari tulis konten dengan pesan "sementara tidak tersedia", bukan error umum.
+1. Panggil `get_client_config(platform, versi)` saat start dan saat kembali ke foreground; hormati `update_required`, `social_enabled`, dan `flags`. Tangani error dengan kode `social_disabled` dari tulis konten (status `403`, backend lama `503`; kenali dari kodenya, bukan statusnya) dengan pesan "sementara tidak tersedia", bukan error umum.
 2. Label "diedit" dari `edited_at`; tombol edit hanya bila `now - created_at < config.edit_minutes` dan bukan postingan polling (server tetap memeriksa).
 3. Search-as-you-type: debounce ±300 ms, minimal `config.search_min_length` karakter; `p_type = 'all'` untuk saran, lalu per jenis dengan cursor.
 4. Reaksi pesan: optimistic update, lalu sinkron dari event Realtime `reaction` (field `reactions` adalah total terbaru). Baris pesan dari `get_messages` sudah membawa `reactions` dengan `me`.

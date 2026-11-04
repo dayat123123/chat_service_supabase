@@ -92,11 +92,11 @@ reset role;
 select tests.authenticate_as(:'budi');
 select is(public.get_client_config() ->> 'social_enabled', 'false', 'Klien diberi tahu fitur komunitas mati');
 select throws_ok($$insert into public.posts (author_id, body) values (auth.uid(), 'Post saat mati')$$,
-  'PT503', 'social_disabled', 'Post baru ditolak saat kill switch aktif');
+  'PT403', 'social_disabled', 'Post baru ditolak saat kill switch aktif');
 select throws_ok($$select * from public.create_comment('00000000-0000-4000-8000-00000000f701', null, 'Komentar')$$,
-  'PT503', 'social_disabled', 'Komentar baru ditolak saat kill switch aktif');
+  'PT403', 'social_disabled', 'Komentar baru ditolak saat kill switch aktif');
 select throws_ok(format($$select public.send_message(%L, 'Halo')$$, :'dm'),
-  'PT503', 'social_disabled', 'Chat non-CS ditolak saat kill switch aktif');
+  'PT403', 'social_disabled', 'Chat non-CS ditolak saat kill switch aktif');
 select lives_ok(format($$select public.send_message(%L, 'Tolong bantu akun saya')$$, :'support_room'),
   'Chat CS tetap berjalan saat kill switch aktif');
 reset role;
