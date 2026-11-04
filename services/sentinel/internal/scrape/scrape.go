@@ -36,6 +36,7 @@ type Result struct {
 	OK       bool               `json:"ok"`
 	Error    *string            `json:"error"`
 	Values   map[string]float64 `json:"values"`
+	Missed   int                `json:"missed,omitempty"`
 }
 
 type Options struct {

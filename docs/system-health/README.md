@@ -15,7 +15,7 @@ web CS ◀── cs_api.system_health (Super Admin)
 ```
 
 - **Aturan alert dihitung di database** (`private.health_current()`), bukan di sentinel. Hasilnya sama dilihat dari web, dari pg_cron, dan dari tes.
-- **Sentinel** hanya mengumpulkan data (probe ke setiap layanan internal dan pemakaian disk) lalu mengirim pesan yang sudah disusun database.
+- **Sentinel** hanya mengumpulkan data (probe ke setiap layanan internal dan pemakaian disk) lalu mengirim pesan yang sudah disusun database. Bila laporan gagal terkirim (mis. API sibuk), sentinel 0.3.0 membawa hitungan laporan, sampel, dan probe yang hilang ke laporan berikutnya, sehingga celahnya ikut dinilai (`0108`).
 - Evaluasi berjalan setiap kali sentinel melapor, dan juga setiap menit lewat pg_cron (`health-evaluate`). Jadi masalah tetap tercatat walau sentinel mati.
 
 ## Yang diperiksa
@@ -37,18 +37,18 @@ web CS ◀── cs_api.system_health (Super Admin)
 | `backup:*` | lihat [docs/backup](../backup/README.md#alert) | Backup belum diatur, WAL berhenti, backup penuh terlambat, offsite tertunda, uji restore gagal |
 | `backup:secret` | kritis | Rahasia backup di Vault tidak bisa dibuka (biasanya setelah restore ke server baru); isi ulang di tab Backup |
 | `alerts:secret` | peringatan | Token Telegram atau password SMTP di Vault tidak bisa dibuka; isi ulang di tab Alert |
-| `rest:pool` | peringatan ≥ 1 timeout atau ≥ 1 request menunggu, kritis ≥ 20 timeout | Pool PostgREST penuh: timeout `PGRST003` (504) dalam 5 menit, atau request menunggu koneksi saat pool kosong (migrasi `0104`) |
-| `realtime:events` | peringatan ≥ 70 %, kritis ≥ 90 % | Laju event Realtime ±2 menit terakhir dibanding `max_events_per_second` tenant; di atas 100 % event dibuang |
+| `rest:pool` | peringatan ≥ 1 timeout, ≥ 1 request menunggu, atau ≥ 2 laporan/sampel `rest` hilang; kritis ≥ 20 timeout, atau sampel hilang saat probe `rest` gagal | Pool PostgREST penuh: timeout `PGRST003` (504) dalam 5 menit, atau request menunggu koneksi saat pool kosong (migrasi `0104`). Sejak `0108` juga saat laporan sentinel tidak terkirim ("API (PostgREST) tidak menjawab") |
+| `realtime:events` | peringatan ≥ 70 %, kritis ≥ 90 % | Laju event Realtime 45 dtk terakhir (satu interval laporan) dibanding `max_events_per_second` tenant; di atas 100 % event dibuang |
 | `pgbouncer:queue` | peringatan `cl_waiting` ≥ 1 atau `maxwait` ≥ 1 dtk, kritis `maxwait` ≥ 5 dtk | Klien PgBouncer mengantre koneksi server (`SHOW POOLS`) |
 | `db:lock_waits` | peringatan ≥ 5 proses atau ≥ 5 dtk, kritis ≥ 20 proses atau ≥ 30 dtk | Proses database menunggu lock (`pg_locks`) |
 | `queue:room_preview` | peringatan ≥ 60 dtk, kritis ≥ 300 dtk | Antrean pratinjau room (`0102`) tidak diproses: job `chat-room-preview` mati atau macet |
-| `metrics:<sumber>` | peringatan | Sentinel gagal membaca sumber metrik (`METRICS_SOURCES`) |
+| `metrics:<sumber>` | peringatan | Sentinel gagal membaca sumber metrik (`METRICS_SOURCES`) pada laporan terakhir, atau ≥ 2 kali dalam 5 menit (termasuk di laporan yang tidak terkirim) |
 
-Ambang dapat diubah tanpa deploy di `private.settings`: `health.alert_after_seconds` (default 120), `health.resolve_after_seconds` (60), `health.disk_warn_ratio` (0,8), `health.disk_critical_ratio` (0,9), `health.expected_services`. Ambang metrik kapasitas (`0104`): `health.rest_pool_timeouts_warn` (1), `health.rest_pool_timeouts_critical` (20), `health.rest_pool_waiting_warn` (1), `health.realtime_events_warn_ratio` (0,7), `health.realtime_events_critical_ratio` (0,9), `health.realtime_events_limit` (10.000, cadangan bila `_realtime.tenants` tidak terbaca), `health.pgbouncer_waiting_warn` (1), `health.pgbouncer_maxwait_warn_seconds` (1), `health.pgbouncer_maxwait_critical_seconds` (5), `health.lock_waiters_warn` (5), `health.lock_waiters_critical` (20), `health.lock_wait_warn_seconds` (5), `health.lock_wait_critical_seconds` (30), `health.room_preview_lag_warn_seconds` (60), `health.room_preview_lag_critical_seconds` (300). Sumber metrik dan alasannya: [PRODUCTION.md](../PRODUCTION.md#alert-kapasitas-sentinel-020-migrasi-0104).
+Ambang dapat diubah tanpa deploy di `private.settings`: `health.alert_after_seconds` (default 120), `health.resolve_after_seconds` (60), `health.disk_warn_ratio` (0,8), `health.disk_critical_ratio` (0,9), `health.expected_services`. Ambang metrik kapasitas (`0104`): `health.rest_pool_timeouts_warn` (1), `health.rest_pool_timeouts_critical` (20), `health.rest_pool_waiting_warn` (1), `health.realtime_events_warn_ratio` (0,7), `health.realtime_events_critical_ratio` (0,9), `health.realtime_events_limit` (10.000, cadangan bila `_realtime.tenants` tidak terbaca), `health.pgbouncer_waiting_warn` (1), `health.pgbouncer_maxwait_warn_seconds` (1), `health.pgbouncer_maxwait_critical_seconds` (5), `health.lock_waiters_warn` (5), `health.lock_waiters_critical` (20), `health.lock_wait_warn_seconds` (5), `health.lock_wait_critical_seconds` (30), `health.room_preview_lag_warn_seconds` (60), `health.room_preview_lag_critical_seconds` (300). Latensi dan sampel hilang (`0108`): `health.alert_after_seconds.<kunci>` atau `.<prefiks>:*` (25 untuk `rest:pool`, `realtime:events`, `pgbouncer:queue`, `db:lock_waits`, `metrics:*`; tidak melebihi nilai global), `health.realtime_events_window_seconds` (45), `health.metrics_missed_warn` (2), `health.metrics_missed_window_seconds` (300), `health.rest_blind_warn` (2). Sumber metrik dan alasannya: [PRODUCTION.md](../PRODUCTION.md#alert-kapasitas-sentinel-030-migrasi-0104-0108).
 
 ## Siklus alert
 
-1. Masalah muncul dan bertahan selama `health.alert_after_seconds` → alert **dibuka**, pesan dikirim ke setiap kanal yang aktif.
+1. Masalah muncul dan bertahan selama `health.alert_after_seconds` (120 dtk; kunci kapasitas 25 dtk, yaitu dua laporan sentinel berturut-turut) → alert **dibuka**, pesan dikirim ke setiap kanal yang aktif. Waktu buka yang tercatat adalah awal masalah.
 2. Peringatan berubah menjadi kritis → pesan **memburuk**.
 3. Masalah hilang selama `health.resolve_after_seconds` → alert **pulih**, pesan pulih dikirim beserta lama gangguan.
 4. Super Admin bisa menekan **Tandai sudah ditangani**. Alert tetap terbuka sampai pulih, tetapi tidak lagi dihitung di lencana menu.

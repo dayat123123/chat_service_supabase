@@ -83,8 +83,9 @@ check-config:
 	@! grep -q '=CHANGE_ME' $(ENV) || { echo "docker/.env masih berisi CHANGE_ME:"; grep '=CHANGE_ME' $(ENV); exit 1; }
 	@if [ "$(PROFILE)" != dev ]; then for k in PROXY_DOMAIN ACME_EMAIL; do \
 	  grep -qE "^$$k=.+" $(ENV) || { echo "Profil $(PROFILE): $$k wajib diisi di docker/.env"; exit 1; }; done; \
-	  rl=$$(sed -n 's/^AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE=\([0-9]*\).*/\1/p' $(ENV) | tail -1); \
-	  [ -z "$$rl" ] || [ "$$rl" -ge 300 ] || { echo "Profil $(PROFILE): AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE=$$rl di docker/.env terlalu kecil (minimal 300, docs/PRODUCTION.md Batas & rate limit)"; exit 1; }; fi
+	  for k in AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE EDGE_WS_PER_IP; do \
+	    v=$$(sed -n "s/^$$k=\([0-9]*\).*/\1/p" $(ENV) | tail -1); \
+	    [ -z "$$v" ] || [ "$$v" -ge 1000 ] || { echo "Profil $(PROFILE): $$k=$$v di docker/.env terlalu kecil (minimal 1000, docs/PRODUCTION.md Batas & rate limit)"; exit 1; }; done; fi
 
 up: check-config ## Build & jalankan stack (PROFILE=dev|single|cluster), tunggu healthy
 ifeq ($(PROFILE),cluster)

@@ -7,6 +7,8 @@ delete from private.health_checks;
 delete from private.health_metric_sources;
 delete from private.health_metric_samples;
 update private.settings set value = '0' where key in ('health.alert_after_seconds', 'health.resolve_after_seconds');
+update private.settings set value = '150' where key = 'health.realtime_events_window_seconds';
+delete from private.health_report_misses;
 
 create function pg_temp.sample(p_source text, p_instance text, p_name text, p_value double precision, p_age integer)
 returns void language sql as $$

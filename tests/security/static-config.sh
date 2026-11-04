@@ -83,15 +83,18 @@ fi
 echo "== batas per IP (T3) dan per user"
 num() { grep -oE "$1:-[0-9]+" "$2" | head -1 | grep -oE '[0-9]+$'; }
 tpl() { sed -n "s/.*env \"$1\" | default \"\([0-9]*\)\".*/\1/p" "$COMMON" | head -1; }
-check medium "EDGE_WS_PER_IP default >= 100 (CGNAT/Wi-Fi kantor)" '[ "$(num EDGE_WS_PER_IP $D/compose.yml)" -ge 100 ] && [ "$(tpl EDGE_WS_PER_IP)" -ge 100 ]' "compose $(num EDGE_WS_PER_IP $D/compose.yml), common $(tpl EDGE_WS_PER_IP)"
-check medium "EDGE_RATE_AVERAGE/BURST default >= 300/600 per IP" '[ "$(num EDGE_RATE_AVERAGE $D/compose.yml)" -ge 300 ] && [ "$(num EDGE_RATE_BURST $D/compose.yml)" -ge 600 ] && [ "$(tpl EDGE_RATE_AVERAGE)" -ge 300 ] && [ "$(tpl EDGE_RATE_BURST)" -ge 600 ]'
+check medium "EDGE_WS_PER_IP default >= 1000 (±1.000 nasabah per IP CGNAT/Wi-Fi kantor)" '[ "$(num EDGE_WS_PER_IP $D/compose.yml)" -ge 1000 ] && [ "$(tpl EDGE_WS_PER_IP)" -ge 1000 ]' "compose $(num EDGE_WS_PER_IP $D/compose.yml), common $(tpl EDGE_WS_PER_IP)"
+check medium "EDGE_RATE_AVERAGE/BURST default >= 600/1200 per IP" '[ "$(num EDGE_RATE_AVERAGE $D/compose.yml)" -ge 600 ] && [ "$(num EDGE_RATE_BURST $D/compose.yml)" -ge 1200 ] && [ "$(tpl EDGE_RATE_AVERAGE)" -ge 600 ] && [ "$(tpl EDGE_RATE_BURST)" -ge 1200 ]'
 check medium "default compose = default common.yml (tanpa env traefik tetap sama)" '[ "$(num EDGE_WS_PER_IP $D/compose.yml)" = "$(tpl EDGE_WS_PER_IP)" ] && [ "$(num EDGE_RATE_AVERAGE $D/compose.yml)" = "$(tpl EDGE_RATE_AVERAGE)" ] && [ "$(num EDGE_RATE_BURST $D/compose.yml)" = "$(tpl EDGE_RATE_BURST)" ]'
-check medium "auth-bridge exchange per IP default >= 300/menit" '[ "$(num AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE $D/compose.yml)" -ge 300 ]' "$(num AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE $D/compose.yml)"
+check medium "auth-bridge exchange per IP default >= 1000/menit" '[ "$(num AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE $D/compose.yml)" -ge 1000 ]' "$(num AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE $D/compose.yml)"
 check high "auth-bridge per user OLT tetap ketat (<= 10/menit) di compose dasar" '[ "$(num AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE $D/compose.yml)" -le 10 ]' "$(num AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE $D/compose.yml)"
+traefik_mem=$(awk '/^  traefik:/{t=1;next} t&&/^  [a-z]/{exit} t&&/memory:/{match($0,/memory: [0-9]+M/); print substr($0,RSTART+8,RLENGTH-9); exit}' $D/compose.yml)
+check medium "memori Traefik >= 512M (±0,26 MiB per WebSocket, EDGE_WS_PER_IP 1500)" '[ -n "$traefik_mem" ] && [ "$traefik_mem" -ge 512 ]' "${traefik_mem}M"
 envex=$(sed -n 's/^AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE=\([0-9]*\).*/\1/p' $D/.env.example | tail -1)
-check medium "auth-bridge exchange per IP di .env.example >= 300/menit (.env server tidak menurunkan default)" '[ -n "$envex" ] && [ "$envex" -ge 300 ]' "$envex"
+check medium "auth-bridge exchange per IP di .env.example >= 1000/menit (.env server tidak menurunkan default)" '[ -n "$envex" ] && [ "$envex" -ge 1000 ]' "$envex"
 check medium "PostgREST gagal cepat saat pool habis (PGRST_DB_POOL_ACQUISITION_TIMEOUT default <= 5 dtk)" '[ "$(num PGRST_DB_POOL_ACQUISITION_TIMEOUT $D/compose.yml)" -le 5 ]' "$(num PGRST_DB_POOL_ACQUISITION_TIMEOUT $D/compose.yml)"
-check medium "PgBouncer server_login_retry default <= 5 dtk (REST cepat pulih setelah Postgres restart, T6)" '[ "$(grep "^server_login_retry = " $D/pgbouncer/entrypoint.sh | grep -oE "RETRY:-[0-9]+" | grep -oE "[0-9]+")" -le 5 ]'
+check medium "PgBouncer server_login_retry default <= 1 dtk (REST cepat pulih setelah Postgres restart, T6)" 'awk -v v="$(grep "^server_login_retry = " $D/pgbouncer/entrypoint.sh | grep -oE "RETRY:-[0-9.]+" | grep -oE "[0-9.]+$")" "BEGIN { exit !(v != \"\" && v <= 1) }"' 
+check medium "PgBouncer memakai IP host database yang dipantau, bukan cache DNS c-ares (T6)" 'grep -q "getent hosts" $D/pgbouncer/entrypoint.sh && grep -q "host=\$1 port=" $D/pgbouncer/entrypoint.sh && grep -q "kill -HUP" $D/pgbouncer/entrypoint.sh'
 check medium "batas tenant Realtime tetap diset (koneksi, join/dtk, kanal per klien)" 'grep -q "TENANT_MAX_CONCURRENT_USERS:" $D/compose.yml && grep -q "TENANT_MAX_JOINS_PER_SECOND:" $D/compose.yml && grep -q "TENANT_MAX_CHANNELS_PER_CLIENT:" $D/compose.yml'
 if grep -q 'PathPrefix(`/realtime/v1`)' "$PROD"; then
   res INFO low "/realtime/v1 publik mencakup REST /realtime/v1/api/* (broadcast); tenants & openapi diblok Kong, broadcast dibatasi RLS realtime.messages"

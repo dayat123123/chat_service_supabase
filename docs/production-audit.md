@@ -274,7 +274,7 @@ Dasar audit:
 Setiap poin punya usulan default. Balas "setuju semua" atau sebutkan nomor yang ingin diubah.
 
 1. **Spesifikasi cluster.**
-   - Masalahnya: addendum merujuk "bagian 8 PROMPT.md" untuk Docker Swarm. Bagian 8 di `prompt.md` kita berisi tahapan kerja, dan Tahap 7 lama ("panduan integrasi") sudah selesai di [INTEGRATION.md](INTEGRATION.md).
+   - Masalahnya: addendum merujuk "bagian 8 PROMPT.md" untuk Docker Swarm. Bagian 8 di `prompt.md` kita berisi tahapan kerja, dan Tahap 7 lama ("panduan integrasi") sudah selesai di [panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md).
    - **Default:** saya rancang sendiri dengan isi berikut:
      - Swarm 3 node.
      - Postgres primary + 1 replica streaming, dengan failover manual yang terdokumentasi.

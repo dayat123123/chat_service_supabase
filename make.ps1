@@ -185,9 +185,11 @@ function Assert-Config {
         foreach ($key in @('PROXY_DOMAIN', 'ACME_EMAIL')) {
             if (-not (Get-EnvValue $key)) { throw "Profil ${DeployProfile}: $key wajib diisi di docker/.env" }
         }
-        $rateLimit = Get-EnvValue 'AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE'
-        if ($rateLimit -match '^\d+$' -and [int]$rateLimit -lt 300) {
-            throw "Profil ${DeployProfile}: AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE=$rateLimit di docker/.env terlalu kecil (minimal 300, docs/PRODUCTION.md Batas & rate limit)"
+        foreach ($key in @('AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE', 'EDGE_WS_PER_IP')) {
+            $limit = Get-EnvValue $key
+            if ($limit -match '^\d+$' -and [int]$limit -lt 1000) {
+                throw "Profil ${DeployProfile}: $key=$limit di docker/.env terlalu kecil (minimal 1000, docs/PRODUCTION.md Batas & rate limit)"
+            }
         }
     }
 }

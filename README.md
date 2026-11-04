@@ -20,8 +20,6 @@ Repo ini berisi seluruh sisi server fitur sosial aplikasi OLT, dari database sam
 - **Layanan Go:** auth-bridge, media gateway, push notifier, integrasi OLT, dan layanan pendukung lain.
 - **Rendezvous Hub** (`apps/cs-console-react`): web untuk CS, Super Admin, dan Kepatuhan.
 
-Library Flutter untuk aplikasi nasabah ada di repo terpisah: **[rendezvous_community](https://github.com/dayat123123/rendezvous_community)**.
-
 > **Batas integrasi.** Server sosial tidak pernah memanggil sistem OLT. OLT menerbitkan *token sosial* bertanda tangan, dan server memverifikasinya secara lokal. Order, daftar dan harga saham, portofolio, serta data nasabah tetap milik OLT. Rinciannya di [docs/olt-integration.md](docs/olt-integration.md).
 
 ## Daftar isi
@@ -29,7 +27,6 @@ Library Flutter untuk aplikasi nasabah ada di repo terpisah: **[rendezvous_commu
 - [Arsitektur](#arsitektur)
 - [Isi repo](#isi-repo)
 - [Mulai cepat](#mulai-cepat)
-- [Mengembangkan library Flutter](#mengembangkan-library-flutter)
 - [Pengujian](#pengujian)
 - [Target `make`](#target-make)
 - [Produksi](#produksi)
@@ -41,7 +38,7 @@ Library Flutter untuk aplikasi nasabah ada di repo terpisah: **[rendezvous_commu
 ```mermaid
 flowchart LR
   subgraph Klien
-    APP["App OLT<br/>(Flutter + rendezvous_community)"]
+    APP["App OLT<br/>(aplikasi nasabah)"]
     HUB["Rendezvous Hub<br/>(web CS, React)"]
   end
   OLT["Backend OLT<br/>penerbit token sosial"]
@@ -104,33 +101,12 @@ make cs-console-react   # Rendezvous Hub di http://localhost:8085
 
 | Alamat (dev) | Isi |
 |---|---|
-| `http://localhost:8000` | API gateway (dipakai app Flutter) dan Studio |
+| `http://localhost:8000` | API gateway (dipakai aplikasi nasabah) dan Studio |
 | `http://localhost:8085` | Rendezvous Hub (web CS) |
-| `http://localhost:8086` | App contoh Flutter versi web (`make web-example`, `?user=sari_invest` langsung login) |
 | `http://10.0.2.2:8000` | API dari emulator Android |
 
 - **Akun dummy:** semuanya memakai password `olt12345`. Akun 1001–1006 sama dengan user seed `budi_santoso`, `sari_invest`, `andi_trader`, `rina_saham`, `dewi_cuan`, dan `olt_official`. Daftar lengkapnya di [services/dummy-olt](services/dummy-olt/README.md).
 - **Akun staf Hub dev:** dibuat oleh `make cs-staff` (otomatis saat `make cs-console-react`; tersimpan di `scripts/cs-demo/runtime/staff.json`).
-
-## Mengembangkan library Flutter
-
-Library ada di repo [`rendezvous_community`](https://github.com/dayat123123/rendezvous_community). Clone di **sebelah** repo ini, supaya target `make` dan uji keamanan menemukannya otomatis. Untuk lokasi lain, set `PKG=<path>`.
-
-```text
-Golang/
-├── chat_service_supabase/     ← repo ini (backend)
-└── rendezvous_community/      ← library Flutter
-```
-
-```bash
-make anon-key                 # ANON_KEY untuk --dart-define
-make test-flutter             # analyze + unit/widget test library
-make test-flutter-it          # integration test library ke stack lokal
-make e2e-windows              # E2E app contoh di Windows
-make web-example              # app contoh versi web di :8086
-```
-
-Monorepo ini tidak menyimpan kode Flutter. Setiap rilis library diberi tag (`v1.5.0`, `v1.6.0`, …) di repo library, dan aplikasi OLT mem-pin tag itu ([docs/INTEGRATION.md](docs/INTEGRATION.md)).
 
 ## Pengujian
 
@@ -155,7 +131,6 @@ Daftar lengkapnya muncul dengan `make help` atau `.\make.ps1 help`.
 | Rahasia & kunci | `gen-secrets`, `anon-key`, `cs-bootstrap-admin EMAIL=… NAME="…"` |
 | OLT tiruan | `up DUMMY_OLT=1`, `dummy-token U=<user>`, `smoke-dummy` |
 | Web | `cs-console-react`, `cs-staff`, `cs-demo`, `test-cs-console` |
-| Flutter | `test-flutter`, `test-flutter-it`, `e2e-windows`, `web-example`, `perf-flutter`, `license-audit` |
 | Backup | `backup`, `restore FILE=… CONFIRM=yes`, `backup-snapshots`, `restore-pitr AT=…` |
 | Uji lanjutan | `test-security`, `scan-deps`, `load-test`, `load-integration`, `chaos-test`, `loadtest-cleanup`, `secrets-scan` |
 
@@ -166,7 +141,7 @@ make gen-secrets PROFILE=single
 make up PROFILE=single CS=1      # CS=1 menyalakan Rendezvous Hub di domain CS (LAN/VPN)
 ```
 
-Langkah lengkapnya ada di [docs/PRODUCTION.md](docs/PRODUCTION.md): domain dan TLS, secrets, batas & rate limit, alert kapasitas, backup dan PITR, urutan rilis (termasuk klien ≥ 1.5.0 dan versi minimum aplikasi), serta checklist go-live.
+Langkah lengkapnya ada di [docs/PRODUCTION.md](docs/PRODUCTION.md): domain dan TLS, secrets, batas & rate limit, alert kapasitas, backup dan PITR, urutan rilis dan versi minimum aplikasi, serta checklist go-live.
 
 Konfigurasi operasional dikelola Super Admin dari **Rendezvous Hub**, dengan jejak audit, bukan dari file di server. Contohnya kunci Firebase, tujuan backup, kanal alert, alamat csAdmin, API key integrasi, dan versi minimum aplikasi.
 
@@ -174,9 +149,9 @@ Konfigurasi operasional dikelola Super Admin dari **Rendezvous Hub**, dengan jej
 
 | Dokumen | Isi |
 |---|---|
-| [INTEGRATION.md](docs/INTEGRATION.md) | Memasang library ke aplikasi OLT |
 | [olt-integration.md](docs/olt-integration.md) | Kontrak token sosial untuk tim backend OLT |
 | [integration/](docs/integration/README.md) | API notifikasi OLT (`/integration/v1`) |
+| [dev-server.md](docs/dev-server.md) | Server development untuk integrasi aplikasi client: spek, port, domain, pemasangan |
 | [PRODUCTION.md](docs/PRODUCTION.md) | Deploy, operasional, rilis, checklist |
 | [scaling.md](docs/scaling.md) | Profil deploy dan migrasi single → cluster |
 | [social/](docs/social/README.md) | Feed, chat, realtime, gap-fill, typing, pratinjau room |
@@ -184,7 +159,6 @@ Konfigurasi operasional dikelola Super Admin dari **Rendezvous Hub**, dengan jej
 | [community/](docs/community/), [nasabah/](docs/nasabah/), [push/](docs/push/), [backup/](docs/backup/README.md), [system-health/](docs/system-health/README.md), [evidence/](docs/evidence/) | Desain per fitur |
 | [content-safety.md](docs/content-safety.md) | Kata terlarang, NSFW, karantina bukti |
 | [testing/](docs/testing/README.md) | Cara menjalankan uji keamanan/beban/chaos dan laporannya |
-| [rendezvous-community/](docs/rendezvous-community/README.md) | Catatan backend untuk library Flutter |
 
 ## Keamanan
 

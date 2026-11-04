@@ -140,7 +140,7 @@ services:
       replicas: 1
   # Disk yang diukur adalah node tempat sentinel berjalan: ditaruh di node DB.
   sentinel:
-    image: ${REGISTRY}/olt-social/sentinel:0.2.0
+    image: ${REGISTRY}/olt-social/sentinel:0.3.0
     environment:
       # tasks.<service>: setiap replika dibaca sendiri (counter per replika, bukan lewat VIP).
       METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://tasks.rest:3001/metrics,realtime=jwt+http://tasks.realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@tasks.pgbouncer:6432}
@@ -168,7 +168,7 @@ services:
       <<: *deploy
       replicas: 2
   pgbouncer:
-    image: ${REGISTRY}/olt-social/pgbouncer:1.24.0-4
+    image: ${REGISTRY}/olt-social/pgbouncer:1.24.0-5
     deploy:
       <<: *deploy
       replicas: 2

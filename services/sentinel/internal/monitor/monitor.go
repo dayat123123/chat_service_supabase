@@ -18,6 +18,10 @@ import (
 const (
 	ReportOK     = "ok"
 	ReportFailed = "failed"
+
+	LostSource = "sentinel"
+	LostMetric = "sentinel_reports_lost"
+	maxCarried = 1000
 )
 
 type Store interface {
@@ -70,6 +74,9 @@ type Monitor struct {
 	metrics    []scrape.Result
 	scrapeOK   map[string]bool
 	up         map[string]bool
+	lost       int
+	probeLost  map[string]int
+	scrapeLost map[string]int
 	reports    map[string]uint64
 	lastReport time.Time
 }
@@ -87,13 +94,15 @@ func New(opts Options) *Monitor {
 		disks[d.Name] = &logstate.Latch{}
 	}
 	return &Monitor{
-		opts:     opts,
-		log:      opts.Log,
-		now:      now,
-		disks:    disks,
-		up:       map[string]bool{},
-		scrapeOK: map[string]bool{},
-		reports:  map[string]uint64{},
+		opts:       opts,
+		log:        opts.Log,
+		now:        now,
+		disks:      disks,
+		up:         map[string]bool{},
+		scrapeOK:   map[string]bool{},
+		reports:    map[string]uint64{},
+		probeLost:  map[string]int{},
+		scrapeLost: map[string]int{},
 	}
 }
 
@@ -129,14 +138,15 @@ func (m *Monitor) Round(ctx context.Context) {
 	}
 	m.remember(results, usage)
 	m.rememberMetrics(metrics)
+	probes, sent := m.carried(results, metrics)
 	call, cancel := context.WithTimeout(ctx, m.opts.RequestTimeout)
 	_, err := m.opts.Store.HealthReport(call, store.Health{
 		Instance:  m.opts.Instance,
 		Version:   m.opts.Version,
 		StartedAt: m.opts.StartedAt,
-		Probes:    results,
+		Probes:    probes,
 		Disks:     usage,
-		Metrics:   metrics,
+		Metrics:   sent,
 	})
 	cancel()
 	if ctx.Err() != nil {
@@ -145,9 +155,13 @@ func (m *Monitor) Round(ctx context.Context) {
 	m.mu.Lock()
 	if err != nil {
 		m.reports[ReportFailed]++
+		m.carry(results, metrics)
 	} else {
 		m.reports[ReportOK]++
 		m.lastReport = m.now()
+		m.lost = 0
+		clear(m.probeLost)
+		clear(m.scrapeLost)
 	}
 	m.mu.Unlock()
 	if err != nil {
@@ -158,6 +172,43 @@ func (m *Monitor) Round(ctx context.Context) {
 	}
 	if m.report.Recover() {
 		m.log.Info("Health reports are accepted again")
+	}
+}
+
+func (m *Monitor) carried(results []probe.Result, metrics []scrape.Result) ([]probe.Result, []scrape.Result) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	probes := slices.Clone(results)
+	for i := range probes {
+		probes[i].Missed = m.probeLost[probes[i].Name]
+	}
+	sent := slices.Clone(metrics)
+	for i := range sent {
+		sent[i].Missed = m.scrapeLost[sent[i].Source+"@"+sent[i].Instance]
+	}
+	if m.lost > 0 {
+		sent = append(sent, scrape.Result{
+			Source:   LostSource,
+			Instance: m.opts.Instance,
+			OK:       true,
+			Values:   map[string]float64{LostMetric: float64(m.lost)},
+		})
+	}
+	return probes, sent
+}
+
+func (m *Monitor) carry(results []probe.Result, metrics []scrape.Result) {
+	m.lost = min(m.lost+1, maxCarried)
+	for _, r := range results {
+		if !r.OK {
+			m.probeLost[r.Name] = min(m.probeLost[r.Name]+1, maxCarried)
+		}
+	}
+	for _, r := range metrics {
+		if !r.OK {
+			key := r.Source + "@" + r.Instance
+			m.scrapeLost[key] = min(m.scrapeLost[key]+1, maxCarried)
+		}
 	}
 }
 

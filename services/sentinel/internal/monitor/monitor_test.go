@@ -260,3 +260,66 @@ func TestRoundLeavesMetricsOutWithoutSources(t *testing.T) {
 		t.Fatalf("scraper called %d times, metrics %+v", sc.calls, st.reports[0].Metrics)
 	}
 }
+
+func TestLostReportsAreCarriedIntoTheNextReport(t *testing.T) {
+	st := &fakeStore{}
+	sc := &fakeScraper{}
+	pr := &fakeProber{}
+	m := New(Options{
+		Store:          st,
+		Prober:         pr,
+		Scraper:        sc,
+		Sources:        []scrape.Source{{Name: "rest", Kind: scrape.Prometheus}, {Name: "realtime", Kind: scrape.Prometheus}},
+		Probes:         []probe.Target{{Name: "rest", URL: "http://rest:3000/", Kind: probe.HTTP}},
+		Log:            slog.New(slog.NewJSONHandler(&syncBuffer{}, nil)),
+		Interval:       30 * time.Second,
+		RequestTimeout: time.Second,
+		Instance:       "sentinel-1",
+	})
+	restDown := scrape.Result{Source: "rest", Instance: "10.0.0.4", Error: text("waktu habis setelah 5s"), Values: map[string]float64{}}
+	restUp := scrape.Result{Source: "rest", Instance: "10.0.0.4", OK: true, Values: map[string]float64{"pgrst_db_pool_max": 10}}
+	realtime := scrape.Result{Source: "realtime", Instance: "10.0.0.5", OK: true, Values: map[string]float64{"realtime_channel_global_events": 7}}
+	probeDown := probe.Result{Name: "rest", Target: "http://rest:3000/", LatencyMS: 5000, Error: text("waktu habis setelah 5s")}
+	probeUp := probe.Result{Name: "rest", Target: "http://rest:3000/", OK: true, Status: status(200), LatencyMS: 4}
+
+	st.err = &store.Error{Status: 504, Code: "PGRST003"}
+	sc.set(restDown, realtime)
+	pr.set(probeDown)
+	m.Round(context.Background())
+	sc.set(restUp, realtime)
+	pr.set(probeDown)
+	m.Round(context.Background())
+
+	st.err = nil
+	sc.set(restDown, realtime)
+	pr.set(probeUp)
+	m.Round(context.Background())
+
+	if len(st.reports) != 3 {
+		t.Fatalf("reports = %d", len(st.reports))
+	}
+	if first := st.reports[0]; len(first.Metrics) != 2 || first.Metrics[0].Missed != 0 || first.Probes[0].Missed != 0 {
+		t.Fatalf("first report = %+v", first)
+	}
+	got := st.reports[2]
+	wantRest := restDown
+	wantRest.Missed = 1
+	lost := scrape.Result{Source: LostSource, Instance: "sentinel-1", OK: true, Values: map[string]float64{LostMetric: 2}}
+	if !reflect.DeepEqual(got.Metrics, []scrape.Result{wantRest, realtime, lost}) {
+		t.Fatalf("metrics = %+v", got.Metrics)
+	}
+	wantProbe := probeUp
+	wantProbe.Missed = 2
+	if !reflect.DeepEqual(got.Probes, []probe.Result{wantProbe}) {
+		t.Fatalf("probes = %+v", got.Probes)
+	}
+	if snap := m.Snapshot(); !reflect.DeepEqual(snap.Metrics, []scrape.Result{restDown, realtime}) || !reflect.DeepEqual(snap.Probes, []probe.Result{probeUp}) {
+		t.Fatalf("snapshot = %+v", snap)
+	}
+
+	sc.set(restUp, realtime)
+	m.Round(context.Background())
+	if next := st.reports[3]; !reflect.DeepEqual(next.Metrics, []scrape.Result{restUp, realtime}) || next.Probes[0].Missed != 0 {
+		t.Fatalf("delivered report must reset the carry: %+v", next)
+	}
+}
