@@ -29,6 +29,7 @@ type Config struct {
 	PGDatabase         string
 	DataDir            string
 	StorageDir         string
+	LocalRepoDir       string
 	ConfigPoll         time.Duration
 	HeartbeatInterval  time.Duration
 	RequestTimeout     time.Duration
@@ -54,6 +55,7 @@ func Load() (Config, error) {
 		PGDatabase:         stringEnv("PGDATABASE", "postgres"),
 		DataDir:            filepath.Clean(stringEnv("DATA_DIR", "/var/lib/olt-backup")),
 		StorageDir:         filepath.Clean(stringEnv("STORAGE_DIR", "/mnt/storage")),
+		LocalRepoDir:       filepath.Clean(stringEnv("LOCAL_REPO_DIR", "/var/lib/olt-backup-repo")),
 		ConfigPoll:         durationEnv("CONFIG_POLL", 15*time.Second, &errs),
 		HeartbeatInterval:  durationEnv("HEARTBEAT_INTERVAL", 30*time.Second, &errs),
 		RequestTimeout:     durationEnv("REQUEST_TIMEOUT", 10*time.Second, &errs),
@@ -80,6 +82,9 @@ func Load() (Config, error) {
 		{filepath.IsAbs(cfg.DataDir) && cfg.DataDir != "/", "DATA_DIR must be an absolute directory other than /"},
 		{filepath.IsAbs(cfg.StorageDir), "STORAGE_DIR must be an absolute directory"},
 		{!nested(cfg.DataDir, cfg.StorageDir), "DATA_DIR and STORAGE_DIR must not contain each other"},
+		{filepath.IsAbs(cfg.LocalRepoDir) && cfg.LocalRepoDir != "/", "LOCAL_REPO_DIR must be an absolute directory other than /"},
+		{!nested(cfg.LocalRepoDir, cfg.DataDir) && !nested(cfg.LocalRepoDir, cfg.StorageDir),
+			"LOCAL_REPO_DIR must not contain or sit inside DATA_DIR or STORAGE_DIR"},
 		{within(cfg.ConfigPoll, time.Second, 10*time.Minute), "CONFIG_POLL must be between 1s and 10m"},
 		{within(cfg.HeartbeatInterval, 5*time.Second, time.Minute), "HEARTBEAT_INTERVAL must be between 5s and 60s"},
 		{within(cfg.RequestTimeout, time.Second, 2*time.Minute), "REQUEST_TIMEOUT must be between 1s and 2m"},

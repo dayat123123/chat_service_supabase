@@ -248,7 +248,8 @@ export const policy = {
       similarWindow: '{{min}}–{{max}} menit.',
       autoSlow: 'Aktifkan slow mode di room saham yang terkena alert.',
       autoHold: 'Tahan postingan terkoordinasi sampai alert ditinjau. Menolak alert melepasnya kembali.',
-      autoSlowSeconds: '{{min}}–{{max}} detik. 0 = mati.',
+      autoSlowSeconds:
+        '{{min}}–{{max}} detik. 0 = mati. Paling ketat sama dengan jeda jam ramai (10 detik bila jam ramai mati); slow mode lebih ketat diatur manual per room.',
       autoSlowMinutes: '{{min}}–{{max}} menit.',
       busySlow: '{{min}}–{{max}} detik. 0 = mati.',
     },

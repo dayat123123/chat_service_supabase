@@ -46,6 +46,17 @@ func TestCredentialsEnvPassesSecretsOnlyThroughEnvironment(t *testing.T) {
 	}
 }
 
+func TestLocalRepositoryEnvHasNoAWSVariables(t *testing.T) {
+	creds := Credentials{Repository: "/var/lib/olt-backup-repo", Password: "restic-pass", AccessKeyID: "stale", SecretAccessKey: "stale-secret", Region: "id-jkt-1"}
+	env := creds.Env()
+	if !reflect.DeepEqual(env, []string{"RESTIC_REPOSITORY=/var/lib/olt-backup-repo", "RESTIC_PASSWORD=restic-pass"}) {
+		t.Fatalf("env = %v", env)
+	}
+	if creds.S3() || !(Credentials{Repository: "s3:https://h/b"}).S3() {
+		t.Fatal("S3 detection")
+	}
+}
+
 func TestOpenClassifiesResticExitCodes(t *testing.T) {
 	cases := map[int]error{10: ErrNoRepository, 11: ErrLocked, 12: ErrWrongPassword}
 	for code, want := range cases {

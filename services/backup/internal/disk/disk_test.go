@@ -1,6 +1,7 @@
 package disk
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +14,61 @@ func TestStatReportsSpace(t *testing.T) {
 	}
 	if _, err := Stat("/does/not/exist"); err == nil {
 		t.Fatal("missing path must fail")
+	}
+}
+
+func TestMountPointTellsMountsFromPlainFolders(t *testing.T) {
+	if root, err := MountPoint("/"); err != nil || !root {
+		t.Fatalf("root = %v err = %v", root, err)
+	}
+	if plain, err := MountPoint(t.TempDir()); err != nil || plain {
+		t.Fatalf("temp dir counted as mount: %v err = %v", plain, err)
+	}
+	if _, err := MountPoint("/does/not/exist"); err == nil {
+		t.Fatal("missing path must fail")
+	}
+}
+
+func TestCheckRepositoryRejectsMissingFilesAndPlainFolders(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "file")
+	_ = os.WriteFile(file, nil, 0o600)
+	cases := map[string]struct {
+		path string
+		want error
+	}{
+		"missing": {filepath.Join(dir, "missing"), ErrNotDirectory},
+		"file":    {file, ErrNotDirectory},
+		"plain":   {dir, ErrNotMounted},
+	}
+	for name, c := range cases {
+		if err := CheckRepository(c.path); !errors.Is(err, c.want) {
+			t.Errorf("%s: err = %v, want %v", name, err, c.want)
+		}
+	}
+}
+
+func TestCheckRepositoryAcceptsAWritableMount(t *testing.T) {
+	const shm = "/dev/shm"
+	if mounted, err := MountPoint(shm); err != nil || !mounted {
+		t.Skip("no tmpfs mount at /dev/shm")
+	}
+	before, _ := os.ReadDir(shm)
+	if err := CheckRepository(shm); err != nil {
+		t.Fatal(err)
+	}
+	after, _ := os.ReadDir(shm)
+	if len(after) != len(before) {
+		t.Fatalf("write test left files behind: %d -> %d", len(before), len(after))
+	}
+}
+
+func TestCheckRepositoryReportsReadOnlyMount(t *testing.T) {
+	if mounted, err := MountPoint("/proc"); err != nil || !mounted {
+		t.Skip("no /proc mount")
+	}
+	if err := CheckRepository("/proc"); !errors.Is(err, ErrNotWritable) {
+		t.Fatalf("err = %v", err)
 	}
 }
 

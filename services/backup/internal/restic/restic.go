@@ -41,13 +41,19 @@ type Credentials struct {
 	Region          string
 }
 
+func (c Credentials) S3() bool {
+	return strings.HasPrefix(c.Repository, "s3:")
+}
+
 func (c Credentials) Env() []string {
 	env := []string{
 		"RESTIC_REPOSITORY=" + c.Repository,
 		"RESTIC_PASSWORD=" + c.Password,
-		"AWS_ACCESS_KEY_ID=" + c.AccessKeyID,
-		"AWS_SECRET_ACCESS_KEY=" + c.SecretAccessKey,
 	}
+	if !c.S3() {
+		return env
+	}
+	env = append(env, "AWS_ACCESS_KEY_ID="+c.AccessKeyID, "AWS_SECRET_ACCESS_KEY="+c.SecretAccessKey)
 	if c.Region != "" {
 		env = append(env, "AWS_DEFAULT_REGION="+c.Region)
 	}

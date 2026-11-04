@@ -69,9 +69,9 @@ select is((select moderation_status from public.posts where id = 'a1720000-0000-
 select is((select count(*)::int from private.content_flags f join cs.manipulation_alerts a on a.id = f.alert_id
            where a.stock = 'KMTZ' and f.categories = '{coordinated}'), 6, 'Penahanan tercatat dengan alasan dan alert');
 select is((select slow_mode_seconds || '/' || slow_mode_source from private.room_moderation where room_id = :'room_x'),
-  '30/alert', 'Alert mengaktifkan slow mode room saham');
+  '10/alert', 'Alert mengaktifkan slow mode room saham, paling ketat 10 detik');
 select is((select auto_actions -> 'slow_mode' ->> 'seconds' from cs.manipulation_alerts where stock = 'KMTX' and kind = 'mention_spike'),
-  '30', 'Aksi otomatis tercatat di alert');
+  '10', 'Aksi otomatis tercatat di alert');
 select lives_ok($$select cs.detect_manipulation(now())$$, 'Deteksi bisa dijalankan ulang');
 select is((select count(*)::int from cs.manipulation_alerts where status = 'open' and stock in ('KMTX', 'KMTY', 'KMTZ')), 3,
   'Deteksi ulang tidak menggandakan alert yang masih terbuka');
@@ -81,10 +81,10 @@ select ok(exists (select 1 from cron.job where jobname = 'safety-manipulation' a
 
 select tests.authenticate_as(:'user1');
 select lives_ok(format($$select send_message(%L, 'Pesan pertama di room')$$, :'room_x'), 'Pesan pertama lolos slow mode');
-select throws_like(format($$select send_message(%L, 'Pesan kedua terlalu cepat')$$, :'room_x'), '%"PT429"%"slow_mode"%"30"%',
+select throws_like(format($$select send_message(%L, 'Pesan kedua terlalu cepat')$$, :'room_x'), '%"PT429"%"slow_mode"%"10"%',
   'Pesan berikutnya ditolak 429 slow_mode dengan detik tunggu');
 select is((get_stock_room_state('kmtx') -> 'slow_mode' ->> 'source'), 'alert', 'Pengguna melihat slow mode aktif');
-select is((get_stock_room_state('KMTX') ->> 'wait_seconds')::int, 30, 'Pengguna melihat sisa waktu tunggunya');
+select is((get_stock_room_state('KMTX') ->> 'wait_seconds')::int, 10, 'Pengguna melihat sisa waktu tunggunya');
 select throws_ok($$select get_stock_room_state('1X')$$, 'PT400', 'invalid_stock_code', 'Kode saham divalidasi');
 select is(get_stock_room_state('KMQQ') ->> 'room_id', null, 'Room yang belum ada tetap mengembalikan status');
 

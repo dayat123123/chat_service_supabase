@@ -11,6 +11,69 @@ import (
 	_ "time/tzdata"
 )
 
+const localDir = "/var/lib/olt-backup-repo"
+
+func validLocal() Settings {
+	s := valid()
+	s.Kind, s.Repository, s.S3 = KindLocal, localDir, S3{}
+	return s
+}
+
+func TestLocalTargetNeedsOnlyThePasswordAndTheMountedFolder(t *testing.T) {
+	raw := `{"revision":5,"configured":true,"kind":"local","repository":"/var/lib/olt-backup-repo","s3":null,"password":"pw",
+"schedule":{"base_time":"02:00","timezone":"Asia/Jakarta","offsite_minutes":5,"restore_test_weekday":0,"restore_test_time":"04:00"},
+"retention":{"daily":7,"weekly":4,"monthly":6,"wal_days":7},"restore_test":true}`
+	var s Settings
+	if err := json.Unmarshal([]byte(raw), &s); err != nil {
+		t.Fatal(err)
+	}
+	if !s.Local() || s.TargetKind() != KindLocal {
+		t.Fatalf("s = %v", s)
+	}
+	if err := s.Validate(localDir); err != nil {
+		t.Fatal(err)
+	}
+	creds := s.Credentials()
+	if creds.Repository != localDir || creds.Password != "pw" || creds.AccessKeyID != "" || creds.SecretAccessKey != "" || creds.Region != "" {
+		t.Fatalf("creds = %+v", creds)
+	}
+	if err := s.Validate("/mnt/backup"); err == nil || !strings.Contains(err.Error(), "LOCAL_REPO_DIR") {
+		t.Fatalf("err = %v", err)
+	}
+	cases := map[string]func(*Settings){
+		"relative":    func(s *Settings) { s.Repository = "backups/restic" },
+		"unclean":     func(s *Settings) { s.Repository = "/var/lib/../lib/olt-backup-repo" },
+		"s3 address":  func(s *Settings) { s.Repository = "s3:https://h/b" },
+		"no password": func(s *Settings) { s.Password = "" },
+	}
+	for name, mutate := range cases {
+		s := validLocal()
+		mutate(&s)
+		if err := s.Validate(localDir); err == nil {
+			t.Errorf("%s accepted", name)
+		}
+	}
+	if !strings.Contains(validLocal().String(), "kind=local") || !strings.Contains(validLocal().String(), localDir) {
+		t.Fatalf("string = %s", validLocal())
+	}
+}
+
+func TestKindDefaultsToS3AndRejectsUnknown(t *testing.T) {
+	s := valid()
+	s.Kind = ""
+	if s.Local() || s.TargetKind() != KindS3 || s.Validate(localDir) != nil {
+		t.Fatal("missing kind must behave as s3")
+	}
+	creds := s.Credentials()
+	if creds.AccessKeyID != "AKIA123" || creds.SecretAccessKey != "very-secret-key" || creds.Region != "id-jkt-1" {
+		t.Fatalf("creds = %+v", creds)
+	}
+	s.Kind = "ftp"
+	if err := s.Validate(localDir); err == nil || !strings.Contains(err.Error(), "jenis tujuan backup") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
 func valid() Settings {
 	region := "id-jkt-1"
 	return Settings{
@@ -35,7 +98,7 @@ func TestDecodesTheContractShape(t *testing.T) {
 	if s.Revision != 3 || !s.Configured || s.Region() != "" || s.Retention.WALDays != 7 || !s.RestoreTest || s.Schedule.OffsiteMinutes != 5 {
 		t.Fatalf("s = %#v", s)
 	}
-	if err := s.Validate(); err != nil {
+	if err := s.Validate(localDir); err != nil {
 		t.Fatal(err)
 	}
 	if valid().Region() != "id-jkt-1" {
@@ -63,7 +126,7 @@ func TestValidateRejectsBadValues(t *testing.T) {
 	for name, c := range cases {
 		s := valid()
 		c.mutate(&s)
-		if err := s.Validate(); err == nil || !strings.Contains(err.Error(), c.want) {
+		if err := s.Validate(localDir); err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: err = %v", name, err)
 		}
 	}
@@ -85,7 +148,7 @@ func TestSettingsNeverPrintSecrets(t *testing.T) {
 	if !strings.Contains(logged.String(), `"revision":4`) || !strings.Contains(outputs[0], "s3:https://s3.example.com/b") {
 		t.Fatalf("outputs = %q", outputs)
 	}
-	if SafeRepository("s3:https://h/b") != "s3:https://h/b" || SafeRepository("/local") != "/local" {
+	if SafeRepository("s3:https://h/b") != "s3:https://h/b" || SafeRepository("/local") != "/local" || SafeRepository(localDir) != localDir {
 		t.Fatal("safe repository")
 	}
 }

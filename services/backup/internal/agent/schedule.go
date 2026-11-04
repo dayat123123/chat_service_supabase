@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"olt-social/backup/internal/disk"
 	"olt-social/backup/internal/restic"
 	"olt-social/backup/internal/settings"
 	"olt-social/backup/internal/state"
@@ -128,6 +129,7 @@ func (a *Agent) execute(ctx context.Context, job string) {
 func (a *Agent) ensureRepository(ctx context.Context) bool {
 	a.mu.Lock()
 	configured, dirty, ready, checked, creds := a.configured, a.repoDirty, a.repoReady, a.repoAt, a.creds
+	local := a.current.Local()
 	a.mu.Unlock()
 	if !configured {
 		return false
@@ -140,9 +142,15 @@ func (a *Agent) ensureRepository(ctx context.Context) bool {
 	}
 	repo := a.opts.Repository(creds)
 	c, cancel := context.WithTimeout(ctx, 5*time.Minute)
-	open, stopOpen := context.WithTimeout(c, a.opts.OpenTimeout)
-	err := repo.Open(open)
-	stopOpen()
+	var err error
+	if local {
+		err = a.opts.LocalCheck(creds.Repository)
+	}
+	if err == nil {
+		open, stopOpen := context.WithTimeout(c, a.opts.OpenTimeout)
+		err = repo.Open(open)
+		stopOpen()
+	}
 	created := false
 	if errors.Is(err, restic.ErrNoRepository) {
 		if err = repo.Init(c); err == nil {
@@ -169,7 +177,7 @@ func (a *Agent) ensureRepository(ctx context.Context) bool {
 		a.repoReady, a.repo, a.repoErr = false, nil, repositoryError(err)
 	} else {
 		a.repoReady, a.repo, a.repoErr = true, repo, ""
-		if a.persist.Repository != creds.Repository {
+		if a.persist.Repository != creds.Repository || created {
 			a.persist.Repository = creds.Repository
 			a.persist.NeedBase = true
 			a.persist.Offsite = state.Offsite{}
@@ -197,6 +205,10 @@ func (a *Agent) ensureRepository(ctx context.Context) bool {
 
 func repositoryError(err error) string {
 	switch {
+	case errors.Is(err, disk.ErrNotDirectory), errors.Is(err, disk.ErrNotMounted):
+		return clip("Folder repositori lokal belum di-mount ke container backup (BACKUP_LOCAL_REPO_DIR): " + err.Error())
+	case errors.Is(err, disk.ErrNotWritable):
+		return clip("Folder repositori lokal tidak bisa ditulis layanan backup; jadikan pemiliknya uid 10001: " + err.Error())
 	case errors.Is(err, restic.ErrWrongPassword):
 		return "Password enkripsi salah: repositori di alamat ini sudah ada dengan password lain"
 	case errors.Is(err, restic.ErrLocked):

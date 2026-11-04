@@ -12,7 +12,7 @@ func TestRenderExposesAllSeries(t *testing.T) {
 	out := Render(Snapshot{
 		Configured: true, RepositoryReady: true, Streaming: true, Busy: "offsite",
 		Runs:             map[string]uint64{RunKey("base", "ok"): 2, RunKey("wal", "failed"): 1},
-		ReceiverRestarts: 3, WALLocalBytes: 10, OffsitePending: 11, LocalBaseBytes: 12, DiskTotal: 100, DiskAvail: 50,
+		ReceiverRestarts: 3, WALLocalBytes: 10, OffsitePending: 11, LocalBaseBytes: 12, DiskTotal: 100, DiskAvail: 50, RepoDiskTotal: 200, RepoDiskAvail: 80,
 		LastWALReceived: at, LastBaseOK: at,
 	})
 	for _, want := range []string{
@@ -22,6 +22,7 @@ func TestRenderExposesAllSeries(t *testing.T) {
 		`backup_runs_total{kind="restore_test",status="ok"} 0`,
 		"backup_wal_receiver_restarts_total 3\n", "backup_wal_local_bytes 10\n", "backup_offsite_pending_bytes 11\n",
 		"backup_local_base_bytes 12\n", "backup_disk_total_bytes 100\n", "backup_disk_avail_bytes 50\n",
+		"backup_repository_disk_total_bytes 200\n", "backup_repository_disk_avail_bytes 80\n",
 		"backup_wal_last_received_timestamp_seconds 1800000000\n", "backup_offsite_last_success_timestamp_seconds 0\n",
 		"backup_base_last_success_timestamp_seconds 1800000000\n", "# TYPE backup_runs_total counter",
 	} {

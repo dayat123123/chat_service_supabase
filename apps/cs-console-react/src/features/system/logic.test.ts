@@ -10,10 +10,12 @@ import {
   parsePort,
   passwordMode,
   recoveredUntil,
+  repositoryDisk,
   runDuration,
   scheduleProblems,
   sentinelLive,
   stagingDisk,
+  targetKindOf,
   targetProblems,
   telegramProblems,
   usageTone,
@@ -29,6 +31,7 @@ const saved = {
 }
 
 const target = (overrides: Partial<BackupTargetInput> = {}): BackupTargetInput => ({
+  kind: 's3',
   endpoint: 'https://s3.example.co.id/',
   bucket: 'OLT-Backup',
   prefix: '/prod/',
@@ -146,6 +149,68 @@ describe('backup target', () => {
       password: 'required',
       confirm: 'mismatch',
     })
+  })
+})
+
+describe('local folder target', () => {
+  const local = { ...target(), kind: 'local' as const, endpoint: '', bucket: '', accessKeyId: '' }
+  const savedLocal = {
+    kind: 'local' as const,
+    endpoint: null,
+    bucket: null,
+    prefix: null,
+    password_set: true,
+    secret_set: false,
+  }
+
+  it('needs only the encryption password, not the S3 fields', () => {
+    const fresh = { ...savedLocal, password_set: false }
+    expect(targetProblems(local, { confirm: '', acknowledged: false }, fresh)).toEqual({
+      password: 'required',
+      acknowledged: 'required',
+    })
+    expect(
+      targetProblems(
+        { ...local, password: 'password-backup-panjang' },
+        { confirm: 'password-backup-panjang', acknowledged: true },
+        fresh,
+      ),
+    ).toEqual({})
+  })
+
+  it('locks the password of the same folder and treats a kind switch as a new repository', () => {
+    expect(passwordMode(savedLocal, local)).toBe('locked')
+    expect(targetProblems(local, { confirm: '', acknowledged: false }, savedLocal)).toEqual({})
+    expect(passwordMode(saved, local)).toBe('new_repository')
+    expect(passwordMode(savedLocal, target())).toBe('new_repository')
+  })
+
+  it('asks for the S3 secret again when moving from the local folder to S3', () => {
+    expect(
+      targetProblems(
+        target({ password: 'password-backup-panjang' }),
+        { confirm: 'password-backup-panjang', acknowledged: true },
+        { ...savedLocal, secret_set: true },
+      ),
+    ).toEqual({ secretAccessKey: 'required' })
+  })
+
+  it('reads the kind with s3 as the fallback and the local repository disk', () => {
+    expect(targetKindOf({})).toBe('s3')
+    expect(targetKindOf({ kind: 'local' })).toBe('local')
+    expect(
+      repositoryDisk({
+        summary: {
+          configured: true,
+          target: null,
+          live: true,
+          last_base: null,
+          last_files: null,
+          last_restore_test: null,
+          state: { repository_disk: { total_bytes: 200, avail_bytes: 50 } },
+        },
+      }),
+    ).toEqual({ total: 200, avail: 50, used: 0.75 })
   })
 })
 

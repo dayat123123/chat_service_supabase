@@ -148,7 +148,7 @@ Isi di `docker/.env`:
 ```bash
 PROXY_DOMAIN=social-api-dev.<domain>
 SUPABASE_PUBLIC_URL=https://social-api-dev.<domain>
-API_EXTERNAL_URL=https://social-api-dev.<domain>
+API_EXTERNAL_URL=https://social-api-dev.<domain>/auth/v1
 ACME_EMAIL=<email tim IT>                    # notifikasi sertifikat Let's Encrypt
 ```
 

@@ -156,8 +156,10 @@ postingan yang memuat `$KODE` (komentar dan pesan room tidak dihitung). Sinyal (
 Hasil di `cs.manipulation_alerts` (`stock`, `kind`, `score`, `evidence`, `status` open/reviewed/dismissed,
 `auto_actions`); satu alert terbuka per saham + jenis (deteksi ulang memperbarui bukti). Aksi otomatis:
 
-- slow mode room saham `manipulation.auto_slow_mode_seconds` (30 dtk) selama
-  `manipulation.auto_slow_mode_minutes` (60 menit), tidak menimpa slow mode manual;
+- slow mode room saham `manipulation.auto_slow_mode_seconds` (10 dtk) selama
+  `manipulation.auto_slow_mode_minutes` (60 menit), tidak menimpa slow mode manual. Sejak `0110` slow mode
+  otomatis paling ketat sama dengan `rooms.busy_slow_mode` (10 dtk bila jam ramai dimatikan), agar saham yang ramai
+  secara wajar tidak tertahan lebih ketat dari jam ramai. Slow mode yang lebih ketat dinyalakan moderator secara manual;
 - posting mirip terkoordinasi ditahan (`held`) dan tercatat dengan id alert.
 
 Moderator meninjau (`reviewed`) atau menolak (`dismissed`). Menolak alert melepas posting yang ditahan

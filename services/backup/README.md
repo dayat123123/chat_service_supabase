@@ -1,8 +1,8 @@
 # backup
 
-Backup PostgreSQL berkelanjutan dengan pemulihan ke titik waktu (PITR), ditambah backup file Storage, ke repositori [restic](https://restic.net) di S3 (atau layanan S3-compatible) yang terenkripsi. Seminggu sekali layanan ini memulihkan backup terbaru ke PostgreSQL sementara dan menghitung isi beberapa tabel penting, jadi kita tahu backup benar-benar bisa dipakai, bukan sekadar ada.
+Backup PostgreSQL berkelanjutan dengan pemulihan ke titik waktu (PITR), ditambah backup file Storage, ke repositori [restic](https://restic.net) terenkripsi di S3 (atau layanan S3-compatible), atau di folder lokal server (`LOCAL_REPO_DIR`) bila S3 belum ada. Seminggu sekali layanan ini memulihkan backup terbaru ke PostgreSQL sementara dan menghitung isi beberapa tabel penting, jadi kita tahu backup benar-benar bisa dipakai, bukan sekadar ada.
 
-Orkestratornya ditulis dengan standard library Go saja. Ia menjalankan `pg_receivewal`, `pg_basebackup`, `pg_verifybackup`, `postgres`/`pg_ctl` 17, `psql`, dan `restic` sebagai proses anak. Pengaturan (tujuan S3, password enkripsi, jadwal, retensi) dikelola Super Admin dari web CS dan dibaca lewat RPC `backup_config`. Tidak ada kredensial backup yang disimpan di file server.
+Orkestratornya ditulis dengan standard library Go saja. Ia menjalankan `pg_receivewal`, `pg_basebackup`, `pg_verifybackup`, `postgres`/`pg_ctl` 17, `psql`, dan `restic` sebagai proses anak. Pengaturan (jenis tujuan S3/folder lokal, kredensial S3, password enkripsi, jadwal, retensi) dikelola Super Admin dari web CS dan dibaca lewat RPC `backup_config`. Tidak ada kredensial backup yang disimpan di file server.
 
 ## Arsitektur
 
@@ -14,7 +14,7 @@ db (supabase/postgres, tidak diubah)
                                 │ pg_verifybackup
 /mnt/storage (read-only) ───────┤
                                 ▼
-                 restic backup --tag base|files|wal ──► s3:https://host/bucket/prefix (AES-256, dedup, zstd)
+                 restic backup --tag base|files|wal ──► s3:https://host/bucket/prefix  atau  /var/lib/olt-backup-repo (AES-256, dedup, zstd)
 ```
 
 Kenapa susunan ini:
@@ -97,15 +97,16 @@ Saat repositori pertama kali dibuat di bucket yang belum ada, `restic cat config
 | `PGDATABASE` | `postgres` | Untuk query status slot dan ukuran database |
 | `DATA_DIR` | `/var/lib/olt-backup` | Volume staging (lihat tabel di atas) |
 | `STORAGE_DIR` | `/mnt/storage` | Volume file Storage, di-mount read-only |
+| `LOCAL_REPO_DIR` | `/var/lib/olt-backup-repo` | Folder repositori untuk tujuan `local`. Harus sama dengan path dari `backup_config` (`cs.backup_local_repository()`), harus volume/bind mount terpisah (bukan folder di filesystem container) dan bisa ditulis uid 10001. Compose me-mount `BACKUP_LOCAL_REPO_DIR` (bawaan `../backups/restic`) ke sini |
 | `CONFIG_POLL` | `15s` | Interval cek revisi pengaturan (`backup_config(p_revision)`, 1s–10m) |
 | `HEARTBEAT_INTERVAL` | `30s` | 5s–60s; heartbeat juga dikirim segera saat keadaan berubah |
 | `REQUEST_TIMEOUT` | `10s` | Batas waktu RPC dan query status (1s–2m) |
 | `RESTORE_TEST_TIMEOUT` | `2h` | Batas waktu satu uji restore (5m–24h) |
 | `SHUTDOWN_TIMEOUT` | `60s` | Waktu menunggu proses anak berhenti saat SIGTERM (5s–10m) |
 
-Password database, password restic, dan secret S3 hanya diteruskan ke proses anak lewat environment (`PGPASSWORD`, `RESTIC_PASSWORD`, `AWS_SECRET_ACCESS_KEY`), tidak pernah lewat argumen. Proses anak tidak mewarisi environment layanan (hanya daftar variabel yang dibutuhkan). Semua keluaran proses anak yang masuk log, heartbeat, atau catatan pekerjaan disaring: nilai variabel rahasia dan kredensial di URL diganti `[redacted]`. Pengaturan dari database tidak pernah ditulis utuh ke log (hanya revisi dan alamat repositori).
+Password database, password restic, dan secret S3 hanya diteruskan ke proses anak lewat environment (`PGPASSWORD`, `RESTIC_PASSWORD`, `AWS_SECRET_ACCESS_KEY`), tidak pernah lewat argumen. Untuk tujuan `local` variabel `AWS_*` tidak disetel sama sekali. Proses anak tidak mewarisi environment layanan (hanya daftar variabel yang dibutuhkan). Semua keluaran proses anak yang masuk log, heartbeat, atau catatan pekerjaan disaring: nilai variabel rahasia dan kredensial di URL diganti `[redacted]`. Pengaturan dari database tidak pernah ditulis utuh ke log (hanya revisi dan alamat repositori).
 
-Pengaturan dibaca dengan revisi: bila revisi sama, database hanya menjawab `unchanged`. Bila tujuan atau kredensial berubah, repositori dibuka ulang (`restic cat config`, lalu `restic init` bila belum ada; bucket yang belum ada ikut dibuat), dan `restic unlock` membersihkan kunci basi. Password yang salah untuk repositori yang sudah ada tampil sebagai error, repositori **tidak** di-init ulang. Pindah ke repositori lain memicu base dan backup file baru. Bila backup dimatikan dari web (`configured=false`), streaming berhenti dan slot `olt_backup` dihapus supaya database tidak lagi menahan WAL.
+Pengaturan dibaca dengan revisi: bila revisi sama, database hanya menjawab `unchanged`. `backup_config` berisi `kind` (`s3` atau `local`); untuk `local`, `repository` = `/var/lib/olt-backup-repo` dan `s3` = `null`. Sebelum membuka repositori lokal, layanan memeriksa folder itu ada, merupakan mount terpisah (device berbeda dari folder induknya; tanpa mount, data akan hilang saat container dibuat ulang), dan bisa ditulis; bila tidak, alasannya tampil sebagai error repositori. Repositori yang baru dibuat (`restic init`) selalu memicu base dan backup file baru, juga bila path-nya sama (mis. folder lokal dikosongkan atau diganti disk baru). Bila tujuan atau kredensial berubah, repositori dibuka ulang (`restic cat config`, lalu `restic init` bila belum ada; bucket yang belum ada ikut dibuat), dan `restic unlock` membersihkan kunci basi. Password yang salah untuk repositori yang sudah ada tampil sebagai error, repositori **tidak** di-init ulang. Pindah ke repositori lain memicu base dan backup file baru. Bila backup dimatikan dari web (`configured=false`), streaming berhenti dan slot `olt_backup` dihapus supaya database tidak lagi menahan WAL.
 
 ## Heartbeat dan catatan
 
@@ -124,6 +125,7 @@ Pengaturan dibaca dengan revisi: bila revisi sama, database hanya menjawab `unch
 | `offsite.pending_bytes` | Ukuran file WAL yang berubah sejak awal kiriman terakhir yang berhasil (segmen `.partial` dihitung penuh 16 MB) |
 | `local_base` | Label, waktu selesai, dan ukuran base lokal |
 | `disk` | `statfs` `DATA_DIR` |
+| `repository_disk` | `statfs` `LOCAL_REPO_DIR`, hanya untuk tujuan `local` |
 | `busy` | Pekerjaan yang sedang berjalan |
 | `error` | Pengaturan tidak valid (mis. secret Vault tidak bisa dibuka) atau repositori tidak bisa dibuka |
 
@@ -142,7 +144,7 @@ Database menandai status layanan `error` bila `error` atau `wal.error` terisi. C
 
 ## Prosedur pemulihan
 
-**Simpan offline (Super Admin):** password enkripsi restic, access key dan secret S3, alamat repositori (`s3:https://host/bucket/prefix`). Tanpa password restic backup **tidak bisa dibuka oleh siapa pun**; password tersimpan di Vault database, yang justru ikut hilang bila server hilang. Untuk pemulihan ke server baru simpan juga salinan `docker/secrets/` dan `docker/.env` (password role database di backup harus cocok dengan secret yang dipakai layanan lain).
+**Simpan offline (Super Admin):** password enkripsi restic, access key dan secret S3, alamat repositori (`s3:https://host/bucket/prefix`, atau path `BACKUP_LOCAL_REPO_DIR` di server untuk tujuan lokal beserta salinannya di luar server). Tanpa password restic backup **tidak bisa dibuka oleh siapa pun**; password tersimpan di Vault database, yang justru ikut hilang bila server hilang. Untuk pemulihan ke server baru simpan juga salinan `docker/secrets/` dan `docker/.env` (password role database di backup harus cocok dengan secret yang dipakai layanan lain).
 
 Lihat titik pemulihan yang tersedia:
 
@@ -150,12 +152,22 @@ Lihat titik pemulihan yang tersedia:
 make backup-snapshots          # .\make.ps1 backup-snapshots
 ```
 
-Perintah ini membaca kredensial dari database lewat layanan backup. Bila database sudah mati, isi env `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` (atau `RESTIC_PASSWORD_FILE`), `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` (bila perlu). Keluaran berisi rentang `--target-time` yang bisa dipakai.
+Perintah ini membaca kredensial dari database lewat layanan backup (tujuan lokal ikut terbaca karena folder `BACKUP_LOCAL_REPO_DIR` di-mount ke container). Bila database sudah mati, isi env `RESTIC_REPOSITORY`, `RESTIC_PASSWORD` (atau `RESTIC_PASSWORD_FILE`), dan untuk S3 juga `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION` (bila perlu); target make meneruskannya ke container. Keluaran berisi rentang `--target-time` yang bisa dipakai.
+
+**Repositori lokal:** isi `RESTIC_REPOSITORY` dengan path folder di server, tanpa `AWS_*`:
+
+```sh
+export RESTIC_REPOSITORY=/mnt/backup/restic RESTIC_PASSWORD_FILE=/aman/password-backup   # dev: backups/restic
+make backup-snapshots
+make restore-pitr AT=latest CONFIRM=yes
+```
+
+Windows: `$env:RESTIC_REPOSITORY = 'backups\restic'` lalu `.\make.ps1 backup-snapshots` / `.\make.ps1 restore-pitr -At latest -Yes`. Semua nilai yang tidak diawali skema restic (`s3:`, `sftp:`, `rest:`, ...) dianggap folder lokal: folder itu harus berisi file `config` restic, di-mount ke `/var/lib/olt-backup-repo` di container sekali-pakai, dan `RESTIC_REPOSITORY` di dalam container diisi path itu. Salinan di disk eksternal (hasil `restic copy` atau salinan folder) dipulihkan dengan cara yang sama.
 
 ### A. Server yang sama (salah hapus data, korupsi)
 
 1. Pilih waktu target sebelum kejadian, format RFC3339 dengan zona, mis. `2026-11-03T10:15:00+07:00`, atau `latest` untuk WAL terbaru.
-2. Isi env kredensial di atas pada shell (jangan ditulis ke file di repo).
+2. Isi env kredensial di atas pada shell (jangan ditulis ke file di repo). Untuk repositori lokal cukup `RESTIC_REPOSITORY=<folder>` dan password.
 3. Jalankan `make restore-pitr AT=2026-11-03T10:15:00+07:00 CONFIRM=yes` (Windows: `.\make.ps1 restore-pitr -At 2026-11-03T10:15:00+07:00 -Yes`). Target ini:
    1. menghentikan seluruh stack;
    2. menjalankan `backup restore --target-time ... --data-dir /restore --wipe` sebagai root di container sekali-pakai dengan volume `db-data` di `/restore`. Perintah ini menolak bila `postmaster.pid` masih ada, memilih base terbaru **sebelum** waktu target dan kiriman WAL pertama **sesudahnya**, mengosongkan data dir, me-restore base dan WAL ke `restore_wal/`, memeriksa rantai WAL, menjalankan `pg_verifybackup`, menambahkan `restore_command`, `recovery_target_time`, `recovery_target_action='promote'` ke `postgresql.auto.conf`, membuat `recovery.signal`, lalu mengubah pemilik ke `100:101` (user `postgres` image Supabase) dengan mode `0700`;
@@ -166,13 +178,13 @@ Perintah ini membaca kredensial dari database lewat layanan backup. Bila databas
 
 Bila log database berisi `recovery ended before configured recovery target was reached`, tidak ada transaksi yang tercatat setelah waktu target (database sepi). Ulangi dengan `AT=latest`; hasilnya sama.
 
-Langkah manual yang setara (tanpa make; `docker compose` dengan file `-f` sesuai profil seperti di Makefile):
+Langkah manual yang setara (tanpa make; `docker compose` dengan file `-f` sesuai profil seperti di Makefile). Untuk repositori lokal ganti `-e RESTIC_REPOSITORY` dengan `-v /mnt/backup/restic:/var/lib/olt-backup-repo -e RESTIC_REPOSITORY=/var/lib/olt-backup-repo` dan buang `-e AWS_*`:
 
 ```sh
 docker compose stop
 docker run --rm --user 0:0 --network olt-social_egress \
   -e RESTIC_REPOSITORY -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
-  -v olt-social_db-data:/restore olt-social/backup:0.1.0 \
+  -v olt-social_db-data:/restore olt-social/backup:0.2.0 \
   restore --target-time 2026-11-03T10:15:00+07:00 --data-dir /restore --wipe
 docker compose up -d db
 until docker compose exec -T db pg_isready -U postgres -h localhost -q; do sleep 5; done
@@ -191,7 +203,7 @@ Langkah ini sudah diuji dengan image `supabase/postgres:17.6.1.136` (container s
 2. `make up` sekali agar semua volume dibuat compose, lalu jalankan langkah A.2–A.4 dengan `AT=latest` (atau waktu tertentu). Isi `db-data` hasil inisialisasi diganti hasil restore.
 3. **Kunci Vault tidak ikut backup.** Kunci akar pgsodium/Vault ada di volume `db-config` (`/etc/postgresql-custom/pgsodium_root.key`), bukan di data dir, jadi server baru punya kunci lain dan semua secret Vault dari backup tidak bisa dibuka. Setelah pemulihan:
    - unggah ulang kunci Firebase dari web CS (**Pengaturan → Push notification**);
-   - isi ulang secret access key dan password enkripsi **yang sama** untuk lokasi yang sama dari web CS (**Kesehatan sistem → Backup**). Selama rahasia lama tidak terbaca, web mengizinkan password diisi ulang untuk repositori yang sama (migrasi `0067`, audit `password_recovered`). Sampai itu dilakukan, `backup_config` menjawab `configured=false` + `problem=secret_unreadable` dan muncul alert kritis `backup:secret`;
+   - isi ulang secret access key (S3) dan password enkripsi **yang sama** untuk lokasi yang sama dari web CS (**Kesehatan sistem → Backup**). Selama rahasia lama tidak terbaca, web mengizinkan password diisi ulang untuk repositori yang sama (migrasi `0067`, audit `password_recovered`). Sampai itu dilakukan, `backup_config` menjawab `configured=false` + `problem=secret_unreadable` dan muncul alert kritis `backup:secret`;
    - isi ulang token Telegram / password SMTP di **Kesehatan sistem → Alert** (alert `alerts:secret`).
 4. Bila `docker/secrets/` tidak bisa dikembalikan, password role database di hasil restore tidak cocok dengan secret baru; setel ulang password role (`postgres`, `authenticator`, `supabase_*`, `olt_backup`) lewat `psql -U supabase_admin` di container `db` agar sama dengan isi `docker/secrets/`.
 
@@ -212,6 +224,7 @@ Langkah ini sudah diuji dengan image `supabase/postgres:17.6.1.136` (container s
 | `backup_offsite_pending_bytes` | gauge | WAL yang berubah sejak kiriman terakhir yang berhasil |
 | `backup_local_base_bytes` | gauge | Ukuran base lokal |
 | `backup_disk_total_bytes` / `backup_disk_avail_bytes` | gauge | Disk staging |
+| `backup_repository_disk_total_bytes` / `backup_repository_disk_avail_bytes` | gauge | Disk repositori lokal (0 untuk S3) |
 | `backup_wal_last_received_timestamp_seconds` | gauge | Waktu Unix WAL terakhir ditulis |
 | `backup_offsite_last_success_timestamp_seconds` | gauge | Kiriman WAL terakhir yang berhasil |
 | `backup_base_last_success_timestamp_seconds` | gauge | Base terakhir yang berhasil |

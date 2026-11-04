@@ -43,7 +43,7 @@ services:
 
   traefik:
     <<: *base
-    image: traefik:v3.7.15@sha256:0f6150202bc1fed72a7bd2107460eaa510e5b8a905f3fdb5b84f2c8619c33368
+    image: traefik:v3.7.16@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
     user: "65532:65532"
     networks: [edge, egress]
     depends_on:
@@ -111,7 +111,7 @@ services:
 
   kong:
     <<: *base
-    image: kong/kong:3.9.3@sha256:9a2ae6699a2ce0d60592eb176555d3594a22782c20cc6557a61ff3a7e8b559a3
+    image: kong/kong:3.9.4@sha256:da2afeecfec0561dd2e06612b09c6283d79245a0387acdc3715271dbf5691a05
     networks: [edge, app]
     depends_on:
       migrate:
@@ -269,7 +269,7 @@ services:
 
   realtime:
     <<: *base
-    image: supabase/realtime:v2.143.3@sha256:768b559241dd234c4e8852c5c0f504e598b80f1df2ad4dd78d5486fbed2f17a2
+    image: supabase/realtime:v2.148.6@sha256:d18b6f4c54413ca6536531befc84663d96435e55efbbfb124dfb82e30e8240dc
     networks:
       app:
         # Realtime menurunkan tenant id dari hostname (realtime-dev); Kong memakai nama ini.
@@ -334,7 +334,7 @@ services:
 
   storage:
     <<: *base
-    image: supabase/storage-api:v1.81.0@sha256:98ffec5d0678803783c30e404c27f4ec65e97efbe014088f2a86b4b8b54b9f54
+    image: supabase/storage-api:v1.84.32@sha256:2575a2b7b741feb6eab98089dd60127955ad18c0abe760214653ea2cbcbf7209
     user: "1000:1000"
     networks: [app, data]
     depends_on:
@@ -453,7 +453,7 @@ services:
   # Dashboard admin. Profil single/cluster: mati secara default (profile `admin`).
   studio:
     <<: *base
-    image: supabase/studio:2026.10.12-sha-3699278@sha256:948770ec467f00e6ae34c35018ef7cb23d7b30eb806b42c2cc0d7bcfdcf8a7a8
+    image: supabase/studio:2026.10.26-sha-478bd88@sha256:b733f739a7d41bf33c86f52dffbddde6b9dee82f9aa451811cdb62709ea9e88b
     user: "1000:1000"
     networks: [app]
     depends_on:
@@ -505,7 +505,7 @@ services:
 
   functions:
     <<: *base
-    image: supabase/edge-runtime:v1.77.4@sha256:ad45164b7548bf5820ed7be714789c17ac2865edce79a09cfb4c3756c3d365a8
+    image: supabase/edge-runtime:v1.77.9@sha256:6b850a2ccf0bf50ecac9accff8098095cd191c389c2a53c59b857aa0f53a8343
     user: "65534:65534"
     # egress: unduh dependensi Deno (import remote) saat fungsi pertama kali jalan.
     networks: [app, egress]
@@ -547,7 +547,7 @@ services:
 
   db:
     <<: *base
-    image: supabase/postgres:17.6.1.136@sha256:f371b5f3f2ac0a05703f33d6e6134515fb2498cab708fb948a0aeb7481467c00
+    image: supabase/postgres:17.11.0.008@sha256:fef2654e52424e2748b1cd6763b73afcb2618c6ec696bd3af5ad572687be1dc7
     networks: [data]
     # Entrypoint mulai sebagai root, menyiapkan direktori, lalu turun ke user postgres.
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
@@ -938,15 +938,15 @@ services:
       resources:
         limits: {cpus: "1", memory: 384M, pids: 64}
 
-  # Backup PostgreSQL (PITR) + file Storage ke repositori restic di S3 (services/backup, docs/backup):
-  # pg_receivewal lewat slot olt_backup + pg_basebackup harian + uji restore mingguan. Tujuan S3,
-  # password enkripsi, dan jadwal diatur Super Admin dari web CS (Kesehatan sistem -> Backup).
-  # Koneksi replikasi langsung ke Postgres (tidak bisa lewat PgBouncer).
+  # Backup PostgreSQL (PITR) + file Storage ke repositori restic (services/backup, docs/backup):
+  # pg_receivewal lewat slot olt_backup + pg_basebackup harian + uji restore mingguan. Tujuan (S3 atau
+  # folder lokal BACKUP_LOCAL_REPO_DIR), password enkripsi, dan jadwal diatur Super Admin dari web CS
+  # (Kesehatan sistem -> Backup). Koneksi replikasi langsung ke Postgres (tidak bisa lewat PgBouncer).
   backup:
     <<: *base
     build:
       context: ../services/backup
-    image: olt-social/backup:0.1.0
+    image: olt-social/backup:0.2.0
     # Hostname tetap agar restic mengenali lock basi miliknya sendiri setelah restart.
     hostname: backup
     networks: [data, app, egress]
@@ -972,9 +972,12 @@ services:
       PGPASSWORD_FILE: /run/secrets/backup_db_password
       DATA_DIR: /var/lib/olt-backup
       STORAGE_DIR: /mnt/storage
+      LOCAL_REPO_DIR: /var/lib/olt-backup-repo
     volumes:
       - backup-data:/var/lib/olt-backup
       - storage-data:/mnt/storage:ro
+      # Repositori restic untuk tujuan "Folder lokal di server"; dipakai hanya bila tujuan itu dipilih.
+      - ${BACKUP_LOCAL_REPO_DIR:-../backups/restic}:/var/lib/olt-backup-repo
     healthcheck:
       test: ["CMD", "/usr/local/bin/backup", "healthcheck"]
       interval: 10s
@@ -1085,13 +1088,14 @@ services:
       - db-data:/mnt/disks/db:ro
       - storage-data:/mnt/disks/storage:ro
       - backup-data:/mnt/disks/backup:ro
+      - ${BACKUP_LOCAL_REPO_DIR:-../backups/restic}:/mnt/disks/backup-repo:ro
     environment:
       PORT: 8080
       LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
       PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
-      DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup
+      DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup,backup-repo=/mnt/disks/backup-repo
       # Metrik untuk alert pool PostgREST, laju event Realtime (JWT dari jwt_secret = METRICS_JWT_SECRET),
       # dan antrean PgBouncer (SHOW POOLS sebagai olt_stats). services/sentinel/README.md.
       METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://rest:3001/metrics,realtime=jwt+http://realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@pgbouncer:6432}

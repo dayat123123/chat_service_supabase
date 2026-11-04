@@ -132,6 +132,7 @@ type Report struct {
 	Offsite         OffsiteReport `json:"offsite"`
 	LocalBase       LocalBase     `json:"local_base"`
 	Disk            Disk          `json:"disk"`
+	RepositoryDisk  *Disk         `json:"repository_disk,omitempty"`
 	Busy            *string       `json:"busy"`
 	Error           *string       `json:"error"`
 }

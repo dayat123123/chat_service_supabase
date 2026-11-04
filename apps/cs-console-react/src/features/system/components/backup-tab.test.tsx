@@ -64,6 +64,18 @@ const configured: BackupConfig = {
   updated_by: 'Sinta',
 }
 
+const localConfig: BackupConfig = {
+  ...emptyConfig,
+  configured: true,
+  revision: 2,
+  kind: 'local',
+  local_repository: '/var/lib/olt-backup-repo',
+  password_set: true,
+  password_set_at: '2026-11-04T03:00:00.000Z',
+  configured_at: '2026-11-04T03:00:00.000Z',
+  updated_by: 'Sinta',
+}
+
 function overview(overrides: Partial<BackupOverview> = {}): BackupOverview {
   return {
     config: emptyConfig,
@@ -184,6 +196,7 @@ describe('BackupTab', () => {
 
     await waitFor(() =>
       expect(systemApi.setBackupTarget).toHaveBeenCalledWith({
+        kind: 's3',
         endpoint: 'https://s3.example.co.id',
         bucket: 'olt-backup',
         prefix: '',
@@ -244,6 +257,86 @@ describe('BackupTab', () => {
       expect(systemApi.setBackupTarget).toHaveBeenCalledWith(
         expect.objectContaining({ accessKeyId: 'AKIA456', secretAccessKey: '', password: '' }),
       ),
+    )
+  })
+
+  it('sets up a local folder target with only the encryption password and warns about the risk', async () => {
+    const user = userEvent.setup()
+    vi.mocked(systemApi.backup).mockResolvedValue(overview())
+    vi.mocked(systemApi.setBackupTarget).mockResolvedValue({ ...localConfig, revision: 1 })
+    renderWithProviders(
+      <>
+        <BackupTab />
+        <Toaster />
+      </>,
+      monitorFixture,
+    )
+
+    expect(await screen.findByLabelText('Endpoint S3')).toBeInTheDocument()
+    expect(screen.queryByText('Backup hanya tersimpan di server ini')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: /Folder lokal di server/ }))
+
+    expect(screen.queryByLabelText('Endpoint S3')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Secret access key')).not.toBeInTheDocument()
+    expect(screen.getByText(/\/var\/lib\/olt-backup-repo dalam container backup/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Backup hanya tersimpan di server ini' })).toBeInTheDocument()
+    expect(screen.getByText(/disk terpisah dari disk database/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Simpan tujuan' }))
+    expect(screen.getByText('Isi password enkripsi.')).toBeInTheDocument()
+    expect(screen.queryByText('Isi endpoint S3.')).not.toBeInTheDocument()
+    expect(systemApi.setBackupTarget).not.toHaveBeenCalled()
+
+    await user.type(screen.getByLabelText('Password enkripsi'), PASSWORD)
+    await user.type(screen.getByLabelText('Ulangi password enkripsi'), PASSWORD)
+    await user.click(screen.getByRole('checkbox', { name: /Saya sudah menyimpan password ini/ }))
+    await user.click(screen.getByRole('button', { name: 'Simpan tujuan' }))
+
+    await waitFor(() =>
+      expect(systemApi.setBackupTarget).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'local', password: PASSWORD, secretAccessKey: '' }),
+      ),
+    )
+    expect(await screen.findAllByText(/Tujuan backup disimpan/)).not.toHaveLength(0)
+    expect(systemApi.setBackupTarget).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows the local folder warning, target, and repository disk once the local folder is used', async () => {
+    vi.mocked(systemApi.backup).mockResolvedValue(
+      overview({
+        config: localConfig,
+        summary: {
+          configured: true,
+          kind: 'local',
+          target: '/var/lib/olt-backup-repo',
+          live: true,
+          state: {
+            repository_ready: true,
+            wal: { streaming: true },
+            disk: { total_bytes: 200 * 1024 ** 3, avail_bytes: 150 * 1024 ** 3 },
+            repository_disk: { total_bytes: 400 * 1024 ** 3, avail_bytes: 100 * 1024 ** 3 },
+          },
+          last_base: null,
+          last_files: null,
+          last_restore_test: null,
+        },
+      }),
+    )
+    renderWithProviders(<BackupTab />, monitorFixture)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Backup hanya tersimpan di server ini' }),
+    ).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { name: 'Backup hanya tersimpan di server ini' })).toHaveLength(1)
+    expect(screen.getByText('Folder lokal: /var/lib/olt-backup-repo')).toBeInTheDocument()
+    expect(screen.getByRole('meter', { name: 'Disk repositori lokal' })).toHaveAttribute(
+      'aria-valuenow',
+      '75',
+    )
+    expect(screen.getByRole('radio', { name: /Folder lokal di server/ })).toBeChecked()
+    expect(screen.queryByLabelText('Endpoint S3')).not.toBeInTheDocument()
+    expect(screen.getByText(/Password enkripsi repositori ini tersimpan sejak/)).toHaveTextContent(
+      'Password tidak bisa diganti untuk repositori yang sudah ada.',
     )
   })
 

@@ -150,8 +150,9 @@ services:
       placement:
         constraints: [node.labels.olt.db == primary]
   # File storage cluster ada di SeaweedFS (S3); backup restic di sini hanya untuk database.
+  # Tujuan "Folder lokal" di cluster: isi BACKUP_LOCAL_REPO_DIR dengan path absolut di node DB.
   backup:
-    image: ${REGISTRY}/olt-social/backup:0.1.0
+    image: ${REGISTRY}/olt-social/backup:0.2.0
     deploy:
       <<: *deploy
       replicas: 1

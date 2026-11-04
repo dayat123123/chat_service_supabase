@@ -48,7 +48,7 @@ HOST_IDS="$(id -u):$(id -g)"
 SRC_RO=(--mount "type=bind,source=$ROOT,target=/src,readonly")
 PKG_DIR="${PKG:-../rendezvous_community}"
 PKG_RO=()
-[ -d "$PKG_DIR" ] && PKG_RO=(--mount "type=bind,source=$(cd "$PKG_DIR" && { pwd -W 2>/dev/null || pwd; }),target=/src/rendezvous_community,readonly")
+[ -d "$PKG_DIR" ] && PKG_RO=(--mount "type=bind,source=$(cd "$PKG_DIR" && { pwd -W 2>/dev/null || pwd; }),target=/pkg/rendezvous_community,readonly")
 DOCKER_SOCK=(-v /var/run/docker.sock:/var/run/docker.sock)
 
 errors=0
@@ -117,7 +117,7 @@ scan_npm() {
 scan_osv() {
   local args=() f fmt rc
   for f in rendezvous_community/pubspec.lock rendezvous_community/example/pubspec.lock; do
-    [ -f "$PKG_DIR/${f#rendezvous_community/}" ] && args+=(-L "/src/$f")
+    [ -f "$PKG_DIR/${f#rendezvous_community/}" ] && args+=(-L "/pkg/$f")
   done
   for f in apps/cs-console-react/package-lock.json services/*/go.mod scripts/check-go-comments/go.mod; do
     [ -f "$f" ] && args+=(-L "/src/$f")
@@ -332,14 +332,14 @@ function osvSection() {
   if (!j) { say('ERR: osv.json tidak terbaca'); say(); return; }
   const scanned = new Map();
   for (const l of lines(path.join(OUT, 'osv', 'osv-json.log'))) {
-    const m = l.match(/^Scanned \/src\/(\S+) file and found (\d+) package/);
+    const m = l.match(/^Scanned \/(?:src|pkg)\/(\S+) file and found (\d+) package/);
     if (m) scanned.set(m[1], m[2]);
   }
   const rows = [];
   const details = [];
   const seenSrc = new Set();
   for (const r of j.results || []) {
-    const src = (r.source?.path || '').replace(/^\/?src\//, '');
+    const src = (r.source?.path || '').replace(/^\/?(?:src|pkg)\//, '');
     seenSrc.add(src);
     const isGo = src.endsWith('go.mod');
     const c = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, UNKNOWN: 0 };

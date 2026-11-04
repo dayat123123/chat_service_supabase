@@ -69,7 +69,7 @@ Keterkiriman dihitung per sesi terhadap `count=exact` pesan room di jendela sesi
 
 Di `steps.tsv` keduanya menjadi kolom `rt_win_pct` dan `eventual_pct`. Akhir sesi disebar 0–10 detik (`END_SPREAD`) agar ratusan VU tidak menghitung serentak. Sesi yang hitungannya gagal tidak dihitung (`count_failed`).
 
-Postingan memakai kode `$LTPOST`, bukan `$LTHOT`. Deteksi manipulasi pasar (`cs.detect_manipulation`, tiap 5 menit) akan membuka alert dan slow mode 30 detik untuk kode yang mendadak ramai dari akun baru. Itu perilaku yang benar, tetapi bila kode yang sama dipakai untuk room uji, kapasitas chat ikut terhambat. Lihat laporan.
+Postingan memakai kode `$LTPOST`, bukan `$LTHOT`. Deteksi manipulasi pasar (`cs.detect_manipulation`, tiap 5 menit) akan membuka alert dan slow mode otomatis (paling ketat sama dengan jam ramai, 10 detik) untuk kode yang mendadak ramai dari akun baru. Itu perilaku yang benar, tetapi bila kode yang sama dipakai untuk room uji, kapasitas chat ikut terhambat. Lihat laporan.
 
 `run-load.sh` menjalankan langkah VU berurutan, masing-masing dengan token baru (TTL 14 menit), lalu:
 

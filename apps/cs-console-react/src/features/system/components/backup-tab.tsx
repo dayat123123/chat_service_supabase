@@ -14,7 +14,14 @@ import { toast } from 'sonner'
 
 import { UsageBar } from '@/components/usage-bar'
 import { Button } from '@/components/ui/button'
-import { Checkbox, Switch, ToggleGroup, ToggleGroupItem } from '@/components/ui/controls'
+import {
+  Checkbox,
+  RadioGroup,
+  RadioGroupItem,
+  Switch,
+  ToggleGroup,
+  ToggleGroupItem,
+} from '@/components/ui/controls'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { QueryContent, SettingsCard } from '@/features/settings/components/settings-ui'
@@ -28,11 +35,13 @@ import {
   backupBusy,
   passwordMode,
   recoveredUntil,
+  repositoryDisk,
   runDuration,
   scheduleLimits,
   scheduleOf,
   scheduleProblems,
   stagingDisk,
+  targetKindOf,
   targetProblems,
   usageTone,
   weekdays,
@@ -47,6 +56,7 @@ import {
   type BackupRunKind,
   type BackupScheduleInput,
   type BackupTargetInput,
+  type BackupTargetKind,
 } from '../types'
 import { FieldText, SecretField, TextField, ToneBadge } from './system-ui'
 
@@ -96,15 +106,9 @@ function ServiceState({ overview }: { overview: BackupOverview }) {
   )
 }
 
-function Summary({ overview }: { overview: BackupOverview }) {
+function DiskFact({ label, disk }: { label: string; disk: ReturnType<typeof stagingDisk> }) {
   const { t } = useTranslation()
-  const { summary } = overview
-  const state = summary.state
-  const disk = stagingDisk(overview)
-  const test = summary.last_restore_test
-  const recovered = test ? recoveredUntil(test) : null
-  const wal = state?.wal
-  const diskText = disk
+  const text = disk
     ? t('system.disks.usage', {
         percent: formatPercent(disk.used),
         avail: formatBytes(disk.avail),
@@ -112,13 +116,66 @@ function Summary({ overview }: { overview: BackupOverview }) {
       })
     : ''
   return (
+    <Fact label={label}>
+      {disk ? (
+        <>
+          <span className="tabular text-xs">{text}</span>
+          <UsageBar
+            ratio={disk.used}
+            tone={usageTone(disk.used) === 'ok' ? 'accent' : usageTone(disk.used)}
+            label={label}
+            valueText={text}
+          />
+        </>
+      ) : (
+        <Muted>{t('system.backup.unknown')}</Muted>
+      )}
+    </Fact>
+  )
+}
+
+function LocalRisk({ className }: { className?: string }) {
+  const { t } = useTranslation()
+  const ids = useId()
+  return (
+    <section
+      aria-labelledby={`${ids}-title`}
+      className={cn('flex gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4', className)}
+    >
+      <TriangleAlertIcon className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden="true" />
+      <div className="flex min-w-0 flex-col gap-2 text-row">
+        <h3 id={`${ids}-title`} className="font-semibold">
+          {t('system.backup.localRisk.title')}
+        </h3>
+        <p>{t('system.backup.localRisk.body')}</p>
+        <ul className="flex list-disc flex-col gap-1 pl-5">
+          <li>{t('system.backup.localRisk.disk')}</li>
+          <li>{t('system.backup.localRisk.copy')}</li>
+          <li>{t('system.backup.localRisk.s3')}</li>
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+function Summary({ overview }: { overview: BackupOverview }) {
+  const { t } = useTranslation()
+  const { summary } = overview
+  const state = summary.state
+  const local = targetKindOf(summary) === 'local'
+  const test = summary.last_restore_test
+  const recovered = test ? recoveredUntil(test) : null
+  const wal = state?.wal
+  return (
     <dl className="grid grid-cols-1 gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-2 xl:grid-cols-3">
       <Fact label={t('system.backup.summary.service')}>
         <span className="flex flex-wrap items-center gap-2">
           <ServiceState overview={overview} />
         </span>
         {summary.target ? (
-          <span className="font-mono text-xs break-all text-muted-foreground">{summary.target}</span>
+          <span className="font-mono text-xs break-all text-muted-foreground">
+            {local ? t('system.backup.localTarget', { path: summary.target }) : summary.target}
+          </span>
         ) : null}
         {state?.error ? <span className="text-xs break-words text-destructive">{state.error}</span> : null}
       </Fact>
@@ -192,21 +249,10 @@ function Summary({ overview }: { overview: BackupOverview }) {
           <Muted>{t('system.backup.never')}</Muted>
         )}
       </Fact>
-      <Fact label={t('system.backup.summary.staging')}>
-        {disk ? (
-          <>
-            <span className="tabular text-xs">{diskText}</span>
-            <UsageBar
-              ratio={disk.used}
-              tone={usageTone(disk.used) === 'ok' ? 'accent' : usageTone(disk.used)}
-              label={t('system.backup.summary.staging')}
-              valueText={diskText}
-            />
-          </>
-        ) : (
-          <Muted>{t('system.backup.unknown')}</Muted>
-        )}
-      </Fact>
+      <DiskFact label={t('system.backup.summary.staging')} disk={stagingDisk(overview)} />
+      {local ? (
+        <DiskFact label={t('system.backup.summary.repositoryDisk')} disk={repositoryDisk(overview)} />
+      ) : null}
     </dl>
   )
 }
@@ -273,6 +319,7 @@ type TargetForm = Omit<BackupTargetInput, 'password' | 'secretAccessKey'>
 
 function targetOf(config: BackupConfig): TargetForm {
   return {
+    kind: targetKindOf(config),
     endpoint: config.endpoint ?? '',
     bucket: config.bucket ?? '',
     prefix: config.prefix ?? '',
@@ -283,6 +330,7 @@ function targetOf(config: BackupConfig): TargetForm {
 
 const targetKey = (config: BackupConfig) =>
   [
+    targetKindOf(config),
     config.endpoint,
     config.bucket,
     config.prefix,
@@ -303,6 +351,7 @@ function TargetCard({ config }: { config: BackupConfig }) {
   const [acknowledged, setAcknowledged] = useState(false)
   const [checked, setChecked] = useState(false)
   const input: BackupTargetInput = { ...form, secretAccessKey: secret.trim(), password }
+  const savedKind = targetKindOf(config)
   const mode = passwordMode(config, input)
   const problems = targetProblems(input, { confirm, acknowledged }, config)
   const shown = checked ? problems : {}
@@ -348,58 +397,98 @@ function TargetCard({ config }: { config: BackupConfig }) {
           submit()
         }}
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <TextField
-            id={`${ids}-endpoint`}
-            label={t('system.backup.fields.endpoint')}
-            value={form.endpoint}
-            placeholder="https://s3.example.co.id"
-            inputMode="url"
-            onChange={(endpoint) => update({ endpoint })}
-            error={problem('endpoint')}
-          />
-          <TextField
-            id={`${ids}-bucket`}
-            label={t('system.backup.fields.bucket')}
-            value={form.bucket}
-            onChange={(bucket) => update({ bucket })}
-            error={problem('bucket')}
-          />
-          <TextField
-            id={`${ids}-prefix`}
-            label={t('system.backup.fields.prefix')}
-            value={form.prefix}
-            placeholder="olt/prod"
-            onChange={(prefix) => update({ prefix })}
-            error={problem('prefix')}
-            hint={t('system.backup.fields.prefixHint')}
-          />
-          <TextField
-            id={`${ids}-region`}
-            label={t('system.backup.fields.region')}
-            value={form.region}
-            onChange={(region) => update({ region })}
-            error={problem('region')}
-            hint={t('system.backup.fields.optional')}
-          />
-          <TextField
-            id={`${ids}-key`}
-            label={t('system.backup.fields.accessKeyId')}
-            value={form.accessKeyId}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(accessKeyId) => update({ accessKeyId })}
-            error={problem('accessKeyId')}
-          />
-          <SecretField
-            id={`${ids}-secret`}
-            label={t('system.backup.fields.secretAccessKey')}
-            stored={config.secret_set}
-            value={secret}
-            onChange={setSecret}
-            error={problem('secretAccessKey')}
-          />
-        </div>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1.5 text-row font-medium">{t('system.backup.kind.legend')}</legend>
+          <RadioGroup
+            value={form.kind}
+            onValueChange={(kind) => update({ kind: kind as BackupTargetKind })}
+            className="grid gap-2 sm:grid-cols-2"
+          >
+            {(['s3', 'local'] as const).map((kind) => (
+              <label
+                key={kind}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-lg border p-3',
+                  form.kind === kind && 'border-primary bg-subtle',
+                )}
+              >
+                <RadioGroupItem value={kind} className="mt-0.5" aria-describedby={`${ids}-kind-${kind}`} />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-row font-medium">{t(`system.backup.kind.${kind}`)}</span>
+                  <span id={`${ids}-kind-${kind}`} className="text-xs text-muted-foreground">
+                    {t(`system.backup.kind.${kind}Hint`)}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </RadioGroup>
+        </fieldset>
+        {form.kind === 'local' ? (
+          <>
+            <p className="flex items-start gap-2 text-row">
+              <InfoIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+              <span>
+                {t('system.backup.localPath', {
+                  path: config.local_repository ?? '/var/lib/olt-backup-repo',
+                })}
+              </span>
+            </p>
+            {savedKind !== 'local' ? <LocalRisk /> : null}
+          </>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <TextField
+              id={`${ids}-endpoint`}
+              label={t('system.backup.fields.endpoint')}
+              value={form.endpoint}
+              placeholder="https://s3.example.co.id"
+              inputMode="url"
+              onChange={(endpoint) => update({ endpoint })}
+              error={problem('endpoint')}
+            />
+            <TextField
+              id={`${ids}-bucket`}
+              label={t('system.backup.fields.bucket')}
+              value={form.bucket}
+              onChange={(bucket) => update({ bucket })}
+              error={problem('bucket')}
+            />
+            <TextField
+              id={`${ids}-prefix`}
+              label={t('system.backup.fields.prefix')}
+              value={form.prefix}
+              placeholder="olt/prod"
+              onChange={(prefix) => update({ prefix })}
+              error={problem('prefix')}
+              hint={t('system.backup.fields.prefixHint')}
+            />
+            <TextField
+              id={`${ids}-region`}
+              label={t('system.backup.fields.region')}
+              value={form.region}
+              onChange={(region) => update({ region })}
+              error={problem('region')}
+              hint={t('system.backup.fields.optional')}
+            />
+            <TextField
+              id={`${ids}-key`}
+              label={t('system.backup.fields.accessKeyId')}
+              value={form.accessKeyId}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(accessKeyId) => update({ accessKeyId })}
+              error={problem('accessKeyId')}
+            />
+            <SecretField
+              id={`${ids}-secret`}
+              label={t('system.backup.fields.secretAccessKey')}
+              stored={config.secret_set && savedKind === 's3'}
+              value={secret}
+              onChange={setSecret}
+              error={problem('secretAccessKey')}
+            />
+          </div>
+        )}
         <section
           aria-labelledby={`${ids}-password-title`}
           className="flex flex-col gap-3 rounded-lg border bg-subtle p-3"
@@ -415,7 +504,9 @@ function TargetCard({ config }: { config: BackupConfig }) {
                 {config.password_set_at
                   ? t('system.backup.password.lockedSince', { time: stamp(config.password_set_at) })
                   : t('system.backup.password.locked')}{' '}
-                {t('system.backup.password.lockedHint')}
+                {form.kind === 'local'
+                  ? t('system.backup.password.lockedHintLocal')
+                  : t('system.backup.password.lockedHint')}
               </span>
             </p>
           ) : (
@@ -691,6 +782,7 @@ export function BackupTab() {
     <QueryContent query={overview}>
       {(data) => (
         <div className="flex flex-col gap-5">
+          {targetKindOf(data.config) === 'local' && data.config.configured ? <LocalRisk /> : null}
           <Summary overview={data} />
           <SettingsCard title={t('system.backup.manualTitle')} subtitle={t('system.backup.manualHint')}>
             <Requests overview={data} />

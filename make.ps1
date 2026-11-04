@@ -162,6 +162,26 @@ function Invoke-Testkit {
 
 function Get-AnonKey { (Get-Content -LiteralPath (Join-Path $SecretsDir 'anon_key') -Raw).Trim() }
 
+# Argumen docker untuk kredensial restic dari env: repositori S3 diteruskan apa adanya (+ AWS_*),
+# folder lokal (mis. backups\restic) di-mount ke /var/lib/olt-backup-repo tanpa kredensial AWS.
+function Get-ResticArgs {
+    $repo = $env:RESTIC_REPOSITORY
+    $resticArgs = @()
+    if ($repo -match '^(s3|sftp|rest|swift|b2|azure|gs|rclone):') {
+        $resticArgs += @('-e', 'RESTIC_REPOSITORY', '-e', 'AWS_ACCESS_KEY_ID', '-e', 'AWS_SECRET_ACCESS_KEY', '-e', 'AWS_DEFAULT_REGION')
+    } else {
+        $dir = (Resolve-Path -LiteralPath $repo).Path
+        if (-not (Test-Path -LiteralPath (Join-Path $dir 'config') -PathType Leaf)) { throw "$dir bukan repositori restic (file config tidak ada)" }
+        $resticArgs += @('-v', "${dir}:/var/lib/olt-backup-repo", '-e', 'RESTIC_REPOSITORY=/var/lib/olt-backup-repo')
+    }
+    $resticArgs += @('-e', 'RESTIC_PASSWORD')
+    if ($env:RESTIC_PASSWORD_FILE) {
+        $pw = (Resolve-Path -LiteralPath $env:RESTIC_PASSWORD_FILE).Path
+        $resticArgs += @('-v', "${pw}:/run/secrets/restic_password:ro", '-e', 'RESTIC_PASSWORD_FILE=/run/secrets/restic_password')
+    }
+    return $resticArgs
+}
+
 function Assert-Config {
     if (-not (Test-Path -LiteralPath $EnvFile)) {
         throw 'docker/.env belum ada. Jalankan: .\make.ps1 gen-secrets'
@@ -240,7 +260,7 @@ switch ($Target) {
   check-go-comments  Pastikan kode Go tanpa komentar (selain directive)
   secrets-scan   Pindai riwayat git dengan gitleaks (.gitleaks.toml)
   backup-snapshots  Daftar snapshot backup (restic) + rentang waktu PITR
-  restore-pitr   Pulihkan DB ke waktu tertentu: -At 2026-11-03T10:15:00+07:00 -Yes (env RESTIC_*, AWS_*; docs/backup)
+  restore-pitr   Pulihkan DB ke waktu tertentu: -At 2026-11-03T10:15:00+07:00 -Yes (env RESTIC_*, AWS_* untuk S3; docs/backup)
   test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
   e2e-windows-dummy      E2E app example: form login OLT dummy
 
@@ -464,22 +484,22 @@ switch ($Target) {
         $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
-    'backup-snapshots' { Assert-Config; Invoke-Compose @('run', '--rm', '--no-deps', '-T', 'backup', 'snapshots') }
+    'backup-snapshots' {
+        Assert-Config
+        $snapArgs = @('run', '--rm', '--no-deps', '-T')
+        if ($env:RESTIC_REPOSITORY) { $snapArgs += Get-ResticArgs }
+        Invoke-Compose ($snapArgs + @('backup', 'snapshots'))
+    }
     'restore-pitr' {
         Assert-Config
         if (-not $At) { throw 'Sebutkan waktu: .\make.ps1 restore-pitr -At 2026-11-03T10:15:00+07:00 -Yes (atau -At latest)' }
         if (-not $Yes) { throw 'Isi database diganti hasil restore. Ulangi dengan -Yes' }
-        if (-not $env:RESTIC_REPOSITORY) { throw 'Set $env:RESTIC_REPOSITORY, $env:RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE), $env:AWS_ACCESS_KEY_ID, $env:AWS_SECRET_ACCESS_KEY' }
+        if (-not $env:RESTIC_REPOSITORY) { throw 'Set $env:RESTIC_REPOSITORY (s3:https://host/bucket/prefix atau folder lokal, mis. backups\restic), $env:RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE); untuk S3 juga $env:AWS_ACCESS_KEY_ID, $env:AWS_SECRET_ACCESS_KEY' }
+        $resticArgs = Get-ResticArgs
         Invoke-Compose @('build', 'backup')
         Invoke-Compose @('stop')
-        $runArgs = @('run', '--rm', '--user', '0:0', '--network', "${Stack}_egress",
-                     '-e', 'RESTIC_REPOSITORY', '-e', 'RESTIC_PASSWORD', '-e', 'AWS_ACCESS_KEY_ID',
-                     '-e', 'AWS_SECRET_ACCESS_KEY', '-e', 'AWS_DEFAULT_REGION', '-v', "${Stack}_db-data:/restore")
-        if ($env:RESTIC_PASSWORD_FILE) {
-            $pw = (Resolve-Path -LiteralPath $env:RESTIC_PASSWORD_FILE).Path
-            $runArgs += @('-v', "${pw}:/run/secrets/restic_password:ro", '-e', 'RESTIC_PASSWORD_FILE=/run/secrets/restic_password')
-        }
-        $runArgs += @('olt-social/backup:0.1.0', 'restore', '--target-time', $At, '--data-dir', '/restore', '--wipe')
+        $runArgs = @('run', '--rm', '--user', '0:0', '--network', "${Stack}_egress") + $resticArgs + @('-v', "${Stack}_db-data:/restore")
+        $runArgs += @('olt-social/backup:0.2.0', 'restore', '--target-time', $At, '--data-dir', '/restore', '--wipe')
         Invoke-Docker $runArgs
         Invoke-Compose @('up', '-d', 'db')
         Write-Host 'Menunggu recovery selesai (pantau: .\make.ps1 logs -Service db)...'

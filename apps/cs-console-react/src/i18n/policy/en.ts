@@ -251,7 +251,8 @@ export const policy: Translated<typeof source> = {
       similarWindow: '{{min}}–{{max}} minutes.',
       autoSlow: 'Turn on slow mode in the stock room of an alert.',
       autoHold: 'Hold coordinated posts until the alert is reviewed. Dismissing the alert releases them.',
-      autoSlowSeconds: '{{min}}–{{max}} seconds. 0 = off.',
+      autoSlowSeconds:
+        '{{min}}–{{max}} seconds. 0 = off. Never stricter than the busy-hour delay (10 seconds when busy hours are off); set a stricter slow mode manually per room.',
       autoSlowMinutes: '{{min}}–{{max}} minutes.',
       busySlow: '{{min}}–{{max}} seconds. 0 = off.',
     },

@@ -7,6 +7,7 @@ export class Realtime {
     this.ref = 0;
     this.pending = {};
     this.channels = {};
+    this.joinRefs = {};
     this.onClose = opts.onClose || (() => {});
     this.onError = opts.onError || (() => {});
     this.heartbeatMs = opts.heartbeatMs || 25000;
@@ -46,7 +47,9 @@ export class Realtime {
 
   push(topic, event, payload, joinRef) {
     const ref = String(++this.ref);
-    if (this.open) this.ws.send(JSON.stringify({ topic, event, payload, ref, join_ref: joinRef || null }));
+    const joined = joinRef || (event === 'phx_join' ? ref : this.joinRefs[topic]) || null;
+    if (event === 'phx_join') this.joinRefs[topic] = joined;
+    if (this.open) this.ws.send(JSON.stringify({ topic, event, payload, ref, join_ref: joined }));
     return ref;
   }
 
@@ -65,7 +68,7 @@ export class Realtime {
         resolve: (v) => { clearTimeout(timer); resolve(v); },
         reject: (e) => { clearTimeout(timer); reject(e); },
       };
-      this.push(topic, event, payload, joinRef || ref);
+      this.push(topic, event, payload, joinRef);
     });
   }
 
