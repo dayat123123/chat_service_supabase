@@ -154,8 +154,10 @@ Konfigurasi operasional dikelola Super Admin dari **Rendezvous Hub**, dengan jej
 | [dev-server.md](docs/dev-server.md) | Server development untuk integrasi aplikasi client: spek, port, domain, pemasangan |
 | [PRODUCTION.md](docs/PRODUCTION.md) | Deploy, operasional, rilis, checklist |
 | [server-install.md](docs/server-install.md) | Instalasi server baru sampai bisa diakses publik, dengan script `scripts/server-install.sh` |
+| [go-live-checklist.md](docs/go-live-checklist.md) ([PDF](docs/go-live-checklist.pdf)) | Checklist rapat go-live satu halaman: vendor IT, tim OLT, tim aplikasi, Kepatuhan |
 | [operations.md](docs/operations.md) | Panduan operasional: komponen, di mana mengatur apa, perintah, pemantauan, rutinitas |
 | [runbook-gangguan.md](docs/runbook-gangguan.md) | Langkah saat gangguan: triase, gejala per layanan, pemulihan, rollback |
+| [panduan-hub.md](docs/panduan-hub.md) ([PDF](docs/panduan-hub.pdf)) | Panduan pelatihan Rendezvous Hub untuk staf non-teknis: CS, Supervisor/Super Admin, Kepatuhan, moderator Komunitas |
 | [scaling.md](docs/scaling.md) | Profil deploy dan migrasi single → cluster |
 | [social/](docs/social/README.md) | Feed, chat, realtime, gap-fill, typing, pratinjau room |
 | [cs-chat/](docs/cs-chat/README.md) | Chat CS, tiket, matching engine, `cs_api` |
