@@ -24,7 +24,7 @@ import {
   isSuperAdmin,
   type AgentProfile,
 } from '@/features/presence/types'
-import { withStrings } from '@/i18n'
+import { loadStrings, withStrings } from '@/i18n'
 import { appEnv } from '@/lib/supabase'
 
 import { Home, NoAccess } from './home'
@@ -56,6 +56,7 @@ const homeRoute = createRoute({
     if (hasNasabah(context.agent)) throw redirect({ to: '/nasabah' })
     if (hasCommunityAccess(context.agent)) throw redirect({ to: '/community' })
   },
+  loader: () => loadStrings('labels', 'replies'),
   component: Home,
 })
 
@@ -82,7 +83,10 @@ const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/reports',
   beforeLoad: superAdminOnly,
-  component: lazyRouteComponent(() => import('@/features/reports/components/reports-page'), 'ReportsPage'),
+  component: lazyRouteComponent(
+    withStrings(() => import('@/features/reports/components/reports-page'), 'labels'),
+    'ReportsPage',
+  ),
 })
 
 const settingsRoute = createRoute({
@@ -90,7 +94,7 @@ const settingsRoute = createRoute({
   path: '/settings',
   beforeLoad: superAdminOnly,
   component: lazyRouteComponent(
-    withStrings(() => import('@/features/settings/components/settings-page'), 'platform'),
+    withStrings(() => import('@/features/settings/components/settings-page'), 'platform', 'labels'),
     'SettingsPage',
   ),
 })

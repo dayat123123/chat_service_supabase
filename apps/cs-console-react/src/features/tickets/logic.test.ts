@@ -41,9 +41,9 @@ const p3new = ticketFixture({
 describe('ticket filters', () => {
   it('matches topic, priority and flag together', () => {
     expect(isFiltered(noFilter)).toBe(false)
-    expect(matchesFilter(p1, { topic: 'deposit', priority: 'P1', flag: 'fraud' })).toBe(true)
-    expect(matchesFilter(p1, { topic: 'order', priority: null, flag: null })).toBe(false)
-    expect(matchesFilter(p3old, { topic: null, priority: null, flag: 'vip' })).toBe(false)
+    expect(matchesFilter(p1, { topic: 'deposit', priority: 'P1', flag: 'fraud', label: null })).toBe(true)
+    expect(matchesFilter(p1, { topic: 'order', priority: null, flag: null, label: null })).toBe(false)
+    expect(matchesFilter(p3old, { topic: null, priority: null, flag: 'vip', label: null })).toBe(false)
   })
 
   it('sorts open tickets by priority then longest wait', () => {
@@ -54,7 +54,7 @@ describe('ticket filters', () => {
       'p3new',
     ])
     expect(
-      visibleTickets(lists, 'open', { topic: 'order', priority: null, flag: null }, null).map(
+      visibleTickets(lists, 'open', { topic: 'order', priority: null, flag: null, label: null }, null).map(
         (ticket) => ticket.id,
       ),
     ).toEqual(['p3old', 'p3new'])

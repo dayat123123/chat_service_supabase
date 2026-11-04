@@ -4,7 +4,7 @@ import { afterEach, vi } from 'vitest'
 
 import { loadStrings } from '@/i18n'
 
-await loadStrings('platform', 'policy', 'moderation')
+await loadStrings('platform', 'policy', 'moderation', 'labels', 'replies')
 
 class ResizeObserverStub {
   observe() {}

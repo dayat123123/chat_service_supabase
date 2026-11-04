@@ -1,5 +1,6 @@
 import type * as RouterModule from '@tanstack/react-router'
 import { screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { systemApi } from '@/features/system/api'
@@ -173,5 +174,36 @@ describe('TopBar', () => {
       'Dokumen hukum',
       'Bukti',
     ])
+  })
+
+  it('offers profile, performance, password and sign-out-everywhere in the account menu', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, agentFixture)
+    expect(screen.getByRole('button', { name: 'Kinerja saya' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Akun' }))
+    const items = (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+    expect(items).toEqual(expect.arrayContaining(['Profil saya', 'Kinerja saya', 'Ganti password']))
+    expect(items).toContain('Keluar dari semua perangkat')
+
+    await user.click(screen.getByRole('menuitem', { name: 'Ganti password' }))
+    expect(
+      await screen.findByRole('dialog', { name: 'Ganti password' }, { timeout: 5_000 }),
+    ).toBeInTheDocument()
+  })
+
+  it('hides Kinerja saya from staff who do not handle tickets', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<TopBar attention={0} caseAttention={0} />, {
+      ...agentFixture,
+      roles: ['compliance'],
+    })
+    expect(screen.queryByRole('button', { name: 'Kinerja saya' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Akun' }))
+    const items = (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+    expect(items).toContain('Profil saya')
+    expect(items).toContain('Ganti password')
+    expect(items).not.toContain('Kinerja saya')
   })
 })

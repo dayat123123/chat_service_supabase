@@ -4,7 +4,16 @@ import { uuid } from '@/lib/utils'
 
 import { AFTER_LIMIT } from './cache'
 import { DOCUMENT_BUCKET, isDocumentFile } from './media'
-import type { Attachment, ChatMessage, QuickReply, RoomMember, SendKind, SendResult } from './types'
+import type {
+  Attachment,
+  ChatMessage,
+  PersonalQuickReply,
+  PersonalReplyDraft,
+  QuickReply,
+  RoomMember,
+  SendKind,
+  SendResult,
+} from './types'
 
 export const PAGE_SIZE = 50
 
@@ -71,6 +80,15 @@ export const conversationApi = {
   markRead: (roomId: string) => rpc<null>('mark_read', { p_room_id: roomId }),
   members: (roomId: string) => rpc<RoomMember[]>('room_members', { p_room_id: roomId }),
   quickReplies: (language: string) => rpc<QuickReply[]>('quick_replies', { p_language: language }),
+  myQuickReplies: () => rpc<PersonalQuickReply[]>('my_quick_replies'),
+  saveMyQuickReply: (draft: PersonalReplyDraft) =>
+    rpc<PersonalQuickReply>('save_my_quick_reply', {
+      p_id: draft.id,
+      p_title: draft.title,
+      p_body: draft.body,
+      p_shortcut: draft.shortcut === '' ? null : draft.shortcut,
+    }),
+  deleteMyQuickReply: (id: string) => rpc<{ deleted: boolean }>('delete_my_quick_reply', { p_id: id }),
   addNote: (body: string, target: { ticketId?: string; customerId?: string }) =>
     rpc<unknown>('add_note', {
       p_body: body,

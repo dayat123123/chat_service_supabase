@@ -101,7 +101,9 @@ export function useHeartbeat() {
           updateAgent({ ...latest.agent, active_tickets: active })
         }
       } catch (error) {
-        if (toApiError(error).code === 'agent_required') void signOut('notStaff')
+        const code = toApiError(error).code
+        if (code === 'agent_required') void signOut('notStaff')
+        if (code === 'session_revoked') void signOut('expired')
       } finally {
         running = false
       }

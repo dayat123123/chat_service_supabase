@@ -53,6 +53,11 @@ export const useAuth = create<AuthState & AuthActions>((set, get) => {
         set({ phase: { kind: 'signedOut', reason: 'notStaff' }, busy: false, error: null })
         return
       }
+      if (apiError.code === 'session_revoked') {
+        await authApi.signOut().catch(() => undefined)
+        set({ phase: { kind: 'signedOut', reason: 'expired' }, busy: false, error: null })
+        return
+      }
       set({ phase: { kind: 'signedOut' }, busy: false, error: apiError })
     }
   }

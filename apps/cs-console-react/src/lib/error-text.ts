@@ -143,6 +143,7 @@ export function errorText(error: unknown): string {
     case 'network':
       return t('errors.network')
     case 'session_expired':
+    case 'session_revoked':
       return t('errors.sessionExpired')
     case 'unavailable':
       return t('errors.unavailable')

@@ -149,6 +149,20 @@ Topik realtime (event dikirim server):
 
 Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
 
+### Balasan cepat pribadi (migrasi `0117`)
+
+- Memakai tabel `cs.quick_replies` dengan `scope = 'personal'` dan `owner_id` (RLS: hanya pemilik). Batas sama dengan balasan bersama (judul 80, isi 2.000, pintasan `^[a-z0-9_-]{2,32}$`), maksimal 50 per staf.
+- `my_quick_replies`, `save_my_quick_reply(p_id, p_title, p_body, p_shortcut)` (pintasan kosong dibuat otomatis dari judul), `delete_my_quick_reply` — khusus `cs_agent`, hanya baris milik pemanggil.
+- Penyimpanan menolak permintaan OTP/PIN/password (`secret_request_blocked`) dan menyamarkan nomor rekening/kartu. Hub hanya menyisipkan isi ke kotak balas; pengiriman tetap lewat `agent_send_message` (cek rahasia, penyamaran, kata terlarang). Tidak ada jalur kirim langsung.
+- `quick_replies(p_language)` kini mengembalikan balasan pribadi pemanggil (tanpa saring bahasa) lebih dulu, lalu balasan bersama sesuai bahasa. Hub menampilkannya dalam grup **Pribadi** dan **Bersama**.
+
+### Label tiket (migrasi `0118`)
+
+- `cs.ticket_labels` (nama ≤ 30, unik tanpa beda huruf besar, warna `neutral|info|success|warning|danger`, aktif, urutan; maksimal 50 aktif) dan `cs.ticket_label_links` (maksimal 5 per tiket). Kedua tabel ber-RLS tanpa grant; akses hanya lewat RPC.
+- Super Admin: `admin_ticket_labels`, `admin_save_ticket_label`, `admin_reorder_ticket_labels` (audit `ticket_label.save` dengan before/after, `ticket_label.reorder`), `report_ticket_labels(p_from, p_to)` (tiket masuk per label, total, tanpa label).
+- `ticket_labels` (label aktif untuk semua staf), `add_ticket_label` / `remove_ticket_label`: CS pemegang tiket yang aktif atau Super Admin (status apa pun); Kepatuhan hanya membaca. Perubahan menulis event `label_added`/`label_removed`, audit `ticket.label_add`/`ticket.label_remove`, dan event `ticket_labels` di `cs:queue`/`cs:agent`/`cs:room` sehingga staf lain menyegarkan tiket lewat mekanisme yang ada.
+- `cs.ticket_agent_view` (dipakai `ticket_lists`, `ticket_detail`, `search_tickets`, dll.) memuat `labels`. Tampilan nasabah (`support_home`, `my_tickets`) tidak pernah memuat label.
+
 ## Pengaturan dan batas
 
 - Pengaturan di `cs.cs_settings` (berversi, riwayat di `cs_settings_history`):

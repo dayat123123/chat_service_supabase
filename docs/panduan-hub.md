@@ -70,7 +70,11 @@ Bila akun tidak punya menu sama sekali, Hub menampilkan **Peran akun ini belum p
 - **Kotak cari di tengah bar atas (Ctrl K):** cari tiket, nasabah, menu, atau perintah.
 - **Indikator koneksi** di kanan atas: **Terhubung**, **Menyambung ulang…**, atau **Offline**. Bila tidak **Terhubung**, periksa jaringan Anda.
 - **Ikon lonceng:** atur **Notifikasi tiket baru** (**Semua tiket**, **Prioritas tinggi saja**, atau **Mati**), **Izinkan notifikasi browser**, dan **Tes suara**.
-- **Avatar (menu akun):** **Tema** (**Terang**, **Gelap**, **Ikuti sistem**), **Kepadatan** (**Nyaman**, **Padat**), **Bahasa**, **Pintasan keyboard**, dan **Keluar**.
+- **Avatar (menu akun):** **Profil saya**, **Kinerja saya** (khusus staf yang menangani tiket), **Ganti password**, **Tema** (**Terang**, **Gelap**, **Ikuti sistem**), **Kepadatan** (**Nyaman**, **Padat**), **Bahasa**, **Pintasan keyboard**, **Keluar dari semua perangkat**, dan **Keluar**.
+  - **Profil saya** (hanya-baca): email login, nama yang dilihat nasabah, kode staf, peran, tim, batas tiket aktif, bahasa layanan, izin Komunitas dan Akun Nasabah, tanggal akun dibuat, dan kapan password terakhir diganti (**Belum tercatat** bila belum pernah diganti lewat Hub sejak fitur ini ada). Untuk mengubah data ini, hubungi Super Admin.
+  - **Ganti password:** isi **Password saat ini**, **Password baru**, dan **Ulangi password baru**, lalu **Ganti password**. Aturannya sama dengan ganti password pertama: minimal 12 karakter dan harus berbeda dari password saat ini. Bila password saat ini salah, muncul **Password saat ini salah.** dan Anda tetap masuk. Setelah berhasil, akun ini otomatis keluar di perangkat dan tab lain; tab ini tetap masuk. Penggantian tercatat di Jejak Audit (tanpa isi password).
+  - **Keluar dari semua perangkat:** setelah konfirmasi, semua sesi akun ini (perangkat lain dan tab ini) dikeluarkan dan Hub kembali ke halaman masuk. Pakai bila Anda lupa keluar di komputer lain atau curiga akun dipakai orang lain, lalu segera ganti password. Tercatat di Jejak Audit.
+  - Kedua aksi di atas hanya memengaruhi **akun Anda sendiri**. Akun lain yang terbuka di tab lain pada browser yang sama tidak ikut keluar. Tab lain yang memakai akun Anda kembali ke halaman masuk dengan pesan sesi berakhir.
 - Waktu di Hub memakai **WIB**.
 
 ## 2. Untuk CS (agen)
@@ -116,7 +120,8 @@ Tab daftar tiket:
 | **Selesai hari ini** | Tiket yang Anda selesaikan hari ini |
 
 - Di atas daftar ada **Transfer masuk** (permintaan dari CS lain) dan **Menunggu diterima** (transfer yang Anda kirim).
-- **Filter**: **Topik**, **Prioritas** (P1 paling mendesak sampai P4), dan **Tanda** (**Pengaduan**, **Fraud**, **VIP**).
+- **Filter**: **Topik**, **Prioritas** (P1 paling mendesak sampai P4), **Tanda** (**Pengaduan**, **Fraud**, **VIP**), dan **Label** (muncul bila ada tiket berlabel di daftar).
+- **Label tiket** tampil berwarna di baris tiket dan di bawah nama nasabah pada percakapan. Label hanya untuk staf; nasabah tidak pernah melihatnya.
 - Kotak **Cari nomor, nama, pesan** mencari tiket.
 - Nomor tiket berbentuk `CS-YYYYMMDD-NNNN`. Setiap nasabah paling banyak punya satu tiket aktif.
 
@@ -165,7 +170,11 @@ Kotak balas punya dua mode: **Balas** (terkirim ke nasabah) dan **Catatan intern
 3. Yang diterima: gambar (JPEG, PNG, WebP, GIF) dan **PDF maksimal 10 MB**. Maksimal 4 lampiran per pesan. Gambar besar dikecilkan otomatis.
 4. Video, voice note, dan file Office **tidak diterima**. Minta nasabah mengirim tangkapan layar atau PDF.
 
-**Balasan cepat:** ketik **/** di kotak balas, atau klik **Sisipkan balasan cepat**, lalu pilih. Daftarnya disiapkan Super Admin (menu **Quick reply**).
+**Balasan cepat:** ketik **/** di kotak balas, atau klik **Sisipkan balasan cepat**, lalu pilih (panah atas/bawah, **Enter** atau **Tab**). Daftar dibagi dua grup: **Pribadi** (milik Anda) dan **Bersama** (disiapkan Super Admin di menu **Quick reply**). Pencarian mencakup keduanya.
+
+**Balasan cepat pribadi:** klik **Kelola balasan pribadi** di bawah daftar balasan cepat. Isi **Judul**, **Isi balasan**, dan bila mau **Pintasan** (kosongkan agar dibuat otomatis dari judul). Batas: judul 80 karakter, isi 2.000 karakter, maksimal 50 balasan per staf. Hanya Anda yang melihatnya. Balasan yang meminta OTP/PIN/password ditolak, nomor rekening/kartu disamarkan saat disimpan, dan saat dikirim isinya tetap diperiksa seperti pesan biasa.
+
+**Label tiket:** klik ikon label di kepala percakapan, lalu centang atau hapus centang label. Maksimal 5 label per tiket. Yang bisa mengubah: CS pemegang tiket (selama tiket ditangani/menunggu nasabah) dan Super Admin. Perubahan label tercatat di riwayat tiket dan langsung terlihat oleh staf lain yang membuka tiket yang sama.
 
 **Kirim lainnya** (tombol di kotak balas):
 
@@ -260,6 +269,17 @@ Tombol di atas percakapan (hanya untuk pemilik tiket):
 | **Ctrl Enter** | Kirim pesan |
 | **?** | Daftar pintasan |
 
+### 2.12 Kinerja saya
+
+Buka dari avatar → **Kinerja saya**, atau ikon pengukur di samping **Aktif n/maks**. Pilih periode **Hari ini**, **7 hari**, atau **30 hari** (WIB, menurut tanggal tiket dibuat). Yang ditampilkan hanya angka Anda sendiri:
+
+- **Tiket diselesaikan** dari jumlah tiket yang terakhir Anda tangani, dan **Sedang ditangani** (tiket aktif saat ini).
+- **Rata-rata respons pertama** (sejak tiket diambil) dan **Rata-rata waktu selesai** (sejak tiket dibuat, untuk tiket yang Anda selesaikan).
+- **Rating rata-rata**, jumlah rating, dan **Distribusi rating** 1–5 bintang.
+- **Pengaduan** dari tiket Anda.
+
+Definisinya sama dengan baris Anda di **Laporan** Super Admin, jadi angkanya cocok untuk periode yang sama.
+
 ## 3. Untuk Supervisor / Super Admin operasional
 
 Super Admin **memantau dan mengelola**, tidak melayani nasabah. Super Admin tidak mengambil, membalas, menyelesaikan, melepas, atau mentransfer tiket, dan tidak pernah menerima tiket.
@@ -288,7 +308,7 @@ Diperbarui otomatis. Angka di menu **Dashboard** adalah jumlah tiket yang perlu 
 
 1. Pilih rentang: **Hari ini**, **7 hari**, **30 hari**, atau **Pilih tanggal**.
 2. Lihat **Tiket masuk**, **Selesai**, **Rata-rata sampai diambil**, **Respons pertama**, **Durasi sampai selesai**, dan **Rating rata-rata**.
-3. Tabel: **Tiket per hari**, **Per CS**, **Topik terbanyak**, dan **Per nasabah**.
+3. Tabel: **Tiket per hari**, **Per CS**, **Topik terbanyak**, **Tiket per label** (jumlah tiket masuk per label dan tiket tanpa label), dan **Per nasabah**.
 4. **Per nasabah**: klik nama nasabah untuk membuka **Jejak layanan nasabah**. **Akses ke jejak layanan ini tercatat di audit log.** Buka hanya bila ada keperluan kerja.
 5. **Ekspor CSV** per bagian. File berisi data nasabah: simpan di folder kerja yang aman, jangan dikirim ke luar.
 
@@ -301,6 +321,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | **Akun CS** | Tambah akun staf, peran, tim, batas tiket, izin, reset password, nonaktifkan | Staf baru, pindah tugas, lupa password, staf keluar |
 | **Topik** | Topik yang dipilih nasabah, prioritas default, skill, tautan bantuan | Ada jenis masalah baru |
 | **Quick reply** | Balasan cepat untuk semua CS | Jawaban baku baru atau berubah |
+| **Label tiket** | Daftar label yang dipasang CS pada tiket (nama, warna, aktif, urutan) | Pengelompokan kasus baru untuk laporan |
 | **Jam layanan & libur** | Jam buka CS (WIB) dan hari libur | Awal tahun, perubahan jam kerja |
 | **Pesan otomatis** | Pesan sistem ke nasabah (ID/EN) | Mengubah kata-kata pesan sistem |
 | **Penugasan, tiket & alert** | Mode penugasan, lepas otomatis, tutup otomatis, batas alert | Mengatur alur kerja tim |
@@ -326,7 +347,14 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 #### Topik dan Quick reply
 
 - **Topik**: **Kode** tidak bisa diubah setelah dibuat. Atur **Nama (Indonesia)**, **Nama (Inggris)**, **Skill CS**, **Prioritas default**, **Tautan bantuan (opsional)** (https ke situs bantuan resmi), urutan, dan **Tampilkan ke nasabah**.
-- **Quick reply**: atur **Pintasan**, **Judul**, **Isi balasan**, dan **Bahasa**. Quick reply yang meminta OTP/PIN/password ditolak.
+- **Quick reply**: atur **Pintasan**, **Judul**, **Isi balasan**, dan **Bahasa**. Quick reply yang meminta OTP/PIN/password ditolak. Balasan pribadi CS tidak tampil di sini; tiap CS mengelolanya sendiri dari kotak balas.
+
+#### Label tiket
+
+- Klik **Tambah label**, isi **Nama label** (maksimal 30 karakter, tidak boleh sama dengan label lain) dan pilih **Warna** (abu-abu, biru, hijau, kuning, merah).
+- Maksimal 50 label aktif. Label yang **dinonaktifkan** tidak bisa dipasang lagi, tetapi tetap tampil di tiket lama dan di laporan.
+- Atur urutan dengan tombol panah; urutan ini dipakai di menu label pada tiket.
+- Kolom **Dipakai** menunjukkan jumlah tiket yang berlabel tersebut. Setiap simpan dan perubahan urutan tercatat di Jejak Audit (dengan nilai sebelum dan sesudah).
 
 #### Jam layanan & libur, dan Pesan otomatis
 

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Dot, FlagText, PriorityText, UnreadBadge } from '@/components/badges'
 import { Button } from '@/components/ui/button'
+import { LabelNames } from '@/features/labels/components/label-chip'
 import { waitTone } from '@/lib/sla'
 import { clock, minutesSince, waitLabel } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -85,6 +86,12 @@ export const TicketRow = memo(function TicketRow({
             <FlagText flag={flag} />
           </span>
         ))}
+        {ticket.labels && ticket.labels.length > 0 ? (
+          <>
+            {' · '}
+            <LabelNames labels={ticket.labels} className="align-bottom" />
+          </>
+        ) : null}
         {showOwner && ticket.owner
           ? ` · ${t('tickets.handledBy', {
               name: ticket.owner.id === meId ? t('app.you') : ticket.owner.display_name,

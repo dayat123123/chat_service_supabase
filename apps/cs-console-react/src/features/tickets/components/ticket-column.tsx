@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/menu'
 import { useAgent } from '@/features/auth/hooks'
 import { useCommandHandler } from '@/features/command/bus'
+import { labelsInLists } from '@/features/labels/logic'
 import { GoOnlineButton } from '@/features/presence/components/go-online-button'
 import { useActionGuard, useClaimGate } from '@/features/presence/hooks'
 import { worksTickets } from '@/features/presence/types'
@@ -171,6 +172,7 @@ export function TicketColumn() {
     () => visibleTickets(data, tab, filter, searching ? (results.data ?? []) : null),
     [data, tab, filter, searching, results.data],
   )
+  const labelOptions = useMemo(() => labelsInLists(data), [data])
   const gate = useClaimGate()
   const canClaim = gate.canClaim
   const guard = useActionGuard()
@@ -243,6 +245,16 @@ export function TicketColumn() {
       allLabel: t('tickets.allFlags'),
       options: ticketFlags.map((flag) => ({ value: flag, label: t(`tickets.flags.${flag}`) })),
     },
+    ...(labelOptions.length > 0 || filter.label !== null
+      ? [
+          {
+            key: 'label' as const,
+            label: t('labels.label'),
+            allLabel: t('labels.allLabels'),
+            options: labelOptions.map((label) => ({ value: label.id, label: label.name })),
+          },
+        ]
+      : []),
   ]
 
   return (

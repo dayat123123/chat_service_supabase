@@ -12,6 +12,7 @@ import {
   SirenIcon,
   SlidersHorizontalIcon,
   SmartphoneIcon,
+  TagIcon,
   TagsIcon,
   UsersIcon,
 } from 'lucide-react'
@@ -24,6 +25,7 @@ import { useAgent } from '@/features/auth/hooks'
 import { BannersSection } from '@/features/client-config/components/banners-section'
 import { FeaturesSection } from '@/features/client-config/components/features-section'
 import { IntegrationKeysSection } from '@/features/integration-keys/components/keys-section'
+import { LabelsSection } from '@/features/labels/components/labels-section'
 import { PushSection } from '@/features/push/components/push-section'
 import { PushInactiveBadge } from '@/features/push/components/push-state'
 import { cn } from '@/lib/utils'
@@ -44,6 +46,7 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
   { id: 'accounts', icon: UsersIcon },
   { id: 'topics', icon: TagsIcon },
   { id: 'quickReplies', icon: MessageSquareTextIcon },
+  { id: 'ticketLabels', icon: TagIcon },
   { id: 'hours', icon: CalendarClockIcon },
   { id: 'messages', icon: MessagesSquareIcon },
   { id: 'assignment', icon: SlidersHorizontalIcon },
@@ -61,6 +64,7 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
 const content: Record<SettingsSection, () => React.ReactNode> = {
   accounts: () => <AccountsSection />,
   topics: () => <TopicsSection />,
+  ticketLabels: () => <LabelsSection />,
   quickReplies: () => <QuickRepliesSection />,
   hours: () => <HoursSection />,
   messages: () => <MessagesSection />,

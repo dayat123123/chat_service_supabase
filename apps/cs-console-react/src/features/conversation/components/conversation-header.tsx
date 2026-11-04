@@ -16,6 +16,9 @@ import {
   DropdownMenuTrigger,
   Tooltip,
 } from '@/components/ui/menu'
+import { LabelNames } from '@/features/labels/components/label-chip'
+import { TicketLabelMenu } from '@/features/labels/components/ticket-label-menu'
+import { ticketLabels } from '@/features/labels/logic'
 import { useTopicName } from '@/features/tickets/hooks'
 import { customerName, ticketPriorities, type Ticket } from '@/features/tickets/types'
 import { useNow } from '@/hooks/use-now'
@@ -72,6 +75,8 @@ export function ConversationHeader({
   const active = ticket.status === 'claimed' || ticket.status === 'waiting_customer'
   const canChangePriority = active && (owner || superAdmin)
   const canReassign = superAdmin && !owner && (active || ticket.status === 'open')
+  const canLabel = owner || superAdmin
+  const labels = ticketLabels(ticket)
   const ownerName = ticket.owner
     ? ticket.owner.id === meId
       ? t('app.you')
@@ -82,6 +87,7 @@ export function ConversationHeader({
     topicName(ticket.topic),
     <PriorityText key="priority" priority={ticket.priority} />,
     ...ticket.flags.map((flag) => <FlagText key={flag} flag={flag} />),
+    labels.length > 0 ? <LabelNames key="labels" labels={labels} /> : null,
     ownerName ? t('conversation.owner', { name: ownerName }) : null,
     ticket.status === 'waiting_customer' ? t('tickets.status.waiting_customer') : null,
     active && started ? (
@@ -163,6 +169,7 @@ export function ConversationHeader({
             {t('conversation.reassign')}
           </Button>
         ) : null}
+        {canLabel ? <TicketLabelMenu ticket={ticket} /> : null}
         {canChangePriority || owner ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
