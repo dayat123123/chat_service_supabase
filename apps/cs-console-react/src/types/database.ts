@@ -153,6 +153,10 @@ export type Database = {
         Args: { p_reason?: string; p_status: string }
         Returns: Json
       }
+      agent_typing: {
+        Args: { p_room_id: string; p_typing?: boolean }
+        Returns: boolean
+      }
       alert_channels_view: { Args: Record<PropertyKey, never>; Returns: Json }
       alert_send_test: { Args: { p_channel: string }; Returns: Json }
       alert_set_email: {

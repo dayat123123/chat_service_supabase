@@ -51,13 +51,15 @@ TESTKIT       = docker run --rm --network $(STACK)_app --network $(STACK)_data -
                   -v /var/run/docker.sock:/var/run/docker.sock -v "$(CURDIR)/tests:/olt/tests:ro" \
                   -v "$(CURDIR)/tests/results:/olt/results" -v "$(CURDIR)/docker:/olt/docker:ro" \
                   --mount type=tmpfs,destination=/olt/docker/secrets \
+                  -v "$(CURDIR)/packages/rendezvous_community/lib:/olt/client-lib:ro" \
                   $(foreach s,$(TESTKIT_SECRETS),-v "$(CURDIR)/$(SECRETS)/$(s):/olt/secrets/$(s):ro") \
                   -e LOAD_STEPS -e LOAD_HOLD -e LOAD_RAMP -e LOAD_MSG_EVERY -e LOAD_FORCE -e LOAD_VIA \
+                  -e GAP_EVERY -e GAP_IDS -e GAP_OVERLAP -e RECONNECT_JITTER -e GAP_RECHECK \
                   -e CHAOS_VUS -e CHAOS_OUTAGE -e CHAOS_LONG_OUTAGE $(TESTKIT_IMG)
 ANON_KEY      = $$(cat $(CURDIR)/$(SECRETS)/anon_key)
 SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboard_password \
                  secret_key_base realtime_db_enc_key realtime_erlang_cookie pg_meta_crypto_key \
-                 s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri \
+                 s3_protocol_access_key_id s3_protocol_access_key_secret valkey_password postgrest_db_uri pgbouncer_stats_password \
                  olt_jwks backup_db_password \
 
 .DEFAULT_GOAL := help
@@ -77,7 +79,9 @@ check-config:
 	@test -f $(SECRETS)/csadmin_signing_key || : > $(SECRETS)/csadmin_signing_key
 	@! grep -q '=CHANGE_ME' $(ENV) || { echo "docker/.env masih berisi CHANGE_ME:"; grep '=CHANGE_ME' $(ENV); exit 1; }
 	@if [ "$(PROFILE)" != dev ]; then for k in PROXY_DOMAIN ACME_EMAIL; do \
-	  grep -qE "^$$k=.+" $(ENV) || { echo "Profil $(PROFILE): $$k wajib diisi di docker/.env"; exit 1; }; done; fi
+	  grep -qE "^$$k=.+" $(ENV) || { echo "Profil $(PROFILE): $$k wajib diisi di docker/.env"; exit 1; }; done; \
+	  rl=$$(sed -n 's/^AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE=\([0-9]*\).*/\1/p' $(ENV) | tail -1); \
+	  [ -z "$$rl" ] || [ "$$rl" -ge 300 ] || { echo "Profil $(PROFILE): AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE=$$rl di docker/.env terlalu kecil (minimal 300, docs/PRODUCTION.md Batas & rate limit)"; exit 1; }; fi
 
 up: check-config ## Build & jalankan stack (PROFILE=dev|single|cluster), tunggu healthy
 ifeq ($(PROFILE),cluster)

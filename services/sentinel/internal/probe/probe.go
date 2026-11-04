@@ -171,6 +171,10 @@ func (p *Prober) connect(ctx context.Context, addr string) error {
 
 type statusError int
 
+func StatusError(status int) error {
+	return statusError(status)
+}
+
 func (s statusError) Error() string {
 	return "HTTP " + strconv.Itoa(int(s))
 }
@@ -195,6 +199,10 @@ func (p *Prober) get(ctx context.Context, target string) (*int, error) {
 }
 
 func (p *Prober) describe(err error) string {
+	return Describe(err, p.timeout)
+}
+
+func Describe(err error, timeout time.Duration) string {
 	var status statusError
 	var dns *net.DNSError
 	var netErr net.Error
@@ -203,7 +211,7 @@ func (p *Prober) describe(err error) string {
 	case errors.As(err, &status):
 		return status.Error()
 	case errors.Is(err, context.DeadlineExceeded), errors.As(err, &netErr) && netErr.Timeout():
-		return "waktu habis setelah " + p.timeout.String()
+		return "waktu habis setelah " + timeout.String()
 	case errors.As(err, &dns) && dns.IsNotFound:
 		return "nama host tidak ditemukan"
 	case errors.Is(err, syscall.ECONNREFUSED) || strings.Contains(strings.ToLower(err.Error()), "refused"):

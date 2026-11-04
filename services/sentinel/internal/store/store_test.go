@@ -21,6 +21,7 @@ import (
 
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 )
 
 const secret = "0123456789abcdef0123456789abcdef"
@@ -136,6 +137,32 @@ func TestHealthReportSendsTheContractPayload(t *testing.T) {
 	}
 	if !reflect.DeepEqual(seen.args, want) {
 		t.Fatalf("args = %#v", seen.args)
+	}
+}
+
+func TestHealthReportSendsMetricsOnlyWhenSourcesAreConfigured(t *testing.T) {
+	fake, server := newFake(t, func(string, map[string]any) (int, string) { return 200, `{"evaluated_at":null}` })
+	db := newStore(server.URL, nil)
+	if _, err := db.HealthReport(context.Background(), Health{Instance: "s", Version: "v"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := fake.last().args["p_metrics"]; ok {
+		t.Fatal("p_metrics must be left out without metrics sources")
+	}
+	failure := "koneksi ditolak"
+	_, err := db.HealthReport(context.Background(), Health{Instance: "s", Version: "v", Metrics: []scrape.Result{
+		{Source: "rest", Instance: "10.0.0.4", OK: true, Values: map[string]float64{"pgrst_db_pool_waiting": 2}},
+		{Source: "pgbouncer", Instance: "10.0.0.5", Error: &failure, Values: map[string]float64{}},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []any{
+		map[string]any{"source": "rest", "instance": "10.0.0.4", "ok": true, "error": nil, "values": map[string]any{"pgrst_db_pool_waiting": float64(2)}},
+		map[string]any{"source": "pgbouncer", "instance": "10.0.0.5", "ok": false, "error": "koneksi ditolak", "values": map[string]any{}},
+	}
+	if got := fake.last().args["p_metrics"]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("p_metrics = %#v", got)
 	}
 }
 

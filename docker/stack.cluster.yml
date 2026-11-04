@@ -124,7 +124,7 @@ services:
       <<: *deploy
       replicas: 2
   classifier:
-    image: ${REGISTRY}/olt-social/classifier:0.1.0
+    image: ${REGISTRY}/olt-social/classifier:0.1.1
     deploy:
       <<: *deploy
       replicas: 2
@@ -140,7 +140,10 @@ services:
       replicas: 1
   # Disk yang diukur adalah node tempat sentinel berjalan: ditaruh di node DB.
   sentinel:
-    image: ${REGISTRY}/olt-social/sentinel:0.1.0
+    image: ${REGISTRY}/olt-social/sentinel:0.2.0
+    environment:
+      # tasks.<service>: setiap replika dibaca sendiri (counter per replika, bukan lewat VIP).
+      METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://tasks.rest:3001/metrics,realtime=jwt+http://tasks.realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@tasks.pgbouncer:6432}
     deploy:
       <<: *deploy
       replicas: 1
@@ -158,14 +161,14 @@ services:
       placement:
         constraints: [node.labels.olt.db == primary]
   cs-console:
-    image: ${REGISTRY}/olt-social/cs-console:0.1.0
+    image: ${REGISTRY}/olt-social/cs-console:0.1.1
     environment:
       SUPABASE_URL: https://${CS_CONSOLE_DOMAIN}
     deploy:
       <<: *deploy
       replicas: 2
   pgbouncer:
-    image: ${REGISTRY}/olt-social/pgbouncer:1.24.0-3
+    image: ${REGISTRY}/olt-social/pgbouncer:1.24.0-4
     deploy:
       <<: *deploy
       replicas: 2

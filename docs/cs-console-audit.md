@@ -35,7 +35,7 @@ Keputusan pemilik produk (30 Okt 2026): **hanya frontend yang dibuat ulang**, ba
 | Nasabah | `customer_history`, `notes`, `add_note` (per tiket atau per nasabah) |
 | Admin | `admin_agents`, `admin_options`, `admin_update_agent`, `admin_topics`, `admin_save_topic`, `admin_quick_replies`, `admin_save_quick_reply`, `admin_settings`, `admin_set_setting`, `admin_holidays`, `admin_save_holiday`, `admin_delete_holiday` |
 
-Tabel tidak dibaca langsung: semua lewat RPC di atas (RLS tetap berlaku di belakangnya). Satu-satunya akses tabel dari client adalah realtime `postgres_changes` pada `public.messages` per room dan Storage.
+Tabel tidak dibaca langsung: semua lewat RPC di atas (RLS tetap berlaku di belakangnya). Satu-satunya akses tabel dari client adalah Storage. Pesan baru datang sebagai sinyal broadcast server di `cs:room:<room>` (`0098`), lalu isinya diambil lewat `get_messages(p_after)`.
 
 ### Layanan lain
 
@@ -52,9 +52,8 @@ Tabel tidak dibaca langsung: semua lewat RPC di atas (RLS tetap berlaku di belak
 |---|---|---|
 | `cs:queue` (privat) | `ticket` (`ticket_opened`, `ticket_claimed`, `ticket_released`, `ticket_transferred`, `ticket_reassigned`, `ticket_resolved`, `ticket_reopened`, `ticket_closed`, `ticket_updated`, `ticket_message`), `alert` (`secret_request_blocked`, `fake_cs_reported`), `agent` (status rekan) | Daftar tiket, alert supervisor, dashboard |
 | `cs:agent:<id>` (privat) | `ticket`, `transfer` (`transfer_requested`, `transfer_rejected`, `transfer_expired`, `transfer_cancelled`) | Tiket milik sendiri, transfer |
-| `cs:room:<room>` (privat) | `ticket` (status tiket) | Disiapkan untuk tiket yang sedang dibuka |
-| `room:<room>` (privat) | broadcast `typing`, `receipt`; presence `{user_id}` | Mengetik, tanda dibaca, nasabah online |
-| `postgres_changes` `public.messages` filter `room_id` | INSERT/UPDATE | Pesan baru |
+| `cs:room:<room>` (privat) | `ticket` (status tiket), `message` `{id, room_id, ticket_id, client_id}` (`0098`) | Tiket yang sedang dibuka; pesan baru memicu `get_messages(p_after)` dengan kursor mundur 3 detik, plus isi celah tiap 45 detik dan saat tab kembali aktif |
+| `room:<room>` (privat) | broadcast server `typing`, `receipt`; presence `{user_id}`. Typing CS dikirim lewat `cs_api.agent_typing`; klien tidak bisa broadcast | Mengetik, tanda dibaca, nasabah online |
 
 ## 2. Kebutuhan backend baru
 

@@ -12,7 +12,7 @@ RUN npm run build && node scripts/precompress.mjs dist
 
 FROM nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 USER root
-RUN rm -f /etc/nginx/conf.d/default.conf
+RUN apk upgrade --no-cache && rm -f /etc/nginx/conf.d/default.conf
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/templates/ /etc/nginx/templates/
 COPY --chmod=0755 docker/15-cs-console.envsh /docker-entrypoint.d/15-cs-console.envsh

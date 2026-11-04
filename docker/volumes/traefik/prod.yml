@@ -1,14 +1,39 @@
 # Router profil single (dan cluster): HTTPS di entrypoint `websecure`.
 #
 # Ke internet hanya dibuka path yang dipakai app OLT: REST/RPC, Realtime,
-# Storage, upload media (/media/v1), Edge Functions, auth-bridge, dan gateway
-# integrasi OLT (/integration/v1, server-ke-server dengan API key).
-# /auth/v1 (GoTrue tidak dipakai client), /graphql/v1, /pg, dan Studio TIDAK
-# dipublikasikan; path lain 404.
+# Storage, upload media (/media/v1), auth-bridge, dan gateway integrasi OLT
+# (/integration/v1, server-ke-server dengan API key).
+# /auth/v1 (GoTrue tidak dipakai client), /functions/v1 (cs-admin hanya untuk web
+# CS, lihat cs.yml), /graphql/v1, /pg, dan Studio TIDAK dipublikasikan; path lain 404.
+#
+# API staf (T4, docs/testing/report-2026-11-03.md): skema cs_api di domain publik
+# hanya untuk RPC chat CS yang dipanggil app nasabah (api-cs-customer, daftar sama
+# dengan pemanggilan cs_api di packages/rendezvous_community). Permintaan cs_api
+# lain (Accept-Profile/Content-Profile) dijawab 403 (api-cs-staff-block), dan router
+# api membuang header profil sehingga hanya skema public yang terjangkau. RPC agen
+# dan cs-admin hanya lewat CS_CONSOLE_DOMAIN (ipAllowList VPN_SOURCE_RANGES).
+# Router REST publik juga memasang X-Olt-Edge: public (menimpa nilai klien);
+# private.check_request (0100) menolak JWT akun CS yang datang dengan penanda ini.
 #
 # Entrypoint `admin` (semua path, termasuk Studio) hanya di-bind ke 127.0.0.1
 # server; akses lewat WireGuard atau SSH tunnel. Lihat docs/PRODUCTION.md.
 http:
+  middlewares:
+    public-edge:
+      headers:
+        customRequestHeaders:
+          X-Olt-Edge: public
+
+    public-schema-only:
+      headers:
+        customRequestHeaders:
+          Accept-Profile: ""
+          Content-Profile: ""
+
+    staff-api-deny:
+      ipAllowList:
+        sourceRange: ["255.255.255.255/32"]
+
   routers:
     realtime:
       entryPoints: [websecure]
@@ -55,11 +80,29 @@ http:
         certResolver: le
       priority: 90
 
+    api-cs-customer:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathRegexp(`^/rest/v1/rpc/(support_home|topics|open_ticket|my_tickets|ticket_messages|close_ticket|rate_ticket|request_complaint|report_fake_cs|check_sensitive|get_messages|send_message|mark_read|room_members)$`)
+      service: kong
+      middlewares: [rate-limit, public-edge, body-api, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 83
+
+    api-cs-staff-block:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/rest/v1`) && (HeaderRegexp(`Accept-Profile`, `(?i)cs_api`) || HeaderRegexp(`Content-Profile`, `(?i)cs_api`))
+      service: kong
+      middlewares: [rate-limit, hsts, security-headers, staff-api-deny, body-api]
+      tls:
+        certResolver: le
+      priority: 82
+
     api:
       entryPoints: [websecure]
-      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/bridge/v1`))
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/bridge/v1`))
       service: kong
-      middlewares: [rate-limit, body-api, hsts, security-headers]
+      middlewares: [rate-limit, public-edge, public-schema-only, body-api, hsts, security-headers]
       tls:
         certResolver: le
       priority: 80

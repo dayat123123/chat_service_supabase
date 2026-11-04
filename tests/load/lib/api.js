@@ -3,6 +3,7 @@ import { Counter } from 'k6/metrics';
 
 export const rateLimited = new Counter('rate_limited');
 export const apiErrors = new Counter('api_errors');
+export const poolTimeouts = new Counter('pgrst003');
 
 export class Api {
   constructor(base, anon, ip) {
@@ -21,6 +22,7 @@ export class Api {
   track(res, name) {
     if (res.status === 429 || (res.body && String(res.body).includes('rate_limited'))) rateLimited.add(1, { name });
     else if (res.status >= 400 || res.status === 0) apiErrors.add(1, { name, status: String(res.status) });
+    if (res.status === 504 && res.body && String(res.body).includes('PGRST003')) poolTimeouts.add(1, { name });
     return res;
   }
 
@@ -38,7 +40,7 @@ export class Api {
 
   async rpc(fn, args = {}, opts = {}) {
     const name = opts.name || fn;
-    const params = { headers: this.headers(opts.headers || {}), tags: { name } };
+    const params = { headers: this.headers(opts.headers || {}), tags: Object.assign({ name }, opts.tags || {}) };
     const res = opts.get
       ? await http.asyncRequest('GET', `${this.base}/rest/v1/rpc/${fn}?${Object.entries(args).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')}`, null, params)
       : await http.asyncRequest('POST', `${this.base}/rest/v1/rpc/${fn}`, JSON.stringify(args), params);

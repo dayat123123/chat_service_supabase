@@ -187,7 +187,7 @@ Cara kerja adapter:
 | `VALKEY_PASSWORD` / `VALKEY_PASSWORD_FILE` | – | Compose memakai `/run/secrets/valkey_password` |
 | `VALKEY_DB` | `0` | |
 | `VERIFY_CACHE_TTL` | `60` | Cache hasil exchange per hash token, dalam detik |
-| `RATE_LIMIT_PER_MINUTE` | `30` | Per IP klien |
+| `RATE_LIMIT_PER_MINUTE` | `300` | Per IP klien. Longgar untuk nasabah di balik CGNAT/Wi-Fi kantor saat 09:00 (satu IP bisa berisi ratusan nasabah); penyalahgunaan per akun dijaga batas per user |
 | `RATE_LIMIT_PER_USER_PER_MINUTE` | `10` | Per user OLT |
 | `BREAKER_FAILURE_THRESHOLD` | `5` | Kegagalan OLT berturut-turut sebelum breaker terbuka |
 | `BREAKER_COOLDOWN` | `30` | Detik sebelum request uji ke OLT |

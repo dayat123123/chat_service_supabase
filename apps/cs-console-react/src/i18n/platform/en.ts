@@ -73,7 +73,7 @@ export const platform: Translated<typeof source> = {
     cidrsHint:
       'One per line, matching the sending system server IPs as the social server sees them (for example 10.20.0.0/16). Leave empty to allow any IP. At most {{max}}.',
     rate: 'Requests per minute',
-    rateHint: '1–100,000. Default 600.',
+    rateHint: '1–100,000. Default 3,000 (50 requests/second). Batch up to 500 messages per request.',
     enabled: 'Key active',
     enabledHint: 'Turn off to disable the key temporarily without revoking it.',
     saved: 'API key saved',

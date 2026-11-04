@@ -5,8 +5,8 @@ select plan(10);
 select results_eq(
   $$select tablename::text collate "default" from pg_publication_tables
     where pubname = 'supabase_realtime' and schemaname = 'public' order by 1$$,
-  $$values ('comments'), ('messages'), ('notifications'), ('posts'), ('reactions')$$,
-  'Publikasi realtime mencakup tabel yang dibutuhkan');
+  $$values ('comments'), ('notifications'), ('posts'), ('reactions')$$,
+  'Publikasi realtime mencakup tabel yang dibutuhkan (pesan lewat broadcast, 0098)');
 
 select results_eq(
   $$select id, public, file_size_limit from storage.buckets where id in ('avatars', 'attachments') order by id$$,

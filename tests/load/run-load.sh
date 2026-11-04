@@ -48,6 +48,8 @@ if [ "$notifier_was_running" = true ]; then
   docker stop "$(container notifier)" > /dev/null && log "notifier dihentikan selama uji (tidak ada push nyata)"
 fi
 queued_before=$(sql "select count(*) from private.push_queue")
+PREVIEW_SQL="select 'lag_s=' || coalesce(round(extract(epoch from (select max(m.created_at) from public.messages m where m.room_id = r.id) - r.last_message_at)::numeric, 3)::text, '-')
+  || ' queue=' || (select count(*) from private.room_preview_queue) from public.chat_rooms r where r.type = 'stock' and r.stock_code = 'LTHOT'"
 
 max=0
 for n in $steps; do [ "$n" -gt "$max" ] && max=$n; done
@@ -73,10 +75,15 @@ summary() {
       (if c("rt_expected") > 0 then ((c("rt_messages_received") / c("rt_expected") * 1000 | round) / 10 | tostring) + "%" else "-" end),
       c("rt_subscribed"),
       c("rate_limited"), c("login_failed"), c("ws_failed"), c("rt_join_failed"), c("ws_dropped"),
-      ((.metrics.http_reqs.values.rate // 0) * 10 | round / 10 | tostring)
+      ((.metrics.http_reqs.values.rate // 0) * 10 | round / 10 | tostring),
+      c("rt_recv_window"), c("rt_gap_only"),
+      (if c("rt_expected") > 0 then ((c("rt_recv_window") / c("rt_expected") * 1000 | round) / 10 | tostring) + "%" else "-" end),
+      (if c("rt_expected") > 0 then (((c("rt_recv_window") + c("rt_gap_only")) / c("rt_expected") * 1000 | round) / 10 | tostring) + "%" else "-" end),
+      p("http_req_duration{name:get_message_ids}"; "p(95)"), p("http_req_duration{name:get_messages_by_ids}"; "p(95)"),
+      c("gap_runs"), c("gap_too_long"), c("gap_failed"), c("pgrst003")
     ] | @tsv' "$2"
 }
-printf 'vus\thttp_p50\thttp_p95\thttp_p99\thttp_err\tsend_p95\texchange_p95\tfeed_p95\tjoin_p95\trt_p50\trt_p95\trt_p99\tsent\tsend_fail\trt_recv\trt_expected\trt_delivered\tsubscribed\trate_limited\tlogin_fail\tws_fail\tjoin_fail\tws_drop\treq_per_s\n' > "$RUN/steps.tsv"
+printf 'vus\thttp_p50\thttp_p95\thttp_p99\thttp_err\tsend_p95\texchange_p95\tfeed_p95\tjoin_p95\trt_p50\trt_p95\trt_p99\tsent\tsend_fail\trt_recv\trt_expected\trt_delivered\tsubscribed\trate_limited\tlogin_fail\tws_fail\tjoin_fail\tws_drop\treq_per_s\trt_recv_win\tgap_only\trt_win_pct\teventual_pct\tids_p95\tbyids_p95\tgap_runs\tgap_too_long\tgap_failed\tpgrst003\n' > "$RUN/steps.tsv"
 
 prev_p95=0
 for n in $steps; do
@@ -99,6 +106,9 @@ for n in $steps; do
     | sort -k2 -n -r > "$step/peak-container.tsv"
   awk -F, 'NR>1 {for (i=2;i<=NF;i++) if ($i>p[i]) p[i]=$i} END {printf "peak conn_total=%d active=%d idle_in_tx=%d lock_waits=%d authenticator=%d\n", p[2], p[3], p[4], p[5], p[6]}' "$step/db.csv" > "$step/peak-db.txt"
   awk -F, 'NR>1 && $2=="authenticator" {if ($4>w) w=$4; if ($8>mw) mw=$8; if ($5>a) a=$5} END {printf "pgbouncer authenticator peak cl_waiting=%s sv_active=%s maxwait_s=%s\n", w+0, a+0, mw+0}' "$step/pgbouncer.csv" >> "$step/peak-db.txt"
+  awk -F, 'NR>1 && $4!="" {if ($2>q) q=$2; if ($3>o) o=$3; if ($4>l) l=$4; if ($5>s) s=$5} END {printf "room preview peak queue=%d oldest_s=%.1f lag_s=%.1f send_lock_waits=%d\n", q, o, l, s}' "$step/preview.csv" >> "$step/peak-db.txt"
+  sleep 3
+  echo "room preview after step: $(sql "$PREVIEW_SQL")" >> "$step/peak-db.txt"
   column -t -s $'\t' "$RUN/steps.tsv" | tail -1
   head -6 "$step/peak-container.tsv" | sed 's/^/    cpu% puncak: /'
   sed 's/^/    /' "$step/peak-db.txt"

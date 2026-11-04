@@ -17,7 +17,8 @@ import (
 var keys = []string{
 	"PORT", "LOG_LEVEL", "JWT_SECRET", "JWT_SECRET_FILE", "JWT_ISSUER", "POSTGREST_URL", "INSTANCE_ID", "PROBES", "PROBES_EXTRA", "DISKS",
 	"REPORT_INTERVAL", "PROBE_TIMEOUT", "ALERT_POLL", "DB_DOWN_AFTER", "TELEGRAM_API_URL", "SMTP_TIMEOUT",
-	"REQUEST_TIMEOUT", "BATCH_SIZE", "LEASE", "SHUTDOWN_TIMEOUT",
+	"REQUEST_TIMEOUT", "BATCH_SIZE", "LEASE", "SHUTDOWN_TIMEOUT", "METRICS_SOURCES", "PGBOUNCER_STATS_PASSWORD",
+	"PGBOUNCER_STATS_PASSWORD_FILE",
 }
 
 func clearEnv(t *testing.T) {
@@ -153,6 +154,10 @@ func TestLoadRejectsUnsafeValues(t *testing.T) {
 		{map[string]string{"LEASE": "25s", "SMTP_TIMEOUT": "20s"}, "SMTP_TIMEOUT and REQUEST_TIMEOUT + 10s"},
 		{map[string]string{"SHUTDOWN_TIMEOUT": "6m"}, "SHUTDOWN_TIMEOUT"},
 		{map[string]string{"LOG_LEVEL": "loud"}, "LOG_LEVEL"},
+		{map[string]string{"METRICS_SOURCES": "rest=tcp://rest:3001"}, "METRICS_SOURCES"},
+		{map[string]string{"METRICS_SOURCES": "pgbouncer=pgbouncer://olt_stats:pass@pgbouncer:6432"}, "METRICS_SOURCES"},
+		{map[string]string{"METRICS_SOURCES": "pgbouncer=pgbouncer://pgbouncer:6432"}, "PGBOUNCER_STATS_PASSWORD"},
+		{map[string]string{"METRICS_SOURCES": "pgbouncer=pgbouncer://pgbouncer:6432", "PGBOUNCER_STATS_PASSWORD_FILE": filepath.Join(t.TempDir(), "missing")}, "PGBOUNCER_STATS_PASSWORD_FILE"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.want, func(t *testing.T) {
@@ -169,6 +174,27 @@ func TestLoadRejectsUnsafeValues(t *testing.T) {
 				t.Fatalf("error echoes URL credentials: %v", err)
 			}
 		})
+	}
+}
+
+func TestLoadReadsMetricsSourcesAndStatsPassword(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("JWT_SECRET", strings.Repeat("s", 40))
+	t.Setenv("METRICS_SOURCES", "rest=http://rest:3001/metrics,realtime=jwt+http://realtime:4000/metrics,pgbouncer=pgbouncer://pgbouncer:6432")
+	file := filepath.Join(t.TempDir(), "stats")
+	_ = os.WriteFile(file, []byte("rahasia\n"), 0o600)
+	t.Setenv("PGBOUNCER_STATS_PASSWORD_FILE", file)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Metrics) != 3 || cfg.Metrics[1].Name != "realtime" || !cfg.Metrics[1].JWT || cfg.StatsPassword != "rahasia" {
+		t.Fatalf("metrics = %+v", cfg.Metrics)
+	}
+	t.Setenv("METRICS_SOURCES", "rest=http://rest:3001/metrics")
+	t.Setenv("PGBOUNCER_STATS_PASSWORD_FILE", "")
+	if cfg, err = Load(); err != nil || cfg.StatsPassword != "" {
+		t.Fatalf("http-only sources need no stats password: %v", err)
 	}
 }
 

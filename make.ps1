@@ -62,7 +62,7 @@ $EnvFile = 'docker/.env'
 $SecretsDir = 'docker/secrets'
 $SecretNames = @('postgres_password', 'jwt_secret', 'anon_key', 'service_role_key', 'dashboard_password',
                  'secret_key_base', 'realtime_db_enc_key', 'realtime_erlang_cookie', 'pg_meta_crypto_key',
-                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri',
+                 's3_protocol_access_key_id', 's3_protocol_access_key_secret', 'valkey_password', 'postgrest_db_uri', 'pgbouncer_stats_password',
                  'olt_jwks', 'backup_db_password')
 $GoImage = 'golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb'
 $GitleaksImage = 'ghcr.io/gitleaks/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854'
@@ -146,11 +146,12 @@ function Invoke-Testkit {
     $runArgs = @('run', '--rm', '--network', "${Stack}_app", '--network', "${Stack}_data", '--network', "${Stack}_edge",
                  '-v', '/var/run/docker.sock:/var/run/docker.sock',
                  '-v', "$(Join-Path $PSScriptRoot 'tests'):/olt/tests:ro", '-v', "${results}:/olt/results",
-                 '-v', "$(Join-Path $PSScriptRoot 'docker'):/olt/docker:ro", '--mount', 'type=tmpfs,destination=/olt/docker/secrets')
+                 '-v', "$(Join-Path $PSScriptRoot 'docker'):/olt/docker:ro", '--mount', 'type=tmpfs,destination=/olt/docker/secrets',
+                 '-v', "$(Join-Path $PSScriptRoot 'packages/rendezvous_community/lib'):/olt/client-lib:ro")
     foreach ($s in @('anon_key', 'jwt_secret', 'postgres_password', 'olt_dev_signing_key')) {
         $runArgs += @('-v', "$(Join-Path $PSScriptRoot "$SecretsDir/$s"):/olt/secrets/${s}:ro")
     }
-    foreach ($e in @('LOAD_STEPS', 'LOAD_HOLD', 'LOAD_RAMP', 'LOAD_MSG_EVERY', 'LOAD_FORCE', 'LOAD_VIA', 'CHAOS_VUS', 'CHAOS_OUTAGE', 'CHAOS_LONG_OUTAGE')) {
+    foreach ($e in @('LOAD_STEPS', 'LOAD_HOLD', 'LOAD_RAMP', 'LOAD_MSG_EVERY', 'LOAD_FORCE', 'LOAD_VIA', 'CHAOS_VUS', 'CHAOS_OUTAGE', 'CHAOS_LONG_OUTAGE', 'GAP_EVERY', 'GAP_IDS', 'GAP_OVERLAP', 'RECONNECT_JITTER', 'GAP_RECHECK')) {
         if (Test-Path "Env:$e") { $runArgs += @('-e', $e) }
     }
     Invoke-Docker ($runArgs + @($TestkitImage) + $Arguments)
@@ -180,6 +181,10 @@ function Assert-Config {
     if ($DeployProfile -ne 'dev') {
         foreach ($key in @('PROXY_DOMAIN', 'ACME_EMAIL')) {
             if (-not (Get-EnvValue $key)) { throw "Profil ${DeployProfile}: $key wajib diisi di docker/.env" }
+        }
+        $rateLimit = Get-EnvValue 'AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE'
+        if ($rateLimit -match '^\d+$' -and [int]$rateLimit -lt 300) {
+            throw "Profil ${DeployProfile}: AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE=$rateLimit di docker/.env terlalu kecil (minimal 300, docs/PRODUCTION.md Batas & rate limit)"
         }
     }
 }

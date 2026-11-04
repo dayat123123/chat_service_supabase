@@ -9,7 +9,8 @@ Internet ──80──▶ Traefik ── redirect ke HTTPS
 Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per IP,
                  │        batas body & koneksi WebSocket, security headers)
                  │ hanya path API: /rest/v1 /realtime/v1 /storage/v1 /media/v1 /integration/v1
-                 │ /functions/v1 /bridge/v1      (lainnya 404, termasuk /auth/v1 & Studio)
+                 │ /bridge/v1   (lainnya 404, termasuk /auth/v1, /functions/v1 & Studio;
+                 │               cs_api hanya RPC chat CS nasabah, API staf di domain CS)
                  ▼
                Kong ──▶ PostgREST, Storage, Edge Functions ──▶ PgBouncer ──▶ Postgres 17
                  │      Realtime ─────────────────────────────────────────▶ Postgres
@@ -69,6 +70,12 @@ Catatan:
   4. Login dengan `DASHBOARD_USERNAME` dan password di `docker/secrets/dashboard_password`.
   5. Setelah selesai: `make admin-down PROFILE=single`.
 - **Customer service lewat chat.** Chat CS nasabah memakai schema `cs_api` lewat `/rest/v1` dan Realtime (sudah ada di `PGRST_DB_SCHEMAS` default), jadi tidak butuh service tambahan. Server tidak mengambil data nasabah dari OLT; agen membuka back-office OLT bila butuh data akun ([olt-integration.md](olt-integration.md)). Detail: [docs/cs-chat](cs-chat/README.md).
+- **API staf hanya di domain CS** (temuan T4, [laporan uji 3 Nov](testing/report-2026-11-03.md)). Di domain publik `PROXY_DOMAIN` (`docker/volumes/traefik/prod.yml`):
+  1. Skema `cs_api` hanya dibuka untuk 14 RPC chat CS yang dipanggil app nasabah (router `api-cs-customer`: `support_home`, `topics`, `open_ticket`, `my_tickets`, `ticket_messages`, `close_ticket`, `rate_ticket`, `request_complaint`, `report_fake_cs`, `check_sensitive`, `get_messages`, `send_message`, `mark_read`, `room_members`). Permintaan lain dengan `Accept-Profile`/`Content-Profile` `cs_api` dijawab 403 (`api-cs-staff-block`), dan router `api` membuang kedua header itu sehingga hanya skema `public` yang terjangkau.
+  2. Router REST publik memasang header `X-Olt-Edge: public` (menimpa nilai dari klien). `private.check_request` (migrasi `0100`) menolak JWT akun CS yang datang dengan penanda ini (`403 cs_staff_public_edge`), jadi JWT staf yang bocor tidak bisa dipakai dari internet, termasuk untuk RPC yang dibuka bagi nasabah. Domain CS membuang header ini.
+  3. `/functions/v1` (Edge Function `cs-admin`) tidak dipublikasikan; hanya ada di domain CS. Fungsi contoh `hello` sudah dihapus.
+
+  Bila app nasabah menambah pemanggilan RPC `cs_api`, tambahkan namanya ke regex `api-cs-customer`. `make test-security` (static-config) mencocokkan allowlist ini dengan `packages/rendezvous_community/lib` dan gagal bila ada yang terlewat. Profil dev tidak membatasi apa pun (web CS dev di `:8085` memakai API `:8000`). Realtime (`cs:*`) dan Storage (`cs-documents`) untuk staf masih terjangkau lewat domain publik, dibatasi RLS.
 - **Web CS React** ([`apps/cs-console-react`](../apps/cs-console-react/README.md)) mati secara default di profil single. Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`), yang memakai overlay `docker/compose.cs.yml`. Isi di `docker/.env`:
   1. `CS_CONSOLE_DOMAIN`: domain khusus web CS. Web CS dan API agen (`/auth/v1`, `/functions/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`) disajikan di domain ini, jadi tidak perlu CORS.
   2. `VPN_SOURCE_RANGES`: rentang IP yang boleh membuka web CS, dipisah koma. Semua router domain ini (`docker/volumes/traefik/cs.yml`) memakai `ipAllowList`; IP lain mendapat 403. VPN **tidak wajib**: isi dengan jaringan kantor, tanpa mengubah kode.
@@ -141,6 +148,15 @@ Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Setelah me
    ```
 
 5. Upgrade major Postgres (misalnya 17 → 18) butuh `pg_upgrade` dan tidak tercakup langkah di atas.
+
+**Rilis alert kapasitas (migrasi `0104`, sentinel 0.2.0, image PgBouncer `1.24.0-4`):** rilis ini menambah Docker secret `pgbouncer_stats_password` (user konsol admin PgBouncer `olt_stats` untuk sentinel). Jalankan `make gen-secrets` (Windows: `.\make.ps1 gen-secrets`) sebelum `make up`; secret yang sudah ada dipertahankan dan hanya yang belum ada dibuat. Tanpa secret ini `check-config` gagal dan PgBouncer tidak mau start.
+
+**Rilis Realtime Broadcast (migrasi `0098`, `rendezvous_community` 1.5.0) memutus klien lama.** Klien 1.4.x tetap tersambung, tetapi tidak lagi menerima pesan baru secara realtime (hanya saat memuat ulang) dan typing-nya tidak sampai. Urutan rilis:
+
+1. App OLT dengan `rendezvous_community` 1.5.0 sudah tersedia di toko aplikasi / kanal update Windows untuk semua platform.
+2. Deploy backend (`git pull`, `make up`).
+3. Segera setelahnya, Super Admin membuka web CS **Pengaturan → Fitur & versi → Versi minimum aplikasi** dan mengisi versi app OLT pertama yang membawa 1.5.0 untuk setiap platform yang dipakai OLT (`android`, `windows`, dan `ios`/`macos`/`linux`/`web` bila ada). Yang dibandingkan adalah `appVersion` app OLT yang dikirim ke `initialize(...)`, bukan versi package. Perubahan tercatat di jejak audit. App yang lebih lama menerima `update_required: true` dari `get_client_config` dan callback `onUpdateRequired` mengarahkan nasabah ke update. Detail: [INTEGRATION.md](INTEGRATION.md#kompatibilitas-server-dan-versi-minimum).
+4. Data di database tidak perlu diubah manual.
 
 **Aturan migrasi:**
 - Tambahkan file migrasi baru dengan nomor berikutnya. **Jangan pernah mengedit file yang sudah jalan**; runner menolaknya lewat pengecekan checksum.
@@ -227,6 +243,58 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
   - error 5xx dan 429 di log Traefik/Kong
   - error `olt_unavailable` di auth-bridge (server OLT bermasalah), `olt_auth_bridge_olt_breaker_open = 1`, dan kenaikan `olt_auth_bridge_valkey_errors_total`
 
+### Alert kapasitas (sentinel 0.2.0, migrasi `0104`)
+
+Sentinel membaca metrik internal setiap `REPORT_INTERVAL` (30 dtk) lewat `METRICS_SOURCES` dan mengirim angka mentahnya ke `health_report(p_metrics)`. Aturan dihitung di database, sama seperti probe dan disk. Alert dibuka bila masalah bertahan `health.alert_after_seconds` (120 dtk) di setiap evaluasi, lalu dikirim ke kanal Telegram/email yang diatur Super Admin di web. Ambang ada di `private.settings` (`health.*`) dan bisa diubah tanpa deploy.
+
+| Kunci alert | Sumber | Peringatan | Kritis | Catatan |
+|---|---|---|---|---|
+| `rest:pool` | Admin server PostgREST `http://rest:3001/metrics`: `pgrst_db_pool_timeouts_total`, `pgrst_db_pool_waiting`, `pgrst_db_pool_available`, `pgrst_db_pool_max` | ≥ 1 timeout PGRST003 (504) dalam 5 menit, atau ≥ 1 request menunggu saat pool kosong (`available` 0) pada sampel terakhir | ≥ 20 timeout dalam 5 menit | Gejala T17 (konvoi kunci baris). `waiting` saja tidak dipakai: gauge ini sering 1 sesaat walau koneksi masih tersedia (termasuk saat probe sentinel). Counter dijumlah lintas replika; restart replika (counter reset) dihitung benar |
+| `realtime:events` | Realtime `/metrics` (JWT dari `jwt_secret`, sama dengan `METRICS_JWT_SECRET`): laju `realtime_channel_global_events` rata-rata ±2 menit | ≥ 70% `max_events_per_second` tenant | ≥ 90%; judul berubah menjadi "membuang event" pada ≥ 100% | Batas dibaca dari `_realtime.tenants` (cadangan `health.realtime_events_limit`). Lihat catatan di bawah |
+| `pgbouncer:queue` | Konsol admin PgBouncer, `SHOW POOLS` sebagai `olt_stats` | `cl_waiting` ≥ 1 atau `maxwait` ≥ 1 dtk (sampel terakhir) | `maxwait` ≥ 5 dtk | Pool konsol `pgbouncer` diabaikan |
+| `db:lock_waits` | `pg_locks` (`not granted`, `waitstart`) saat evaluasi | ≥ 5 proses menunggu lock, atau tunggu terlama ≥ 5 dtk | ≥ 20 proses atau ≥ 30 dtk | Sinyal dini T17 dan migrasi yang tertahan lock |
+| `queue:room_preview` | `private.room_preview_queue` (migrasi `0102`) | Baris tertua ≥ 60 dtk | ≥ 300 dtk | Job `chat-room-preview` (tiap 10 dtk) mati atau macet. Kegagalan job itu sendiri juga muncul sebagai `cron:chat-room-preview` (aturan cron 0064 mencakup semua job aktif) |
+| `metrics:<sumber>` | Status baca sumber metrik | Sumber gagal dibaca pada laporan terakhir | — | Supaya alert di atas tidak diam-diam mati (mis. secret salah, port admin tertutup) |
+
+- **Kenapa Realtime lewat metrik, bukan log.** Realtime v2.143 tidak punya counter khusus `MessagePerSecondRateLimitReached`/`UnableToBroadcastChanges` di `/metrics`; keduanya hanya ada di log. Membaca log butuh akses Docker socket atau pengiriman log, yang tidak diberikan ke sentinel. Batas tenant dihitung Realtime dari rata-rata bergerak counter event yang sama dengan `realtime_channel_global_events`, jadi laju counter itu dibanding `max_events_per_second` memberi peringatan **sebelum** event dibuang. Di cluster, laju dijumlah dari semua node (lebih awal waspada bila batas ternyata per node).
+- **Endpoint internal saja.** Admin server PostgREST (`PGRST_ADMIN_SERVER_HOST: 0.0.0.0`, port 3001: `/live`, `/ready`, `/metrics`, `/schema_cache`), `/metrics` Realtime, dan konsol PgBouncer hanya ada di network Docker `app`/`data`. Tidak ada yang di-publish ke host atau di-route Kong/Traefik; `make test-security` (static-config) memeriksanya.
+- **User `olt_stats`** hanya ada di `userlist.txt` PgBouncer dan di `stats_users` (perintah `SHOW` saja). Role ini tidak ada di Postgres, jadi tidak bisa membuka database. Password dari Docker secret `pgbouncer_stats_password`, seperti rahasia infrastruktur lain (bukan kredensial operasional yang dikelola dari web).
+- **Cluster:** `stack.cluster.yml` memakai `tasks.rest`, `tasks.realtime`, `tasks.pgbouncer`, sehingga setiap replika dibaca terpisah (bukan lewat VIP yang bergantian).
+- **Uji pemicu:** saat uji beban 500/600 VU (`make load-test`), `rest:pool` dan `db:lock_waits` seharusnya terbuka sebelum T17 diperbaiki, dan `realtime:events` pada ±450+ penerima per room. Matikan job dengan `select cron.alter_job((select jobid from cron.job where jobname = 'chat-room-preview'), active := false)` di staging lalu kirim pesan ke room saham untuk memicu `queue:room_preview` (nyalakan lagi sesudahnya).
+
+### Batas & rate limit
+
+Batas per IP dibuat longgar karena banyak nasabah bisa berbagi satu IP: NAT operator seluler (CGNAT) atau Wi-Fi kantor saat pasar buka 09:00 (temuan T3, [laporan uji 3 Nov](testing/report-2026-11-03.md)). Perlindungan dari penyalahgunaan per akun tetap dijaga batas per user. Semua nilai bisa diubah lewat `docker/.env` tanpa ubah kode.
+
+| Batas | Variabel `docker/.env` | Default | Catatan |
+|---|---|---|---|
+| Request per IP (Traefik) | `EDGE_RATE_AVERAGE` / `EDGE_RATE_BURST` | 300 / 600 per detik | Sebelumnya 100/200 |
+| WebSocket bersamaan per IP (Traefik) | `EDGE_WS_PER_IP` | 150 | Sebelumnya 20. Satu nasabah memakai 1 WebSocket |
+| Exchange auth-bridge per IP | `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` | 300 per menit | Sebelumnya 30. JWT TTL 15 menit, jadi satu IP NAT berisi ratusan nasabah bisa melakukan exchange bersamaan. `.env` lama bisa masih berisi 30: `make up`/`check-config` profil `single`/`cluster` gagal bila nilainya < 300 |
+| Exchange auth-bridge per user OLT | `AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE` | 10 per menit | Tetap ketat (dev 60) |
+| Aksi per user (pesan, postingan, laporan, dsb.) | `private.rate_limits` (SQL, bagian 5.2) | per aksi | Tidak bergantung IP; akun baru dibatasi lebih ketat |
+| Realtime per tenant | `REALTIME_MAX_CONCURRENT_USERS`, `REALTIME_MAX_JOINS_PER_SECOND`, `REALTIME_MAX_CHANNELS_PER_CLIENT`, `REALTIME_MAX_EVENTS_PER_SECOND` | 10.000 / 500 / 100 / 10.000 | Menjaga sumber daya Realtime walau batas WebSocket per IP dinaikkan. Lihat [Batas Realtime](#batas-realtime) |
+| Tunggu koneksi pool PostgREST | `PGRST_DB_POOL_ACQUISITION_TIMEOUT` | 2 dtk | Sebelumnya 10 (bawaan PostgREST). Saat pool (`PGRST_DB_POOL`, 10) habis, request gagal cepat dengan 504 `PGRST003` alih-alih menumpuk 10 dtk dan memperpanjang keruntuhan (T17). Klien mencoba ulang; pantau alert `rest:pool` |
+| Jeda login ulang PgBouncer ke Postgres | `PGBOUNCER_SERVER_LOGIN_RETRY` | 1 dtk | Bawaan PgBouncer 15 dtk membuat REST 503 ±16 dtk setelah Postgres restart (T6) |
+| API key integrasi OLT | kolom `rate_limit_per_minute` (web CS, Pengaturan → Integrasi OLT) | 3.000 per menit (key baru, migrasi `0101`) | Batas keras per key (T7). notifEngine wajib mengirim batch 100–500 pesan per request. Key lama tetap pada nilainya; naikkan dari web bila perlu |
+
+Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat dari satu IP. Atur `ipStrategy` middleware `rate-limit`/`ws-limit` di `docker/volumes/traefik/common.yml` (saat ini `depth: 0`, alamat koneksi langsung) sebelum memindahkannya.
+
+### Batas Realtime
+
+- Realtime men-seed ulang tenant dari env setiap start (`SEED_SELF_HOST`). `UPDATE _realtime.tenants` hilang setelah restart, jadi ubah `REALTIME_MAX_EVENTS_PER_SECOND` di `docker/.env`, lalu `docker compose ... up -d --no-deps realtime`.
+- Pesan chat dikirim lewat Broadcast dari database (`0098`, [docs/social](social/README.md#pengiriman-pesan-realtime-0098)). Setiap event yang **diterima** satu klien dihitung ke batas ini: satu pesan di room berisi 400 orang = 400 event. Room saham ramai dengan 12 pesan/detik dan 400 penerima ≈ 4.800 event/detik.
+- Bawaan 10.000/detik. Di atas batas, Realtime membuang event diam-diam (log `MessagePerSecondRateLimitReached`, lalu `UnableToBroadcastChanges: too_many_requests`). Alert `realtime:events` (Kesehatan sistem) terbuka mulai 70% batas, kritis mulai 90%. Klien Flutter dan web CS mengisi celah lewat `get_messages(p_after)` saat tersambung, tiap 45 detik, dan saat kembali ke aplikasi. Pesan tidak hilang, hanya terlambat.
+- Naikkan bertahap sambil memantau CPU container `realtime` (laporan uji: CPU Realtime rendah, bottleneck sebelumnya adalah RLS `postgres_changes` di Postgres, yang kini tidak dipakai untuk pesan).
+- `REALTIME_MAX_BYTES_PER_SECOND` tidak ditegakkan oleh Realtime v2.143. `max_presence_events_per_second` (1.000) tidak bisa diatur lewat env.
+
+### Perilaku saat gangguan (laporan uji chaos 3 Nov)
+
+- **Valkey mati** (T8): auth-bridge tetap melayani exchange (fail open) dengan limiter lokal per instance; `/readyz` bernilai `degraded`. Batas efektif menjadi batas × jumlah replika auth-bridge, dan restart Valkey mengosongkan jendela rate limit. Ini disengaja: login nasabah lebih penting daripada ketepatan batas selama beberapa menit. Pantau `olt_auth_bridge_valkey_errors_total`.
+- **Postgres restart** (T6, diperbaiki 4 Nov): jendela gagal REST kini **1–3 dtk** (sebelumnya ±16 dtk). Penyebabnya bukan schema cache PostgREST, melainkan PgBouncer: login ke Postgres yang sedang mati gagal ("the database system is shutting down"), lalu error itu di-cache selama `server_login_retry` (bawaan 15 dtk) dan semua klien ditolak walau DB sudah siap. `PGBOUNCER_SERVER_LOGIN_RETRY=1` memperpendeknya; backoff PostgREST (1, 2, 4 dtk) setelahnya cukup cepat. Realtime tetap menolak join sampai tenant tersambung ulang. Semua pulih sendiri; aplikasi mencoba ulang. Restart DB terencana tetap sebaiknya di luar jam bursa.
+- **Pool PostgREST habis** (T17): request yang tidak mendapat koneksi dalam `PGRST_DB_POOL_ACQUISITION_TIMEOUT` (2 dtk) dijawab 504 `PGRST003`. Alert `rest:pool` dan `db:lock_waits` terbuka bila kondisinya bertahan 2 menit.
+- **Koneksi rest ↔ database putus tanpa RST** (T9): PostgREST memakai keepalive dan `tcp_user_timeout` libpq (`docker/volumes/rest/pg_service.conf`), sehingga koneksi menggantung diputus ±8 dtk, `/ready` menjadi 503, dan healthcheck `postgrest --ready` menandai `rest` unhealthy dalam ±20 dtk (sebelumnya ±40 dtk sebelum `/ready` berubah). Sentinel juga mem-probe `http://rest:3000/` (menyentuh DB).
+
 ## 8. Checklist sebelum rilis
 
 > Tahap 6 memindahkan checklist ini ke `docs/production-checklist.md` dan melengkapinya sesuai addendum.
@@ -246,7 +314,13 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 **Data & operasional**
 - [ ] Tujuan backup S3 diatur di web (**Kesehatan sistem → Backup**), backup penuh pertama berhasil, dan uji restore berhasil. Password enkripsi dan salinan `pgsodium_root.key` disimpan di luar server.
 - [ ] Kanal alert (Telegram dan/atau email) diisi, dan **Kirim uji** sudah diterima tim operasional. Pemantau uptime dari luar server sudah dipasang.
-- [ ] Halaman **Kesehatan sistem** tidak menampilkan masalah kritis.
+- [ ] Halaman **Kesehatan sistem** tidak menampilkan masalah kritis, dan tidak ada "Metrik … tidak bisa dibaca" (sumber `rest`, `realtime`, `pgbouncer` terbaca sentinel).
+- [ ] `docker/.env` server tidak menurunkan `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` di bawah 300 (`check-config` menolaknya) dan `/bridge/v1/health` menunjukkan `olt_mode: jwt`.
+- [ ] Secret `pgbouncer_stats_password` ada (`make gen-secrets`).
+
+**Klien**
+- [ ] App OLT yang dirilis memakai `rendezvous_community` ≥ 1.5.0 (wajib sejak migrasi `0098`).
+- [ ] Setelah backend naik, Super Admin menaikkan **Pengaturan → Fitur & versi → Versi minimum aplikasi** per platform ke versi app OLT pertama yang membawa 1.5.0 (bagian 4), dan app 1.4.x terbukti mendapat `update_required`.
 - [ ] Dokumen hukum (S&K, Pedoman Komunitas, Kebijakan Privasi) diterbitkan Kepatuhan dari web, dan jenis dokumen yang wajib disetujui sudah ditentukan.
 - [ ] Daftar kata terlarang (web CS, Kepatuhan → Kata terlarang) dan rate limit sudah ditinjau tim compliance.
 - [ ] Prosedur moderasi (bagian 5) sudah disosialisasikan.
@@ -259,7 +333,7 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 - [ ] API agen (`cs_api.agent_*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses dari IP di `VPN_SOURCE_RANGES` (LAN kantor atau VPN): uji dari jaringan lain harus mendapat 403. Staf CS login dengan email + password (tanpa TOTP, jadi pembatasan jaringan dan password kuat minimal 12 karakter adalah lapisan utamanya), dan pendaftaran publik GoTrue tetap mati.
 - [ ] `make test-cs-console` lulus dan E2E web CS (`make e2e-cs-console`) lulus di staging.
 - [ ] Endpoint login GoTrue (`/auth/v1/token`, `/auth/v1/factors`, `/auth/v1/user`) hanya dari jaringan yang diizinkan. Nasabah tidak memakainya karena JWT nasabah diterbitkan auth-bridge.
-- [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari jaringan yang diizinkan. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.
+- [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari jaringan yang diizinkan: `https://<PROXY_DOMAIN>/functions/v1/cs-admin/agents` harus 404, dan RPC agen (`Accept-Profile: cs_api`, mis. `/rest/v1/rpc/agent_me`) di domain publik harus 403. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.
 - [ ] Super admin pertama dibuat sekali dari server:
 
   ```bash

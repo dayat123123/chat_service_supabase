@@ -2,7 +2,7 @@
 
 Klasifikasi NSFW untuk gambar yang diunggah nasabah. Layanan `media` mengirim setiap gambar (setelah metadata dibuang) ke `POST /classify` sebelum menyimpannya, lalu memutuskan izinkan / tahan / blokir berdasarkan ambang dari database (lihat `services/media/README.md`). Classifier sendiri tidak memutuskan apa pun, hanya memberi skor per kategori.
 
-Model, lisensi, hash, dan kalibrasi: [MODEL.md](MODEL.md). Inferensi CPU dengan ONNX Runtime lewat cgo (`github.com/yalue/onnxruntime_go`); ini satu-satunya layanan Go di repo yang memakai cgo dan dependensi luar, karena tidak ada runtime ONNX murni Go yang layak. Image: build di `golang:1.27.3-bookworm`, runtime `gcr.io/distroless/cc-debian12:nonroot` (glibc + libstdc++ untuk ONNX Runtime), user nonroot, hanya `linux/amd64`. Model dan ONNX Runtime diunduh saat build dengan SHA-256 yang di-pin, jadi `docker build` butuh internet.
+Model, lisensi, hash, dan kalibrasi: [MODEL.md](MODEL.md). Inferensi CPU dengan ONNX Runtime lewat cgo (`github.com/yalue/onnxruntime_go`); ini satu-satunya layanan Go di repo yang memakai cgo dan dependensi luar, karena tidak ada runtime ONNX murni Go yang layak. Image: build di `golang:1.27.3-bookworm`, runtime `gcr.io/distroless/cc-debian13:nonroot` (glibc + libstdc++ untuk ONNX Runtime; sejak 0.1.1, karena cc-debian12 masih membawa CVE libssl3), user nonroot, hanya `linux/amd64`. Model dan ONNX Runtime diunduh saat build dengan SHA-256 yang di-pin, jadi `docker build` butuh internet.
 
 Tidak lewat Kong/Traefik: hanya dipanggil `media` di network `app`. Tidak ada autentikasi antarlayanan; classifier tidak menyimpan apa pun dan tidak memegang rahasia selain JWT secret untuk heartbeat.
 

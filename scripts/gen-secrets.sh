@@ -121,6 +121,7 @@ resolve pg_meta_crypto_key            gen_base64 24
 resolve s3_protocol_access_key_id     gen_hex 16
 resolve s3_protocol_access_key_secret gen_hex 32
 resolve valkey_password               gen_hex 24
+resolve pgbouncer_stats_password      gen_hex 24
 # Password role replikasi olt_backup (layanan backup); dipasang service migrate.
 resolve backup_db_password            gen_hex 24
 # Kunci penanda tangan token sosial OLT dummy (hanya dev; dipakai services/dummy-olt).

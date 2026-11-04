@@ -13,7 +13,7 @@ dependencies:
     git:
       url: <url repo internal>
       path: packages/rendezvous_community
-      ref: v1.1.0            # pin tag/commit
+      ref: v1.5.0            # pin tag/commit; server dengan migrasi 0098 butuh >= 1.5.0
   flutter_localizations:
     sdk: flutter
 ```
@@ -25,6 +25,19 @@ Untuk pengembangan lokal bisa memakai `path: ../olt-social/packages/rendezvous_c
 Kompatibilitas:
 - **Flutter:** ≥ 3.44, Dart ≥ 3.12.
 - **flutter_bloc:** OLT boleh memakai `flutter_bloc` 9.x yang sama. Bloc milik package tersimpan di subtree widget-nya sendiri dan tidak bentrok dengan Bloc OLT.
+
+### Kompatibilitas server dan versi minimum
+
+> **Perubahan yang memutus (breaking): server dengan migrasi `0098` butuh `rendezvous_community` ≥ 1.5.0.**
+> Sejak `0098_realtime_broadcast_delivery`, pesan chat dikirim lewat Broadcast dari server ke topik privat `room:<id>` dan `user:<id>`; tabel `messages` keluar dari `postgres_changes`. Klien 1.4.x tetap login dan tersambung, tetapi **tidak menerima pesan baru secara realtime** (hanya terlihat saat room dimuat ulang) dan typing-nya tidak sampai. Tidak ada perubahan API publik di 1.5.0, jadi host cukup menaikkan versi (`ref: v1.5.0`).
+
+Langkah rilis (rinciannya di [PRODUCTION.md](PRODUCTION.md#4-update-versi)):
+
+1. OLT merilis app dengan `rendezvous_community` 1.5.0 untuk semua platform, dan app mengisi `appVersion` + `platform` + `onUpdateRequired` saat `initialize(...)` (bagian 3, [Konfigurasi klien](#konfigurasi-klien-130)).
+2. Backend dengan `0098` di-deploy.
+3. Super Admin membuka web CS **Pengaturan → Fitur & versi → Versi minimum aplikasi** dan mengisi versi app OLT pertama yang membawa 1.5.0 untuk tiap platform (`android`, `windows`, dan seterusnya). Perubahan tercatat di jejak audit. `get_client_config` lalu menjawab `update_required: true` untuk app yang lebih lama, dan `onUpdateRequired` mengarahkan nasabah ke update OLT.
+
+Yang dibandingkan adalah versi **app OLT** (`appVersion`), bukan versi package. App lama yang tidak mengisi `appVersion` tidak bisa dipaksa update lewat mekanisme ini; pastikan semua build yang beredar sudah mengirimnya.
 
 ## 2. Konfigurasi platform
 
@@ -214,7 +227,7 @@ Bila hanya tampilan yang ingin diganti, pakai builder (langkah 4) supaya logika 
 - `chat.getRooms(cursor: ..., limit: 30)` mengembalikan `Paged<ChatRoom>`; room CS selalu di halaman pertama. `chat.getRoom(roomId)` memuat satu room.
 - `chat.getMessages(roomId, cursor: ..., limit: 30)` memuat pesan dari yang terbaru per halaman. `chat.getMessagesAfter(roomId, cursor)` menyusulkan pesan baru; selama `nextCursor` tidak `null`, masih ada pesan berikutnya.
 - `comments.getThread(postId, maxDepth: 3)`.
-- `chat.connectRoom(roomId, me: user).events` adalah stream realtime room (pesan, mengetik, tanda terima, presence).
+- `chat.connectRoom(roomId, me: user).events` adalah stream realtime room (pesan, mengetik, tanda terima, presence). Sejak 1.5.0 pesan datang sebagai Broadcast dari server di topik privat `room:<id>` (backend `0098`), dan room mengisi celah sendiri lewat `get_messages` saat tersambung, tiap 45 detik, dan saat aplikasi kembali ke depan.
 - `chat.watchRoomSignals({roomId, ...}, me: user)` memantau mengetik, tanda terima, dan presence banyak room sekaligus (untuk daftar chat buatan sendiri).
 - `polls.vote(postId, optionId)` memberi suara; data polling ada di `Post.poll`.
 - `stocks.getStock(code)` mengembalikan kode, jumlah pemantau, dan status pantau user; `stocks.watch(code)` / `unwatch(code)` mengubahnya.

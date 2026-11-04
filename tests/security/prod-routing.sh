@@ -2,11 +2,16 @@
 # Uji dinamis routing PRODUKSI tanpa server produksi: Traefik sementara (image & digest sama dengan
 # stack) memuat docker/volumes/traefik/prod.yml + common.yml dengan entrypoint seperti compose.prod.yml,
 # terhubung ke Kong dev lewat network edge. Sertifikat: default Traefik (ACME diarahkan ke alamat mati,
-# TLS_SNI_STRICT=false agar sertifikat default dipakai). Container dihapus di akhir.
+# TLS_SNI_STRICT=false agar sertifikat default dipakai). cs.yml ikut dimuat dengan domain CS uji dan
+# VPN_SOURCE_RANGES = subnet edge (testkit), untuk membuktikan API staf hanya terjangkau lewat domain CS (T4).
+# Batas edge diset kecil (nilai uji) agar mekanismenya terbukti cepat; default produksi dicek static-config.
+# Container dihapus di akhir.
 set -uo pipefail
 source /olt/tests/lib/common.sh
 
 DOMAIN=api.olt-test.invalid
+CS_DOMAIN=cs.olt-test.invalid
+EDGE_NET=$(docker network inspect -f '{{(index .IPAM.Config 0).Subnet}}' "${STACK}_edge")
 NAME=olt-prodroute-traefik
 OUT="${OUT_DIR:-$RESULTS/security-$(stamp)}"
 mkdir -p "$OUT"
@@ -36,7 +41,7 @@ docker create --name "$NAME" --network "${STACK}_edge" --tmpfs /tmp --cap-drop A
   -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_STORAGE=/tmp/acme.json \
   -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_HTTPCHALLENGE_ENTRYPOINT=web \
   -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_CASERVER=https://127.0.0.1:9/directory \
-  -e PROXY_DOMAIN=$DOMAIN -e TLS_SNI_STRICT=false \
+  -e PROXY_DOMAIN=$DOMAIN -e TLS_SNI_STRICT=false -e CS_CONSOLE_DOMAIN=$CS_DOMAIN -e VPN_SOURCE_RANGES="$EDGE_NET" \
   -e EDGE_RATE_AVERAGE=100 -e EDGE_RATE_BURST=200 -e EDGE_WS_PER_IP=20 -e EDGE_BODY_MAX_API=262144 \
   "$IMAGE" > /dev/null || { echo "gagal membuat Traefik uji" >&2; exit 2; }
 trap 'docker rm -f "$NAME" > /dev/null 2>&1; rm -f "$BODY"' EXIT
@@ -44,6 +49,7 @@ tmpdir=$(mktemp -d)
 mkdir -p "$tmpdir/traefik/dynamic"
 cp /olt/docker/volumes/traefik/common.yml "$tmpdir/traefik/dynamic/common.yml"
 cp /olt/docker/volumes/traefik/prod.yml "$tmpdir/traefik/dynamic/routes.yml"
+cp /olt/docker/volumes/traefik/cs.yml "$tmpdir/traefik/dynamic/cs.yml"
 docker cp "$tmpdir/traefik" "$NAME:/etc/" > /dev/null || { echo "gagal menyalin konfigurasi" >&2; exit 2; }
 docker start "$NAME" > /dev/null
 IP=""
@@ -55,7 +61,7 @@ done
 log "Traefik uji $IP (image $IMAGE)"
 
 H=https://$DOMAIN:8443
-c() { curl -sk -o "$BODY" -D "$BODY.h" -w '%{http_code}' --resolve "$DOMAIN:8443:$IP" --resolve "other.invalid:8443:$IP" "$@" 2>/dev/null || echo 000; }
+c() { curl -sk -o "$BODY" -D "$BODY.h" -w '%{http_code}' --resolve "$DOMAIN:8443:$IP" --resolve "$CS_DOMAIN:8443:$IP" --resolve "other.invalid:8443:$IP" "$@" 2>/dev/null || echo 000; }
 
 code=$(c "$H/rest/v1/rpc/get_feed?p_limit=1" -H "apikey: $ANON_KEY")
 [ "$code" = 200 ] || [ "$code" = 401 ] && res ok "REST publik terjangkau" "$code" || res FAIL "REST publik terjangkau" "$code"
@@ -74,6 +80,41 @@ code=$(curl -sk -o /dev/null -w '%{http_code}' --resolve "other.invalid:8443:$IP
 [ "$code" = 404 ] && res ok "Host lain (bukan PROXY_DOMAIN) -> 404" "$code" || res FAIL "Host lain dilayani" "$code"
 code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: $DOMAIN" "http://$IP:8080/rest/v1/")
 [[ "$code" =~ ^30[178]$ ]] && res ok "HTTP dialihkan ke HTTPS" "$code" || res FAIL "HTTP tidak dialihkan" "$code"
+
+CS=https://$CS_DOMAIN:8443
+STAFF_JWT=$(staff_jwt 5e000000-0000-4000-8000-0000000000c1)
+CUST_JWT=$(customer_jwt "$(kong_edge_url)" joko_prasetyo 198.51.100.23)
+[ -n "$CUST_JWT" ] || res FAIL "gagal login nasabah uji joko_prasetyo (OLT dummy + auth-bridge)"
+body_has() { grep -q -- "$1" "$BODY"; }
+for p in /functions/v1/cs-admin/agents /functions/v1/hello /functions/v1/main; do
+  code=$(c "$H$p" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT")
+  [ "$code" = 404 ] && res ok "T4: $p tidak dipublikasikan di domain publik" "$code" || res FAIL "T4: $p terjangkau dari domain publik" "$code"
+done
+code=$(c "$H/rest/v1/rpc/agent_me" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Accept-Profile: cs_api')
+[ "$code" = 403 ] && ! body_has agent && res ok "T4: RPC staf cs_api (GET Accept-Profile) diblok edge publik" "$code" || res FAIL "T4: RPC staf cs_api terjangkau dari domain publik" "$code"
+code=$(c "$H/rest/v1/rpc/agent_me" -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Content-Profile: CS_API' -H 'Content-Type: application/json' -d '{}')
+[ "$code" = 403 ] && res ok "T4: RPC staf cs_api (POST Content-Profile, huruf besar) diblok edge publik" "$code" || res FAIL "T4: RPC staf cs_api POST terjangkau" "$code"
+code=$(c "$H/rest/v1/agents?select=user_id&limit=1" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Accept-Profile: cs_api')
+[ "$code" = 403 ] && res ok "T4: tabel/view cs_api diblok edge publik" "$code" || res FAIL "T4: tabel/view cs_api terjangkau" "$code"
+code=$(c "$H/rest/v1/rpc/get_feed?p_limit=1" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $CUST_JWT" -H 'Accept-Profile: graphql_public')
+[ "$code" = 200 ] && res ok "T4: header profil lain dibuang di router publik (skema public dipakai)" "$code" \
+  || res FAIL "T4: header profil tidak dibuang di router publik" "$code"
+code=$(c "$H/rest/v1/rpc/topics?p_language=id" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $CUST_JWT" -H 'Accept-Profile: cs_api')
+[ "$code" = 200 ] && res ok "T4: nasabah tetap bisa memakai RPC chat CS (cs_api.topics) di domain publik" "$code" || res FAIL "T4: chat CS nasabah terblokir" "$code"
+code=$(c "$H/rest/v1/rpc/my_tickets" -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $CUST_JWT" -H 'Content-Profile: cs_api' -H 'Content-Type: application/json' -d '{}')
+[ "$code" = 200 ] && res ok "T4: nasabah tetap bisa memakai cs_api.my_tickets (POST) di domain publik" "$code" || res FAIL "T4: cs_api.my_tickets nasabah terblokir" "$code"
+code=$(c "$H/rest/v1/rpc/topics?p_language=id" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Accept-Profile: cs_api' -H 'X-Olt-Edge: cs')
+[ "$code" = 403 ] && body_has cs_staff_public_edge && res ok "T4: JWT staf ditolak DB di domain publik walau RPC-nya dibuka untuk nasabah (penanda edge tidak bisa dipalsukan)" "$code" \
+  || res FAIL "T4: JWT staf diterima lewat domain publik" "$code"
+code=$(c "$CS/rest/v1/rpc/topics?p_language=id" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Accept-Profile: cs_api' -H 'X-Olt-Edge: public')
+[ "$code" = 200 ] && res ok "T4: JWT staf tetap bekerja lewat domain CS (penanda edge dibuang)" "$code" || res FAIL "T4: JWT staf gagal lewat domain CS" "$code"
+code=$(c "$CS/rest/v1/rpc/agent_me" -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Content-Profile: cs_api' -H 'Content-Type: application/json' -d '{}')
+[ "$code" = 200 ] && res ok "T4: RPC staf cs_api.agent_me terjangkau lewat domain CS" "$code" || res FAIL "T4: RPC staf gagal lewat domain CS" "$code"
+code=$(c "$CS/functions/v1/cs-admin/agents" -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H "Content-Type: application/json" -d "{}")
+[ "$code" = 403 ] && body_has role_forbidden && res ok "T4: cs-admin terjangkau lewat domain CS (agen biasa ditolak fungsi: role_forbidden)" "$code" \
+  || res FAIL "T4: cs-admin tidak terjangkau lewat domain CS" "$code"
+code=$(c "$CS/functions/v1/hello" -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT")
+[ "$code" = 404 ] && res ok "T10: fungsi contoh hello tidak ter-deploy" "$code" || res FAIL "T10: fungsi contoh hello masih ada" "$code"
 
 code=$(c "$H/rest/v1/rpc/get_feed?p_limit=1" -H "apikey: $ANON_KEY")
 hdr() { grep -i "^$1:" "$BODY.h" | head -1 | tr -d '\r'; }
@@ -120,7 +161,7 @@ if k6 run -q --summary-mode disabled --log-format raw --insecure-skip-tls-verify
      -e ANON_KEY="$ANON_KEY" /olt/tests/security/ws-limit.js > "$OUT/ws-limit.log" 2>&1; then
   r=$(sed -n 's/^RESULT //p' "$OUT/ws-limit.log" | tail -1)
   opened=$(jq -r .opened <<< "$r"); rejected=$(jq -r .rejected <<< "$r")
-  [ "$opened" -le 20 ] && [ "$rejected" -gt 0 ] && res ok "ws-limit: $opened WebSocket terbuka, $rejected ditolak dari 1 IP (batas 20)" \
+  [ "$opened" -le 20 ] && [ "$rejected" -gt 0 ] && res ok "ws-limit: $opened WebSocket terbuka, $rejected ditolak dari 1 IP (batas uji 20; default EDGE_WS_PER_IP 150)" \
     || res FAIL "ws-limit tidak membatasi ($opened terbuka, $rejected ditolak)"
 else
   res FAIL "k6 ws-limit gagal (lihat ws-limit.log)"

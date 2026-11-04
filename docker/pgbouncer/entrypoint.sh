@@ -19,6 +19,13 @@ mkdir -p "$conf_dir"
 umask 077
 
 printf '"pgbouncer" "%s"\n' "$PGBOUNCER_AUTH_PASSWORD" > "$conf_dir/userlist.txt"
+# User `olt_stats` (opsional): hanya konsol admin (stats_users, perintah SHOW) untuk
+# sentinel. Role ini tidak ada di Postgres, jadi tidak bisa membuka database.
+stats_users=pgbouncer
+if [ -n "${PGBOUNCER_STATS_PASSWORD:-}" ]; then
+  printf '"olt_stats" "%s"\n' "$PGBOUNCER_STATS_PASSWORD" >> "$conf_dir/userlist.txt"
+  stats_users="pgbouncer, olt_stats"
+fi
 
 cat > "$conf_dir/pgbouncer.ini" <<EOF
 [databases]
@@ -46,12 +53,15 @@ server_idle_timeout = 300
 server_lifetime = 3600
 query_wait_timeout = ${PGBOUNCER_QUERY_WAIT_TIMEOUT:-30}
 client_login_timeout = 30
+# Default PgBouncer 15 dtk: setelah Postgres restart, error login di-cache dan semua
+# klien ditolak 15 dtk walau DB sudah siap (T6, docs/testing/report-2026-11-03.md).
+server_login_retry = ${PGBOUNCER_SERVER_LOGIN_RETRY:-1}
 ignore_startup_parameters = extra_float_digits
 # Storage mengirim "-c search_path=..." lewat parameter startup "options";
 # PgBouncer menerimanya bila parameternya dilacak dan memulihkannya per klien.
 track_extra_parameters = IntervalStyle, search_path, multigres.unsafe_connection
 
-stats_users = pgbouncer
+stats_users = $stats_users
 log_connections = 0
 log_disconnections = 0
 log_pooler_errors = 1

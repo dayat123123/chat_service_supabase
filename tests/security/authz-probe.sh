@@ -130,17 +130,27 @@ DRAFT_OWNER=$(sql "select user_id from public.post_drafts where user_id <> '$ATT
 BOOKMARK_OWNER=$(sql "select user_id from public.bookmarks where user_id <> '$ATTACKER_ID' limit 1")
 WATCH_OWNER=$(sql "select user_id from public.stock_watchers where user_id <> '$ATTACKER_ID' limit 1")
 POST_OTHER=$(sql "select id from public.posts where author_id <> '$ATTACKER_ID' and deleted_at is null limit 1")
+OWN_ROOM=$(sql "select room_id from public.chat_members where user_id = '$ATTACKER_ID' limit 1")
 MSG_OTHER=$(sql "select id from public.messages where room_id = '${DM:-00000000-0000-0000-0000-000000000000}' and deleted_at is null limit 1")
 
 for room in DM SUPPORT GROUP; do
   id=${!room}
   if [ -z "$id" ]; then echo "skip: tidak ada room $room korban" >&2; continue; fi
+  ids=$(sql "select coalesce(string_agg('\"' || id || '\"', ','), '') from (select id from public.messages where room_id = '$id' limit 5) x")
   for a in anon nasabah agen; do
     expect_empty "$a" "messages room $room orang lain (REST)" GET "/rest/v1/messages?room_id=eq.$id&select=id,body" ''
     expect_empty "$a" "chat_members room $room orang lain" GET "/rest/v1/chat_members?room_id=eq.$id" ''
     expect_empty "$a" "rpc get_messages room $room orang lain" POST /rest/v1/rpc/get_messages "{\"p_room_id\":\"$id\"}"
     expect_empty "$a" "rpc get_room_members room $room orang lain" POST /rest/v1/rpc/get_room_members "{\"p_room_id\":\"$id\"}"
+    expect_empty "$a" "rpc get_message_ids room $room orang lain" POST /rest/v1/rpc/get_message_ids \
+      "{\"p_room_id\":\"$id\",\"p_after\":\"1970-01-01T00:00:00.000000Z|00000000-0000-0000-0000-000000000000\"}"
+    expect_empty "$a" "rpc get_messages_by_ids room $room orang lain" POST /rest/v1/rpc/get_messages_by_ids \
+      "{\"p_room_id\":\"$id\",\"p_ids\":[$ids]}"
   done
+  if [ -n "$OWN_ROOM" ]; then
+    expect_empty nasabah "rpc get_messages_by_ids room sendiri dengan id pesan room $room orang lain" POST /rest/v1/rpc/get_messages_by_ids \
+      "{\"p_room_id\":\"$OWN_ROOM\",\"p_ids\":[$ids]}"
+  fi
   expect_unchanged nasabah "send_message ke room $room orang lain" \
     "select count(*) from public.messages where room_id = '$id'" POST /rest/v1/rpc/send_message "{\"p_room_id\":\"$id\",\"p_body\":\"probe otorisasi\"}"
   expect_unchanged nasabah "mark_room_read room $room orang lain" \
@@ -188,7 +198,7 @@ for row in "${SERVICE_FNS[@]}"; do
 done
 
 echo "== cs_api: semua fungsi dengan argumen null"
-STAFF_ONLY='^(admin_|agent_(heartbeat|me|send_message|set_status)|alert_|backup_|claim_ticket|community_|compliance_|customer_history|evidence_|flag_ticket|health_|integration_|legal_|nasabah_|notes|add_note|online_agents|push_|quick_replies|reassign_ticket|release_ticket|report_customer|report_summary|request_transfer|respond_transfer|cancel_transfer|resolve_ticket|search_tickets|service_|set_ticket_priority|supervisor_|system_health|ticket_customer_login|ticket_detail|ticket_lists|wait_customer|room_members|get_messages)'
+STAFF_ONLY='^(admin_|agent_(heartbeat|me|send_message|set_status|typing)|alert_|backup_|claim_ticket|community_|compliance_|customer_history|evidence_|flag_ticket|health_|integration_|legal_|nasabah_|notes|add_note|online_agents|push_|quick_replies|reassign_ticket|release_ticket|report_customer|report_summary|request_transfer|respond_transfer|cancel_transfer|resolve_ticket|search_tickets|service_|set_ticket_priority|supervisor_|system_health|ticket_customer_login|ticket_detail|ticket_lists|wait_customer|room_members|get_messages)'
 PERM_GATED='^(admin_|alert_|backup_|community_|compliance_|evidence_|health_acknowledge|integration_|legal_(draft_approve|draft_reject|set_required|cancel_scheduled)|nasabah_(save|clear)_integration|push_|service_|supervisor_|report_summary|report_customers|report_customer_trail)'
 mapfile -t CS_FNS < <(sql "select p.proname || '|' || coalesce((select jsonb_object_agg(a, null)::text from unnest(p.proargnames[1:p.pronargs]) a), '{}')
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'cs_api' order by 1")

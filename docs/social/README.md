@@ -17,6 +17,7 @@ Paket fitur komunitas tahap 3 November 2026: pencarian, trending & sentimen saha
 | `0089_app_banners` | banner aplikasi di `get_client_config`, RPC Super Admin | `068_app_banners_test` |
 | `0090_post_drafts_stock_cards` | sinkron draf postingan, kartu saham di chat, ekspor & hapus akun | `069_post_drafts_stock_cards_test` |
 | `0091_fixed_feature_flags` | daftar feature flag tetap (8 kunci), hanya sakelar nyala/mati | `070_fixed_feature_flags_test` |
+| `0103_message_gap_index` | indeks id pesan untuk gap-fill (`get_message_ids`) dan ambil pesan per id (`get_messages_by_ids`), lihat [Mengisi celah](#mengisi-celah) | `083_message_gap_index_test` |
 
 Semua pengaturan baru ada di `private.settings` (ubah lewat `update private.settings set value = ... where key = ...`), batas laju di `private.rate_limits`. Kode error memakai pola yang sudah ada: HTTP status dari `PTxxx`, field `message` berisi kode stabil (mis. `query_too_short`), `details` berisi teks bahasa Indonesia. Error `429 rate_limited` membawa header `Retry-After`.
 
@@ -389,3 +390,54 @@ Siapa yang sedang dibisukan tidak dibagikan ke anggota room (di room saham, itu 
 ### Klien Flutter (`rendezvous_community`)
 
 Tanpa kode tambahan di aplikasi host: `CommunityChatRoom` membaca `StockRoomState.moderatorIds`, `viewerMutedUntil` (bisu milik sendiri, dari `muted_until`), dan `mutes` (hanya terisi untuk moderator; kosong untuk anggota biasa). Selama room saham terbuka, koneksi room mendengarkan notifikasi bisu milik pengguna (postgres_changes `notifications` dengan filter `user_id`, satu channel bersama untuk semua room) dan memancarkan `OwnRoomMuteChanged(mutedUntil)`; `ChatRoomCubit` langsung menerapkannya lalu memuat ulang `get_stock_room_state`. Siaran `room_state` tidak mengubah bisu milik sendiri maupun daftar bisu moderator; anggota yang baru ditunjuk moderator memuat ulang status untuk mendapat daftar bisu. Moderator melihat strip pemberitahuan dan aksi tekan-lama (sembunyikan, bisukan, eskalasi) di pesan anggota; pesan moderator berlencana; anggota yang dibisukan melihat banner dan tombol kirim nonaktif sampai waktunya habis. API: `ChatExtrasRepository.hideMessage/muteMember/escalateMessage`, `ChatRoomCubit.hideMessage/muteMember/escalateMessage`, dan `CommunityMessageDetails.senderIsModerator/onHide/onMuteSender/onEscalate` untuk builder kustom.
+
+## Pengiriman pesan realtime (`0098`)
+
+Pesan chat (room saham, DM, grup, dan chat CS) tidak lagi dikirim lewat `postgres_changes`. Database menyiarkannya sendiri lewat Broadcast (`realtime.send`) ke topik privat. Realtime hanya memeriksa izin sekali saat join, bukan RLS per pesan per penerima, sehingga beban DB tidak tumbuh dengan jumlah penerima. Tabel `messages` dikeluarkan dari publikasi `supabase_realtime`; `posts`, `comments`, `reactions`, dan `notifications` tetap di sana.
+
+### Topik dan siapa boleh apa
+
+| Topik | Terima (`SELECT`) | Kirim dari klien (`INSERT`) | Event dari server |
+|---|---|---|---|
+| `room:<room_id>` | anggota room (`chat_members`; nasabah diblokir hanya untuk room CS miliknya) | **presence saja** | `message`, `message_hidden`, `typing`, `receipt`, `reaction`, `room_state` |
+| `user:<user_id>` | hanya pemilik | tidak ada | `room_activity` |
+| `cs:room:<room_id>` | nasabah pemilik dan staf yang boleh membaca room (`cs.can_read_room`) | tidak ada | `ticket`, `message` |
+| `cs:queue`, `cs:agent:<id>` | staf (tidak berubah) | tidak ada | tidak berubah |
+| `online` | semua user login yang tidak diblokir | presence saja | — |
+
+Kebijakan `olt_realtime_send` kini hanya mengizinkan `extension = 'presence'`. Broadcast buatan klien, lewat WebSocket maupun `POST /realtime/v1/api/broadcast`, tidak pernah sampai ke anggota lain. Ini menutup temuan T2 ([laporan uji](../testing/report-2026-11-03.md)): anggota tidak bisa lagi memalsukan `message_hidden`, `room_state`, `reaction`, `receipt`, atau typing atas nama orang lain. Kunci presence tetap dipilih klien (Realtime tidak mengikatnya ke JWT). Dampaknya kecil: presence hanya dipakai untuk indikator online di DM, dan pemalsu di DM adalah lawan bicara itu sendiri.
+
+### Isi event
+
+- **`message`** (`room:<id>`), dikirim trigger `messages_60_broadcast` saat pesan baru, diubah, atau dihapus. Isinya bentuk `chat_message` yang sama dengan `get_messages`, tanpa kolom per penonton (`reactions`, `shared_post`, `moderation_status`): `id`, `room_id`, `sender_id`, profil pengirim, `body`, `is_deleted`, balasan, `attachments`, `client_id`, `edited_at`, `created_at`, `cursor`, `kind`, `payload`, `session_id`, `sender_role`.
+  - Pesan terhapus dikirim tanpa `body`, `attachments`, dan `payload`.
+  - Di room CS, profil pengirim tidak disertakan. Klien membaca pengirim dari anggota room, sehingga lencana resmi CS tetap benar.
+  - Pesan `held`/`hidden` tidak pernah disiarkan. Pengirim sudah mendapat barisnya dari RPC kirim.
+  - Bila pengirim terlibat blokir (dua arah) dengan anggota mana pun di room, yang disiarkan hanya referensi `{id, room_id, created_at, cursor, ref: true}`. Klien mengambil isinya lewat `get_messages(p_after)`, yang tetap menyaring blokir lewat RLS.
+- **`message_hidden`** `{room_id, message_id, user_id}`: pesan berubah dari `visible` ke `held`/`hidden`, oleh siapa pun.
+- **`typing`** `{user_id, username, display_name, typing}` hanya lewat RPC `send_typing(p_room_id, p_typing = true)` (nasabah) atau `cs_api.agent_typing(p_room_id, p_typing = true)` (CS, room CS). Identitas diambil dari JWT. Server meredam pengulangan: nilai sama dalam 3 detik dan mulai mengetik lagi dalam 1 detik tidak disiarkan (fungsi mengembalikan `false`). Typing CS memakai nama tampilan agen.
+- **`room_activity`** (`user:<id>`) `{room_id, room_type, message_id, sender_id, created_at, preview}`: untuk DM, grup, dan room CS (hanya ke nasabah), satu per anggota yang tidak terlibat blokir dengan pengirim. Room saham sengaja tidak mengirim aktivitas per anggota. Daftar chat dan penanda terkirim memakai event ini.
+- **`message`** (`cs:room:<id>`) `{id, room_id, ticket_id, client_id}`: sinyal untuk web CS. Isi pesan diambil lewat `cs_api.get_messages(p_after)`.
+
+### Mengisi celah
+
+Event yang dibuang Realtime (batas tenant, putus sambungan, slot replikasi dibuat ulang setelah Realtime restart) tidak memberi sinyal ke klien. Karena itu klien menambal dari **horizon**, bukan dari pesan terbaru yang terlihat (`0103`, temuan T18/T19 [laporan uji](../testing/report-2026-11-03.md)):
+
+- **Horizon** per room = `(created_at, id)` terbaru yang sudah dikonfirmasi dari server: halaman pertama saat room dibuka, muat ulang, atau gap-fill sebelumnya yang selesai. Pesan yang hanya datang lewat Realtime tidak memajukan horizon, jadi lubang di tengah aliran tetap tertambal walau pesan sesudahnya sudah sampai.
+- Setiap gap-fill membaca maju dari `horizon − 10 detik` (id nol), paling banyak 5 halaman, lalu memajukan horizon ke baris terbaru yang dibaca. Overlap 10 detik menutup pesan yang commit belakangan dengan `created_at` lebih awal (misalnya `send_message` yang menunggu kunci baris).
+- **Aplikasi (room saham, DM, grup):** `get_message_ids(p_room_id, p_after, p_limit)` mengembalikan `{ids, last, more}` saja (≤ 1.000 id per halaman, urut maju, RLS berlaku). Klien membandingkan dengan pesan yang sudah dimilikinya dan hanya mengambil yang belum ada lewat `get_messages_by_ids(p_room_id, p_ids)` (≤ 100 id per panggilan). Di room ramai biaya gap-fill tetap kecil walau jendelanya 45 detik.
+- **Chat CS (aplikasi dan web CS):** `get_messages(p_after)` / `cs_api.get_messages(p_after)` per 100 baris. Web CS tidak memakai isi pesan dari Realtime (hanya sinyal), jadi horizonnya selalu baris terbaru yang diambil dari server.
+- Lebih dari 5 halaman: room dimuat ulang dari pesan terbaru; pesan lama tetap bisa dimuat dengan scroll.
+
+Kapan gap-fill berjalan:
+
+- channel room tersambung **pertama kali**: langsung;
+- channel tersambung **ulang**: setelah jeda acak 0–5 detik (agar ratusan klien yang sambung ulang serentak setelah Realtime restart tidak memanggil RPC bersamaan), lalu **sekali lagi** 5–10 detik kemudian untuk pesan yang commit saat slot replikasi Realtime dibuat ulang;
+- berkala selama room terbuka: 45 detik ± 25% (acak per putaran, web CS hanya saat tab terlihat);
+- saat aplikasi kembali ke depan (Flutter `AppLifecycleListener.onResume`, web `visibilitychange`/`focus`): langsung, karena dipicu pengguna dan tidak serentak.
+
+Duplikat digabung lewat `id` dan `client_id`.
+
+### Batas tenant
+
+Event yang diterima setiap klien dihitung ke `REALTIME_MAX_EVENTS_PER_SECOND`, yang bawaannya sekarang 10.000. Lihat [PRODUCTION.md](../PRODUCTION.md#batas-realtime).

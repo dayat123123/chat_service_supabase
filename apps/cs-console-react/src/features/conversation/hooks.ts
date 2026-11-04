@@ -11,7 +11,15 @@ import { readLocal, writeLocal } from '@/lib/storage'
 import { uuid } from '@/lib/utils'
 
 import { conversationApi, PAGE_SIZE } from './api'
-import { collectAfter, insertMessages, newestCursor, orderedMessages, type MessagePages } from './cache'
+import {
+  collectAfter,
+  insertMessages,
+  newestCursor,
+  orderedMessages,
+  overlapCursor,
+  type MessagePages,
+} from './cache'
+import { createGapSchedule } from './gap-schedule'
 import type { ChatMessage, LocalAttachment, PendingMessage, RoomMember, SendKind, SendResult } from './types'
 
 export const conversationKeys = {
@@ -99,7 +107,7 @@ export function useRoom(ticket: Ticket, me: { id: string; username: string; disp
     }
     const { messages: fresh, complete } = await collectAfter(
       (after) => conversationApi.after(roomId, after),
-      cursor,
+      overlapCursor(cursor),
     )
     if (fresh.length > 0) {
       client.setQueryData<MessagePages>(key, (data) => insertMessages(data, fresh))
@@ -112,16 +120,15 @@ export function useRoom(ticket: Ticket, me: { id: string; username: string; disp
   }, [client, roomId])
 
   useEffect(() => {
-    let debounce: number | undefined
-    const schedule = () => {
-      window.clearTimeout(debounce)
-      debounce = window.setTimeout(() => void syncAfter().catch(() => undefined), 120)
-    }
+    const gaps = createGapSchedule({
+      run: () => void syncAfter().catch(() => undefined),
+      isVisible: () => document.visibilityState === 'visible',
+    })
     handle.current = realtime.room(
       roomId,
       me,
       {
-        onMessage: schedule,
+        onMessage: gaps.now,
         onTyping: (user, isTyping) => {
           window.clearTimeout(typingTimer.current)
           setTyping(isTyping ? user.name : null)
@@ -140,18 +147,25 @@ export function useRoom(ticket: Ticket, me: { id: string; username: string; disp
           void client.invalidateQueries({ queryKey: ticketKeys.detail(ticket.id) })
           void client.invalidateQueries({ queryKey: ticketKeys.lists })
         },
-        onMessagesJoined: schedule,
+        onMessagesJoined: (recovered) => (recovered ? gaps.reconnected() : gaps.now()),
       },
       { signals: owner },
     )
-    const stopResync = realtime.onResync(schedule)
+    const stopResync = realtime.onResync(gaps.reconnected)
     const stopQueue = realtime.subscribe((event) => {
-      if (event.type === 'message' && event.roomId === roomId) schedule()
+      if (event.type === 'message' && event.roomId === roomId) gaps.now()
     })
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') gaps.now()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
     return () => {
       stopResync()
       stopQueue()
-      window.clearTimeout(debounce)
+      gaps.stop()
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
       window.clearTimeout(typingTimer.current)
       handle.current?.close()
       handle.current = null

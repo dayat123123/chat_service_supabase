@@ -37,8 +37,14 @@ web CS ◀── cs_api.system_health (Super Admin)
 | `backup:*` | lihat [docs/backup](../backup/README.md#alert) | Backup belum diatur, WAL berhenti, backup penuh terlambat, offsite tertunda, uji restore gagal |
 | `backup:secret` | kritis | Rahasia backup di Vault tidak bisa dibuka (biasanya setelah restore ke server baru); isi ulang di tab Backup |
 | `alerts:secret` | peringatan | Token Telegram atau password SMTP di Vault tidak bisa dibuka; isi ulang di tab Alert |
+| `rest:pool` | peringatan ≥ 1 timeout atau ≥ 1 request menunggu, kritis ≥ 20 timeout | Pool PostgREST penuh: timeout `PGRST003` (504) dalam 5 menit, atau request menunggu koneksi saat pool kosong (migrasi `0104`) |
+| `realtime:events` | peringatan ≥ 70 %, kritis ≥ 90 % | Laju event Realtime ±2 menit terakhir dibanding `max_events_per_second` tenant; di atas 100 % event dibuang |
+| `pgbouncer:queue` | peringatan `cl_waiting` ≥ 1 atau `maxwait` ≥ 1 dtk, kritis `maxwait` ≥ 5 dtk | Klien PgBouncer mengantre koneksi server (`SHOW POOLS`) |
+| `db:lock_waits` | peringatan ≥ 5 proses atau ≥ 5 dtk, kritis ≥ 20 proses atau ≥ 30 dtk | Proses database menunggu lock (`pg_locks`) |
+| `queue:room_preview` | peringatan ≥ 60 dtk, kritis ≥ 300 dtk | Antrean pratinjau room (`0102`) tidak diproses: job `chat-room-preview` mati atau macet |
+| `metrics:<sumber>` | peringatan | Sentinel gagal membaca sumber metrik (`METRICS_SOURCES`) |
 
-Ambang dapat diubah tanpa deploy di `private.settings`: `health.alert_after_seconds` (default 120), `health.resolve_after_seconds` (60), `health.disk_warn_ratio` (0,8), `health.disk_critical_ratio` (0,9), `health.expected_services`.
+Ambang dapat diubah tanpa deploy di `private.settings`: `health.alert_after_seconds` (default 120), `health.resolve_after_seconds` (60), `health.disk_warn_ratio` (0,8), `health.disk_critical_ratio` (0,9), `health.expected_services`. Ambang metrik kapasitas (`0104`): `health.rest_pool_timeouts_warn` (1), `health.rest_pool_timeouts_critical` (20), `health.rest_pool_waiting_warn` (1), `health.realtime_events_warn_ratio` (0,7), `health.realtime_events_critical_ratio` (0,9), `health.realtime_events_limit` (10.000, cadangan bila `_realtime.tenants` tidak terbaca), `health.pgbouncer_waiting_warn` (1), `health.pgbouncer_maxwait_warn_seconds` (1), `health.pgbouncer_maxwait_critical_seconds` (5), `health.lock_waiters_warn` (5), `health.lock_waiters_critical` (20), `health.lock_wait_warn_seconds` (5), `health.lock_wait_critical_seconds` (30), `health.room_preview_lag_warn_seconds` (60), `health.room_preview_lag_critical_seconds` (300). Sumber metrik dan alasannya: [PRODUCTION.md](../PRODUCTION.md#alert-kapasitas-sentinel-020-migrasi-0104).
 
 ## Siklus alert
 

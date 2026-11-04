@@ -9,6 +9,7 @@ import (
 
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/probe"
+	"olt-social/sentinel/internal/scrape"
 )
 
 func render(t *testing.T, snapshot Snapshot) string {
@@ -37,7 +38,11 @@ func TestHandlerRendersPrometheusText(t *testing.T) {
 			{Name: "storage", OK: true, LatencyMS: 12},
 			{Name: "db", OK: false, LatencyMS: 5000},
 		},
-		Disks:              []disk.Usage{{Name: "data", TotalBytes: 1000, FreeBytes: 400, AvailBytes: 300}},
+		Disks: []disk.Usage{{Name: "data", TotalBytes: 1000, FreeBytes: 400, AvailBytes: 300}},
+		Scrapes: []scrape.Result{
+			{Source: "rest", Instance: "10.0.0.4", OK: true},
+			{Source: "pgbouncer", Instance: "10.0.0.5"},
+		},
 		Reports:            map[string]uint64{"ok": 40, "failed": 2},
 		LastReport:         time.Unix(1_800_000_000, 0),
 		Alerts:             map[string]map[string]uint64{"telegram": {"sent": 3, "retry": 1}, "email": {"failed": 2}},
@@ -56,6 +61,9 @@ func TestHandlerRendersPrometheusText(t *testing.T) {
 		`sentinel_disk_total_bytes{disk="data"} 1000`,
 		`sentinel_disk_free_bytes{disk="data"} 400`,
 		`sentinel_disk_avail_bytes{disk="data"} 300`,
+		"# TYPE sentinel_scrape_up gauge",
+		`sentinel_scrape_up{source="rest",instance="10.0.0.4"} 1`,
+		`sentinel_scrape_up{source="pgbouncer",instance="10.0.0.5"} 0`,
 		"# TYPE sentinel_health_reports_total counter",
 		`sentinel_health_reports_total{outcome="ok"} 40`,
 		`sentinel_health_reports_total{outcome="failed"} 2`,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,6 +16,7 @@ import 'package:rendezvous_community/src/features/analytics/domain/services/comm
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_events.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/chat_room.dart';
+import 'package:rendezvous_community/src/features/chat/domain/entities/gap_horizon.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/message_extras.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/outbox_message.dart';
 import 'package:rendezvous_community/src/features/chat/domain/entities/receipt.dart';
@@ -24,7 +26,9 @@ import 'package:rendezvous_community/src/features/chat/domain/entities/stock_roo
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_cache_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_extras_repository.dart';
 import 'package:rendezvous_community/src/features/chat/domain/repositories/chat_repository.dart';
+import 'package:rendezvous_community/src/features/chat/domain/services/message_gap_fill.dart';
 import 'package:rendezvous_community/src/features/chat/domain/services/message_outbox.dart';
+import 'package:rendezvous_community/src/features/chat/presentation/cubit/gap_fill_schedule.dart';
 import 'package:rendezvous_community/src/features/legal/domain/services/consent_gate.dart';
 import 'package:rendezvous_community/src/features/media/domain/repositories/media_repository.dart';
 import 'package:rendezvous_community/src/features/message_requests/domain/entities/message_request.dart';
@@ -147,6 +151,11 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     this._outbox,
     this._connectivity,
     DateTime Function()? clock,
+    this.gapFillInterval = const Duration(seconds: 45),
+    this.gapOverlap = const Duration(seconds: 10),
+    this.reconnectJitter = const Duration(seconds: 5),
+    this.gapRecheckDelay = const Duration(seconds: 5),
+    this._random,
   }) : _meProvider = me,
        _clock = clock ?? DateTime.now,
        super(const ChatRoomState());
@@ -169,6 +178,24 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   final String roomId;
   final int pageSize;
   final int maxGapPages;
+  final Duration gapFillInterval;
+  final Duration gapOverlap;
+  final Duration reconnectJitter;
+  final Duration gapRecheckDelay;
+  final Random? _random;
+  late final GapFillSchedule _gapSchedule = GapFillSchedule(
+    _fillGap,
+    interval: gapFillInterval,
+    jitter: reconnectJitter,
+    recheck: gapRecheckDelay,
+    random: _random,
+    online: () => _connectivity?.isOnline ?? true,
+  );
+  late final MessageGapFill _gapFill = MessageGapFill(_chat, roomId, maxPages: maxGapPages, overlap: gapOverlap);
+  GapHorizon? _horizon;
+  StreamSubscription<void>? _resumes;
+  Future<void>? _gapRun;
+  bool _gapAgain = false;
 
   bool get queuesOffline => _outbox != null;
 
@@ -199,6 +226,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       final room = results[0] as ChatRoom?;
       final members = results[1] as List<RoomMember>;
       final page = results[2] as Paged<ChatMessage>;
+      _horizon = _newestOf(page.items);
       emit(
         state.copyWith(
           status: LoadStatus.ready,
@@ -486,6 +514,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     final connection = _chat.connectRoom(roomId, me: me);
     _connection = connection;
     _events = connection.events.listen(_onEvent, onError: (Object _) {});
+    _resumes ??= _connectivity?.resumes.listen((_) => unawaited(_fillGap()));
+    _gapSchedule.start();
   }
 
   void _onEvent(ChatRoomEvent event) {
@@ -504,16 +534,18 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
       case PresenceChanged(:final userIds):
         emit(state.copyWith(online: userIds));
       case ConnectionChanged(:final status):
-        final reconnected =
-            status == RealtimeStatus.connected && _wasConnected && state.connection != RealtimeStatus.connected;
+        final joined = status == RealtimeStatus.connected && state.connection != RealtimeStatus.connected;
+        final reconnected = joined && _wasConnected;
         if (status == RealtimeStatus.connected) {
           _wasConnected = true;
           _connectivity?.report(reachable: true);
         }
         emit(state.copyWith(connection: status));
         if (reconnected) {
-          unawaited(_fillGap());
+          _gapSchedule.reconnected();
           unawaited(_resendFailed());
+        } else if (joined) {
+          unawaited(_fillGap());
         }
       case ReactionChanged():
         _applyReactionEvent(event);
@@ -625,17 +657,53 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     } catch (_) {}
   }
 
-  Future<void> _fillGap() async {
-    final newest = state.messages.where((m) => !m.isLocal).firstOrNull;
-    if (newest == null) return;
-    String? cursor = newest.cursor ?? '${newest.createdAt.toUtc().toIso8601String()}|${newest.id}';
+  Future<void> _fillGap() {
+    final running = _gapRun;
+    if (running != null) {
+      _gapAgain = true;
+      return running;
+    }
+    final run = _catchUp().whenComplete(() {
+      _gapRun = null;
+      if (_gapAgain && !isClosed) {
+        _gapAgain = false;
+        unawaited(_fillGap());
+      }
+    });
+    _gapRun = run;
+    return run;
+  }
+
+  static GapHorizon _newestOf(List<ChatMessage> messages) {
+    var newest = GapHorizon.origin;
+    for (final message in messages) {
+      if (!message.isLocal) newest = newest.later(GapHorizon.of(message));
+    }
+    return newest;
+  }
+
+  Set<String> _knownIds() => {
+    for (final m in state.messages)
+      if (!m.isLocal) m.id,
+  };
+
+  Future<void> _catchUp() async {
+    final horizon = _horizon;
+    if (isClosed || state.status != LoadStatus.ready || horizon == null) return;
+    final oldest = state.messages.where((m) => !m.isLocal).lastOrNull;
     try {
-      for (var page = 0; cursor != null; page++) {
-        if (page == maxGapPages) return await _reloadLatest();
-        final batch = await _chat.getMessagesAfter(roomId, cursor);
-        if (isClosed) return;
-        _upsertAll(batch.items);
-        cursor = batch.nextCursor;
+      final result = await _gapFill.run(
+        horizon,
+        floor: oldest == null ? null : GapHorizon.of(oldest),
+        known: _knownIds,
+      );
+      if (isClosed) return;
+      switch (result) {
+        case GapTooLong():
+          await _reloadLatest();
+        case GapFilled(:final messages, horizon: final reached):
+          _upsertAll(messages);
+          _horizon = reached.later(_horizon);
       }
     } catch (_) {}
   }
@@ -643,6 +711,7 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
   Future<void> _reloadLatest() async {
     final page = await _chat.getMessages(roomId, limit: pageSize);
     if (isClosed) return;
+    _horizon = _newestOf(page.items).later(_horizon);
     emit(
       state.copyWith(
         messages: [...state.messages.where((m) => m.isLocal), ...page.items]..sort(_newestFirst),
@@ -978,6 +1047,8 @@ class ChatRoomCubit extends Cubit<ChatRoomState> {
     _readDebounce?.cancel();
     _typingIdle?.cancel();
     _muteExpiry?.cancel();
+    _gapSchedule.dispose();
+    await _resumes?.cancel();
     for (final t in _typingTimers.values) {
       t.cancel();
     }

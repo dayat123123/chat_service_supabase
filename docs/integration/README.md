@@ -73,7 +73,7 @@ Tambahkan satu klaim opsional di payload token sosial (format token lengkap: [do
 | API key integrasi | Dibuat Super Admin di web CS. Berawalan `oik_`, **hanya ditampilkan sekali**. Simpan di konfigurasi rahasia notifEngine, jangan di kode atau log |
 | Izin (scope) | `notify`. Target selain `cust_id` (siaran) butuh izin tambahan `notify_broadcast` |
 | IP pengirim | Bila Super Admin mengisi daftar IP/CIDR pada key, request dari IP lain ditolak `403 ip_not_allowed` |
-| Batas | Maks **500 pesan** per request, body maks **2 MiB**, `rate_limit_per_minute` request per key (default 600) |
+| Batas | Maks **500 pesan** per request, body maks **2 MiB**, `rate_limit_per_minute` request per key (default 3000 = 50 request/detik sejak 0101; key lama tetap pada nilainya, naikkan dari web CS). Batas ini keras: kirim pesan dalam batch (100–500 pesan per request), jangan satu pesan per request. Uji beban: 5 request/detik × 100 pesan = 500 pesan/detik, p95 55 ms |
 
 ### Body
 

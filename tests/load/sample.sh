@@ -10,6 +10,7 @@ mkdir -p "$dir"
 echo 'ts,container,cpu_pct,mem_mib' > "$dir/docker.csv"
 echo 'ts,conn_total,conn_active,conn_idle_in_tx,lock_waits,authenticator,realtime,storage,auth' > "$dir/db.csv"
 echo 'ts,user,cl_active,cl_waiting,sv_active,sv_idle,sv_used,maxwait_s' > "$dir/pgbouncer.csv"
+echo 'ts,preview_queue,preview_oldest_s,preview_lag_s,send_lock_waits' > "$dir/preview.csv"
 trap 'exit 0' TERM INT
 while :; do
   ts=$(date +%s)
@@ -25,5 +26,10 @@ while :; do
       from pg_stat_activity where backend_type = 'client backend'" >> "$dir/db.csv" 2>/dev/null
   PGPASSWORD="$PGPASSWORD" psql -X -q -tA -F, -h pgbouncer -p 6432 -U pgbouncer -d pgbouncer -c 'show pools' 2>/dev/null |
     awk -F, -v ts="$ts" '$1=="postgres" {printf "%s,%s,%s,%s,%s,%s,%s,%s\n", ts, $2, $3, $4, $7, $10, $11, $14}' >> "$dir/pgbouncer.csv"
+  psql -X -q -tA -F, -c "select $ts, (select count(*) from private.room_preview_queue),
+      coalesce(round(extract(epoch from now() - (select min(queued_at) from private.room_preview_queue))::numeric, 1), 0),
+      coalesce(round(extract(epoch from (select max(m.created_at) from public.messages m where m.room_id = r.id) - r.last_message_at)::numeric, 3), 0),
+      (select count(*) from pg_stat_activity where wait_event_type = 'Lock' and query ilike '%send_message%')
+      from public.chat_rooms r where r.type = 'stock' and r.stock_code = 'LTHOT'" >> "$dir/preview.csv" 2>/dev/null
   sleep "$every"
 done
