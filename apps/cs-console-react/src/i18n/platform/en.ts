@@ -414,6 +414,62 @@ export const platform: Translated<typeof source> = {
       banner_not_found: 'Banner not found. The list was reloaded.',
     },
   },
+  appIntegration: {
+    description:
+      'Data to hand to the OLT app team and the OLT login status. This page is read-only; nothing can be changed here.',
+    connection: 'App connection data',
+    connectionHint:
+      'Give these to the OLT app team. The anon key is public by design (it ships inside the app), not a secret; database rules limit what it can do.',
+    apiUrl: 'API URL (SOCIAL_API_URL)',
+    anonKey: 'Anon key (SOCIAL_ANON_KEY)',
+    showKey: 'Show',
+    hideKey: 'Hide',
+    library: 'Flutter library',
+    libraryValue: '{{name}} version {{version}} or newer',
+    minVersions: 'Minimum app version',
+    noMinVersions: 'No version limit yet (set it in Features & versions).',
+    prodConfig: 'Sample config/prod.json',
+    guide: 'Library integration guide',
+    login: 'OLT login status',
+    loginHint:
+      'auth-bridge exchanges the OLT social token for an app session and sends a heartbeat every 30 seconds. Key material is never sent, only the kid and algorithm.',
+    status: {
+      active: 'Active',
+      warning: 'Warning',
+      no_heartbeat: 'No heartbeat',
+    },
+    warnings: {
+      dev_key:
+        'A dev key is installed (kid starts with dev-). Expected in development with the dummy OLT; production must use the JWKS from OLT.',
+      not_jwt: 'auth-bridge is not in jwt mode outside development, so OLT social tokens are not verified.',
+      mismatch:
+        'auth-bridge instances use different key settings. Make docker/secrets/olt_jwks identical on every server.',
+    },
+    noHeartbeat: 'No auth-bridge heartbeat in the last 3 minutes.',
+    lastHeartbeat: 'Last heartbeat {{time}} ({{ago}}).',
+    neverHeartbeat: 'No heartbeat yet. auth-bridge 0.6.0 or newer sends one automatically.',
+    mode: 'Mode',
+    keys: 'Installed kids',
+    noKeys: 'No keys (mode without JWKS).',
+    issuer: 'Issuer',
+    audience: 'Audience',
+    maxTtl: 'Maximum social token age',
+    seconds: '{{count}} s',
+    instances: 'Active instances',
+    instanceLine: '{{version}} · seen {{ago}}',
+    degraded: 'degraded',
+    lastLogin: 'Last customer login',
+    noLogin: 'No customer logins yet.',
+    logins24h: 'Customers who logged in, last 24 hours',
+    keyHelp:
+      'OLT keys are replaced on the server: update docker/secrets/olt_jwks and run make up. This is deliberately not possible from the Hub, because anyone who can replace the key can mint tokens on behalf of customers.',
+    ago: {
+      now: 'just now',
+      minutes: '{{count}} min ago',
+      hours: '{{count}} h ago',
+      days: '{{count}} d ago',
+    },
+  },
   errors: {
     invalid_name: 'Key name must be 3–80 characters.',
     invalid_scopes:

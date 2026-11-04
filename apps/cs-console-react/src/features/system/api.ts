@@ -9,6 +9,7 @@ import type {
   BackupScheduleInput,
   BackupTargetInput,
   EmailInput,
+  HealerOverview,
   HealthBadge,
   SystemHealth,
   TelegramInput,
@@ -31,6 +32,23 @@ export const systemApi = {
     }
   },
   badge: () => rpc<HealthBadge>('system_health_badge'),
+  healer: async (): Promise<HealerOverview> => {
+    const raw = await rpc<HealerOverview>('healer_overview')
+    const state = raw.state
+      ? {
+          ...raw.state,
+          rules: raw.state.rules ?? {},
+          unhealthy: raw.state.unhealthy ?? [],
+          gave_up: raw.state.gave_up ?? [],
+        }
+      : null
+    return {
+      ...raw,
+      state,
+      events: raw.events ?? [],
+      counts: raw.counts ?? { restarts_24h: 0, failed_24h: 0, gave_up_24h: 0, skipped_24h: 0 },
+    }
+  },
   acknowledge: (alertId: number) => rpc<null>('health_acknowledge', { p_alert_id: alertId }),
   backup: async (): Promise<BackupOverview> => {
     const raw = await rpc<BackupOverview>('backup_overview')

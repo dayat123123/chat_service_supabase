@@ -1,4 +1,4 @@
-export const systemTabs = ['status', 'backup', 'alerts'] as const
+export const systemTabs = ['status', 'healer', 'backup', 'alerts'] as const
 export type SystemTab = (typeof systemTabs)[number]
 
 export type Severity = 'warning' | 'critical'
@@ -251,4 +251,75 @@ export type EmailInput = {
   from: string
   to: string[]
   password: string | null
+}
+
+export const healerActions = ['restart', 'report', 'give_up', 'skip'] as const
+export type HealerAction = (typeof healerActions)[number]
+export const healerReasons = [
+  'unhealthy',
+  'restart_limit',
+  'db_unhealthy',
+  'pgbouncer_unhealthy',
+  'systemic',
+] as const
+export type HealerReason = (typeof healerReasons)[number]
+
+export type HealerEvent = {
+  id: string
+  at: string
+  service: string
+  label: string
+  container: string
+  action: HealerAction
+  reason: string
+  result: string
+  detail: string | null
+  error: string | null
+}
+
+export type HealerGaveUp = { service: string; label?: string; since: string; until: string; restarts: number }
+
+export type HealerSkip = { reason: string; since: string; services: string[] | null }
+
+export type HealerUnhealthy = { service: string; container: string; since: string }
+
+export type HealerRules = {
+  unhealthy_seconds: number
+  min_uptime_seconds: number
+  max_restarts_per_hour: number
+  global_cooldown_seconds: number
+  systemic_fraction: number
+  interval_seconds: number
+}
+
+export type HealerState = {
+  reported_at: string
+  live: boolean
+  fresh: boolean
+  read_error: string | null
+  version: string | null
+  project: string | null
+  enabled: boolean | null
+  started_at: string | null
+  checked_at: string | null
+  rules: Partial<HealerRules> | null
+  watched: number
+  unhealthy: HealerUnhealthy[] | null
+  skip: HealerSkip | null
+  gave_up: HealerGaveUp[] | null
+  error: string | null
+}
+
+export type HealerCounts = {
+  restarts_24h: number
+  failed_24h: number
+  gave_up_24h: number
+  skipped_24h: number
+}
+
+export type HealerOverview = {
+  now: string
+  state: HealerState | null
+  events: HealerEvent[]
+  counts: HealerCounts
 }

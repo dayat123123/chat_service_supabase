@@ -82,8 +82,11 @@ export const settingsSections = [
   'push',
   'integration',
   'apiKeys',
+  'appIntegration',
   'features',
   'banners',
+  'backup',
+  'alerts',
 ] as const
 export type SettingsSection = (typeof settingsSections)[number]
 

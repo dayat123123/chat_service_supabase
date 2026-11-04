@@ -612,8 +612,15 @@ export const id = {
     alertP1: 'Tiket P1 belum diambil lebih dari (menit)',
     integration: 'Integrasi API Nasabah',
     apiKeys: 'API Notifikasi',
+    appIntegration: 'Integrasi aplikasi',
     features: 'Fitur & versi',
     banners: 'Banner aplikasi',
+    backup: 'Backup',
+    backupDescription:
+      'Tujuan, password enkripsi, jadwal, dan retensi backup database dan file. Hasil backup penuh dan uji restore tampil di sini.',
+    alerts: 'Alert',
+    alertsDescription:
+      'Ke mana alert gangguan sistem dikirim: Telegram dan/atau email. Isi minimal satu kanal, lalu tekan Kirim uji.',
     community: 'Komunitas',
     communityDescription: 'Aturan persetujuan postingan dan notifikasi resmi.',
     fourEyes: 'Aturan empat mata',
@@ -2258,7 +2265,85 @@ export const id = {
     subtitle:
       'Status layanan, alert, backup database, dan kanal pemberitahuan. Data diperbarui otomatis setiap 15 detik.',
     tabsLabel: 'Bagian kesehatan sistem',
-    tabs: { status: 'Status', backup: 'Backup', alerts: 'Alert' },
+    tabs: { status: 'Status', healer: 'Restart otomatis', backup: 'Backup', alerts: 'Alert' },
+    healer: {
+      title: 'Restart otomatis',
+      subtitle:
+        'Healer me-restart layanan yang unhealthy (proses hidup tetapi macet) di profil satu server. Container yang mati sudah di-restart Docker; di cluster, Swarm yang mengganti task unhealthy.',
+      facts: {
+        status: 'Status',
+        checked: 'Terakhir cek',
+        watched: 'Layanan dipantau',
+        restarts: 'Restart 24 jam',
+        rules: 'Aturan',
+      },
+      states: {
+        missing: 'Belum ada data',
+        noReport: 'Tidak dilaporkan',
+        stale: 'Tidak berjalan',
+        error: 'Docker tidak terbaca',
+        reportOnly: 'Mode laporan saja',
+        active: 'Aktif',
+      },
+      stateHints: {
+        missing:
+          'Belum ada status dari healer. Healer tidak dipasang (mis. profil cluster) atau sentinel belum membaca file statusnya.',
+        noReport:
+          'Sentinel tidak mengirim laporan dalam 90 detik terakhir, jadi status healer tidak diketahui.',
+        stale: 'Healer tidak memperbarui statusnya; tidak ada restart otomatis sampai healer berjalan lagi.',
+        error:
+          'Healer berjalan tetapi tidak bisa membaca status container dari Docker; tidak ada yang di-restart.',
+        reportOnly:
+          'HEALER_ENABLED=false: healer hanya mencatat layanan yang akan di-restart, tanpa me-restart apa pun.',
+      },
+      watchedCount: '{{count}} container',
+      restartCount: '{{restarts}} restart, {{failed}} gagal',
+      rulesText:
+        'Unhealthy ≥ {{unhealthy}} dtk dan berjalan ≥ {{uptime}} dtk · maks {{max}} restart/jam per layanan · jeda {{cooldown}} dtk antar restart · ditahan bila ≥ {{fraction}} layanan unhealthy',
+      version: 'Versi {{version}} · proyek {{project}}',
+      skipTitle: 'Restart sedang ditahan',
+      skipReason: {
+        db_unhealthy: 'Database tidak sehat, jadi tidak ada layanan yang di-restart.',
+        pgbouncer_unhealthy: 'PgBouncer tidak sehat; hanya PgBouncer yang boleh di-restart.',
+        systemic:
+          'Banyak layanan unhealthy bersamaan (gangguan sistemik); restart satu per satu tidak menolong.',
+      },
+      skipServices: 'Sejak {{time}} · unhealthy: {{services}}',
+      unhealthyTitle: 'Sedang unhealthy',
+      unhealthySince: 'sejak {{time}} ({{duration}})',
+      gaveUpTitle: 'Layanan yang ditinggalkan',
+      gaveUpHint:
+        'Sudah mencapai batas restart per jam namun tetap unhealthy. Healer berhenti me-restart layanan ini sampai jendela 1 jam lewat; periksa log layanan.',
+      gaveUpEmpty: 'Tidak ada layanan yang ditinggalkan.',
+      gaveUpRow: '{{restarts}} restart dalam 1 jam · dicoba lagi setelah {{time}}',
+      eventsTitle: 'Riwayat terbaru',
+      eventsHint: '50 kejadian terakhir dalam 7 hari.',
+      eventsEmpty: 'Belum ada restart otomatis.',
+      columns: {
+        time: 'Waktu (WIB)',
+        service: 'Layanan',
+        reason: 'Alasan',
+        result: 'Hasil',
+        detail: 'Detail',
+      },
+      allServices: 'Semua layanan',
+      reasons: {
+        unhealthy: 'Unhealthy',
+        restart_limit: 'Batas restart per jam',
+        db_unhealthy: 'Database tidak sehat',
+        pgbouncer_unhealthy: 'PgBouncer tidak sehat',
+        systemic: 'Gangguan sistemik',
+      },
+      outcomes: {
+        restarted: 'Di-restart',
+        failed: 'Gagal',
+        reportOnly: 'Hanya dicatat',
+        gaveUp: 'Menyerah',
+        skipped: 'Ditahan',
+      },
+      disableHint:
+        'Mematikan restart otomatis: isi HEALER_ENABLED=false di docker/.env lalu jalankan ulang healer (lihat services/healer/README.md).',
+    },
     lastChanged: 'Terakhir diubah {{time}} oleh {{name}}',
     noSentinel:
       'Belum ada data dari pemantau. Layanan sentinel belum berjalan atau belum terhubung, jadi probe dan disk belum terpantau.',

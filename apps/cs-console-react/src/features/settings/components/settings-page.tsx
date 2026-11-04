@@ -1,6 +1,7 @@
 import {
   BellRingIcon,
   CalendarClockIcon,
+  DatabaseBackupIcon,
   FlagIcon,
   KeyRoundIcon,
   MegaphoneIcon,
@@ -8,7 +9,9 @@ import {
   MessagesSquareIcon,
   PanelTopIcon,
   PlugZapIcon,
+  SirenIcon,
   SlidersHorizontalIcon,
+  SmartphoneIcon,
   TagsIcon,
   UsersIcon,
 } from 'lucide-react'
@@ -16,6 +19,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionBoundary } from '@/components/states'
+import { AppIntegrationSection } from '@/features/app-integration/components/app-integration-section'
 import { useAgent } from '@/features/auth/hooks'
 import { BannersSection } from '@/features/client-config/components/banners-section'
 import { FeaturesSection } from '@/features/client-config/components/features-section'
@@ -26,7 +30,9 @@ import { cn } from '@/lib/utils'
 
 import type { SettingsSection } from '../types'
 import { AccountsSection } from './accounts-section'
+import { AlertsSection } from './alerts-section'
 import { AssignmentSection } from './assignment-section'
+import { BackupSection } from './backup-section'
 import { CommunitySection } from './community-section'
 import { HoursSection } from './hours-section'
 import { IntegrationBadge, IntegrationSection } from './integration-section'
@@ -45,8 +51,11 @@ const sections: { id: SettingsSection; icon: React.ComponentType<{ className?: s
   { id: 'push', icon: BellRingIcon },
   { id: 'integration', icon: PlugZapIcon },
   { id: 'apiKeys', icon: KeyRoundIcon },
+  { id: 'appIntegration', icon: SmartphoneIcon },
   { id: 'features', icon: FlagIcon },
   { id: 'banners', icon: PanelTopIcon },
+  { id: 'backup', icon: DatabaseBackupIcon },
+  { id: 'alerts', icon: SirenIcon },
 ]
 
 const content: Record<SettingsSection, () => React.ReactNode> = {
@@ -60,8 +69,11 @@ const content: Record<SettingsSection, () => React.ReactNode> = {
   push: () => <PushSection />,
   integration: () => <IntegrationSection />,
   apiKeys: () => <IntegrationKeysSection />,
+  appIntegration: () => <AppIntegrationSection />,
   features: () => <FeaturesSection />,
   banners: () => <BannersSection />,
+  backup: () => <BackupSection />,
+  alerts: () => <AlertsSection />,
 }
 
 export function SettingsPage() {

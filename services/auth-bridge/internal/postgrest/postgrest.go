@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"olt-social/auth-bridge/internal/exchange"
+	"olt-social/auth-bridge/internal/heartbeat"
 )
 
 type ServiceTokenSource interface {
@@ -66,6 +67,26 @@ func (c *Client) ReplaceAccountLinks(ctx context.Context, profileID string, acco
 		Linked int `json:"linked"`
 	}
 	return c.rpc(ctx, "set_olt_account_links", body, &out)
+}
+
+func (c *Client) Heartbeat(ctx context.Context, beat heartbeat.Beat) error {
+	detail := beat.Detail
+	if detail == nil {
+		detail = map[string]any{}
+	}
+	body, err := json.Marshal(map[string]any{
+		"p_service":    beat.Service,
+		"p_instance":   beat.Instance,
+		"p_version":    beat.Version,
+		"p_started_at": beat.StartedAt.UTC().Format(time.RFC3339),
+		"p_status":     beat.Status,
+		"p_error":      nullable(beat.Error),
+		"p_detail":     detail,
+	})
+	if err != nil {
+		return err
+	}
+	return c.rpc(ctx, "service_heartbeat", body, nil)
 }
 
 func (c *Client) Ping(ctx context.Context) error {
@@ -135,6 +156,9 @@ func (c *Client) rpcOnce(ctx context.Context, fn string, body []byte, out any) (
 	}
 	if resp.StatusCode >= 300 {
 		return resp.StatusCode >= 500, fmt.Errorf("rpc %s: status %d: %s", fn, resp.StatusCode, truncate(data, 300))
+	}
+	if out == nil {
+		return false, nil
 	}
 	if err := json.Unmarshal(data, out); err != nil {
 		return false, fmt.Errorf("rpc %s: decode respons: %w", fn, err)

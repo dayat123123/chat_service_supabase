@@ -104,7 +104,7 @@ services:
       <<: *deploy
       replicas: 2
   auth-bridge:
-    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.5.0
+    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.6.0
     deploy:
       <<: *deploy
       replicas: 2
@@ -140,15 +140,23 @@ services:
       replicas: 1
   # Disk yang diukur adalah node tempat sentinel berjalan: ditaruh di node DB.
   sentinel:
-    image: ${REGISTRY}/olt-social/sentinel:0.3.0
+    image: ${REGISTRY}/olt-social/sentinel:0.4.0
     environment:
       # tasks.<service>: setiap replika dibaca sendiri (counter per replika, bukan lewat VIP).
       METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://tasks.rest:3001/metrics,realtime=jwt+http://tasks.realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@tasks.pgbouncer:6432}
+      # Healer tidak berjalan di cluster: status healer tidak dibaca (tanpa alert healer:stale).
+      HEALER_STATE_FILE: ""
     deploy:
       <<: *deploy
       replicas: 1
       placement:
         constraints: [node.labels.olt.db == primary]
+  # Swarm sudah mengganti task yang unhealthy; healer (restart otomatis lewat Docker socket) hanya
+  # untuk profil single/dev.
+  healer:
+    image: ${REGISTRY}/olt-social/healer:0.1.0
+    deploy:
+      replicas: 0
   # File storage cluster ada di SeaweedFS (S3); backup restic di sini hanya untuk database.
   # Tujuan "Folder lokal" di cluster: isi BACKUP_LOCAL_REPO_DIR dengan path absolut di node DB.
   backup:

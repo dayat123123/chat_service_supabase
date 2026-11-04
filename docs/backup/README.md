@@ -1,6 +1,6 @@
 # Backup dan pemulihan
 
-Database PostgreSQL dan file storage dibackup terus-menerus ke repositori **restic** terenkripsi, di **S3** (di luar server, disarankan) atau di **folder lokal di server** bila S3 belum ada (lihat [Tujuan folder lokal](#tujuan-folder-lokal)). Pemulihan bisa ke titik waktu tertentu (PITR). Semua pengaturan dilakukan Super Admin dari web CS, menu **Kesehatan sistem → Backup**.
+Database PostgreSQL dan file storage dibackup terus-menerus ke repositori **restic** terenkripsi, di **S3** (di luar server, disarankan) atau di **folder lokal di server** bila S3 belum ada (lihat [Tujuan folder lokal](#tujuan-folder-lokal)). Pemulihan bisa ke titik waktu tertentu (PITR). Semua pengaturan dilakukan Super Admin dari web CS, menu **Pengaturan → Backup**.
 
 Migrasi: `0061_backup_role`, `0065_backups`, `0112_backup_local_destination` (tujuan folder lokal). Layanan: [`services/backup`](../../services/backup/README.md) (langkah teknis pemulihan ada di sana).
 
@@ -26,7 +26,7 @@ Dengan slot replikasi, image database tidak diubah. WAL yang ditahan juga dibata
 ## Mengatur dari web (Super Admin)
 
 1. Siapkan bucket S3 di penyedia di Indonesia (sesuai kebijakan lokasi data) dan buat access key yang hanya punya akses ke bucket itu.
-2. Buka **Kesehatan sistem → Backup → Tujuan**, pilih jenis **S3**. Isi endpoint (`https://…`), bucket, folder (prefix), region bila diminta, access key ID, dan secret access key.
+2. Buka **Pengaturan → Backup → Tujuan**, pilih jenis **S3**. Isi endpoint (`https://…`), bucket, folder (prefix), region bila diminta, access key ID, dan secret access key.
 3. Buat **password enkripsi** minimal 16 karakter. **Simpan password ini di luar server** (password manager perusahaan, amplop tersegel di brankas). Tanpa password ini backup tidak bisa dipulihkan, dan password tidak bisa dilihat lagi dari web.
 4. Simpan. Dalam beberapa detik layanan backup membuat repositori, mulai mengalirkan WAL, dan membuat backup penuh pertama.
 
@@ -38,7 +38,7 @@ Rahasia (secret access key, password enkripsi) disimpan terenkripsi di Supabase 
 
 ## Tujuan folder lokal
 
-Bila belum ada S3, pilih **Folder lokal di server** di **Kesehatan sistem → Backup → Tujuan**. Yang diisi hanya password enkripsi (+ konfirmasi). Repositori restic dibuat di folder `BACKUP_LOCAL_REPO_DIR` di server (bawaan `backups/restic` di repo, sudah di-gitignore), yang di-mount ke `/var/lib/olt-backup-repo` di container `backup` (migrasi `0112_backup_local_destination`, layanan `olt-social/backup:0.2.0`). Isinya sama terenkripsinya dengan repositori S3, dan jadwal, retensi, uji restore, serta PITR berjalan sama persis.
+Bila belum ada S3, pilih **Folder lokal di server** di **Pengaturan → Backup → Tujuan**. Yang diisi hanya password enkripsi (+ konfirmasi). Repositori restic dibuat di folder `BACKUP_LOCAL_REPO_DIR` di server (bawaan `backups/restic` di repo, sudah di-gitignore), yang di-mount ke `/var/lib/olt-backup-repo` di container `backup` (migrasi `0112_backup_local_destination`, layanan `olt-social/backup:0.2.0`). Isinya sama terenkripsinya dengan repositori S3, dan jadwal, retensi, uji restore, serta PITR berjalan sama persis.
 
 **Risikonya:** folder itu ada di server yang sama dengan database. Backup lokal melindungi dari salah hapus data, korupsi database, atau upgrade yang gagal, tetapi **tidak** melindungi dari server yang rusak, disk yang mati (bila satu disk), ransomware, atau server yang hilang. Halaman Backup menampilkan peringatan ini selama tujuan lokal dipakai. Karena itu:
 
@@ -116,7 +116,7 @@ Langkah lengkap ada di [services/backup/README.md](../../services/backup/README.
 
 **Kunci Vault.** Kunci enkripsi Supabase Vault ada di volume `db-config` (`/etc/postgresql-custom/pgsodium_root.key`), bukan di backup database. Bila memulihkan di server yang sama, volume itu tetap ada dan semua rahasia di Vault terbaca. Bila memulihkan ke **server baru**, rahasia di Vault tidak bisa dibuka, dan Kesehatan sistem menampilkan alert `backup:secret` / `alerts:secret`. Isi ulang dari web:
 - kunci Firebase (Pengaturan → Push notification);
-- secret access key (S3) dan password enkripsi **yang sama** untuk tujuan backup yang sama (Kesehatan sistem → Backup). Selama rahasia lama tidak terbaca, password repositori yang ada boleh diisi ulang;
+- secret access key (S3) dan password enkripsi **yang sama** untuk tujuan backup yang sama (Pengaturan → Backup). Selama rahasia lama tidak terbaca, password repositori yang ada boleh diisi ulang;
 - kanal alert Telegram/email (Kesehatan sistem → Alert).
 
 Simpan juga `docker/secrets/` dan `docker/.env` di luar server. Password role database ada di dalam backup dan harus cocok dengan isi `docker/secrets/`.

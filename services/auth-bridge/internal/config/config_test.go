@@ -46,6 +46,9 @@ func TestLoadDefaults(t *testing.T) {
 		cfg.OpsPort != 9100 || cfg.ValkeyAddr != "" || cfg.ValkeyDB != 0 {
 		t.Fatalf("default tahap 3 salah: %+v", cfg)
 	}
+	if cfg.HeartbeatInterval.Seconds() != 30 || cfg.InstanceID == "" {
+		t.Fatalf("default heartbeat salah: %v %q", cfg.HeartbeatInterval, cfg.InstanceID)
+	}
 }
 
 func TestLoadDefaultsFollowProtocolV1(t *testing.T) {
@@ -122,6 +125,14 @@ func TestLoadRejectsInvalidConfig(t *testing.T) {
 		"port ops bentrok": {
 			map[string]string{"JWT_SECRET": secret, "OPS_PORT": "8080"},
 			"OPS_PORT",
+		},
+		"heartbeat terlalu jarang": {
+			map[string]string{"JWT_SECRET": secret, "HEARTBEAT_INTERVAL": "120"},
+			"HEARTBEAT_INTERVAL",
+		},
+		"instance terlalu panjang": {
+			map[string]string{"JWT_SECRET": secret, "INSTANCE_ID": strings.Repeat("a", 101)},
+			"INSTANCE_ID",
 		},
 	}
 	for name, c := range cases {

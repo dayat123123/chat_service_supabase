@@ -17,6 +17,7 @@ import (
 	"olt-social/auth-bridge/internal/breaker"
 	"olt-social/auth-bridge/internal/config"
 	"olt-social/auth-bridge/internal/exchange"
+	"olt-social/auth-bridge/internal/heartbeat"
 	"olt-social/auth-bridge/internal/metrics"
 	"olt-social/auth-bridge/internal/olt"
 	"olt-social/auth-bridge/internal/postgrest"
@@ -25,7 +26,10 @@ import (
 	"olt-social/auth-bridge/internal/token"
 )
 
-const version = "0.5.0"
+const (
+	version = "0.6.0"
+	service = "auth-bridge"
+)
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
@@ -49,6 +53,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	startedAt := time.Now()
 	reg := metrics.NewRegistry()
 
 	verifier, err := newVerifier(cfg)
@@ -91,6 +96,25 @@ func run(cfg config.Config, log *slog.Logger) error {
 		Metrics: server.NewMetrics(reg),
 	})
 
+	beats := heartbeat.New(heartbeat.Options{
+		Store:     store,
+		Log:       log,
+		Service:   service,
+		Instance:  cfg.InstanceID,
+		Version:   version,
+		StartedAt: startedAt,
+		Interval:  cfg.HeartbeatInterval,
+		Report:    bridgeReport(cfg, verifier, brk),
+	})
+	reg.GaugeFunc("olt_auth_bridge_last_heartbeat_timestamp_seconds",
+		"Waktu heartbeat terakhir yang berhasil ke database (detik Unix, 0 bila belum pernah)",
+		func() float64 {
+			if last := beats.LastSuccess(); !last.IsZero() {
+				return float64(last.Unix())
+			}
+			return 0
+		})
+
 	servers := []*http.Server{{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
 		Handler:           s.Handler(),
@@ -110,13 +134,15 @@ func run(cfg config.Config, log *slog.Logger) error {
 		})
 	}
 
-	log.Info("auth-bridge berjalan", "version", version,
+	log.Info("auth-bridge berjalan", "version", version, "instance", cfg.InstanceID,
 		"port", cfg.Port, "ops_port", cfg.OpsPort, "app_env", cfg.AppEnv, "olt_mode", cfg.OLT.Mode,
 		"jwt_ttl_s", cfg.JWTTTL.Seconds(), "cache_ttl_s", cfg.VerifyCacheTTL.Seconds(),
 		"valkey", cfg.ValkeyAddr != "")
 	if cfg.OLT.Mode == config.OLTModeMock {
 		log.Warn("OLT_MODE=mock: token dummy diterima. Jangan dipakai di produksi.")
 	}
+
+	go beats.Run(ctx)
 
 	errCh := make(chan error, len(servers))
 	for _, srv := range servers {
@@ -210,6 +236,26 @@ func throttled(every time.Duration) func(fn func()) {
 			return
 		}
 		fn()
+	}
+}
+
+func bridgeReport(cfg config.Config, verifier olt.Verifier, brk *breaker.Breaker) func() heartbeat.Report {
+	info := heartbeat.Bridge{
+		AppEnv:   cfg.AppEnv,
+		OLTMode:  string(cfg.OLT.Mode),
+		Issuer:   cfg.OLT.JWTIssuer,
+		Audience: cfg.OLT.JWTAudience,
+		MaxTTL:   cfg.OLT.JWTMaxTTL,
+	}
+	if keyed, ok := verifier.(interface{ Keys() []olt.KeyInfo }); ok {
+		info.Keys = keyed.Keys()
+	}
+	detail := info.Detail()
+	return func() heartbeat.Report {
+		if brk.State() == breaker.Open {
+			return heartbeat.Report{Status: heartbeat.StatusDegraded, Error: "circuit breaker OLT terbuka", Detail: detail}
+		}
+		return heartbeat.Report{Status: heartbeat.StatusOK, Detail: detail}
 	}
 }
 

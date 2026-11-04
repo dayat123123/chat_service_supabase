@@ -38,6 +38,7 @@ type Config struct {
 	BatchSize       int
 	Lease           time.Duration
 	ShutdownTimeout time.Duration
+	HealerStateFile string
 }
 
 func Load() (Config, error) {
@@ -58,6 +59,7 @@ func Load() (Config, error) {
 		Lease:           durationEnv("LEASE", time.Minute, &errs),
 		ShutdownTimeout: durationEnv("SHUTDOWN_TIMEOUT", 20*time.Second, &errs),
 		JWTSecret:       []byte(secretEnv("JWT_SECRET", &errs)),
+		HealerStateFile: stringEnv("HEALER_STATE_FILE", ""),
 	}
 	if err := cfg.LogLevel.UnmarshalText([]byte(stringEnv("LOG_LEVEL", "info"))); err != nil {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
@@ -97,6 +99,7 @@ func Load() (Config, error) {
 		{within(cfg.Lease, 10*time.Second, 10*time.Minute), "LEASE must be between 10s and 10m"},
 		{cfg.Lease >= max(cfg.SMTPTimeout, cfg.RequestTimeout)+10*time.Second, "LEASE must be at least SMTP_TIMEOUT and REQUEST_TIMEOUT + 10s"},
 		{within(cfg.ShutdownTimeout, time.Second, 5*time.Minute), "SHUTDOWN_TIMEOUT must be between 1s and 5m"},
+		{cfg.HealerStateFile == "" || (strings.HasPrefix(cfg.HealerStateFile, "/") && strings.HasSuffix(cfg.HealerStateFile, ".json")), "HEALER_STATE_FILE must be an absolute path ending in .json"},
 	}
 	for _, rule := range rules {
 		if !rule.ok {

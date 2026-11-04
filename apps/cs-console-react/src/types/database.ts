@@ -180,6 +180,7 @@ export type Database = {
         Args: { p_bot_token?: string; p_chat_ids: string[]; p_enabled: boolean }
         Returns: Json
       }
+      app_integration_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       backup_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       backup_request: { Args: { p_kind: string }; Returns: Json }
       backup_set_schedule: {
@@ -656,6 +657,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      healer_overview: { Args: Record<PropertyKey, never>; Returns: Json }
       health_acknowledge: { Args: { p_alert_id: number }; Returns: undefined }
       integration_broadcasts: {
         Args: { p_key_id?: string; p_limit?: number }

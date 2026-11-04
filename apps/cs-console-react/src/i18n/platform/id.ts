@@ -419,6 +419,63 @@ export const platform = {
       banner_not_found: 'Banner tidak ditemukan. Daftar dimuat ulang.',
     },
   },
+  appIntegration: {
+    description:
+      'Data yang diserahkan ke tim aplikasi OLT dan status login OLT. Halaman ini hanya-baca; tidak ada yang bisa diubah dari sini.',
+    connection: 'Data koneksi aplikasi',
+    connectionHint:
+      'Berikan ke tim aplikasi OLT. Anon key memang publik (tertanam di aplikasi), bukan rahasia; aksesnya dibatasi aturan database.',
+    apiUrl: 'URL API (SOCIAL_API_URL)',
+    anonKey: 'Anon key (SOCIAL_ANON_KEY)',
+    showKey: 'Tampilkan',
+    hideKey: 'Sembunyikan',
+    library: 'Library Flutter',
+    libraryValue: '{{name}} versi {{version}} atau lebih baru',
+    minVersions: 'Versi minimum aplikasi',
+    noMinVersions: 'Belum ada batas versi (atur di Fitur & versi).',
+    prodConfig: 'Contoh config/prod.json',
+    guide: 'Panduan integrasi library',
+    login: 'Status login OLT',
+    loginHint:
+      'auth-bridge menukar token sosial OLT menjadi sesi aplikasi dan mengirim heartbeat tiap 30 detik. Isi kunci tidak pernah dikirim, hanya kid dan algoritmanya.',
+    status: {
+      active: 'Aktif',
+      warning: 'Peringatan',
+      no_heartbeat: 'Tidak ada heartbeat',
+    },
+    warnings: {
+      dev_key:
+        'Kunci dev terpasang (kid berawalan dev-). Wajar di development dengan OLT dummy; produksi wajib memakai JWKS dari OLT.',
+      not_jwt:
+        'auth-bridge tidak memakai mode jwt di luar development, sehingga token sosial OLT tidak diverifikasi.',
+      mismatch:
+        'Instance auth-bridge memakai konfigurasi kunci yang berbeda. Samakan docker/secrets/olt_jwks di semua server.',
+    },
+    noHeartbeat: 'Tidak ada heartbeat auth-bridge dalam 3 menit terakhir.',
+    lastHeartbeat: 'Heartbeat terakhir {{time}} ({{ago}}).',
+    neverHeartbeat: 'Belum pernah ada heartbeat. auth-bridge 0.6.0 atau lebih baru mengirimnya otomatis.',
+    mode: 'Mode',
+    keys: 'Kid terpasang',
+    noKeys: 'Tidak ada kunci (mode tanpa JWKS).',
+    issuer: 'Issuer',
+    audience: 'Audience',
+    maxTtl: 'Umur maksimal token sosial',
+    seconds: '{{count}} dtk',
+    instances: 'Instance aktif',
+    instanceLine: '{{version}} · terlihat {{ago}}',
+    degraded: 'bermasalah',
+    lastLogin: 'Login nasabah terakhir',
+    noLogin: 'Belum ada login nasabah.',
+    logins24h: 'Nasabah login 24 jam terakhir',
+    keyHelp:
+      'Kunci OLT diganti lewat server: perbarui docker/secrets/olt_jwks lalu jalankan make up. Sengaja tidak bisa dari Hub, karena siapa pun yang bisa mengganti kunci bisa membuat token atas nama nasabah.',
+    ago: {
+      now: 'baru saja',
+      minutes: '{{count}} menit lalu',
+      hours: '{{count}} jam lalu',
+      days: '{{count}} hari lalu',
+    },
+  },
   errors: {
     invalid_name: 'Nama key 3–80 karakter.',
     invalid_scopes:

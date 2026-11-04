@@ -22,8 +22,8 @@ $$;
 
 select tests.create_user('hm_budi') as budi \gset
 
-select has_function('public', 'health_report', array['text', 'text', 'timestamp with time zone', 'jsonb', 'jsonb', 'jsonb'],
-  'health_report menerima p_metrics');
+select has_function('public', 'health_report', array['text', 'text', 'timestamp with time zone', 'jsonb', 'jsonb', 'jsonb', 'jsonb'],
+  'health_report menerima p_metrics (dan p_healer sejak 0113)');
 select hasnt_function('public', 'health_report', array['text', 'text', 'timestamp with time zone', 'jsonb', 'jsonb'],
   'Versi lama tanpa p_metrics sudah diganti');
 

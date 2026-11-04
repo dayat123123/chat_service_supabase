@@ -69,7 +69,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 .PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit perf-flutter smoke backup restore gen-secrets gen-keys psql check-config \
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
-        test-media test-sentinel test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
+        test-media test-sentinel test-healer test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console \
         testkit test-security test-zap scan-deps load-test load-integration chaos-test loadtest-cleanup
 
@@ -120,7 +120,7 @@ migrate: check-config ## Jalankan migrasi baru di supabase/migrations
 seed: check-config ## Isi data dummy development
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-media test-sentinel test-backup test-integration test-link-preview test-classifier check-go-comments ## Tes backend (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-media test-sentinel test-healer test-backup test-integration test-link-preview test-classifier check-go-comments ## Tes backend (pgTAP + Go)
 
 test-db: check-config ## Tes pgTAP (supabase/tests)
 	$(TOOLS) test-db
@@ -276,6 +276,9 @@ test-media: ## Unit test pintu upload media nasabah (Go, di container)
 
 test-sentinel: ## Unit test pemantau sistem + alert (Go, di container)
 	docker run --rm -v "$(CURDIR)/services/sentinel:/src" -w /src $(GO_IMG) go test ./...
+
+test-healer: ## Unit test restart otomatis container unhealthy (Go, di container)
+	docker run --rm -v "$(CURDIR)/services/healer:/src" -w /src $(GO_IMG) go test ./...
 
 test-backup: ## Unit test layanan backup (Go, di container)
 	docker run --rm -v "$(CURDIR)/services/backup:/src" -w /src $(GO_IMG) go test ./...

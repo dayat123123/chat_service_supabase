@@ -18,6 +18,7 @@ export const systemKeys = {
   health: ['system', 'health'] as const,
   badge: ['system', 'badge'] as const,
   backup: ['system', 'backup'] as const,
+  healer: ['system', 'healer'] as const,
   channels: ['system', 'channels'] as const,
 }
 
@@ -25,6 +26,15 @@ export function useSystemHealth() {
   return useQuery({
     queryKey: systemKeys.health,
     queryFn: systemApi.health,
+    refetchInterval: 15_000,
+    staleTime: 5_000,
+  })
+}
+
+export function useHealerOverview() {
+  return useQuery({
+    queryKey: systemKeys.healer,
+    queryFn: systemApi.healer,
     refetchInterval: 15_000,
     staleTime: 5_000,
   })

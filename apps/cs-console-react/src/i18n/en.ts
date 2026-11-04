@@ -614,8 +614,15 @@ export const en: Translation = {
     alertP1: 'P1 ticket unclaimed for more than (minutes)',
     integration: 'Customer API integration',
     apiKeys: 'Notification API',
+    appIntegration: 'App integration',
     features: 'Features & versions',
     banners: 'App banners',
+    backup: 'Backup',
+    backupDescription:
+      'Destination, encryption password, schedule, and retention for database and file backups. Full backup and restore test results appear here.',
+    alerts: 'Alerts',
+    alertsDescription:
+      'Where system alerts are delivered: Telegram and/or email. Fill in at least one channel, then press Send test.',
     community: 'Community',
     communityDescription: 'Approval rules for official posts and notifications.',
     fourEyes: 'Four-eyes rule',
@@ -2250,7 +2257,84 @@ export const en: Translation = {
     subtitle:
       'Service status, alerts, database backups, and notification channels. Data refreshes automatically every 15 seconds.',
     tabsLabel: 'System health sections',
-    tabs: { status: 'Status', backup: 'Backup', alerts: 'Alerts' },
+    tabs: { status: 'Status', healer: 'Auto restart', backup: 'Backup', alerts: 'Alerts' },
+    healer: {
+      title: 'Auto restart',
+      subtitle:
+        'The healer restarts services that are unhealthy (process alive but stuck) on the single-server profile. Docker already restarts containers that exit; in a cluster, Swarm replaces unhealthy tasks.',
+      facts: {
+        status: 'Status',
+        checked: 'Last check',
+        watched: 'Watched services',
+        restarts: 'Restarts in 24 h',
+        rules: 'Rules',
+      },
+      states: {
+        missing: 'No data yet',
+        noReport: 'Not reported',
+        stale: 'Not running',
+        error: 'Docker unreadable',
+        reportOnly: 'Report-only mode',
+        active: 'Active',
+      },
+      stateHints: {
+        missing:
+          'No status from the healer yet. The healer is not installed (for example on the cluster profile) or the sentinel has not read its state file.',
+        noReport: 'The sentinel has not reported in the last 90 seconds, so the healer status is unknown.',
+        stale:
+          'The healer stopped updating its status; nothing is restarted automatically until it runs again.',
+        error: 'The healer is running but cannot read container status from Docker; nothing is restarted.',
+        reportOnly:
+          'HEALER_ENABLED=false: the healer only records services it would restart and restarts nothing.',
+      },
+      watchedCount: '{{count}} containers',
+      restartCount: '{{restarts}} restarts, {{failed}} failed',
+      rulesText:
+        'Unhealthy ≥ {{unhealthy}} s and running ≥ {{uptime}} s · max {{max}} restarts/hour per service · {{cooldown}} s between restarts · held back when ≥ {{fraction}} of services are unhealthy',
+      version: 'Version {{version}} · project {{project}}',
+      skipTitle: 'Restarts are held back',
+      skipReason: {
+        db_unhealthy: 'The database is not healthy, so no service is restarted.',
+        pgbouncer_unhealthy: 'PgBouncer is not healthy; only PgBouncer may be restarted.',
+        systemic:
+          'Many services are unhealthy at once (systemic outage); restarting them one by one does not help.',
+      },
+      skipServices: 'Since {{time}} · unhealthy: {{services}}',
+      unhealthyTitle: 'Currently unhealthy',
+      unhealthySince: 'since {{time}} ({{duration}})',
+      gaveUpTitle: 'Services given up on',
+      gaveUpHint:
+        'Reached the hourly restart limit and still unhealthy. The healer stops restarting these services until the 1-hour window passes; check their logs.',
+      gaveUpEmpty: 'No services given up on.',
+      gaveUpRow: '{{restarts}} restarts within 1 hour · retried after {{time}}',
+      eventsTitle: 'Recent history',
+      eventsHint: 'Last 50 events within 7 days.',
+      eventsEmpty: 'No automatic restarts yet.',
+      columns: {
+        time: 'Time (WIB)',
+        service: 'Service',
+        reason: 'Reason',
+        result: 'Result',
+        detail: 'Detail',
+      },
+      allServices: 'All services',
+      reasons: {
+        unhealthy: 'Unhealthy',
+        restart_limit: 'Hourly restart limit',
+        db_unhealthy: 'Database not healthy',
+        pgbouncer_unhealthy: 'PgBouncer not healthy',
+        systemic: 'Systemic outage',
+      },
+      outcomes: {
+        restarted: 'Restarted',
+        failed: 'Failed',
+        reportOnly: 'Recorded only',
+        gaveUp: 'Gave up',
+        skipped: 'Held back',
+      },
+      disableHint:
+        'To turn auto restart off: set HEALER_ENABLED=false in docker/.env and restart the healer (see services/healer/README.md).',
+    },
     lastChanged: 'Last changed {{time}} by {{name}}',
     noSentinel:
       'No data from the monitor yet. The sentinel service is not running or not connected, so probes and disks are not monitored.',

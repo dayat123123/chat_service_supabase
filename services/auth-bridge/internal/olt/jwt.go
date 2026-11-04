@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 )
@@ -49,6 +50,20 @@ func NewJWTVerifier(jwks []byte, opts JWTOptions) (*JWTVerifier, error) {
 		return nil, fmt.Errorf("JWKS OLT: %w", err)
 	}
 	return &JWTVerifier{keys: keys, opts: opts, now: time.Now}, nil
+}
+
+type KeyInfo struct {
+	Kid string `json:"kid"`
+	Alg string `json:"alg"`
+}
+
+func (v *JWTVerifier) Keys() []KeyInfo {
+	out := make([]KeyInfo, 0, len(v.keys))
+	for kid, key := range v.keys {
+		out = append(out, KeyInfo{Kid: kid, Alg: key.alg})
+	}
+	slices.SortFunc(out, func(a, b KeyInfo) int { return strings.Compare(a.Kid, b.Kid) })
+	return out
 }
 
 type jwk struct {
