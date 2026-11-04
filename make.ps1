@@ -20,7 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'perf-flutter', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-media', 'test-sentinel', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
+                 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
@@ -253,6 +253,7 @@ switch ($Target) {
   test-janitor   Unit test pembersih file storage (Go, di container)
   test-media     Unit test pintu upload media nasabah (Go, di container)
   test-sentinel  Unit test pemantau sistem + alert (Go, di container)
+  test-healer    Unit test restart otomatis container unhealthy (Go, di container)
   test-backup    Unit test layanan backup (Go, di container)
   test-integration  Unit test gateway integrasi OLT (Go, di container)
   test-link-preview  Unit test pratinjau link (Go, di container)
@@ -323,6 +324,7 @@ switch ($Target) {
         & $PSCommandPath test-janitor
         & $PSCommandPath test-media
         & $PSCommandPath test-sentinel
+        & $PSCommandPath test-healer
         & $PSCommandPath test-backup
         & $PSCommandPath test-integration
         & $PSCommandPath test-link-preview
@@ -480,7 +482,7 @@ switch ($Target) {
         $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
-    { $_ -in 'test-media', 'test-sentinel', 'test-backup', 'test-integration', 'test-link-preview' } {
+    { $_ -in 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview' } {
         $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }

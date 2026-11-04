@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"olt-social/auth-bridge/internal/exchange"
+	"olt-social/auth-bridge/internal/heartbeat"
 )
 
 type staticToken string
@@ -131,5 +132,49 @@ func TestReplaceAccountLinks(t *testing.T) {
 	}
 	if accounts, ok := got["p_accounts"].([]any); !ok || len(accounts) != 0 {
 		t.Fatalf("nil harus dikirim sebagai array kosong, body = %v", got)
+	}
+}
+
+func TestHeartbeatCallsServiceHeartbeatAndAcceptsEmptyResponse(t *testing.T) {
+	var got map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/rpc/service_heartbeat" || r.Header.Get("Authorization") != "Bearer svc" {
+			t.Errorf("request %s %s", r.URL.Path, r.Header.Get("Authorization"))
+		}
+		_ = json.NewDecoder(r.Body).Decode(&got)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	started := time.Date(2026, 11, 4, 8, 0, 0, 0, time.FixedZone("WIB", 7*3600))
+	err := NewClient(srv.URL, staticToken("svc")).Heartbeat(context.Background(), heartbeat.Beat{
+		Service:   "auth-bridge",
+		Instance:  "bridge-1",
+		Version:   "0.6.0",
+		StartedAt: started,
+		Status:    heartbeat.StatusOK,
+		Detail:    map[string]any{"olt_mode": "jwt"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	detail, _ := got["p_detail"].(map[string]any)
+	if got["p_service"] != "auth-bridge" || got["p_instance"] != "bridge-1" || got["p_version"] != "0.6.0" ||
+		got["p_started_at"] != "2026-11-04T01:00:00Z" || got["p_status"] != "ok" || got["p_error"] != nil ||
+		detail["olt_mode"] != "jwt" {
+		t.Fatalf("body = %v", got)
+	}
+}
+
+func TestHeartbeatReportsRejectedCalls(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"code":"42501","message":"permission denied"}`))
+	}))
+	defer srv.Close()
+
+	err := NewClient(srv.URL, staticToken("t")).Heartbeat(context.Background(), heartbeat.Beat{Service: "auth-bridge"})
+	if err == nil || !strings.Contains(err.Error(), "permission denied") {
+		t.Fatalf("err = %v", err)
 	}
 }

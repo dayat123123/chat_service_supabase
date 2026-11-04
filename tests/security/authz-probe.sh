@@ -198,8 +198,8 @@ for row in "${SERVICE_FNS[@]}"; do
 done
 
 echo "== cs_api: semua fungsi dengan argumen null"
-STAFF_ONLY='^(admin_|agent_(heartbeat|me|send_message|set_status|typing)|alert_|backup_|claim_ticket|community_|compliance_|customer_history|evidence_|flag_ticket|health_|integration_|legal_|nasabah_|notes|add_note|online_agents|push_|quick_replies|reassign_ticket|release_ticket|report_customer|report_summary|request_transfer|respond_transfer|cancel_transfer|resolve_ticket|search_tickets|service_|set_ticket_priority|supervisor_|system_health|ticket_customer_login|ticket_detail|ticket_lists|wait_customer|room_members|get_messages)'
-PERM_GATED='^(admin_|alert_|backup_|community_|compliance_|evidence_|health_acknowledge|integration_|legal_(draft_approve|draft_reject|set_required|cancel_scheduled)|nasabah_(save|clear)_integration|push_|service_|supervisor_|report_summary|report_customers|report_customer_trail)'
+STAFF_ONLY='^(admin_|app_integration_|agent_(heartbeat|me|send_message|set_status|typing)|alert_|backup_|claim_ticket|community_|compliance_|customer_history|evidence_|flag_ticket|health_|integration_|legal_|nasabah_|notes|add_note|online_agents|push_|quick_replies|reassign_ticket|release_ticket|report_customer|report_summary|request_transfer|respond_transfer|cancel_transfer|resolve_ticket|search_tickets|service_|set_ticket_priority|supervisor_|system_health|ticket_customer_login|ticket_detail|ticket_lists|wait_customer|room_members|get_messages)'
+PERM_GATED='^(admin_|alert_|app_integration_|backup_|community_|compliance_|evidence_|health_acknowledge|integration_|legal_(draft_approve|draft_reject|set_required|cancel_scheduled)|nasabah_(save|clear)_integration|push_|service_|supervisor_|report_summary|report_customers|report_customer_trail)'
 mapfile -t CS_FNS < <(sql "select p.proname || '|' || coalesce((select jsonb_object_agg(a, null)::text from unnest(p.proargnames[1:p.pronargs]) a), '{}')
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'cs_api' order by 1")
 for row in "${CS_FNS[@]}"; do
@@ -269,14 +269,20 @@ echo "== Realtime: kanal room DM dua user uji lt_sec*"
 tokengen -prefix lt_sec -start 1 -count 2 -base 9190000 > "$OUT/lt_sec.json"
 SEC_A=$(curl -sS -X POST "$API/bridge/v1/exchange" -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
   -H 'X-Forwarded-For: 198.51.100.31' -d "{\"token\":\"$(jq -r '.[0].token' "$OUT/lt_sec.json")\"}" | jq -r '.access_token // empty')
-SEC_B_ID=$(curl -sS -X POST "$API/bridge/v1/exchange" -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
-  -H 'X-Forwarded-For: 198.51.100.32' -d "{\"token\":\"$(jq -r '.[1].token' "$OUT/lt_sec.json")\"}" | jq -r '.user.id // empty')
+SEC_B_JSON=$(curl -sS -X POST "$API/bridge/v1/exchange" -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
+  -H 'X-Forwarded-For: 198.51.100.32' -d "{\"token\":\"$(jq -r '.[1].token' "$OUT/lt_sec.json")\"}")
+SEC_B_ID=$(jq -r '.user.id // empty' <<< "$SEC_B_JSON")
+SEC_B=$(jq -r '.access_token // empty' <<< "$SEC_B_JSON")
 rm -f "$OUT/lt_sec.json"
 SEC_ROOM=""
 if [ -n "$SEC_A" ] && [ -n "$SEC_B_ID" ]; then
   AUTH[lt_sec_a]=$SEC_A
   call lt_sec_a POST /rest/v1/rpc/get_or_create_direct_room "{\"p_other_user_id\":\"$SEC_B_ID\"}"
   SEC_ROOM=$(jq -r 'if type == "string" then . else empty end' "$BODY" 2>/dev/null)
+  if [ -n "$SEC_ROOM" ] && [ -n "$SEC_B" ]; then
+    AUTH[lt_sec_b]=$SEC_B
+    call lt_sec_b POST /rest/v1/rpc/respond_message_request "{\"p_room_id\":\"$SEC_ROOM\",\"p_action\":\"accept\"}"
+  fi
   call lt_sec_a POST /rest/v1/rpc/join_stock_room '{"p_stock_code":"LTSEC"}'
   SEC_STOCK=$(jq -r 'if type == "string" then . else empty end' "$BODY" 2>/dev/null)
 fi

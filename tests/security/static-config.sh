@@ -146,6 +146,23 @@ check high "hanya Traefik (dan dummy-olt dev) yang mem-publish port; admin/metri
 check high "Kong dan Traefik tidak me-route admin server PostgREST (:3001) atau /metrics" '! grep -qE ":3001|/metrics" $D/volumes/api/kong.yml $D/volumes/traefik/*.yml'
 check high "auth-bridge produksi APP_ENV=production" 'grep -A3 "^  auth-bridge:" $D/compose.prod.yml | grep -q "APP_ENV: production"'
 
+echo "== healer (restart otomatis, Docker socket)"
+block() { tr -d '\r' < "$1" | awk -v s="  $2:" '$0==s{f=1;next} f&&(/^  [a-z0-9-]+:$/||/^[a-z]/){f=0} f'; }
+healer=$(block $D/compose.yml healer)
+check high "healer ada di compose dasar" '[ -n "$healer" ]'
+check high "healer tanpa jaringan sama sekali (network_mode: none)" 'grep -qx "    network_mode: none" <<< "$healer"'
+check high "healer tanpa ports/expose/networks (tidak ada listener)" '! grep -qE "^    (ports|expose|networks):" <<< "$healer"'
+check high "healer memakai hardening dasar (read-only, cap_drop ALL, no-new-privileges) dan user non-root" 'grep -qx "    <<: \*base" <<< "$healer" && grep -qx "    user: \"65532:65532\"" <<< "$healer"'
+check medium "healer dibatasi memori/CPU kecil" 'grep -qE "limits: \{cpus: \"0\.[0-9]+\", memory: [0-9]+M" <<< "$healer"'
+socks=$(for f in $D/compose*.yml $D/stack.cluster.yml; do tr -d '\r' < "$f" | awk -v F="${f##*/}" '/^  [a-z0-9-]+:$/{svc=$1} /docker\.sock/ && !/^ *#/{sub(":","",svc); print F ":" svc}'; done | sort -u)
+check high "Docker socket hanya di-mount ke healer" '[ "$socks" = "compose.yml:healer" ]' "$(tr '\n' ' ' <<< "$socks")"
+check high "healer tidak berjalan di profil cluster (replicas 0; Swarm mengganti task unhealthy)" 'block $D/stack.cluster.yml healer | grep -qx "      replicas: 0"'
+check medium "sentinel cluster tidak membaca status healer (tanpa healer:stale palsu)" 'block $D/stack.cluster.yml sentinel | grep -q "HEALER_STATE_FILE: \"\""'
+autoheal=$(tr -d '\r' < $D/compose.yml | awk '/^  [a-z0-9-]+:$/{svc=$1} /olt\.autoheal=true/ && !/^ *#/{sub(":","",svc); print svc}' | sort -u)
+bad_autoheal=$(grep -xE "db|valkey|sentinel|healer|migrate|tools|volume-init|studio|meta" <<< "$autoheal" || true)
+check high "db, valkey, sentinel, healer, dan service one-shot tidak berlabel olt.autoheal" '[ -z "$bad_autoheal" ]' "$(tr '\n' ' ' <<< "$bad_autoheal")"
+check medium "service stateless berhealthcheck berlabel olt.autoheal (rest, realtime, kong, auth, pgbouncer, traefik, ...)" '[ "$(grep -cxE "traefik|kong|auth|rest|realtime|storage|imgproxy|functions|pgbouncer|auth-bridge|notifier|janitor|classifier|media|backup|integration|link-preview|cs-console|nasabah-gateway" <<< "$autoheal")" -eq 19 ]' "$(tr '\n' ' ' <<< "$autoheal")"
+
 echo
 echo "static-config: $pass ok, $fail temuan, $info catatan  (detail: ${OUT#/olt/}/static-config.tsv)"
 [ "$fail" -eq 0 ]

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"olt-social/sentinel/internal/disk"
+	"olt-social/sentinel/internal/healer"
 	"olt-social/sentinel/internal/probe"
 	"olt-social/sentinel/internal/scrape"
 )
@@ -364,5 +365,36 @@ func TestPingReportsPostgRESTAvailability(t *testing.T) {
 	status = http.StatusBadGateway
 	if err := s.Ping(context.Background()); err == nil {
 		t.Fatal("expected an error for 502")
+	}
+}
+
+func TestHealthReportSendsTheHealerStateOnlyWhenConfigured(t *testing.T) {
+	fake, server := newFake(t, func(string, map[string]any) (int, string) { return 200, `{"evaluated_at":null}` })
+	db := newStore(server.URL, nil)
+	if _, err := db.HealthReport(context.Background(), Health{Instance: "s", Version: "v"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := fake.last().args["p_healer"]; ok {
+		t.Fatal("p_healer must be left out without a healer state file")
+	}
+	enabled := true
+	checked := time.Date(2026, 11, 4, 4, 0, 0, 0, time.UTC)
+	report := healer.Report{Enabled: &enabled, CheckedAt: &checked, Project: "olt-social", Watched: 19,
+		Unhealthy: []healer.Unhealthy{}, GaveUp: []healer.GaveUp{{Service: "rest", Since: checked, Until: checked.Add(time.Hour), Restarts: 3}},
+		Events: []healer.Event{}}
+	if _, err := db.HealthReport(context.Background(), Health{Instance: "s", Version: "v", Healer: &report}); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := fake.last().args["p_healer"].(map[string]any)
+	gaveUp, _ := got["gave_up"].([]any)
+	if got["project"] != "olt-social" || got["enabled"] != true || got["checked_at"] != "2026-11-04T04:00:00Z" ||
+		got["watched"] != float64(19) || len(gaveUp) != 1 || got["skip"] != nil {
+		t.Fatalf("p_healer = %#v", got)
+	}
+	if _, err := db.HealthReport(context.Background(), Health{Instance: "s", Version: "v", Healer: &healer.Report{ReadError: "state file not found"}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := fake.last().args["p_healer"].(map[string]any); got["read_error"] != "state file not found" {
+		t.Fatalf("p_healer = %#v", got)
 	}
 }

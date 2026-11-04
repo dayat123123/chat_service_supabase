@@ -153,6 +153,9 @@ Konfigurasi operasional dikelola Super Admin dari **Rendezvous Hub**, dengan jej
 | [integration/](docs/integration/README.md) | API notifikasi OLT (`/integration/v1`) |
 | [dev-server.md](docs/dev-server.md) | Server development untuk integrasi aplikasi client: spek, port, domain, pemasangan |
 | [PRODUCTION.md](docs/PRODUCTION.md) | Deploy, operasional, rilis, checklist |
+| [server-install.md](docs/server-install.md) | Instalasi server baru sampai bisa diakses publik, dengan script `scripts/server-install.sh` |
+| [operations.md](docs/operations.md) | Panduan operasional: komponen, di mana mengatur apa, perintah, pemantauan, rutinitas |
+| [runbook-gangguan.md](docs/runbook-gangguan.md) | Langkah saat gangguan: triase, gejala per layanan, pemulihan, rollback |
 | [scaling.md](docs/scaling.md) | Profil deploy dan migrasi single → cluster |
 | [social/](docs/social/README.md) | Feed, chat, realtime, gap-fill, typing, pratinjau room |
 | [cs-chat/](docs/cs-chat/README.md) | Chat CS, tiket, matching engine, `cs_api` |

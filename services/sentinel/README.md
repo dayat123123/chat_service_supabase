@@ -5,6 +5,7 @@ Pemantau sistem dan pengirim alert. Sentinel memeriksa layanan internal (HTTP/TC
 ## Alur
 
 1. **Laporan kesehatan** (setiap `REPORT_INTERVAL`, pertama kali langsung saat start): semua probe dan sumber metrik dijalankan paralel, disk diukur dengan `statfs`, lalu dikirim lewat `health_report(p_instance, p_version, p_started_at, p_probes, p_disks, p_metrics)` (`p_metrics` hanya dikirim bila `METRICS_SOURCES` terisi; migrasi `0104`). Database mencatat heartbeat `sentinel`, menyimpan hasil probe dan disk, lalu langsung mengevaluasi aturan alert.
+   - Bila `HEALER_STATE_FILE` diisi (0.4.0, migrasi `0113`), file status healer ([services/healer](../healer/README.md)) dibaca setiap putaran dan dikirim sebagai `p_healer`: status, aturan, layanan unhealthy, penahanan, layanan yang ditinggalkan, dan 50 event terakhir. Bila file tidak ada atau rusak, yang dikirim `{"read_error": "..."}` (dicatat sekali di log) sehingga database membuka `healer:stale`. Tanpa `HEALER_STATE_FILE`, `p_healer` tidak dikirim.
    - Bila laporan gagal terkirim, putaran itu dibawa ke laporan berikutnya (0.3.0, migrasi `0108`): setiap probe dan sumber metrik membawa `missed` (jumlah kegagalannya di laporan yang hilang), dan sumber sintetis `sentinel` membawa `sentinel_reports_lost`. Hitungan direset setelah satu laporan terkirim. Dengan begitu `rest:pool` dan `metrics:<sumber>` tetap terbuka walau laporan hilang tepat saat PostgREST runtuh.
 2. **Kanal alert** (setiap `ALERT_POLL`): `alert_channels(p_revision)` dipanggil dengan revisi yang sedang dipakai. Bila sama, database hanya menjawab `unchanged` tanpa mengirim token atau password. Bila berubah, kanal di memori diganti tanpa restart dan dicatat sekali di log (jumlah chat, host SMTP, jumlah penerima; tanpa token/password).
 3. **Pengiriman** (setelah cek kanal, di putaran yang sama): `alert_claim(p_instance, p_limit, p_lease_seconds)` mengambil maksimal `BATCH_SIZE` pesan. Telegram dan email dikirim bersamaan (masing-masing berurutan), lalu semua hasil dilaporkan sekaligus lewat `alert_report`. Bila claim penuh, sentinel langsung claim lagi. Laporan yang gagal dicoba lagi setelah 250 ms, 500 ms, dan 1 detik. Bila tetap gagal, pesan kembali ke antrean setelah lease habis.
@@ -37,6 +38,7 @@ Pengiriman bersifat *at-least-once*. Sentinel tidak memulai kiriman baru setelah
 | `BATCH_SIZE` | `20` | Jumlah alert per claim (1–100) |
 | `LEASE` | `60s` | Lama pesan dikunci per claim (10s–10m, minimal `SMTP_TIMEOUT` dan `REQUEST_TIMEOUT` + 10s) |
 | `SHUTDOWN_TIMEOUT` | `20s` | Waktu menyelesaikan kiriman yang sedang jalan saat SIGTERM (1s–5m) |
+| `HEALER_STATE_FILE` | kosong | Path absolut `.json` file status healer (compose: `/mnt/healer/state.json`, volume `healer-state` read-only). Kosong = status healer tidak dilaporkan (profil cluster) |
 
 ## Probe dan disk
 

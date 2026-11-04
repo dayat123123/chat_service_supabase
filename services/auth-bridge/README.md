@@ -1,6 +1,6 @@
 # auth-bridge
 
-Versi **0.5.0**: membaca klaim opsional `accounts` (rekening milik login OLT) dan menyimpannya untuk notifikasi transaksi OLT ([docs/integration](../../docs/integration/README.md)). Riwayat versi ada di [bawah](#riwayat-versi).
+Versi **0.6.0**: mengirim [heartbeat](#heartbeat) ke database (mode OLT, `kid` terpasang, issuer, audience) untuk halaman **Pengaturan → Integrasi aplikasi** di Rendezvous Hub. Riwayat versi ada di [bawah](#riwayat-versi).
 
 Service Go yang menukar **token sosial OLT** (JWT yang ditandatangani OLT saat login) menjadi **JWT Supabase**, sehingga user tidak perlu login dua kali. Verifikasinya lokal dengan kunci publik OLT: auth-bridge **tidak memanggil sistem OLT** dan tidak punya akses jaringan keluar.
 
@@ -80,6 +80,7 @@ Metrik:
 | `olt_auth_bridge_olt_breaker_open` | – | `1` bila circuit breaker ke OLT terbuka |
 | `olt_auth_bridge_valkey_errors_total` | `op` | Error Valkey (`ratelimit`, `cache`) |
 | `olt_auth_bridge_account_links_total` | `result` | Penyimpanan klaim `accounts`: `ok`, `malformed` (bukan array, diabaikan), `error` (RPC gagal) |
+| `olt_auth_bridge_last_heartbeat_timestamp_seconds` | – | Waktu heartbeat terakhir yang berhasil (detik Unix, `0` bila belum pernah) |
 
 ### Ketahanan
 
@@ -87,6 +88,21 @@ Metrik:
 - **Circuit breaker** (hanya bermakna di mode `websocket`; mode `jwt` tidak pernah gagal karena OLT): setelah `BREAKER_FAILURE_THRESHOLD` kegagalan OLT berturut-turut, verifikasi baru langsung ditolak `503` selama `BREAKER_COOLDOWN` detik. Setelah itu satu request uji diizinkan. Token yang ditolak OLT dihitung sukses (OLT sehat). Request yang dibatalkan klien tidak dihitung. State breaker per instance.
 - **PostgREST**: error jaringan dan `5xx` di-retry maksimal 3 kali dengan backoff eksponensial + jitter (100 ms, 200 ms). `4xx` tidak di-retry.
 - **User di-ban**: exchange ditolak `403` dan tidak di-cache. Di database, `private.check_request` juga menolak setiap request user yang di-ban, jadi JWT yang terbit sebelum ban pun tidak berguna.
+
+### Heartbeat
+
+Saat start lalu tiap `HEARTBEAT_INTERVAL` (30 detik), auth-bridge memanggil RPC generik `service_heartbeat` (`service_role`, migrasi `0064`) dengan layanan `auth-bridge` dan instance `INSTANCE_ID`. Baris tersimpan di `private.service_instances` dan dibaca `cs_api.app_integration_overview()` (migrasi `0114`, khusus Super Admin) untuk halaman **Pengaturan → Integrasi aplikasi** di Hub.
+
+```jsonc
+// detail
+{ "app_env": "production", "olt_mode": "jwt", "issuer": "olt", "audience": "olt-social",
+  "max_ttl_seconds": 900, "key_count": 1, "keys": [{ "kid": "olt-2026-11", "alg": "EdDSA" }] }
+```
+
+- Hanya `kid` dan algoritma yang dikirim, **tidak pernah isi kunci**. Maksimal 20 kunci, `kid` dipotong 100 karakter. `issuer`, `audience`, dan `max_ttl_seconds` hanya dikirim di mode `jwt`.
+- Status `degraded` bila circuit breaker OLT terbuka (hanya mode `websocket`), selain itu `ok`.
+- Heartbeat berjalan di goroutine sendiri. Gagal (PostgREST mati, RPC ditolak) **tidak mengganggu exchange**: cukup dicatat di log sekali saat mulai gagal (`heartbeat gagal…`) dan sekali saat pulih (`heartbeat berhasil lagi`), lalu dicoba lagi di interval berikutnya.
+- Hub menganggap instance aktif bila heartbeat terakhir ≤ 3 menit. Peringatan muncul untuk `kid` berawalan `dev-`, mode bukan `jwt` di luar development, atau instance dengan konfigurasi kunci berbeda.
 
 ## Mode OLT
 
@@ -178,6 +194,8 @@ Cara kerja adapter:
 | `APP_ENV` | `development` | `production` menolak `OLT_MODE=mock` dan mewajibkan `VALKEY_ADDR` |
 | `PORT` | `8080` | Port publik (lewat Kong) |
 | `OPS_PORT` | `9100` | Port internal `/metrics`, `/livez`, `/readyz`. `0` = mati |
+| `INSTANCE_ID` | hostname + akhiran acak | Nama instance di heartbeat, maksimal 100 karakter |
+| `HEARTBEAT_INTERVAL` | `30` | Detik antar heartbeat ke database, 5–60 |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error`. Log berupa JSON (slog) dengan `request_id`. Token tidak pernah ditulis ke log |
 | `JWT_SECRET` | wajib | Sama dengan JWT secret Supabase, minimal 32 karakter |
 | `JWT_SECRET_FILE` | – | Baca `JWT_SECRET` dari file (Docker secrets). Dipakai compose: `/run/secrets/jwt_secret` |
@@ -216,5 +234,6 @@ Dependensi runtime: Go stdlib (termasuk verifikasi JWT: `crypto/ed25519`, `crypt
 
 | Versi | Perubahan |
 |---|---|
+| 0.6.0 | Heartbeat ke `private.service_instances` lewat RPC `service_heartbeat`: mode OLT, `kid` + `alg` JWKS, issuer, audience, max TTL (tanpa isi kunci). Dibaca halaman Hub **Pengaturan → Integrasi aplikasi** (migrasi `0114`). Variabel `INSTANCE_ID` dan `HEARTBEAT_INTERVAL`, metrik `olt_auth_bridge_last_heartbeat_timestamp_seconds`. Image compose: `olt-social/auth-bridge:0.6.0` |
 | 0.5.0 | Klaim opsional `accounts` di token sosial disimpan ke `private.account_links` lewat RPC `set_olt_account_links` (migrasi `0068`). Metrik `olt_auth_bridge_account_links_total`. Versi ditulis di log start. Image compose: `olt-social/auth-bridge:0.5.0` |
 | 0.4.0 | Verifikasi lokal token sosial bertanda tangan OLT (mode `jwt`) |

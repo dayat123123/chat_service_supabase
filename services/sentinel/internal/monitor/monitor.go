@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"olt-social/sentinel/internal/disk"
+	"olt-social/sentinel/internal/healer"
 	"olt-social/sentinel/internal/logstate"
 	"olt-social/sentinel/internal/probe"
 	"olt-social/sentinel/internal/scrape"
@@ -42,6 +43,7 @@ type Options struct {
 	Scraper        Scraper
 	Sources        []scrape.Source
 	Measure        func(disk.Target) (disk.Usage, error)
+	HealerFile     string
 	Log            *slog.Logger
 	Probes         []probe.Target
 	Disks          []disk.Target
@@ -66,6 +68,7 @@ type Monitor struct {
 	log    *slog.Logger
 	now    func() time.Time
 	report logstate.Latch
+	healer logstate.Latch
 	disks  map[string]*logstate.Latch
 
 	mu         sync.Mutex
@@ -132,6 +135,12 @@ func (m *Monitor) Round(ctx context.Context) {
 	}()
 	results := m.opts.Prober.Run(ctx, m.opts.Probes)
 	usage := m.measure()
+	var healerState *healer.Report
+	if m.opts.HealerFile != "" {
+		r := healer.Read(m.opts.HealerFile)
+		healerState = &r
+		m.noteHealer(r)
+	}
 	<-scraped
 	if ctx.Err() != nil {
 		return
@@ -147,6 +156,7 @@ func (m *Monitor) Round(ctx context.Context) {
 		Probes:    probes,
 		Disks:     usage,
 		Metrics:   sent,
+		Healer:    healerState,
 	})
 	cancel()
 	if ctx.Err() != nil {
@@ -284,6 +294,18 @@ func (m *Monitor) rememberMetrics(results []scrape.Result) {
 			continue
 		}
 		m.log.Warn("Could not read a metrics source", "source", r.Source, "instance", r.Instance, "error", deref(r.Error))
+	}
+}
+
+func (m *Monitor) noteHealer(r healer.Report) {
+	if r.ReadError != "" {
+		if m.healer.Fail(r.ReadError) {
+			m.log.Warn("Could not read the healer state file", "path", m.opts.HealerFile, "error", r.ReadError)
+		}
+		return
+	}
+	if m.healer.Recover() {
+		m.log.Info("Healer state file can be read again", "path", m.opts.HealerFile)
 	}
 }
 

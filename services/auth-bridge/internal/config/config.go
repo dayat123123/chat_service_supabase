@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,6 +46,8 @@ type Config struct {
 	BreakerThreshold          int
 	BreakerCooldown           time.Duration
 	OpsPort                   int
+	InstanceID                string
+	HeartbeatInterval         time.Duration
 	OLT                       OLTConfig
 }
 
@@ -92,6 +96,8 @@ func Load() (Config, error) {
 		BreakerThreshold:          intEnv("BREAKER_FAILURE_THRESHOLD", 5, &errs),
 		BreakerCooldown:           secondsEnv("BREAKER_COOLDOWN", 30, &errs),
 		OpsPort:                   intEnvMin("OPS_PORT", 9100, 0, &errs),
+		InstanceID:                envOr("INSTANCE_ID", hostname()+"-"+suffix()),
+		HeartbeatInterval:         secondsEnv("HEARTBEAT_INTERVAL", 30, &errs),
 		OLT: OLTConfig{
 			Mode:         OLTMode(strings.ToLower(envOr("OLT_MODE", string(OLTModeMock)))),
 			WebSocketURL: os.Getenv("OLT_WS_URL"),
@@ -126,6 +132,12 @@ func Load() (Config, error) {
 	}
 	if cfg.IsProduction() && cfg.ValkeyAddr == "" {
 		errs = append(errs, errors.New("VALKEY_ADDR wajib diisi saat APP_ENV=production (rate limit & cache harus dibagi antar replika)"))
+	}
+	if len(cfg.InstanceID) > 100 {
+		errs = append(errs, errors.New("INSTANCE_ID maksimal 100 karakter"))
+	}
+	if cfg.HeartbeatInterval < 5*time.Second || cfg.HeartbeatInterval > time.Minute {
+		errs = append(errs, errors.New("HEARTBEAT_INTERVAL harus 5–60 detik"))
 	}
 	if cfg.OpsPort == cfg.Port {
 		errs = append(errs, errors.New("OPS_PORT tidak boleh sama dengan PORT"))
@@ -200,6 +212,20 @@ func parsePrefixes(s string) ([]netip.Prefix, error) {
 		out = append(out, p)
 	}
 	return out, nil
+}
+
+func hostname() string {
+	name, err := os.Hostname()
+	if err != nil || strings.TrimSpace(name) == "" {
+		return "auth-bridge"
+	}
+	return name
+}
+
+func suffix() string {
+	b := make([]byte, 3)
+	_, _ = rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
 func envOr(key, def string) string {

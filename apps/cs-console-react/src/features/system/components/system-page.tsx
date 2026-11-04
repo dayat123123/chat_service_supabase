@@ -7,10 +7,12 @@ import { cn } from '@/lib/utils'
 import { systemTabs, type SystemTab } from '../types'
 import { AlertsTab } from './alerts-tab'
 import { BackupTab } from './backup-tab'
+import { HealerTab } from './healer-tab'
 import { StatusTab } from './status-tab'
 
 const panels: Record<SystemTab, () => React.ReactNode> = {
   status: () => <StatusTab />,
+  healer: () => <HealerTab />,
   backup: () => <BackupTab />,
   alerts: () => <AlertsTab />,
 }

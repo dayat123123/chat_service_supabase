@@ -141,6 +141,14 @@ func TestJWTVerifierAcceptsEdDSATokensSignedByOLT(t *testing.T) {
 	}
 }
 
+func TestJWTVerifierListsKeyIDsAndAlgorithmsOnly(t *testing.T) {
+	got := newTestVerifier(t, newTestKeys(t)).Keys()
+	want := []KeyInfo{{Kid: "olt-2026-10", Alg: "EdDSA"}, {Kid: "olt-ec-1", Alg: "ES256"}}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("keys = %+v, want %+v", got, want)
+	}
+}
+
 func TestJWTVerifierAcceptsES256Tokens(t *testing.T) {
 	k := newTestKeys(t)
 	u, err := newTestVerifier(t, k).Verify(context.Background(), k.ecToken(t, validClaims()))

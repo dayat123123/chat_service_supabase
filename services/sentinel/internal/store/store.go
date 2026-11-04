@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"olt-social/sentinel/internal/disk"
+	"olt-social/sentinel/internal/healer"
 	"olt-social/sentinel/internal/jwt"
 	"olt-social/sentinel/internal/probe"
 	"olt-social/sentinel/internal/scrape"
@@ -100,6 +101,7 @@ type Health struct {
 	Probes    []probe.Result
 	Disks     []disk.Usage
 	Metrics   []scrape.Result
+	Healer    *healer.Report
 }
 
 func (p *PostgREST) HealthReport(ctx context.Context, h Health) (time.Time, error) {
@@ -119,6 +121,9 @@ func (p *PostgREST) HealthReport(ctx context.Context, h Health) (time.Time, erro
 	}
 	if h.Metrics != nil {
 		args["p_metrics"] = h.Metrics
+	}
+	if h.Healer != nil {
+		args["p_healer"] = h.Healer
 	}
 	var reply struct {
 		EvaluatedAt time.Time `json:"evaluated_at"`

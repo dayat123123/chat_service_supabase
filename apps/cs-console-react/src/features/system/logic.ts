@@ -9,6 +9,8 @@ import type {
   BackupTargetInput,
   BackupTargetKind,
   EmailInput,
+  HealerEvent,
+  HealerState,
   HealthBadge,
   OverallStatus,
   ServiceInstance,
@@ -310,3 +312,44 @@ export function parsePort(text: string) {
 }
 
 export const weekdays = [1, 2, 3, 4, 5, 6, 0] as const
+
+export type HealerStatus = 'missing' | 'noReport' | 'stale' | 'error' | 'reportOnly' | 'active'
+
+export function healerStatus(state: HealerState | null): HealerStatus {
+  if (!state) return 'missing'
+  if (!state.live) return 'noReport'
+  if (state.read_error || !state.fresh) return 'stale'
+  if (state.error) return 'error'
+  if (state.enabled === false) return 'reportOnly'
+  return 'active'
+}
+
+const healerTones: Record<HealerStatus, WaitTone | 'neutral'> = {
+  missing: 'neutral',
+  noReport: 'neutral',
+  stale: 'late',
+  error: 'late',
+  reportOnly: 'warn',
+  active: 'ok',
+}
+
+export const healerTone = (status: HealerStatus) => healerTones[status]
+
+export type HealerOutcome = 'restarted' | 'failed' | 'reportOnly' | 'gaveUp' | 'skipped'
+
+export function healerOutcome(event: Pick<HealerEvent, 'action' | 'result'>): HealerOutcome {
+  if (event.action === 'give_up') return 'gaveUp'
+  if (event.action === 'skip') return 'skipped'
+  if (event.action === 'report') return 'reportOnly'
+  return event.result === 'ok' ? 'restarted' : 'failed'
+}
+
+const outcomeTones: Record<HealerOutcome, WaitTone | 'neutral'> = {
+  restarted: 'ok',
+  failed: 'late',
+  reportOnly: 'neutral',
+  gaveUp: 'late',
+  skipped: 'warn',
+}
+
+export const outcomeTone = (outcome: HealerOutcome) => outcomeTones[outcome]

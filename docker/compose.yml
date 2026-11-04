@@ -43,6 +43,7 @@ services:
 
   traefik:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: traefik:v3.7.16@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
     user: "65532:65532"
     networks: [edge, egress]
@@ -111,6 +112,7 @@ services:
 
   kong:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: kong/kong:3.9.4@sha256:da2afeecfec0561dd2e06612b09c6283d79245a0387acdc3715271dbf5691a05
     networks: [edge, app]
     depends_on:
@@ -172,6 +174,7 @@ services:
 
   auth:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: supabase/gotrue:v2.197.0@sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b
     networks: [app, data]
     depends_on:
@@ -221,6 +224,7 @@ services:
 
   rest:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: postgrest/postgrest:v14.18@sha256:c7cd7e265a85b05248abf53f4473fcec7e327c282d0bd0cf60f1551996d09fcf
     networks: [app, data]
     depends_on:
@@ -269,6 +273,7 @@ services:
 
   realtime:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: supabase/realtime:v2.148.6@sha256:d18b6f4c54413ca6536531befc84663d96435e55efbbfb124dfb82e30e8240dc
     networks:
       app:
@@ -334,6 +339,7 @@ services:
 
   storage:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: supabase/storage-api:v1.84.32@sha256:2575a2b7b741feb6eab98089dd60127955ad18c0abe760214653ea2cbcbf7209
     user: "1000:1000"
     networks: [app, data]
@@ -392,6 +398,7 @@ services:
 
   imgproxy:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: darthsim/imgproxy:v3.31.4@sha256:73c5dda13199745b0d2d00e4149d4a589c5b2e205dbf335ca05eca8276b54712
     networks: [app]
     depends_on:
@@ -505,6 +512,7 @@ services:
 
   functions:
     <<: *base
+    labels: ["olt.autoheal=true"]
     image: supabase/edge-runtime:v1.77.9@sha256:6b850a2ccf0bf50ecac9accff8098095cd191c389c2a53c59b857aa0f53a8343
     user: "65534:65534"
     # egress: unduh dependensi Deno (import remote) saat fungsi pertama kali jalan.
@@ -599,6 +607,7 @@ services:
 
   pgbouncer:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ./pgbouncer
     image: olt-social/pgbouncer:1.24.0-5
@@ -736,9 +745,10 @@ services:
 
   auth-bridge:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/auth-bridge
-    image: olt-social/auth-bridge:0.5.0
+    image: olt-social/auth-bridge:0.6.0
     # Tanpa egress: token OLT diverifikasi lokal dengan kunci publik OLT (mode jwt),
     # jadi auth-bridge tidak memanggil sistem OLT. data: Valkey.
     networks: [app, data]
@@ -795,6 +805,7 @@ services:
   # status "belum dipasang" dan notifikasi tetap masuk ke kotak notifikasi aplikasi. Satu-satunya egress: Google (FCM + OAuth).
   notifier:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/notifier
     image: olt-social/notifier:0.2.0
@@ -831,6 +842,7 @@ services:
   # file konten yang dilaporkan/dihapus ke bucket evidence (karantina bukti, migrasi 0095) sebelum dihapus.
   janitor:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/janitor
     image: olt-social/janitor:0.2.0
@@ -866,6 +878,7 @@ services:
   # ditolak (fail closed). Ambang diatur Kepatuhan dari web CS.
   classifier:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/classifier
     image: olt-social/classifier:0.1.1
@@ -900,6 +913,7 @@ services:
   # (/livez, /readyz, /metrics) tidak dirutekan.
   media:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/media
     image: olt-social/media:0.2.1
@@ -941,9 +955,10 @@ services:
   # Backup PostgreSQL (PITR) + file Storage ke repositori restic (services/backup, docs/backup):
   # pg_receivewal lewat slot olt_backup + pg_basebackup harian + uji restore mingguan. Tujuan (S3 atau
   # folder lokal BACKUP_LOCAL_REPO_DIR), password enkripsi, dan jadwal diatur Super Admin dari web CS
-  # (Kesehatan sistem -> Backup). Koneksi replikasi langsung ke Postgres (tidak bisa lewat PgBouncer).
+  # (Pengaturan -> Backup). Koneksi replikasi langsung ke Postgres (tidak bisa lewat PgBouncer).
   backup:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/backup
     image: olt-social/backup:0.2.0
@@ -994,6 +1009,7 @@ services:
   # port ops 9100 tidak dirutekan.
   integration:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/integration
     image: olt-social/integration:0.2.0
@@ -1031,6 +1047,7 @@ services:
   # dibaca klien lewat RPC get_link_previews.
   link-preview:
     <<: *base
+    labels: ["olt.autoheal=true"]
     build:
       context: ../services/link-preview
     image: olt-social/link-preview:0.2.0
@@ -1075,7 +1092,7 @@ services:
     <<: *base
     build:
       context: ../services/sentinel
-    image: olt-social/sentinel:0.3.0
+    image: olt-social/sentinel:0.4.0
     networks: [app, data, egress]
     depends_on:
       migrate:
@@ -1089,6 +1106,8 @@ services:
       - storage-data:/mnt/disks/storage:ro
       - backup-data:/mnt/disks/backup:ro
       - ${BACKUP_LOCAL_REPO_DIR:-../backups/restic}:/mnt/disks/backup-repo:ro
+      # File status healer (restart otomatis), hanya dibaca.
+      - healer-state:/mnt/healer:ro
     environment:
       PORT: 8080
       LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-info}
@@ -1100,6 +1119,8 @@ services:
       # dan antrean PgBouncer (SHOW POOLS sebagai olt_stats). services/sentinel/README.md.
       METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://rest:3001/metrics,realtime=jwt+http://realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@pgbouncer:6432}
       PGBOUNCER_STATS_PASSWORD_FILE: /run/secrets/pgbouncer_stats_password
+      # Status healer ikut laporan kesehatan (alert healer:*). Kosong = tidak dibaca (profil cluster).
+      HEALER_STATE_FILE: /mnt/healer/state.json
     healthcheck:
       test: ["CMD", "/sentinel", "healthcheck"]
       interval: 10s
@@ -1110,6 +1131,48 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
+  # Restart otomatis (services/healer): me-restart container project ini berlabel olt.autoheal=true
+  # yang unhealthy >= HEALER_UNHEALTHY_SECONDS dan sudah berjalan >= HEALER_MIN_UPTIME_SECONDS,
+  # maks HEALER_MAX_RESTARTS_PER_HOUR per layanan lalu menyerah (alert healer:gave_up:<layanan>).
+  # Ditahan bila db/pgbouncer tidak sehat atau banyak layanan unhealthy bersamaan. Satu-satunya
+  # container dengan Docker socket: tanpa jaringan sama sekali, tanpa port, rootfs read-only.
+  # Hanya profil dev/single; di cluster Swarm sudah mengganti task unhealthy (replicas 0).
+  healer:
+    <<: *base
+    build:
+      context: ../services/healer
+    image: olt-social/healer:0.1.0
+    network_mode: none
+    user: "65532:65532"
+    # Grup pemilik /var/run/docker.sock: 0 di Docker Desktop, grup `docker` di Linux
+    # (getent group docker | cut -d: -f3) lewat HEALER_DOCKER_GID.
+    group_add: ["${HEALER_DOCKER_GID:-0}"]
+    stop_grace_period: 10s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - healer-state:/var/lib/olt-healer
+    environment:
+      LOG_LEVEL: ${HEALER_LOG_LEVEL:-info}
+      HEALER_ENABLED: ${HEALER_ENABLED:-true}
+      HEALER_PROJECT: ${HEALER_PROJECT:-}
+      HEALER_INTERVAL_SECONDS: ${HEALER_INTERVAL_SECONDS:-10}
+      HEALER_UNHEALTHY_SECONDS: ${HEALER_UNHEALTHY_SECONDS:-60}
+      HEALER_MIN_UPTIME_SECONDS: ${HEALER_MIN_UPTIME_SECONDS:-120}
+      HEALER_MAX_RESTARTS_PER_HOUR: ${HEALER_MAX_RESTARTS_PER_HOUR:-3}
+      HEALER_GLOBAL_COOLDOWN_SECONDS: ${HEALER_GLOBAL_COOLDOWN_SECONDS:-30}
+      HEALER_SYSTEMIC_FRACTION: ${HEALER_SYSTEMIC_FRACTION:-0.5}
+      HEALER_STATE_FILE: /var/lib/olt-healer/state.json
+    healthcheck:
+      # Tanpa jaringan: sehat bila file status diperbarui dalam 3 interval terakhir.
+      test: ["CMD", "/healer", "healthcheck"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits: {cpus: "0.1", memory: 32M, pids: 32}
+
   # --- Customer service lewat chat (docs/cs-chat) -------------------------------
   # Profil compose `cs`: selalu aktif di dev; produksi menyalakannya dengan
   # CS=1 (Windows: -Cs).
@@ -1119,6 +1182,7 @@ services:
   # Produksi hanya lewat VPN (compose.cs.yml + volumes/traefik/cs.yml).
   cs-console:
     <<: *base
+    labels: ["olt.autoheal=true"]
     profiles: [cs]
     build:
       context: ../apps/cs-console-react
@@ -1152,6 +1216,7 @@ services:
   # 503 not_configured. Memeriksa permission per akun CS dan mencatat aksi di cs_audit_log.
   nasabah-gateway:
     <<: *base
+    labels: ["olt.autoheal=true"]
     profiles: [cs]
     build:
       context: ../services/nasabah-gateway
@@ -1231,6 +1296,7 @@ volumes:
   db-config:
   storage-data:
   backup-data:
+  healer-state:
   deno-cache:
   traefik-acme:
 

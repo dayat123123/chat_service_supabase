@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	version     = "0.3.0"
+	version     = "0.4.0"
 	userAgent   = "olt-sentinel/" + version
 	pingTimeout = 5 * time.Second
 )
@@ -73,6 +73,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		Log:            log,
 		Probes:         cfg.Probes,
 		Disks:          cfg.Disks,
+		HealerFile:     cfg.HealerStateFile,
 		Interval:       cfg.ReportInterval,
 		RequestTimeout: cfg.RequestTimeout,
 		Instance:       cfg.InstanceID,
@@ -139,7 +140,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("Sentinel listening", "port", cfg.Port, "instance", cfg.InstanceID, "version", version,
-			"probes", len(cfg.Probes), "disks", len(cfg.Disks), "metrics_sources", len(cfg.Metrics))
+			"probes", len(cfg.Probes), "disks", len(cfg.Disks), "metrics_sources", len(cfg.Metrics), "healer_state", cfg.HealerStateFile != "")
 		errCh <- server.ListenAndServe()
 	}()
 	monitorDone := make(chan struct{})

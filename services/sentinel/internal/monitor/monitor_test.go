@@ -5,6 +5,8 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
@@ -321,5 +323,47 @@ func TestLostReportsAreCarriedIntoTheNextReport(t *testing.T) {
 	m.Round(context.Background())
 	if next := st.reports[3]; !reflect.DeepEqual(next.Metrics, []scrape.Result{restUp, realtime}) || next.Probes[0].Missed != 0 {
 		t.Fatalf("delivered report must reset the carry: %+v", next)
+	}
+}
+
+func TestRoundForwardsTheHealerStateAndLogsReadErrorsOnce(t *testing.T) {
+	st := &fakeStore{}
+	logs := &syncBuffer{}
+	path := filepath.Join(t.TempDir(), "state.json")
+	m := New(Options{
+		Store:          st,
+		Prober:         &fakeProber{},
+		Log:            slog.New(slog.NewJSONHandler(logs, nil)),
+		HealerFile:     path,
+		Interval:       30 * time.Second,
+		RequestTimeout: time.Second,
+		Instance:       "sentinel-1",
+		Version:        "0.4.0",
+	})
+	m.Round(context.Background())
+	m.Round(context.Background())
+	if st.reports[1].Healer == nil || !strings.Contains(st.reports[1].Healer.ReadError, "not found") {
+		t.Fatalf("healer = %+v", st.reports[1].Healer)
+	}
+	if n := strings.Count(logs.String(), "Could not read the healer state file"); n != 1 {
+		t.Fatalf("read error logged %d times", n)
+	}
+	_ = os.WriteFile(path, []byte(`{"project":"olt-social","enabled":true,"checked_at":"2026-11-04T04:00:00Z","events":[]}`), 0o644)
+	m.Round(context.Background())
+	got := st.reports[2].Healer
+	if got == nil || got.ReadError != "" || got.Project != "olt-social" {
+		t.Fatalf("healer = %+v", got)
+	}
+	if !strings.Contains(logs.String(), "Healer state file can be read again") {
+		t.Fatal("recovery not logged")
+	}
+}
+
+func TestRoundLeavesTheHealerOutWithoutAStateFile(t *testing.T) {
+	m, st, pr, _, _ := setup(t)
+	pr.set(probe.Result{Name: "storage", OK: true}, probe.Result{Name: "db", OK: true})
+	m.Round(context.Background())
+	if st.reports[0].Healer != nil {
+		t.Fatalf("healer = %+v", st.reports[0].Healer)
 	}
 }

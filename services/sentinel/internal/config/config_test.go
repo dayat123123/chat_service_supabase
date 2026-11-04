@@ -18,7 +18,7 @@ var keys = []string{
 	"PORT", "LOG_LEVEL", "JWT_SECRET", "JWT_SECRET_FILE", "JWT_ISSUER", "POSTGREST_URL", "INSTANCE_ID", "PROBES", "PROBES_EXTRA", "DISKS",
 	"REPORT_INTERVAL", "PROBE_TIMEOUT", "ALERT_POLL", "DB_DOWN_AFTER", "TELEGRAM_API_URL", "SMTP_TIMEOUT",
 	"REQUEST_TIMEOUT", "BATCH_SIZE", "LEASE", "SHUTDOWN_TIMEOUT", "METRICS_SOURCES", "PGBOUNCER_STATS_PASSWORD",
-	"PGBOUNCER_STATS_PASSWORD_FILE",
+	"PGBOUNCER_STATS_PASSWORD_FILE", "HEALER_STATE_FILE",
 }
 
 func clearEnv(t *testing.T) {
@@ -92,6 +92,7 @@ func TestLoadReadsOverridesSecretFilesProbesAndDisks(t *testing.T) {
 	t.Setenv("BATCH_SIZE", "100")
 	t.Setenv("LEASE", "2m")
 	t.Setenv("SHUTDOWN_TIMEOUT", "1s")
+	t.Setenv("HEALER_STATE_FILE", "/mnt/healer/state.json")
 	t.Setenv("LOG_LEVEL", "debug")
 
 	cfg, err := Load()
@@ -102,7 +103,7 @@ func TestLoadReadsOverridesSecretFilesProbesAndDisks(t *testing.T) {
 		cfg.InstanceID != "sentinel-2" || cfg.ReportInterval != time.Minute || cfg.ProbeTimeout != 3*time.Second ||
 		cfg.AlertPoll != 2*time.Second || cfg.DBDownAfter != 5*time.Minute || cfg.TelegramAPIURL != "http://telegram.test" ||
 		cfg.SMTPTimeout != 30*time.Second || cfg.RequestTimeout != 5*time.Second || cfg.BatchSize != 100 ||
-		cfg.Lease != 2*time.Minute || cfg.ShutdownTimeout != time.Second || cfg.LogLevel != slog.LevelDebug {
+		cfg.Lease != 2*time.Minute || cfg.ShutdownTimeout != time.Second || cfg.LogLevel != slog.LevelDebug || cfg.HealerStateFile != "/mnt/healer/state.json" {
 		t.Fatalf("cfg = %+v", cfg)
 	}
 	wantProbes := []probe.Target{
@@ -154,6 +155,7 @@ func TestLoadRejectsUnsafeValues(t *testing.T) {
 		{map[string]string{"LEASE": "25s", "SMTP_TIMEOUT": "20s"}, "SMTP_TIMEOUT and REQUEST_TIMEOUT + 10s"},
 		{map[string]string{"SHUTDOWN_TIMEOUT": "6m"}, "SHUTDOWN_TIMEOUT"},
 		{map[string]string{"LOG_LEVEL": "loud"}, "LOG_LEVEL"},
+		{map[string]string{"HEALER_STATE_FILE": "healer/state.json"}, "HEALER_STATE_FILE"},
 		{map[string]string{"METRICS_SOURCES": "rest=tcp://rest:3001"}, "METRICS_SOURCES"},
 		{map[string]string{"METRICS_SOURCES": "pgbouncer=pgbouncer://olt_stats:pass@pgbouncer:6432"}, "METRICS_SOURCES"},
 		{map[string]string{"METRICS_SOURCES": "pgbouncer=pgbouncer://pgbouncer:6432"}, "PGBOUNCER_STATS_PASSWORD"},
