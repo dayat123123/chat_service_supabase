@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# Hapus data uji beban/keamanan: profil lt_* (cascade ke postingan, pesan, notifikasi, keanggotaan room,
-# watchlist, dll.), room saham uji ($LTHOT, $LTPOST, $PROBE), direct room yang semua anggotanya lt_*,
-# kode saham/agregat trending/alert manipulasi untuk kode uji, dan baris tanpa FK yang memuat id lt_*.
-# Tabel audit/bukti/log (append-only) tidak disentuh; key integrasi uji yang sudah dicabut dibiarkan
-# sebagai jejak audit. Dry run: cleanup.sh --dry-run
+# Append-only audit, evidence, and log tables are never touched; revoked test integration keys stay as audit trail.
+# Dry run: cleanup.sh --dry-run
 set -uo pipefail
 source /olt/tests/lib/common.sh
 
@@ -11,7 +8,7 @@ CODES="'LTHOT','LTPOST','PROBE'"
 mode=commit
 [ "${1:-}" = --dry-run ] && mode=rollback
 n=$(sql "select count(*) from public.profiles where username like 'lt\_%'")
-log "profil lt_*: $n (mode $mode)"
+log "lt_* profiles: $n (mode $mode)"
 psql -X -v ON_ERROR_STOP=1 <<SQL
 begin;
 create temp table lt_ids on commit drop as select id from public.profiles where username like 'lt\_%';
@@ -20,8 +17,8 @@ create temp table lt_rooms on commit drop as
   where (r.type = 'stock' and r.stock_code in ($CODES))
      or (r.type in ('direct', 'group') and exists (select 1 from public.chat_members m where m.room_id = r.id)
          and not exists (select 1 from public.chat_members m where m.room_id = r.id and m.user_id not in (select id from lt_ids)));
-select 'room uji: ' || count(*) from lt_rooms;
-select 'pesan lt_* di room lain: ' || count(*) from public.messages where sender_id in (select id from lt_ids) and room_id not in (select id from lt_rooms);
+select 'test rooms: ' || count(*) from lt_rooms;
+select 'lt_* messages in other rooms: ' || count(*) from public.messages where sender_id in (select id from lt_ids) and room_id not in (select id from lt_rooms);
 delete from public.messages where sender_id in (select id from lt_ids);
 delete from public.chat_rooms where id in (select id from lt_rooms);
 do \$\$
@@ -41,9 +38,9 @@ begin
     begin
       execute format('delete from %I.%I where %I in (select id from lt_ids)', r.table_schema, r.table_name, r.column_name);
       get diagnostics v_count = row_count;
-      if v_count > 0 then raise notice 'hapus %.%.% : %', r.table_schema, r.table_name, r.column_name, v_count; end if;
+      if v_count > 0 then raise notice 'deleted %.%.% : %', r.table_schema, r.table_name, r.column_name, v_count; end if;
     exception when others then
-      raise notice 'lewati %.% (%): %', r.table_schema, r.table_name, r.column_name, sqlerrm;
+      raise notice 'skipped %.% (%): %', r.table_schema, r.table_name, r.column_name, sqlerrm;
     end;
   end loop;
 end
@@ -53,6 +50,6 @@ delete from cs.manipulation_alerts where stock in ($CODES);
 delete from public.stock_watchers where stock_code in ($CODES);
 delete from private.stock_mention_buckets where stock_code in ($CODES);
 delete from private.stock_codes where code in ($CODES);
-select 'sisa profil lt_*: ' || count(*) from public.profiles where username like 'lt\_%';
+select 'remaining lt_* profiles: ' || count(*) from public.profiles where username like 'lt\_%';
 $mode;
 SQL

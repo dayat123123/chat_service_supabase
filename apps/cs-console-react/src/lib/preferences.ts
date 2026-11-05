@@ -63,7 +63,7 @@ export const usePreferences = create<Preferences>((set) => ({
     writeLocal('language', language)
     set({ language })
     switchLanguage(language).catch((error: unknown) => {
-      logger.warn('Bahasa gagal diganti', error)
+      logger.warn('Language change failed', error)
       writeLocal('language', asLanguage(i18n.language))
       set({ language: asLanguage(i18n.language) })
     })

@@ -23,7 +23,7 @@ test('1000 tiket dan 5000 pesan tetap mulus saat digulir', async ({ page }) => {
     { polling: 1_000, timeout: 30_000 },
   )
   const measured = await handle.jsonValue()
-  if (!measured) throw new Error('Hasil uji kinerja kosong')
+  if (!measured) throw new Error('Performance test result is empty')
   const { fps, p95 } = measured
   const summary = `${fps} fps, p95 ${p95} ms`
   test.info().annotations.push({ type: 'perf', description: summary })

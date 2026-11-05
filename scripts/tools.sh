@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Entrypoint service `tools` (lihat docker/compose.yml).
-# Dipanggil oleh Makefile / make.ps1:  docker compose run --rm tools <perintah>
 set -euo pipefail
 
 SCRIPTS=/olt/scripts
@@ -23,7 +21,7 @@ case "$cmd" in
   restore)  bash "$SCRIPTS/restore.sh" "$@" ;;
   psql)     exec psql -U postgres "$@" ;;
   *)
-    echo "Perintah: migrate | seed | test-db | smoke | smoke-dummy | smoke-cs | cs-race [url-replika...] | cs-staff | cs-bootstrap-admin <email> <nama> [--force] | cs-demo-config | backup | restore <file> | gen-secrets [--force] | psql" >&2
+    echo "Commands: migrate | seed | test-db | smoke | smoke-dummy | smoke-cs | cs-race [replica-url...] | cs-staff | cs-bootstrap-admin <email> <name> [--force] | cs-demo-config | backup | restore <file> | gen-secrets [--force] | psql" >&2
     exit 2
     ;;
 esac

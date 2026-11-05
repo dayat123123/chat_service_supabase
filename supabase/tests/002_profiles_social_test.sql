@@ -1,4 +1,3 @@
--- Profil, follow, block.
 begin;
 select plan(15);
 

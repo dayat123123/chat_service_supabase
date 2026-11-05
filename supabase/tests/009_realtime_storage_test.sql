@@ -1,4 +1,3 @@
--- Publikasi realtime, otorisasi channel private, bucket & policy storage.
 begin;
 select plan(10);
 

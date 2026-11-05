@@ -18,8 +18,8 @@ COPY . .
 RUN cp model/manifest.json /out/model/manifest.json \
  && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/classifier ./cmd/classifier
 
-# Butuh glibc + libstdc++ untuk ONNX Runtime; di-pin ke digest. Debian 13: cc-debian12 masih membawa
-# libssl3 dengan CVE HIGH (T5, docs/testing/report-2026-11-03.md); build tetap di bookworm (glibc lebih lama).
+# ONNX Runtime needs glibc and libstdc++. Runtime is Debian 13 because cc-debian12 still ships libssl3 with a
+# HIGH CVE; the build stays on bookworm so the binary links against the older glibc.
 FROM gcr.io/distroless/cc-debian13:nonroot@sha256:08476c244888bfb425bae1ae4dd7c17f093e972aab8426883d97f3c6f280f7c1
 COPY --from=build /out/onnxruntime /usr/lib/onnxruntime
 COPY --from=build /out/model /model

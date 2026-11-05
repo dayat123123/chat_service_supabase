@@ -166,7 +166,7 @@ func (s *Server) socialToken(sessionToken string) (*socialTokenData, *apiError) 
 	if err != nil {
 		return nil, &apiError{CodeBadRequest, "gagal membuat token sosial"}
 	}
-	s.log.Info("token sosial diterbitkan", "user_id", login.User.ID)
+	s.log.Info("social token issued", "user_id", login.User.ID)
 	return &socialTokenData{Token: token, ExpiresAt: exp.UTC().Format(time.RFC3339), User: login.User}, nil
 }
 
@@ -181,17 +181,17 @@ func (s *Server) passwordLogin(c credentials) (*loginData, *apiError) {
 	u, err := s.users.Authenticate(identifier, c.Password)
 	switch {
 	case errors.Is(err, users.ErrSuspended):
-		s.log.Info("login password ditolak", "identifier", identifier, "code", CodeAccountSuspended)
+		s.log.Info("password login rejected", "identifier", identifier, "code", CodeAccountSuspended)
 		return nil, &apiError{CodeAccountSuspended, "Akun ditangguhkan"}
 	case err != nil:
-		s.log.Info("login password ditolak", "identifier", identifier, "code", CodeInvalidCredentials)
+		s.log.Info("password login rejected", "identifier", identifier, "code", CodeInvalidCredentials)
 		return nil, &apiError{CodeInvalidCredentials, "Username/email atau password salah"}
 	}
 	token, exp, err := s.tokens.Issue(strconv.FormatInt(u.ID, 10), s.cfg.TokenTTL)
 	if err != nil {
 		return nil, &apiError{CodeBadRequest, "gagal membuat token"}
 	}
-	s.log.Info("login password berhasil", "user_id", u.ID)
+	s.log.Info("password login succeeded", "user_id", u.ID)
 	return s.withSocialToken(&loginData{Token: token, ExpiresAt: exp.UTC().Format(time.RFC3339), User: toUserJSON(u)})
 }
 
@@ -204,10 +204,10 @@ func (s *Server) tokenLogin(ctx context.Context, token string) (*loginData, *api
 		select {
 		case <-time.After(s.cfg.SlowDelay):
 		case <-ctx.Done():
-			return nil, &apiError{CodeBadRequest, "koneksi ditutup"}
+			return nil, &apiError{CodeBadRequest, "connection closed"}
 		}
 	}
-	s.log.Info("login token berhasil", "user_id", login.User.ID)
+	s.log.Info("token login succeeded", "user_id", login.User.ID)
 	return s.withSocialToken(login)
 }
 
@@ -265,7 +265,7 @@ func (s *Server) mockTokenLogin(token string) (*loginData, *apiError) {
 }
 
 func (s *Server) reject(code, msg string) *apiError {
-	s.log.Info("login token ditolak", "code", code)
+	s.log.Info("token login rejected", "code", code)
 	return &apiError{code, msg}
 }
 
@@ -310,7 +310,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		var req request
 		if err := json.Unmarshal(data, &req); err != nil {
-			send(message{Type: "error", Error: &apiError{CodeBadRequest, "pesan harus JSON"}})
+			send(message{Type: "error", Error: &apiError{CodeBadRequest, "message must be JSON"}})
 			continue
 		}
 		var creds credentials
@@ -331,7 +331,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 				case "token":
 					login, e = s.tokenLogin(ctx, creds.Token)
 				default:
-					e = &apiError{CodeBadRequest, "method harus password atau token"}
+					e = &apiError{CodeBadRequest, "method must be password or token"}
 				}
 				if ctx.Err() == nil {
 					send(result("login_result", req.RequestID, login, e))
@@ -353,7 +353,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		case "ping":
 			send(message{Type: "pong", RequestID: req.RequestID, ServerTime: now()})
 		default:
-			send(message{Type: "error", RequestID: req.RequestID, Error: &apiError{CodeUnknownType, "type tidak dikenal"}})
+			send(message{Type: "error", RequestID: req.RequestID, Error: &apiError{CodeUnknownType, "unknown type"}})
 		}
 	}
 }
@@ -372,7 +372,7 @@ func statusFor(code string) int {
 func (s *Server) handleHTTPLogin(w http.ResponseWriter, r *http.Request) {
 	var c credentials
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&c); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body harus JSON"}})
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body must be JSON"}})
 		return
 	}
 	data, e := s.passwordLogin(c)
@@ -386,7 +386,7 @@ func (s *Server) handleHTTPLogin(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleHTTPSocialToken(w http.ResponseWriter, r *http.Request) {
 	var c credentials
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&c); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body harus JSON"}})
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body must be JSON"}})
 		return
 	}
 	data, e := s.socialToken(c.Token)
@@ -416,12 +416,12 @@ func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 		Accounts json.RawMessage `json:"accounts"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&body); err != nil {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body harus JSON"}})
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "body must be JSON"}})
 		return
 	}
 	u, ok := s.users.Find(body.User)
 	if !ok {
-		writeJSON(w, http.StatusNotFound, map[string]any{"error": apiError{CodeBadRequest, "user tidak dikenal"}})
+		writeJSON(w, http.StatusNotFound, map[string]any{"error": apiError{CodeBadRequest, "unknown user"}})
 		return
 	}
 	ttl := s.cfg.TokenTTL
@@ -431,7 +431,7 @@ func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 	if body.TTL != "" {
 		parsed, err := time.ParseDuration(body.TTL)
 		if err != nil {
-			writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "ttl tidak valid"}})
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "invalid ttl"}})
 			return
 		}
 		ttl = parsed
@@ -446,7 +446,7 @@ func (s *Server) handleDevToken(w http.ResponseWriter, r *http.Request) {
 			identity.Accounts = nil
 			if string(body.Accounts) != "null" {
 				if err := json.Unmarshal(body.Accounts, &identity.Accounts); err != nil || identity.Accounts == nil {
-					writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "accounts harus array string atau null"}})
+					writeJSON(w, http.StatusBadRequest, map[string]any{"error": apiError{CodeBadRequest, "accounts must be an array of strings or null"}})
 					return
 				}
 			}

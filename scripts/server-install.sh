@@ -38,19 +38,19 @@ bashrc_export() {
   grep -qx "export $1=$2" "$HOME/.bashrc" 2>/dev/null || echo "export $1=$2" >> "$HOME/.bashrc"
 }
 
-[ "$(id -u)" -ne 0 ] || die "Jalankan sebagai user biasa yang punya sudo, bukan root."
+[ "$(id -u)" -ne 0 ] || die "Run as a regular user with sudo, not as root."
 . /etc/os-release
-[ "${ID:-}" = ubuntu ] || die "Script ini untuk Ubuntu (terdeteksi: ${ID:-tidak dikenal})."
+[ "${ID:-}" = ubuntu ] || die "This script is for Ubuntu (detected: ${ID:-unknown})."
 sudo -v
 
-say "1/9 Paket sistem, update keamanan otomatis, jam"
+say "1/9 System packages, automatic security updates, clock"
 sudo apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq install git make curl ca-certificates unattended-upgrades ufw python3
 echo 'unattended-upgrades unattended-upgrades/enable_auto_updates boolean true' | sudo debconf-set-selections
 sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattended-upgrades
 sudo timedatectl set-ntp true
-ok "paket terpasang, update keamanan otomatis aktif, NTP aktif"
+ok "packages installed, automatic security updates on, NTP on"
 
 say "2/9 Docker"
 if ! command -v docker >/dev/null 2>&1; then
@@ -66,14 +66,14 @@ if ! id -nG "$USER" | grep -qw docker; then
   sudo usermod -aG docker "$USER"
 fi
 if ! docker info > /dev/null 2>&1; then
-  ok "user $USER ditambahkan ke grup docker; melanjutkan dengan grup baru"
+  ok "user $USER added to the docker group; continuing with the new group"
   exec sg docker -c "bash '$SCRIPT_PATH'"
 fi
 compose_version=$(docker compose version --short | sed 's/^v//')
-printf '%s\n2.24.0\n' "$compose_version" | sort -V -C -r || die "docker compose $compose_version terlalu lama (butuh 2.24 atau lebih baru)."
+printf '%s\n2.24.0\n' "$compose_version" | sort -V -C -r || die "docker compose $compose_version is too old (needs 2.24 or newer)."
 ok "docker $(docker version --format '{{.Server.Version}}'), compose $compose_version"
 
-say "3/9 Swap (hanya bila RAM < 8 GB)"
+say "3/9 Swap (only when RAM < 8 GB)"
 mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
 if [ "$mem_kb" -lt 7500000 ] && ! swapon --show | grep -q .; then
   sudo fallocate -l 4G /swapfile
@@ -81,12 +81,12 @@ if [ "$mem_kb" -lt 7500000 ] && ! swapon --show | grep -q .; then
   sudo mkswap /swapfile > /dev/null
   sudo swapon /swapfile
   grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab > /dev/null
-  ok "swap 4 GB dibuat"
+  ok "4 GB swap created"
 else
-  ok "tidak perlu swap tambahan"
+  ok "no extra swap needed"
 fi
 
-say "4/9 Firewall server (ufw, lapisan tambahan)"
+say "4/9 Server firewall (ufw, extra layer)"
 ssh_port=$(sudo sshd -T 2>/dev/null | awk '/^port / && !seen {print $2; seen = 1}' || true)
 ssh_port=${ssh_port:-22}
 sudo ufw allow "$ssh_port/tcp" > /dev/null
@@ -94,12 +94,12 @@ sudo ufw allow 80/tcp > /dev/null
 sudo ufw allow 443/tcp > /dev/null
 sudo ufw --force enable > /dev/null
 ok "ufw: $ssh_port (SSH), 80, 443"
-warn "port container Docker melewati ufw; pembatasan utama tetap di firewall penyedia server"
+warn "Docker container ports bypass ufw; the main restriction stays in the hosting provider's firewall"
 
-say "5/9 Kode dari GitHub"
+say "5/9 Code from GitHub"
 if [ -d "$APP_DIR/.git" ]; then
   git -C "$APP_DIR" pull --ff-only
-  ok "kode diperbarui di $APP_DIR"
+  ok "code updated in $APP_DIR"
 else
   mkdir -p "$HOME/.ssh"
   chmod 700 "$HOME/.ssh"
@@ -110,35 +110,35 @@ else
   ssh-keygen -F github.com > /dev/null 2>&1 || ssh-keyscan -t ed25519 github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
   until git clone -q "$REPO_SSH" "$APP_DIR" 2>/dev/null; do
     echo
-    echo "  Tambahkan deploy key berikut di GitHub:"
+    echo "  Add this deploy key on GitHub:"
     echo "  repo chat_service_supabase -> Settings -> Deploy keys -> Add deploy key"
-    echo "  (judul bebas, JANGAN centang \"Allow write access\")"
+    echo "  (any title, do NOT tick \"Allow write access\")"
     echo
     cat "$HOME/.ssh/github_deploy.pub"
     echo
-    read -r -p "  Tekan Enter setelah deploy key ditambahkan... " _
+    read -r -p "  Press Enter once the deploy key is added... " _
   done
-  ok "kode di $APP_DIR"
+  ok "code in $APP_DIR"
 fi
 cd "$APP_DIR"
 
-say "6/9 Konfigurasi (docker/.env)"
+say "6/9 Configuration (docker/.env)"
 make -s gen-secrets
-domain=$(ask "Domain API (mis. social-api.perusahaan.co.id)" "$(env_get PROXY_DOMAIN)")
-[[ $domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Domain tidak valid: $domain"
-acme_email=$(ask "Email tim IT untuk sertifikat HTTPS" "$(env_get ACME_EMAIL)")
-[[ $acme_email == *@*.* ]] || die "Email tidak valid: $acme_email"
-hub_domain=$(ask "Domain Rendezvous Hub (kosongkan bila belum)" "$(env_get CS_CONSOLE_DOMAIN)")
+domain=$(ask "API domain (e.g. social-api.company.co.id)" "$(env_get PROXY_DOMAIN)")
+[[ $domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid domain: $domain"
+acme_email=$(ask "IT team email for HTTPS certificates" "$(env_get ACME_EMAIL)")
+[[ $acme_email == *@*.* ]] || die "Invalid email: $acme_email"
+hub_domain=$(ask "Rendezvous Hub domain (leave empty if none yet)" "$(env_get CS_CONSOLE_DOMAIN)")
 vpn_ranges=""
 if [ -n "$hub_domain" ]; then
-  [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Domain Hub tidak valid: $hub_domain"
-  vpn_ranges=$(ask "IP/rentang yang boleh membuka Hub, pisah koma (mis. 203.0.113.10/32)" "$(env_get VPN_SOURCE_RANGES)")
-  [[ $vpn_ranges =~ ^[0-9./,\ ]+$ ]] || die "Daftar IP Hub tidak valid: $vpn_ranges"
-  [[ $vpn_ranges != *0.0.0.0/0* ]] || die "0.0.0.0/0 membuka Hub ke seluruh internet. Isi IP kantor/VPN saja."
+  [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid Hub domain: $hub_domain"
+  vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (e.g. 203.0.113.10/32)" "$(env_get VPN_SOURCE_RANGES)")
+  [[ $vpn_ranges =~ ^[0-9./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
+  [[ $vpn_ranges != *0.0.0.0/0* ]] || die "0.0.0.0/0 opens the Hub to the whole internet. Enter office/VPN IPs only."
 fi
 backup_default=$(env_get BACKUP_LOCAL_REPO_DIR)
 [ -n "$backup_default" ] || { [ -d /mnt/backup ] && backup_default=/mnt/backup/restic; }
-backup_dir=$(ask "Folder backup lokal di disk terpisah (kosongkan = backups/restic di repo)" "$backup_default")
+backup_dir=$(ask "Local backup folder on a separate disk (empty = backups/restic in the repo)" "$backup_default")
 
 env_set PROXY_DOMAIN "$domain"
 env_set SUPABASE_PUBLIC_URL "https://$domain"
@@ -150,13 +150,13 @@ if [ -n "$hub_domain" ]; then
   env_set VPN_SOURCE_RANGES "$vpn_ranges"
 fi
 if [ -n "$backup_dir" ]; then
-  [[ $backup_dir == /* ]] || die "Folder backup harus path absolut: $backup_dir"
+  [[ $backup_dir == /* ]] || die "The backup folder must be an absolute path: $backup_dir"
   sudo install -d -o 10001 -g 10001 -m 700 "$backup_dir"
   env_set BACKUP_LOCAL_REPO_DIR "$backup_dir"
 fi
-ok "docker/.env diperbarui"
+ok "docker/.env updated"
 
-say "7/9 Kunci publik OLT (docker/secrets/olt_jwks)"
+say "7/9 OLT public keys (docker/secrets/olt_jwks)"
 jwks_file="$APP_DIR/docker/secrets/olt_jwks"
 jwks_check() {
   python3 - "$1" <<'PY'
@@ -164,46 +164,46 @@ import json, sys
 try:
     keys = json.load(open(sys.argv[1]))["keys"]
 except Exception as e:
-    sys.exit(f"bukan JWKS yang valid: {e}")
+    sys.exit(f"not a valid JWKS: {e}")
 if not keys:
-    sys.exit("JWKS tidak berisi kunci")
+    sys.exit("the JWKS contains no keys")
 for k in keys:
     if str(k.get("kid", "")).startswith("dev-"):
-        sys.exit("masih kunci dev (kid diawali dev-); profil produksi menolaknya")
+        sys.exit("still a dev key (kid starts with dev-); the production profile rejects it")
     if k.get("alg") not in ("EdDSA", "ES256") or "d" in k:
-        sys.exit("kunci harus publik dengan alg EdDSA atau ES256")
+        sys.exit("keys must be public with alg EdDSA or ES256")
 print(", ".join(k.get("kid", "?") for k in keys))
 PY
 }
 if kids=$(jwks_check "$jwks_file" 2>/dev/null); then
-  ok "JWKS OLT terpasang (kid: $kids)"
+  ok "OLT JWKS installed (kid: $kids)"
 else
-  echo "  Tempel JWKS (kunci PUBLIK) dari tim backend OLT, lalu tekan Enter dan Ctrl+D:"
+  echo "  Paste the JWKS (PUBLIC keys) from the OLT backend team, then press Enter and Ctrl+D:"
   tmp_jwks=$(mktemp)
   cat > "$tmp_jwks"
   if kids=$(jwks_check "$tmp_jwks"); then
     (umask 077; cat "$tmp_jwks" > "$jwks_file")
     rm -f "$tmp_jwks"
-    ok "JWKS OLT disimpan (kid: $kids)"
+    ok "OLT JWKS saved (kid: $kids)"
   else
     rm -f "$tmp_jwks"
-    die "JWKS ditolak. Minta JWKS kunci publik ke tim OLT (docs/olt-integration.md), lalu jalankan script ini lagi."
+    die "JWKS rejected. Ask the OLT team for the public-key JWKS (docs/olt-integration.md), then run this script again."
   fi
 fi
 
-say "8/9 Cek DNS"
+say "8/9 DNS check"
 check_dns() {
   local name=$1 resolved
   resolved=$(getent ahostsv4 "$name" | awk '!seen {print $1; seen = 1}' || true)
-  [ -n "$resolved" ] || die "$name belum mengarah ke IP mana pun. Minta tim IT membuat A record, tunggu, lalu jalankan lagi."
-  echo "  $name -> $resolved   (IP di server ini: $(hostname -I | xargs))"
+  [ -n "$resolved" ] || die "$name does not resolve to any IP yet. Ask the IT team to create an A record, wait, then run again."
+  echo "  $name -> $resolved   (IPs on this server: $(hostname -I | xargs))"
 }
 check_dns "$domain"
 [ -z "$hub_domain" ] || check_dns "$hub_domain"
-confirm "Apakah IP di atas adalah IP publik server ini (atau IP publik kantor yang diteruskan ke server)?" \
-  || die "Perbaiki DNS dulu, lalu jalankan script ini lagi."
+confirm "Is the IP above this server's public IP (or the office public IP forwarded to this server)?" \
+  || die "Fix DNS first, then run this script again."
 
-say "9/9 Menyalakan layanan"
+say "9/9 Starting services"
 export PROFILE=single
 bashrc_export PROFILE single
 if [ -n "$hub_domain" ]; then
@@ -211,16 +211,16 @@ if [ -n "$hub_domain" ]; then
   bashrc_export CS 1
 fi
 make up
-ok "semua layanan berjalan"
+ok "all services running"
 
-if [ -n "$hub_domain" ] && confirm "Buat akun Super Admin pertama untuk Hub sekarang?"; then
-  admin_email=$(ask "Email Super Admin")
-  admin_name=$(ask "Nama lengkap Super Admin")
+if [ -n "$hub_domain" ] && confirm "Create the first Hub Super Admin account now?"; then
+  admin_email=$(ask "Super Admin email")
+  admin_name=$(ask "Super Admin full name")
   make cs-bootstrap-admin EMAIL="$admin_email" NAME="$admin_name" \
-    || warn "akun tidak dibuat (mungkin Super Admin sudah ada). Lihat pesan di atas."
+    || warn "account not created (a Super Admin may already exist). See the message above."
 fi
 
-say "Verifikasi akses publik"
+say "Public access check"
 anon_key=$(cat docker/secrets/anon_key)
 health=""
 for _ in $(seq 1 18); do
@@ -229,26 +229,26 @@ for _ in $(seq 1 18); do
   sleep 10
 done
 [[ $health == *'"olt_mode":"jwt"'* ]] && ok "https://$domain/bridge/v1/health: olt_mode jwt" \
-  || warn "health belum menjawab. Cek sertifikat: make logs s=traefik (DNS/port 80 harus terbuka)"
+  || warn "health is not answering yet. Check the certificate: make logs s=traefik (DNS/port 80 must be open)"
 code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "http://$domain/" || true)
-[[ $code =~ ^30[1278]$ ]] && ok "http dialihkan ke https ($code)" || warn "http://$domain/ menjawab $code (diharapkan redirect)"
+[[ $code =~ ^30[1278]$ ]] && ok "http redirects to https ($code)" || warn "http://$domain/ answered $code (expected a redirect)"
 code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "https://$domain/" || true)
-[ "$code" = 404 ] && ok "https://$domain/ 404 (hanya path API yang dibuka)" || warn "https://$domain/ menjawab $code (diharapkan 404)"
+[ "$code" = 404 ] && ok "https://$domain/ 404 (only API paths are open)" || warn "https://$domain/ answered $code (expected 404)"
 
 cat <<EOF
 
-Selesai.
+Done.
 
   URL API (supabaseUrl) : https://$domain
   Anon key (anonKey)    : $anon_key
 EOF
-[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (hanya dari: $vpn_ranges)"
+[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: $vpn_ranges)"
 cat <<EOF
 
-Langkah berikutnya (docs/server-install.md bagian 5):
-  1. Login Hub sebagai Super Admin, ganti password sementara.
-  2. Pengaturan -> Backup: pilih tujuan, buat password enkripsi, simpan di luar server.
-  3. Pengaturan -> Alert: isi Telegram/email, lalu Kirim uji.
-  4. Simpan di luar server: docker/.env, docker/secrets/, password backup.
-  5. Berikan URL API dan anon key ke tim aplikasi OLT.
+Next steps (docs/server-install.md section 5):
+  1. Log in to the Hub as Super Admin and change the temporary password.
+  2. Pengaturan -> Backup: choose a destination, create an encryption password, store it off the server.
+  3. Pengaturan -> Alert: fill in Telegram/email, then Kirim uji.
+  4. Store off the server: docker/.env, docker/secrets/, the backup password.
+  5. Give the API URL and anon key to the OLT app team.
 EOF

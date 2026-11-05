@@ -80,21 +80,21 @@ func parseJWKS(data []byte, rejectDev bool) (map[string]publicKey, error) {
 		Keys []jwk `json:"keys"`
 	}
 	if err := json.Unmarshal(data, &doc); err != nil {
-		return nil, fmt.Errorf("bukan JSON JWKS: %w", err)
+		return nil, fmt.Errorf("not a JWKS JSON document: %w", err)
 	}
 	if len(doc.Keys) == 0 {
-		return nil, errors.New("tidak ada kunci")
+		return nil, errors.New("no keys")
 	}
 	keys := make(map[string]publicKey, len(doc.Keys))
 	for _, k := range doc.Keys {
 		if k.Kid == "" {
-			return nil, errors.New("setiap kunci wajib punya kid")
+			return nil, errors.New("every key must have a kid")
 		}
 		if _, dup := keys[k.Kid]; dup {
-			return nil, fmt.Errorf("kid %q ganda", k.Kid)
+			return nil, fmt.Errorf("duplicate kid %q", k.Kid)
 		}
 		if rejectDev && strings.HasPrefix(k.Kid, devKeyPrefix) {
-			return nil, fmt.Errorf("kunci dev %q tidak boleh dipakai di produksi; ganti dengan JWKS dari OLT", k.Kid)
+			return nil, fmt.Errorf("dev key %q is not allowed in production; replace it with the OLT JWKS", k.Kid)
 		}
 		key, err := parseKey(k)
 		if err != nil {
@@ -110,28 +110,28 @@ func parseKey(k jwk) (publicKey, error) {
 	case k.Kty == "OKP" && k.Crv == "Ed25519":
 		x, err := b64.DecodeString(k.X)
 		if err != nil || len(x) != ed25519.PublicKeySize {
-			return publicKey{}, errors.New("x Ed25519 tidak valid")
+			return publicKey{}, errors.New("invalid Ed25519 x")
 		}
 		return publicKey{alg: "EdDSA", ed: ed25519.PublicKey(x)}, checkAlg(k.Alg, "EdDSA")
 	case k.Kty == "EC" && k.Crv == "P-256":
 		x, errX := b64.DecodeString(k.X)
 		y, errY := b64.DecodeString(k.Y)
 		if errX != nil || errY != nil || len(x) != 32 || len(y) != 32 {
-			return publicKey{}, errors.New("koordinat P-256 tidak valid")
+			return publicKey{}, errors.New("invalid P-256 coordinates")
 		}
 		pub := &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(x), Y: new(big.Int).SetBytes(y)}
 		if !pub.Curve.IsOnCurve(pub.X, pub.Y) {
-			return publicKey{}, errors.New("titik tidak berada di kurva P-256")
+			return publicKey{}, errors.New("point is not on the P-256 curve")
 		}
 		return publicKey{alg: "ES256", ec: pub}, checkAlg(k.Alg, "ES256")
 	default:
-		return publicKey{}, fmt.Errorf("jenis kunci %s/%s tidak didukung (Ed25519 atau P-256)", k.Kty, k.Crv)
+		return publicKey{}, fmt.Errorf("unsupported key type %s/%s (Ed25519 or P-256)", k.Kty, k.Crv)
 	}
 }
 
 func checkAlg(declared, expected string) error {
 	if declared != "" && declared != expected {
-		return fmt.Errorf("alg %q tidak cocok dengan jenis kunci (%s)", declared, expected)
+		return fmt.Errorf("alg %q does not match the key type (%s)", declared, expected)
 	}
 	return nil
 }
@@ -160,15 +160,15 @@ func invalid(reason string) error {
 
 func (v *JWTVerifier) Verify(_ context.Context, token string) (User, error) {
 	if token == "" || len(token) > maxTokenBytes {
-		return User{}, invalid("ukuran token tidak wajar")
+		return User{}, invalid("unreasonable token size")
 	}
 	parts := strings.Split(token, ".")
 	if len(parts) != 3 {
-		return User{}, invalid("bukan JWT")
+		return User{}, invalid("not a JWT")
 	}
 	var h header
 	if err := decodeSegment(parts[0], &h); err != nil {
-		return User{}, invalid("header tidak valid")
+		return User{}, invalid("invalid header")
 	}
 	key, err := v.keyFor(h)
 	if err != nil {
@@ -176,25 +176,25 @@ func (v *JWTVerifier) Verify(_ context.Context, token string) (User, error) {
 	}
 	signature, err := b64.DecodeString(parts[2])
 	if err != nil || !key.verify([]byte(parts[0]+"."+parts[1]), signature) {
-		return User{}, invalid("tanda tangan tidak valid")
+		return User{}, invalid("invalid signature")
 	}
 	var c claims
 	if err := decodeSegment(parts[1], &c); err != nil {
-		return User{}, invalid("payload tidak valid")
+		return User{}, invalid("invalid payload")
 	}
 	return v.userFrom(c)
 }
 
 func (v *JWTVerifier) keyFor(h header) (publicKey, error) {
 	if h.Alg != "EdDSA" && h.Alg != "ES256" {
-		return publicKey{}, invalid("alg tidak diizinkan")
+		return publicKey{}, invalid("alg not allowed")
 	}
 	var key publicKey
 	switch {
 	case h.Kid != "":
 		found, ok := v.keys[h.Kid]
 		if !ok {
-			return publicKey{}, invalid("kid tidak dikenal")
+			return publicKey{}, invalid("unknown kid")
 		}
 		key = found
 	case len(v.keys) == 1:
@@ -202,10 +202,10 @@ func (v *JWTVerifier) keyFor(h header) (publicKey, error) {
 			key = only
 		}
 	default:
-		return publicKey{}, invalid("kid wajib diisi")
+		return publicKey{}, invalid("kid is required")
 	}
 	if key.alg != h.Alg {
-		return publicKey{}, invalid("alg tidak cocok dengan kunci")
+		return publicKey{}, invalid("alg does not match the key")
 	}
 	return key, nil
 }
@@ -228,26 +228,26 @@ func (v *JWTVerifier) userFrom(c claims) (User, error) {
 	leeway := int64(v.opts.Leeway / time.Second)
 	switch {
 	case c.Issuer != v.opts.Issuer:
-		return User{}, invalid("issuer tidak dikenal")
+		return User{}, invalid("unknown issuer")
 	case !hasAudience(c.Audience, v.opts.Audience):
-		return User{}, invalid("audience bukan untuk OLT Social")
+		return User{}, invalid("audience is not OLT Social")
 	case c.ExpiresAt == nil || c.IssuedAt == nil:
-		return User{}, invalid("exp dan iat wajib diisi")
+		return User{}, invalid("exp and iat are required")
 	case now.Unix() >= *c.ExpiresAt+leeway:
-		return User{}, invalid("token kedaluwarsa")
+		return User{}, invalid("token expired")
 	case *c.IssuedAt > now.Unix()+leeway:
-		return User{}, invalid("iat di masa depan")
+		return User{}, invalid("iat is in the future")
 	case c.NotBefore != nil && *c.NotBefore > now.Unix()+leeway:
-		return User{}, invalid("token belum berlaku")
+		return User{}, invalid("token not yet valid")
 	case time.Duration(*c.ExpiresAt-*c.IssuedAt)*time.Second > v.opts.MaxTTL:
-		return User{}, invalid("masa berlaku token melebihi batas")
+		return User{}, invalid("token lifetime exceeds the limit")
 	}
 	var subject string
 	if err := json.Unmarshal(c.Subject, &subject); err != nil || subject == "" {
-		return User{}, invalid("sub wajib berupa string")
+		return User{}, invalid("sub must be a string")
 	}
 	if c.PreferredUsername == "" {
-		return User{}, invalid("preferred_username wajib diisi")
+		return User{}, invalid("preferred_username is required")
 	}
 	return User{ID: subject, Username: c.PreferredUsername, Email: c.Email, DisplayName: c.Name,
 		Accounts: ParseAccounts(c.Accounts)}, nil

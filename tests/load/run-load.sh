@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# Uji beban "pembukaan pasar 09:00 WIB + saham ramai" (k6) terhadap stack DEV.
-# pemakaian: run-load.sh [smoke|step|spike|light] ; env: LOAD_STEPS ("50 100 200 300 400"), LOAD_HOLD (detik),
-# LOAD_RAMP (detik), LOAD_MSG_EVERY (detik), LOAD_FORCE=1 (lanjut walau batas berhenti terlampaui), LOAD_VIA=kong|traefik.
-# TYPING=1 (kirim send_typing seperti aplikasi), LIST_VUS=n (n VU pertama hanya memoll get_room_previews tiap LIST_POLL detik),
-# PRESENCE=0 (tanpa track presence).
-# - User uji: lt_00001.. (token sosial dev ditandatangani kunci OLT dummy, IP sintetis 198.18.0.0/15 per user
-#   lewat X-Forwarded-For yang hanya dipercaya Kong dari network edge, sehingga batas per IP berlaku per user).
-# - Tanpa push: notifier dihentikan selama uji dan dinyalakan lagi di akhir; user lt_ tidak punya perangkat push.
-# - Pesan tanpa URL/mention; postingan menandai $LTPOST (bukan room uji) agar deteksi manipulasi tidak
-#   menahan room $LTHOT.
+# usage: run-load.sh [smoke|step|spike|light]
+# env: LOAD_STEPS ("50 100 200 300 400"), LOAD_HOLD, LOAD_RAMP, LOAD_MSG_EVERY (seconds), LOAD_FORCE=1 (ignore stop limits),
+# LOAD_VIA=kong|traefik, TYPING=1 (send_typing like the app), LIST_VUS=n (first n VUs only poll get_room_previews every
+# LIST_POLL seconds), PRESENCE=0 (no presence track).
+# Each lt_ user gets a synthetic 198.18.0.0/15 IP via X-Forwarded-For, which Kong trusts only from the edge network,
+# so per-IP limits apply per user. The notifier is stopped during the run so no real push is sent.
+# Posts tag $LTPOST instead of the test room so manipulation detection does not throttle $LTHOT.
 set -uo pipefail
 source /olt/tests/lib/common.sh
 
@@ -20,7 +17,7 @@ case "$profile" in
   step)  steps="${LOAD_STEPS:-50 100 200 300 400}"; hold="${LOAD_HOLD:-150}"; ramp="${LOAD_RAMP:-30}" ;;
   spike) steps="${LOAD_STEPS:-300}"; hold="${LOAD_HOLD:-120}"; ramp="${LOAD_RAMP:-10}" ;;
   light) steps="${LOAD_STEPS:-30}"; hold="${LOAD_HOLD:-600}"; ramp="${LOAD_RAMP:-15}" ;;
-  *) echo "profil tidak dikenal: $profile" >&2; exit 2 ;;
+  *) echo "unknown profile: $profile" >&2; exit 2 ;;
 esac
 msg_every="${LOAD_MSG_EVERY:-20}"
 API=$( [ "${LOAD_VIA:-kong}" = traefik ] && traefik_url || kong_edge_url )
@@ -28,12 +25,12 @@ API=$( [ "${LOAD_VIA:-kong}" = traefik ] && traefik_url || kong_edge_url )
 app_env=$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$(container auth-bridge)" | sed -n 's/^APP_ENV=//p')
 olt_mode=$(curl -sS "$API/bridge/v1/health" -H "apikey: $ANON_KEY" | jq -r '.olt_mode // empty')
 if [ "$app_env" != development ] || [ "$olt_mode" != jwt ] || ! docker inspect "$(container dummy-olt)" > /dev/null 2>&1; then
-  echo "Uji beban hanya untuk stack DEV dengan OLT dummy (APP_ENV=$app_env, olt_mode=$olt_mode). Jalankan: make up DUMMY_OLT=1" >&2
+  echo "Load tests only run against the DEV stack with the dummy OLT (APP_ENV=$app_env, olt_mode=$olt_mode). Run: make up DUMMY_OLT=1" >&2
   exit 2
 fi
 devices=$(sql "select count(*) from private.push_devices d join public.profiles p on p.id = d.user_id where p.username like 'lt\_%'")
 if [ "${devices:-0}" != 0 ]; then
-  echo "Ada $devices perangkat push milik user lt_*; hapus dulu (make loadtest-cleanup) agar tidak ada push nyata." >&2
+  echo "lt_* users own $devices push devices; remove them first (make loadtest-cleanup) so no real push is sent." >&2
   exit 2
 fi
 
@@ -42,12 +39,12 @@ sampler=""
 cleanup() {
   [ -n "$sampler" ] && kill "$sampler" 2>/dev/null
   if [ "$notifier_was_running" = true ]; then
-    docker start "$(container notifier)" > /dev/null && log "notifier dinyalakan lagi"
+    docker start "$(container notifier)" > /dev/null && log "notifier started again"
   fi
 }
 trap cleanup EXIT
 if [ "$notifier_was_running" = true ]; then
-  docker stop "$(container notifier)" > /dev/null && log "notifier dihentikan selama uji (tidak ada push nyata)"
+  docker stop "$(container notifier)" > /dev/null && log "notifier stopped during the test (no real push)"
 fi
 queued_before=$(sql "select count(*) from private.push_queue")
 PREVIEW_SQL="select 'lag_s=' || coalesce(round(extract(epoch from (select max(m.created_at) from public.messages m where m.room_id = r.id) - r.last_message_at)::numeric, 3)::text, '-')
@@ -55,7 +52,7 @@ PREVIEW_SQL="select 'lag_s=' || coalesce(round(extract(epoch from (select max(m.
 
 max=0
 for n in $steps; do [ "$n" -gt "$max" ] && max=$n; done
-log "profil $profile, langkah VU: $steps, ramp ${ramp}s, tahan ${hold}s, pesan tiap ~${msg_every}s, API $API"
+log "profile $profile, VU steps: $steps, ramp ${ramp}s, hold ${hold}s, message every ~${msg_every}s, API $API"
 {
   echo "profile=$profile"; echo "steps=$steps"; echo "ramp=$ramp"; echo "hold=$hold"; echo "msg_every=$msg_every"; echo "api=$API"
   echo "started=$(date -u +%FT%TZ)"; echo "host_cpus=$(nproc)"
@@ -109,7 +106,7 @@ for n in $steps; do
   step_started=$(date -u +%FT%TZ)
   bash /olt/tests/load/sample.sh "$step" 5 &
   sampler=$!
-  log "langkah $n VU dimulai"
+  log "step $n VU started"
   k6 run --quiet --log-format raw -e API="$API" -e ANON_KEY="$ANON_KEY" -e USERS="$RUN/users.json" -e VUS="$n" \
     -e RAMP="$ramp" -e HOLD="$hold" -e MSG_EVERY="$msg_every" -e SUMMARY="$step/summary.json" \
     -e TYPING="${TYPING:-0}" -e LIST_VUS="${LIST_VUS:-0}" -e LIST_POLL="${LIST_POLL:-15}" -e PRESENCE="${PRESENCE:-1}" \
@@ -117,7 +114,7 @@ for n in $steps; do
   kill "$sampler" 2>/dev/null; wait "$sampler" 2>/dev/null; sampler=""
   rm -f "$RUN/users.json"
   if [ ! -s "$step/summary.json" ]; then
-    log "k6 gagal pada langkah $n, lihat $step/k6.log"; tail -5 "$step/k6.log"; break
+    log "k6 failed at step $n, see $step/k6.log"; tail -5 "$step/k6.log"; break
   fi
   summary "$n" "$step/summary.json" >> "$RUN/steps.tsv"
   limit_logs=$(docker logs --since "$step_started" "$(container realtime)" 2>&1 | grep -c -E "MessagePerSecondRateLimitReached|too_many_requests|RateLimit")
@@ -131,26 +128,26 @@ for n in $steps; do
   sleep 3
   echo "room preview after step: $(sql "$PREVIEW_SQL")" >> "$step/peak-db.txt"
   column -t -s $'\t' "$RUN/steps.tsv" | tail -1
-  head -6 "$step/peak-container.tsv" | sed 's/^/    cpu% puncak: /'
+  head -6 "$step/peak-container.tsv" | sed 's/^/    peak cpu%: /'
   sed 's/^/    /' "$step/peak-db.txt"
   err=$(jq -r '.metrics.http_req_failed.values.rate // 0' "$step/summary.json")
   p95=$(jq -r '.metrics.rt_delivery_ms.values["p(95)"] // 0' "$step/summary.json")
   ratio=$(jq -r '(.metrics.rt_messages_received.values.count // 0) as $r | (.metrics.rt_expected.values.count // 0) as $e | if $e > 0 then $r / $e else 1 end' "$step/summary.json")
   if [ "${LOAD_FORCE:-0}" != 1 ]; then
-    if awk -v e="$err" 'BEGIN {exit !(e > 0.01)}'; then log "berhenti: error rate $err > 1%"; break; fi
-    if awk -v r="$ratio" 'BEGIN {exit !(r < 0.99)}'; then log "berhenti: hanya $ratio pesan realtime sampai ke penerima (< 99%)"; break; fi
+    if awk -v e="$err" 'BEGIN {exit !(e > 0.01)}'; then log "stopping: error rate $err > 1%"; break; fi
+    if awk -v r="$ratio" 'BEGIN {exit !(r < 0.99)}'; then log "stopping: only $ratio of realtime messages reached recipients (< 99%)"; break; fi
     if [ "$prev_p95" != 0 ] && awk -v a="$p95" -v b="$prev_p95" 'BEGIN {exit !(a > 3 * b && a > 1000)}'; then
-      log "berhenti: p95 pengiriman realtime melonjak ($prev_p95 -> $p95 ms)"; break
+      log "stopping: realtime delivery p95 spiked ($prev_p95 -> $p95 ms)"; break
     fi
   fi
   prev_p95=$p95
   sleep 20
 done
 queued_after=$(sql "select count(*) from private.push_queue")
-echo "push_queue sebelum=$queued_before sesudah=$queued_after (notifier mati selama uji)" | tee -a "$RUN/run-info.txt"
+echo "push_queue before=$queued_before after=$queued_after (notifier stopped during the test)" | tee -a "$RUN/run-info.txt"
 echo "finished=$(date -u +%FT%TZ)" >> "$RUN/run-info.txt"
 echo
 column -t -s $'\t' "$RUN/steps.tsv"
 echo
 column -t -s $'\t' "$RUN/realtime.tsv"
-echo "hasil: ${RUN#/olt/}"
+echo "results: ${RUN#/olt/}"

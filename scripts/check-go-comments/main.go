@@ -64,7 +64,7 @@ func main() {
 	for _, f := range findings {
 		fmt.Printf("%s:%d: %s\n", f.file, f.line, f.text)
 	}
-	fmt.Fprintf(os.Stderr, "check-go-comments: %d komentar ditemukan; kode Go harus tanpa komentar (penjelasan taruh di README)\n", len(findings))
+	fmt.Fprintf(os.Stderr, "check-go-comments: %d comment(s) found; Go code must have no comments (put explanations in the README)\n", len(findings))
 	os.Exit(1)
 }
 

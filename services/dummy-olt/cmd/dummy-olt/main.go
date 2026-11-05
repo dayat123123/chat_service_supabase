@@ -34,7 +34,7 @@ func main() {
 	case "healthcheck":
 		os.Exit(healthcheck())
 	default:
-		fmt.Fprintln(os.Stderr, "pemakaian: dummy-olt [serve | token <user> [-ttl 24h] [-social] | healthcheck]")
+		fmt.Fprintln(os.Stderr, "usage: dummy-olt [serve | token <user> [-ttl 24h] [-social] | healthcheck]")
 		os.Exit(2)
 	}
 }
@@ -57,7 +57,7 @@ func durationEnv(key, def string) (time.Duration, error) {
 func socialSigner() (*social.Signer, error) {
 	path := os.Getenv("DUMMY_OLT_SIGNING_KEY_FILE")
 	if path == "" {
-		return nil, errors.New("DUMMY_OLT_SIGNING_KEY_FILE wajib diisi (kunci Ed25519 dev, dibuat make gen-secrets)")
+		return nil, errors.New("DUMMY_OLT_SIGNING_KEY_FILE is required (dev Ed25519 key, created by make gen-secrets)")
 	}
 	pemBytes, err := os.ReadFile(path)
 	if err != nil {
@@ -83,7 +83,7 @@ func serve() int {
 	socialTTL, err5 := durationEnv("DUMMY_OLT_SOCIAL_TTL", "10m")
 	signer, err6 := socialSigner()
 	if err := errors.Join(err1, err2, err3, err4, err5, err6); err != nil {
-		fmt.Fprintln(os.Stderr, "konfigurasi tidak valid:", err)
+		fmt.Fprintln(os.Stderr, "invalid configuration:", err)
 		return 1
 	}
 
@@ -111,10 +111,10 @@ func serve() int {
 		_ = httpServer.Shutdown(shutdown)
 	}()
 
-	log.Warn("dummy-olt berjalan: server OLT TIRUAN untuk development/testing, jangan dipakai di produksi",
+	log.Warn("dummy-olt started: FAKE OLT server for development/testing, never use it in production",
 		"addr", httpServer.Addr, "accept_mock_tokens", acceptMock, "token_ttl", ttl.String(), "social_ttl", socialTTL.String())
 	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		log.Error("server berhenti", "error", err)
+		log.Error("server stopped", "error", err)
 		return 1
 	}
 	return 0
@@ -122,20 +122,20 @@ func serve() int {
 
 func mintToken(args []string) int {
 	if len(args) == 0 || args[0] == "" || args[0][0] == '-' {
-		fmt.Fprintln(os.Stderr, "pemakaian: dummy-olt token <id|username|email> [-ttl 24h] [-social]")
+		fmt.Fprintln(os.Stderr, "usage: dummy-olt token <id|username|email> [-ttl 24h] [-social]")
 		return 2
 	}
 	identifier := args[0]
 	fs := flag.NewFlagSet("token", flag.ContinueOnError)
-	ttl := fs.Duration("ttl", 24*time.Hour, "masa berlaku token (negatif = sudah kedaluwarsa; token sosial default DUMMY_OLT_SOCIAL_TTL)")
-	socialToken := fs.Bool("social", false, "cetak token sosial (JWT) untuk ditukar di auth-bridge")
+	ttl := fs.Duration("ttl", 24*time.Hour, "token lifetime (negative = already expired; social tokens default to DUMMY_OLT_SOCIAL_TTL)")
+	socialToken := fs.Bool("social", false, "print a social token (JWT) to exchange at auth-bridge")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 2
 	}
 
 	u, ok := users.Default().Find(identifier)
 	if !ok {
-		fmt.Fprintf(os.Stderr, "akun %q tidak dikenal (lihat services/dummy-olt/README.md)\n", identifier)
+		fmt.Fprintf(os.Stderr, "unknown account %q (see services/dummy-olt/README.md)\n", identifier)
 		return 1
 	}
 	if *socialToken {

@@ -1,4 +1,3 @@
--- Role, privilege, timeout, dan job terjadwal (0012-0016).
 begin;
 select plan(18);
 
@@ -40,7 +39,7 @@ select ok(not has_column_privilege('authenticated', 'public.posts', 'moderation_
 select ok(not has_column_privilege('authenticated', 'public.profiles', 'trust_level', 'UPDATE'),
   'User tidak bisa menaikkan trust_level sendiri');
 
--- PostgREST menjalankan pre-request untuk semua role yang dipakai lewat API.
+-- PostgREST runs the pre-request for every role used through the API.
 select ok(has_function_privilege('service_role', 'private.check_request()', 'EXECUTE'),
   'Pre-request bisa dijalankan service_role (auth-bridge)');
 select tests.authenticate_anon();

@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# OWASP ZAP baseline (pasif, spider 1 menit) terhadap web CS (Traefik :8085) dan API dev (Traefik :8000).
-# Opsional: image ZAP besar (±1,5 GB). Container ZAP di network edge; laporan disalin keluar lewat docker cp.
 set -uo pipefail
 source /olt/tests/lib/common.sh
 
@@ -22,4 +20,4 @@ for target in "cs-console|http://$T:8085/" "api|http://$T:8000/rest/v1/"; do
   grep -E '^(WARN-NEW|FAIL-NEW|PASS|FAIL-INPROG|WARN-INPROG|INFO)' "$OUT/zap-$name.log" | tail -3
   grep -E '^WARN-NEW: |^FAIL-NEW: ' "$OUT/zap-$name.log" | sed 's/^/  /'
 done
-echo "hasil: ${OUT#/olt/}"
+echo "results: ${OUT#/olt/}"

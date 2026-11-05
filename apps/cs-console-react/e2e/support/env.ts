@@ -25,6 +25,6 @@ const staff = (JSON.parse(readFileSync(staffFile, 'utf8')) as { staff: StaffMemb
 
 export function member(name: StaffName): StaffMember {
   const found = staff.find((item) => item.name === name)
-  if (!found) throw new Error(`Akun staf ${name} tidak ada di ${staffFile}. Jalankan: make cs-staff`)
+  if (!found) throw new Error(`Staff account ${name} is missing from ${staffFile}. Run: make cs-staff`)
   return found
 }

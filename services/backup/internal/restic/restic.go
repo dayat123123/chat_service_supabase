@@ -77,10 +77,10 @@ func FromEnv(getenv func(string) string) ([]string, error) {
 		missing = append(missing, "RESTIC_REPOSITORY")
 	}
 	if getenv("RESTIC_PASSWORD") == "" && getenv("RESTIC_PASSWORD_FILE") == "" {
-		missing = append(missing, "RESTIC_PASSWORD atau RESTIC_PASSWORD_FILE")
+		missing = append(missing, "RESTIC_PASSWORD or RESTIC_PASSWORD_FILE")
 	}
 	if len(missing) > 0 {
-		return nil, fmt.Errorf("env belum diisi: %s", strings.Join(missing, ", "))
+		return nil, fmt.Errorf("missing env: %s", strings.Join(missing, ", "))
 	}
 	return env, nil
 }

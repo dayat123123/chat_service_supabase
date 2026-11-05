@@ -120,6 +120,6 @@ export const useAuth = create<AuthState & AuthActions>((set, get) => {
 
 export function useAgent(): AgentProfile {
   const phase = useAuth((state) => state.phase)
-  if (phase.kind !== 'ready') throw new Error('Agent belum siap')
+  if (phase.kind !== 'ready') throw new Error('Agent is not ready')
   return phase.agent
 }

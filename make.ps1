@@ -1,16 +1,16 @@
 <#
 .SYNOPSIS
-  OLT Social - padanan Makefile untuk Windows (PowerShell 5.1+).
+  OLT Social - Makefile equivalent for Windows (PowerShell 5.1+).
 
 .EXAMPLE
   .\make.ps1 gen-secrets
-  .\make.ps1 up                            (profil dev: http://localhost:8000)
-  .\make.ps1 up -Profile single            (produksi 1 server; butuh PROXY_DOMAIN & ACME_EMAIL)
+  .\make.ps1 up                            (dev profile: http://localhost:8000)
+  .\make.ps1 up -Profile single            (single-server production; needs PROXY_DOMAIN & ACME_EMAIL)
   .\make.ps1 logs -Service auth-bridge
   .\make.ps1 restore -File olt-20261029-020000.dump -Yes
-  .\make.ps1 up -DummyOlt                  (OLT dummy penerbit token sosial + auth-bridge mode jwt)
+  .\make.ps1 up -DummyOlt                  (dummy OLT social token issuer + auth-bridge jwt mode)
   .\make.ps1 dummy-token -User sari_invest -Ttl 5m
-  .\make.ps1 up -Profile single -Cs        (produksi dengan customer service lewat chat)
+  .\make.ps1 up -Profile single -Cs        (production with chat customer service)
 #>
 [CmdletBinding()]
 param(
@@ -26,7 +26,6 @@ param(
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
                  'testkit', 'test-security', 'test-zap', 'scan-deps', 'load-test', 'load-integration', 'chaos-test', 'loadtest-cleanup')]
     [string]$Target = 'help',
-    # dev (default) | single | cluster - lihat docs/PROMPT-PRODUCTION.md bagian 1.
     [Alias('Profile')]
     [ValidateSet('dev', 'single', 'cluster')]
     [string]$DeployProfile = 'dev',
@@ -34,24 +33,17 @@ param(
     [string]$File = '',
     [switch]$Force,
     [switch]$Yes,
-    # OLT dummy penerbit token sosial + auth-bridge mode jwt (hanya profil dev).
     [switch]$DummyOlt,
-    # Customer service lewat chat di profil single (di profil dev selalu aktif).
     [switch]$Cs,
     [string]$User = 'budi_santoso',
     [string]$Email = '',
     [string]$Name = '',
     [string]$Ttl = '',
-    # restore-pitr: waktu target (RFC3339) atau 'latest'.
     [string]$At = '',
-    # load-test: smoke | step | spike | light (docs/testing/README.md).
     [string]$Load = 'smoke',
-    # chaos-test: daftar eksperimen dipisah spasi (kosong = semua).
     [string]$Experiments = '',
-    # scan-deps: -Strict gagal bila ada temuan penghalang; -ThirdParty ikut memindai image pihak ketiga.
     [switch]$Strict,
     [switch]$ThirdParty,
-    # loadtest-cleanup: -DryRun hanya menampilkan.
     [switch]$DryRun
 )
 
@@ -71,11 +63,10 @@ $ToolsImage = 'olt-social/tools:0.1.0'
 $NodeImage = 'node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85'
 $WebImage = 'caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
 $TestkitImage = 'olt-social/testkit:0.1.0'
-# Package Flutter ada di repo terpisah (github.com/dayat123123/rendezvous_community), di-clone di sebelah repo ini; $env:PKG untuk path lain.
 $PackageDir = if ($env:PKG) { $env:PKG } else { Join-Path (Split-Path $PSScriptRoot -Parent) 'rendezvous_community' }
 $Stack = 'olt-social'
 
-if ($DummyOlt -and $DeployProfile -ne 'dev') { throw 'DummyOlt hanya boleh dipakai di profil dev.' }
+if ($DummyOlt -and $DeployProfile -ne 'dev') { throw 'DummyOlt is only allowed with the dev profile.' }
 $Compose = switch ($DeployProfile) {
     'dev' { @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml') }
     default { @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.prod.yml') }
@@ -88,16 +79,16 @@ $DummyCompose = @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.d
 
 function Invoke-Native {
     param([string]$Exe, [string[]]$Arguments)
-    # Program native menulis progres ke stderr; di PS 5.1 itu jangan dianggap error.
+    # Native tools write progress to stderr; PS 5.1 must not treat that as an error.
     $prev = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try { & $Exe @Arguments } finally { $ErrorActionPreference = $prev }
-    # Jangan cetak argumen lengkap: bisa berisi kunci (--dart-define=...KEY=...).
-    if ($LASTEXITCODE -ne 0) { throw "$Exe $($Arguments | Select-Object -First 2) gagal (exit $LASTEXITCODE)" }
+    # Never print the full argument list: it can contain keys (--dart-define=...KEY=...).
+    if ($LASTEXITCODE -ne 0) { throw "$Exe $($Arguments | Select-Object -First 2) failed (exit $LASTEXITCODE)" }
 }
 
-# Build lokal tanpa attestation (berisi timestamp): build ulang tanpa perubahan
-# menghasilkan ID image yang sama, jadi `up --build` tidak me-restart container.
+# Local builds skip attestations (they embed a timestamp) so an unchanged rebuild keeps the
+# same image ID and `up --build` does not restart containers.
 function Invoke-Docker {
     param([string[]]$Arguments)
     $prev = $env:BUILDX_NO_DEFAULT_ATTESTATIONS
@@ -132,15 +123,13 @@ function Update-StaffAccounts {
     $ErrorActionPreference = 'Continue'
     try { $staff = $previous | & docker @($DummyCompose + @('run', '--rm', '-T', 'tools', 'cs-staff')) 2>$null }
     finally { $ErrorActionPreference = $prev }
-    if ($LASTEXITCODE -ne 0) { throw "akun staf dev gagal disiapkan (exit $LASTEXITCODE)" }
+    if ($LASTEXITCODE -ne 0) { throw "dev staff accounts could not be prepared (exit $LASTEXITCODE)" }
     [IO.File]::WriteAllText($staffFile, (($staff | Out-String).Trim() + "`n"))
 }
 
-# Alat uji keamanan/beban/chaos (tests/): image olt-social/testkit di network edge+app+data stack dev,
-# docker.sock untuk chaos, hanya secret yang dibutuhkan. Hasil di tests/results/.
 function Invoke-Testkit {
     param([string[]]$Arguments)
-    if ($DeployProfile -ne 'dev') { throw 'Uji keamanan/beban/chaos hanya untuk profil dev.' }
+    if ($DeployProfile -ne 'dev') { throw 'Security/load/chaos tests are for the dev profile only.' }
     $results = Join-Path $PSScriptRoot 'tests/results'
     New-Item -ItemType Directory -Force $results | Out-Null
     Invoke-Docker @('build', '-q', '-t', $TestkitImage, 'tests') | Out-Null
@@ -162,8 +151,6 @@ function Invoke-Testkit {
 
 function Get-AnonKey { (Get-Content -LiteralPath (Join-Path $SecretsDir 'anon_key') -Raw).Trim() }
 
-# Argumen docker untuk kredensial restic dari env: repositori S3 diteruskan apa adanya (+ AWS_*),
-# folder lokal (mis. backups\restic) di-mount ke /var/lib/olt-backup-repo tanpa kredensial AWS.
 function Get-ResticArgs {
     $repo = $env:RESTIC_REPOSITORY
     $resticArgs = @()
@@ -171,7 +158,7 @@ function Get-ResticArgs {
         $resticArgs += @('-e', 'RESTIC_REPOSITORY', '-e', 'AWS_ACCESS_KEY_ID', '-e', 'AWS_SECRET_ACCESS_KEY', '-e', 'AWS_DEFAULT_REGION')
     } else {
         $dir = (Resolve-Path -LiteralPath $repo).Path
-        if (-not (Test-Path -LiteralPath (Join-Path $dir 'config') -PathType Leaf)) { throw "$dir bukan repositori restic (file config tidak ada)" }
+        if (-not (Test-Path -LiteralPath (Join-Path $dir 'config') -PathType Leaf)) { throw "$dir is not a restic repository (config file missing)" }
         $resticArgs += @('-v', "${dir}:/var/lib/olt-backup-repo", '-e', 'RESTIC_REPOSITORY=/var/lib/olt-backup-repo')
     }
     $resticArgs += @('-e', 'RESTIC_PASSWORD')
@@ -184,12 +171,12 @@ function Get-ResticArgs {
 
 function Assert-Config {
     if (-not (Test-Path -LiteralPath $EnvFile)) {
-        throw 'docker/.env belum ada. Jalankan: .\make.ps1 gen-secrets'
+        throw 'docker/.env is missing. Run: .\make.ps1 gen-secrets'
     }
     foreach ($name in $SecretNames) {
         $path = Join-Path $SecretsDir $name
         if (-not (Test-Path -LiteralPath $path) -or (Get-Item -LiteralPath $path).Length -eq 0) {
-            throw "Secret $name belum ada. Jalankan: .\make.ps1 gen-secrets"
+            throw "Secret $name is missing. Run: .\make.ps1 gen-secrets"
         }
     }
     $csadminSigningKey = Join-Path $SecretsDir 'csadmin_signing_key'
@@ -199,16 +186,16 @@ function Assert-Config {
     $placeholders = Select-String -LiteralPath $EnvFile -Pattern '=CHANGE_ME' -SimpleMatch
     if ($placeholders) {
         $placeholders | ForEach-Object { Write-Host $_.Line }
-        throw 'docker/.env masih berisi CHANGE_ME.'
+        throw 'docker/.env still contains CHANGE_ME.'
     }
     if ($DeployProfile -ne 'dev') {
         foreach ($key in @('PROXY_DOMAIN', 'ACME_EMAIL')) {
-            if (-not (Get-EnvValue $key)) { throw "Profil ${DeployProfile}: $key wajib diisi di docker/.env" }
+            if (-not (Get-EnvValue $key)) { throw "Profile ${DeployProfile}: $key is required in docker/.env" }
         }
         foreach ($key in @('AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE', 'EDGE_WS_PER_IP')) {
             $limit = Get-EnvValue $key
             if ($limit -match '^\d+$' -and [int]$limit -lt 1000) {
-                throw "Profil ${DeployProfile}: $key=$limit di docker/.env terlalu kecil (minimal 1000, docs/PRODUCTION.md Batas & rate limit)"
+                throw "Profile ${DeployProfile}: $key=$limit in docker/.env is too low (minimum 1000, see docs/PRODUCTION.md 'Batas & rate limit')"
             }
         }
     }
@@ -217,83 +204,83 @@ function Assert-Config {
 switch ($Target) {
     'help' {
         Write-Host @'
-  Profil: -Profile dev (default) | single | cluster
+  Profile: -Profile dev (default) | single | cluster
 
-  up            Build & jalankan stack, tunggu healthy
-  down          Hentikan semua service (data tetap ada)
-  logs          Ikuti log (filter: -Service auth-bridge)
-  ps            Status service
-  reset         HAPUS semua volume (DB & storage), lalu naik ulang (-Yes)
-  migrate       Jalankan migrasi baru di supabase/migrations
-  seed          Isi data dummy development
-  test          Tes backend (pgTAP + Go)
-  test-db       Tes pgTAP (supabase/tests)
-  test-bridge   Unit test auth-bridge (Go, di container)
-  test-flutter  Analyze + unit/widget test package Flutter (butuh Flutter SDK)
-  test-flutter-it  Integration test package Flutter ke stack lokal
-  e2e-windows   E2E app example di Windows (butuh Visual Studio)
-  web-example   App example versi web di http://localhost:8086 (?user=sari_invest)
-  license-audit Audit lisensi dependensi runtime Flutter (tolak GPL/AGPL)
-  perf-flutter  Tes performa scroll Flutter (repository palsu, Windows profile; $env:PERF_DEVICE untuk Android)
-  smoke         Smoke test end-to-end lewat Kong (butuh seed + mode mock)
-  backup        Backup DB (+ file storage) ke folder backups/
-  restore       Restore DB: -File olt-YYYYMMDD-HHMMSS.dump -Yes
-  gen-secrets   Buat docker/secrets/ + docker/.env (idempoten; -Force membuat ulang semua)
-  anon-key      Cetak ANON_KEY untuk build app Flutter
-  admin-up      Nyalakan Studio (profil single: lewat SSH tunnel ke 127.0.0.1:8000)
-  admin-down    Matikan Studio lagi (profil single)
-  psql          Buka psql ke DB sebagai postgres
+  up            Build and start the stack, wait until healthy
+  down          Stop all services (data is kept)
+  logs          Follow logs (filter: -Service auth-bridge)
+  ps            Service status
+  reset         DELETE all volumes (DB & storage), then start again (-Yes)
+  migrate       Apply new migrations from supabase/migrations
+  seed          Load development dummy data
+  test          Backend tests (pgTAP + Go)
+  test-db       pgTAP tests (supabase/tests)
+  test-bridge   auth-bridge unit tests (Go, in a container)
+  test-flutter  Analyze + unit/widget tests of the Flutter package (needs the Flutter SDK)
+  test-flutter-it  Flutter package integration tests against the local stack
+  e2e-windows   Example app E2E on Windows (needs Visual Studio)
+  web-example   Web build of the example app at http://localhost:8086 (?user=sari_invest)
+  license-audit License audit of Flutter runtime dependencies (rejects GPL/AGPL)
+  perf-flutter  Flutter scroll performance test (fake repositories, Windows profile mode; $env:PERF_DEVICE for Android)
+  smoke         End-to-end smoke test through Kong (needs seed + mock mode)
+  backup        Back up the DB (+ storage files) to backups/
+  restore       Restore the DB: -File olt-YYYYMMDD-HHMMSS.dump -Yes
+  gen-secrets   Create docker/secrets/ + docker/.env (idempotent; -Force regenerates everything)
+  anon-key      Print ANON_KEY for Flutter app builds
+  admin-up      Start Studio (single profile: through an SSH tunnel to 127.0.0.1:8000)
+  admin-down    Stop Studio again (single profile)
+  psql          Open psql to the DB as postgres
 
-  OLT dummy (development/testing), jalankan stack dengan: .\make.ps1 up -DummyOlt
-  dummy-token   Token sosial (JWT) OLT dummy untuk exchange: -User budi_santoso [-Ttl 5m]
-  smoke-dummy   Smoke test auth-bridge mode jwt vs token sosial OLT dummy
-  test-dummy-olt  Unit test OLT dummy (Go, di container)
-  test-nasabah-gateway  Unit test gateway menu Nasabah (Go, di container)
-  test-notifier  Unit test layanan push notifier (Go, di container)
-  test-janitor   Unit test pembersih file storage (Go, di container)
-  test-media     Unit test pintu upload media nasabah (Go, di container)
-  test-sentinel  Unit test pemantau sistem + alert (Go, di container)
-  test-healer    Unit test restart otomatis container unhealthy (Go, di container)
-  test-backup    Unit test layanan backup (Go, di container)
-  test-integration  Unit test gateway integrasi OLT (Go, di container)
-  test-link-preview  Unit test pratinjau link (Go, di container)
-  test-classifier  Unit test classifier NSFW (Go + cgo, di container)
-  check-go-comments  Pastikan kode Go tanpa komentar (selain directive)
-  secrets-scan   Pindai riwayat git dengan gitleaks (.gitleaks.toml)
-  backup-snapshots  Daftar snapshot backup (restic) + rentang waktu PITR
-  restore-pitr   Pulihkan DB ke waktu tertentu: -At 2026-11-03T10:15:00+07:00 -Yes (env RESTIC_*, AWS_* untuk S3; docs/backup)
-  test-flutter-it-dummy  Integration test Flutter: login lewat OLT dummy
-  e2e-windows-dummy      E2E app example: form login OLT dummy
+  Dummy OLT (development/testing), start the stack with: .\make.ps1 up -DummyOlt
+  dummy-token   Dummy OLT social token (JWT) for the exchange: -User budi_santoso [-Ttl 5m]
+  smoke-dummy   Smoke test of auth-bridge jwt mode with dummy OLT social tokens
+  test-dummy-olt  Dummy OLT unit tests (Go, in a container)
+  test-nasabah-gateway  Customer menu gateway unit tests (Go, in a container)
+  test-notifier  Push notifier unit tests (Go, in a container)
+  test-janitor   Storage file janitor unit tests (Go, in a container)
+  test-media     Customer media upload gateway unit tests (Go, in a container)
+  test-sentinel  System monitor + alert unit tests (Go, in a container)
+  test-healer    Unhealthy container auto-restart unit tests (Go, in a container)
+  test-backup    Backup service unit tests (Go, in a container)
+  test-integration  OLT integration gateway unit tests (Go, in a container)
+  test-link-preview  Link preview unit tests (Go, in a container)
+  test-classifier  NSFW classifier unit tests (Go + cgo, in a container)
+  check-go-comments  Ensure Go code has no comments (other than directives)
+  secrets-scan   Scan git history with gitleaks (.gitleaks.toml)
+  backup-snapshots  List backup snapshots (restic) + PITR time range
+  restore-pitr   Restore the DB to a point in time: -At 2026-11-03T10:15:00+07:00 -Yes (env RESTIC_*, AWS_* for S3; docs/backup)
+  test-flutter-it-dummy  Flutter integration test: login through the dummy OLT
+  e2e-windows-dummy      Example app E2E: dummy OLT login form
 
-  Customer service lewat chat (dev: selalu aktif; produksi: -Profile single -Cs)
-  smoke-cs      Smoke test CS chat end-to-end lewat API asli (butuh up -DummyOlt)
-  cs-race       Tes rebutan klaim tiket CS: DB langsung + 3 replika PostgREST khusus tes
-  cs-demo       Halaman demo CS (nasabah + panel agen) di http://localhost:8082 (butuh up -DummyOlt)
-  cs-staff      Akun staf dev (CS, super admin, kepatuhan) di scripts/cs-demo/runtime/staff.json
-  cs-bootstrap-admin  Super admin web CS pertama: -Email nama@domain -Name "Nama" [-Force] [-Profile single]
-  cs-console-react  Web CS React (container nginx) di http://localhost:8085 (butuh up -DummyOlt)
-  test-cs-console   Lint, typecheck, unit test, build, ukuran bundle, lisensi web CS React (di container Node)
-  e2e-cs-console    E2E Playwright web CS React vs stack dev (butuh up -DummyOlt, Node 24 + Chromium Playwright)
+  Chat customer service (dev: always on; production: -Profile single -Cs)
+  smoke-cs      End-to-end CS chat smoke test through the real API (needs up -DummyOlt)
+  cs-race       CS ticket claim race test: direct DB + 3 test-only PostgREST replicas
+  cs-demo       CS demo page (customer + agent panel) at http://localhost:8082 (needs up -DummyOlt)
+  cs-staff      Dev staff accounts (CS, super admin, compliance) in scripts/cs-demo/runtime/staff.json
+  cs-bootstrap-admin  First web CS super admin: -Email name@domain -Name "Name" [-Force] [-Profile single]
+  cs-console-react  React web CS (nginx container) at http://localhost:8085 (needs up -DummyOlt)
+  test-cs-console   React web CS lint, typecheck, unit tests, build, bundle size, licenses (in a Node container)
+  e2e-cs-console    Playwright E2E of the React web CS against the dev stack (needs up -DummyOlt, Node 24 + Playwright Chromium)
 
-  Uji keamanan, beban, dan chaos (hanya stack dev: .\make.ps1 up -DummyOlt; docs/testing/README.md)
-  testkit           Build image alat uji (k6, tokengen, psql, docker CLI)
-  test-security     Uji otorisasi, konfigurasi edge statis, routing produksi
-  test-zap          OWASP ZAP baseline pasif (opsional) ke web CS dan API dev
-  scan-deps         Pindai kerentanan (govulncheck, npm audit, osv-scanner, Trivy) [-Strict] [-ThirdParty], butuh Git Bash
-  load-test         Uji beban k6 pembukaan pasar: -Load smoke|step|spike|light
-  load-integration  Uji beban API integrasi OLT (notify + siaran, inbox saja)
-  chaos-test        Uji chaos di bawah beban ringan [-Experiments "realtime valkey"]
-  loadtest-cleanup  Hapus data uji lt_* [-DryRun]
+  Security, load and chaos tests (dev stack only: .\make.ps1 up -DummyOlt; docs/testing/README.md)
+  testkit           Build the test image (k6, tokengen, psql, docker CLI)
+  test-security     Authorization probes, static edge config, production routing
+  test-zap          Passive OWASP ZAP baseline (optional) against web CS and the dev API
+  scan-deps         Vulnerability scan (govulncheck, npm audit, osv-scanner, Trivy) [-Strict] [-ThirdParty], needs Git Bash
+  load-test         k6 market-open load test: -Load smoke|step|spike|light
+  load-integration  OLT integration API load test (notify + broadcast, inbox only)
+  chaos-test        Chaos tests under light load [-Experiments "realtime valkey"]
+  loadtest-cleanup  Delete lt_* test data [-DryRun]
 '@
     }
     'up' {
         Assert-Config
         if ($DeployProfile -eq 'cluster') {
-            throw 'Profil cluster dijalankan di manager Swarm (Linux): make up PROFILE=cluster. Lihat docs/scaling.md.'
+            throw 'The cluster profile runs on a Swarm manager (Linux): make up PROFILE=cluster. See docs/scaling.md.'
         }
         Invoke-Compose @('up', '-d', '--build', '--wait', '--wait-timeout', '300', '--remove-orphans')
         Invoke-Compose @('ps')
-        Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profil $DeployProfile)"
+        Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profile $DeployProfile)"
     }
     'down' { Invoke-Compose @('--profile', 'admin', '--profile', 'cs', 'down') }
     'logs' {
@@ -304,7 +291,7 @@ switch ($Target) {
     'ps' { Invoke-Compose @('ps') }
     'reset' {
         Assert-Config
-        if (-not $Yes) { throw 'Ini MENGHAPUS seluruh data DB & storage. Ulangi dengan -Yes' }
+        if (-not $Yes) { throw 'This DELETES all DB & storage data. Re-run with -Yes' }
         Invoke-Compose @('--profile', 'admin', 'down', '-v', '--remove-orphans')
         & $PSCommandPath up -Profile $DeployProfile -DummyOlt:$DummyOlt
     }
@@ -361,12 +348,11 @@ switch ($Target) {
             Invoke-Native 'flutter' @('build', 'web', '--release', '--no-web-resources-cdn', '--pwa-strategy=none',
                                       "--dart-define=OLT_SOCIAL_ANON_KEY=$anon")
         } finally { Pop-Location }
-        # Server statis untuk build/web; container lama diganti. Stop: docker rm -f olt-web-example
         if (& docker ps -aq --filter 'name=^olt-web-example$') { Invoke-Docker @('rm', '-f', 'olt-web-example') }
         Invoke-Docker @('run', '-d', '--name', 'olt-web-example', '--restart', 'unless-stopped',
                         '-p', '127.0.0.1:8086:8086', '-v', "$(Join-Path $example 'build/web'):/srv:ro",
                         $WebImage, 'caddy', 'file-server', '--root', '/srv', '--listen', ':8086')
-        Write-Host 'App web: http://localhost:8086  (langsung login: http://localhost:8086/?user=sari_invest)'
+        Write-Host 'Web app: http://localhost:8086  (direct login: http://localhost:8086/?user=sari_invest)'
     }
     'license-audit' {
         Push-Location $PackageDir
@@ -391,12 +377,12 @@ switch ($Target) {
     }
     'restore' {
         Assert-Config
-        if (-not $File) { throw 'Sebutkan file: .\make.ps1 restore -File olt-YYYYMMDD-HHMMSS.dump -Yes' }
+        if (-not $File) { throw 'Specify the file: .\make.ps1 restore -File olt-YYYYMMDD-HHMMSS.dump -Yes' }
         $confirm = if ($Yes) { 'yes' } else { 'no' }
         Invoke-Compose @('run', '--rm', '-e', "CONFIRM=$confirm", 'tools', 'restore', $File)
     }
     { $_ -in @('gen-secrets', 'gen-keys') } {
-        # Di luar compose: compose menolak jalan bila file secret belum ada.
+        # Runs outside compose because compose refuses to start while secret files are missing.
         Invoke-Docker @('build', '-q', '-t', $ToolsImage, 'docker/tools') | Out-Null
         $genArgs = @('run', '--rm', '-v', "$(Join-Path $PSScriptRoot 'docker'):/olt/docker",
                      '-v', "$(Join-Path $PSScriptRoot 'scripts'):/olt/scripts:ro",
@@ -409,7 +395,6 @@ switch ($Target) {
     'admin-down' { Invoke-Compose @('--profile', 'admin', 'stop', 'studio', 'meta') }
     'psql' { Assert-Config; Invoke-Tools @('psql') }
 
-    # --- OLT dummy -----------------------------------------------------------------
     'dummy-token' {
         Assert-Config
         $tokenArgs = @('run', '--rm', '--no-deps', '-T', 'dummy-olt', 'token', $User, '-social')
@@ -452,7 +437,7 @@ switch ($Target) {
         Assert-Config
         Update-StaffAccounts
         Invoke-Compose @('up', '-d', '--build', '--wait', 'traefik', 'cs-console')
-        Write-Host 'Web CS React: http://localhost:8085  (akun dev: scripts/cs-demo/runtime/staff.json)'
+        Write-Host 'React web CS: http://localhost:8085  (dev accounts: scripts/cs-demo/runtime/staff.json)'
     }
     'test-cs-console' {
         $src = Join-Path $PSScriptRoot 'apps/cs-console-react'
@@ -494,9 +479,9 @@ switch ($Target) {
     }
     'restore-pitr' {
         Assert-Config
-        if (-not $At) { throw 'Sebutkan waktu: .\make.ps1 restore-pitr -At 2026-11-03T10:15:00+07:00 -Yes (atau -At latest)' }
-        if (-not $Yes) { throw 'Isi database diganti hasil restore. Ulangi dengan -Yes' }
-        if (-not $env:RESTIC_REPOSITORY) { throw 'Set $env:RESTIC_REPOSITORY (s3:https://host/bucket/prefix atau folder lokal, mis. backups\restic), $env:RESTIC_PASSWORD (atau RESTIC_PASSWORD_FILE); untuk S3 juga $env:AWS_ACCESS_KEY_ID, $env:AWS_SECRET_ACCESS_KEY' }
+        if (-not $At) { throw 'Specify the time: .\make.ps1 restore-pitr -At 2026-11-03T10:15:00+07:00 -Yes (or -At latest)' }
+        if (-not $Yes) { throw 'The database contents will be replaced by the restore. Re-run with -Yes' }
+        if (-not $env:RESTIC_REPOSITORY) { throw 'Set $env:RESTIC_REPOSITORY (s3:https://host/bucket/prefix or a local folder, e.g. backups\restic), $env:RESTIC_PASSWORD (or RESTIC_PASSWORD_FILE); for S3 also $env:AWS_ACCESS_KEY_ID, $env:AWS_SECRET_ACCESS_KEY' }
         $resticArgs = Get-ResticArgs
         Invoke-Compose @('build', 'backup')
         Invoke-Compose @('stop')
@@ -504,19 +489,19 @@ switch ($Target) {
         $runArgs += @('olt-social/backup:0.2.0', 'restore', '--target-time', $At, '--data-dir', '/restore', '--wipe')
         Invoke-Docker $runArgs
         Invoke-Compose @('up', '-d', 'db')
-        Write-Host 'Menunggu recovery selesai (pantau: .\make.ps1 logs -Service db)...'
+        Write-Host 'Waiting for recovery to finish (follow: .\make.ps1 logs -Service db)...'
         $ready = $false
         for ($i = 0; $i -lt 720 -and -not $ready; $i++) {
             & docker @($Compose + @('exec', '-T', 'db', 'pg_isready', '-U', 'postgres', '-h', 'localhost', '-q')) 2>$null
             if ($LASTEXITCODE -eq 0) { $ready = $true } else { Start-Sleep -Seconds 5 }
         }
-        if (-not $ready) { throw 'Database belum siap; lihat .\make.ps1 logs -Service db' }
+        if (-not $ready) { throw 'Database not ready; see .\make.ps1 logs -Service db' }
         Invoke-Compose @('exec', '-T', 'db', 'psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1',
                          '-c', 'ALTER SYSTEM RESET restore_command', '-c', 'ALTER SYSTEM RESET recovery_target_time',
                          '-c', 'ALTER SYSTEM RESET recovery_target_action', '-c', 'ALTER SYSTEM RESET recovery_target_timeline',
                          '-c', 'SELECT pg_reload_conf()')
         Invoke-Compose @('exec', '-T', '-u', 'postgres', 'db', 'rm', '-rf', '/var/lib/postgresql/data/restore_wal')
-        Write-Host "Database dipulihkan ke $At. Periksa data, lalu: .\make.ps1 up"
+        Write-Host "Database restored to $At. Check the data, then: .\make.ps1 up"
     }
     'testkit' { Invoke-Testkit @() }
     'test-security' { Assert-Config; Invoke-Testkit @('security') }
@@ -532,7 +517,7 @@ switch ($Target) {
     'chaos-test' {
         Assert-Config
         $chaosArgs = @('chaos')
-        if ($Experiments) { $chaosArgs += ($Experiments -split 's+' | Where-Object { $_ }) }
+        if ($Experiments) { $chaosArgs += ($Experiments -split '\s+' | Where-Object { $_ }) }
         Invoke-Testkit $chaosArgs
     }
     'loadtest-cleanup' {

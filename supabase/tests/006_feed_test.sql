@@ -1,6 +1,4 @@
--- get_feed: scope global/following/stock/user, keyset pagination, blokir, validasi.
--- Post tes diberi created_at di masa depan agar selalu berada di urutan teratas
--- (database dev juga berisi data seed).
+-- Test posts get a future created_at so they always sort first (the dev database also holds seed data).
 begin;
 select plan(13);
 

@@ -125,22 +125,22 @@ func Load() (Config, error) {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
 	}
 	if len(cfg.JWTSecret) < 32 {
-		errs = append(errs, errors.New("JWT_SECRET wajib diisi, minimal 32 karakter"))
+		errs = append(errs, errors.New("JWT_SECRET is required and must be at least 32 characters"))
 	}
 	if _, err := url.ParseRequestURI(cfg.PostgRESTURL); err != nil {
-		errs = append(errs, fmt.Errorf("POSTGREST_URL tidak valid: %w", err))
+		errs = append(errs, fmt.Errorf("POSTGREST_URL is invalid: %w", err))
 	}
 	if cfg.IsProduction() && cfg.ValkeyAddr == "" {
-		errs = append(errs, errors.New("VALKEY_ADDR wajib diisi saat APP_ENV=production (rate limit & cache harus dibagi antar replika)"))
+		errs = append(errs, errors.New("VALKEY_ADDR is required when APP_ENV=production (rate limit and cache must be shared across replicas)"))
 	}
 	if len(cfg.InstanceID) > 100 {
-		errs = append(errs, errors.New("INSTANCE_ID maksimal 100 karakter"))
+		errs = append(errs, errors.New("INSTANCE_ID must be at most 100 characters"))
 	}
 	if cfg.HeartbeatInterval < 5*time.Second || cfg.HeartbeatInterval > time.Minute {
-		errs = append(errs, errors.New("HEARTBEAT_INTERVAL harus 5–60 detik"))
+		errs = append(errs, errors.New("HEARTBEAT_INTERVAL must be between 5s and 60s"))
 	}
 	if cfg.OpsPort == cfg.Port {
-		errs = append(errs, errors.New("OPS_PORT tidak boleh sama dengan PORT"))
+		errs = append(errs, errors.New("OPS_PORT must differ from PORT"))
 	}
 
 	proxies, err := parsePrefixes(envOr("TRUSTED_PROXIES", "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7"))
@@ -152,7 +152,7 @@ func Load() (Config, error) {
 	switch cfg.OLT.Mode {
 	case OLTModeMock:
 		if cfg.IsProduction() {
-			errs = append(errs, errors.New("OLT_MODE=mock tidak boleh dipakai saat APP_ENV=production"))
+			errs = append(errs, errors.New("OLT_MODE=mock is not allowed when APP_ENV=production"))
 		}
 	case OLTModeWebSocket:
 		errs = append(errs, validateWebSocket(cfg.OLT)...)
@@ -162,7 +162,7 @@ func Load() (Config, error) {
 			errs = append(errs, err)
 		}
 	default:
-		errs = append(errs, fmt.Errorf("OLT_MODE tidak dikenal: %q (jwt|mock|websocket)", cfg.OLT.Mode))
+		errs = append(errs, fmt.Errorf("unknown OLT_MODE: %q (jwt|mock|websocket)", cfg.OLT.Mode))
 	}
 
 	return cfg, errors.Join(errs...)
@@ -172,16 +172,16 @@ func validateWebSocket(o OLTConfig) []error {
 	var errs []error
 	u, err := url.Parse(o.WebSocketURL)
 	if o.WebSocketURL == "" || err != nil || (u.Scheme != "ws" && u.Scheme != "wss") {
-		errs = append(errs, errors.New("OLT_WS_URL wajib berupa URL ws:// atau wss:// saat OLT_MODE=websocket"))
+		errs = append(errs, errors.New("OLT_WS_URL must be a ws:// or wss:// URL when OLT_MODE=websocket"))
 	}
 	var tmpl any
 	if err := json.Unmarshal([]byte(o.LoginTemplate), &tmpl); err != nil {
-		errs = append(errs, fmt.Errorf("OLT_WS_LOGIN_TEMPLATE harus JSON valid: %w", err))
+		errs = append(errs, fmt.Errorf("OLT_WS_LOGIN_TEMPLATE must be valid JSON: %w", err))
 	} else if !strings.Contains(o.LoginTemplate, TokenPlaceholder) {
-		errs = append(errs, fmt.Errorf("OLT_WS_LOGIN_TEMPLATE harus memuat %s", TokenPlaceholder))
+		errs = append(errs, fmt.Errorf("OLT_WS_LOGIN_TEMPLATE must contain %s", TokenPlaceholder))
 	}
 	if o.UserIDPath == "" {
-		errs = append(errs, errors.New("OLT_WS_USER_ID_PATH wajib diisi"))
+		errs = append(errs, errors.New("OLT_WS_USER_ID_PATH is required"))
 	}
 	return errs
 }
@@ -189,7 +189,7 @@ func validateWebSocket(o OLTConfig) []error {
 func readJWKS() ([]byte, error) {
 	path := os.Getenv("OLT_JWT_JWKS_FILE")
 	if path == "" {
-		return nil, errors.New("OLT_JWT_JWKS_FILE wajib diisi saat OLT_MODE=jwt (kunci publik OLT dalam format JWKS)")
+		return nil, errors.New("OLT_JWT_JWKS_FILE is required when OLT_MODE=jwt (OLT public keys in JWKS format)")
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -256,7 +256,7 @@ func intEnvMin(key string, def, floor int, errs *[]error) int {
 	v := envOr(key, strconv.Itoa(def))
 	n, err := strconv.Atoi(v)
 	if err != nil || n < floor {
-		*errs = append(*errs, fmt.Errorf("%s harus bilangan bulat >= %d, dapat %q", key, floor, v))
+		*errs = append(*errs, fmt.Errorf("%s must be a whole number >= %d, got %q", key, floor, v))
 		return def
 	}
 	return n

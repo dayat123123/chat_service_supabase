@@ -79,7 +79,7 @@ class Boundary extends React.Component<BoundaryProps, BoundaryState> {
   }
 
   override componentDidCatch(error: unknown) {
-    logger.error(`Gangguan di bagian ${this.props.label}`, error)
+    logger.error(`Section ${this.props.label} crashed`, error)
   }
 
   override render() {

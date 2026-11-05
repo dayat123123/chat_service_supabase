@@ -11,7 +11,7 @@ import { prepareLanguage } from '@/i18n'
 import { initSupabase } from '@/lib/supabase'
 
 const container = document.getElementById('root')
-if (!container) throw new Error('Elemen #root tidak ada')
+if (!container) throw new Error('Element #root is missing')
 
 const root = createRoot(container)
 const result = readEnv()

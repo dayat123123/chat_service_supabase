@@ -104,13 +104,13 @@ for (const [path, pkg] of installed(modules)) {
   const shipped = runtime.has(path)
   summary.set(license, (summary.get(license) ?? 0) + 1)
   if (forbidden.test(license)) {
-    problems.push(`${id}: ${license} (dilarang)`)
+    problems.push(`${id}: ${license} (forbidden)`)
     continue
   }
   if (accepted(license, permissive)) continue
   if (pkg.name.startsWith('@fontsource') && accepted(license, fonts)) continue
   if (!shipped && accepted(license, buildOnly)) continue
-  problems.push(`${id}: ${license}${shipped ? ' (ikut ke bundle)' : ''}`)
+  problems.push(`${id}: ${license}${shipped ? ' (shipped in the bundle)' : ''}`)
 }
 
 for (const [license, count] of [...summary.entries()].sort((a, b) => b[1] - a[1])) {
@@ -118,7 +118,7 @@ for (const [license, count] of [...summary.entries()].sort((a, b) => b[1] - a[1]
 }
 
 if (problems.length > 0) {
-  console.error(`\nLisensi tidak diizinkan:\n${problems.map((item) => `  - ${item}`).join('\n')}`)
+  console.error(`\nLicenses not allowed:\n${problems.map((item) => `  - ${item}`).join('\n')}`)
   process.exit(1)
 }
-console.log(`\n${runtime.size} paket runtime dan seluruh paket dev lolos kebijakan lisensi.`)
+console.log(`\n${runtime.size} runtime packages and all dev packages pass the license policy.`)

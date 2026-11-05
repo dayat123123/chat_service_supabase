@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
-# Menjalankan tes pgTAP di supabase/tests/*.sql memakai pg_prove.
-# Setiap file tes membungkus dirinya dengan begin; ... rollback; sehingga
-# database tidak berubah. Helper schema `tests` dibuat sebelum tes dan
-# dihapus sesudahnya.
+# Every test file wraps itself in begin; ... rollback; so the database is left unchanged.
 set -uo pipefail
 
 TESTS_DIR="${TESTS_DIR:-/olt/supabase/tests}"
@@ -15,7 +12,7 @@ psql_q() {
 shopt -s nullglob
 files=("$TESTS_DIR"/*.sql)
 if [ ${#files[@]} -eq 0 ]; then
-  echo "test-db: belum ada file tes di $TESTS_DIR"
+  echo "test-db: no test files in $TESTS_DIR"
   exit 0
 fi
 

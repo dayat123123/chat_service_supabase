@@ -135,7 +135,7 @@ func TestLoopTicksAndLogsOncePerStateChange(t *testing.T) {
 	cancel()
 	<-done
 	out := logs.String()
-	if strings.Count(out, "heartbeat gagal") != 1 || strings.Count(out, "heartbeat berhasil lagi") != 1 {
+	if strings.Count(out, "heartbeat failed") != 1 || strings.Count(out, "heartbeat works again") != 1 {
 		t.Fatalf("logs = %s", out)
 	}
 	if probes.Load() < 5 {

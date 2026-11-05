@@ -1,4 +1,4 @@
-# Skrip & config yang dijalankan di container Linux wajib LF, walau di-checkout di Windows.
+# Scripts and configs that run in Linux containers must stay LF even on a Windows checkout.
 * text=auto
 *.sh text eol=lf
 *.sql text eol=lf

@@ -1,5 +1,3 @@
--- Privasi & UU PDP (0015): mute di feed, hapus akun, ekspor data, profil yang
--- dibuat ulang, retensi otomatis, promosi akun baru.
 begin;
 select plan(26);
 
@@ -23,7 +21,6 @@ insert into mutes (muter_id, muted_id) values (auth.uid(), :'budi');
 insert into muted_stocks (user_id, stock_code) values (auth.uid(), 'GOTO');
 insert into muted_keywords (user_id, keyword) values (auth.uid(), 'rahasia');
 
--- Mute disaring di server ------------------------------------------------------
 select is((select count(*)::int from get_feed('global', null, null, 50) f where f.author_id = :'budi'), 0,
   'Feed global tanpa post user yang di-mute');
 select ok((select count(*) from get_feed('user', null, null, 50, :'budi')) >= 1,
@@ -45,7 +42,6 @@ select tests.authenticate_as(:'budi');
 select is((select count(*)::int from mutes where muted_id = :'budi'), 0, 'User yang di-mute tidak tahu dirinya di-mute');
 reset role;
 
--- Ekspor data -------------------------------------------------------------------
 select tests.authenticate_as(:'cici');
 select ok((select export_my_data() ?& array['profile', 'posts', 'comments', 'messages', 'consents']),
   'Ekspor data memuat semua bagian');
@@ -56,7 +52,6 @@ reset role;
 select is((select count(*)::int from private.personal_data_access_log where subject_id = :'cici' and purpose = 'self_export'),
   3, 'Setiap ekspor dicatat');
 
--- Hapus akun ------------------------------------------------------------------------
 select tests.authenticate_as(:'cici');
 select lives_ok($$select delete_my_account()$$, 'User menghapus akunnya');
 reset role;
@@ -71,7 +66,6 @@ select is((select count(*)::int from private.user_private where user_id = :'cici
 select is((select count(*)::int from private.storage_cleanup_queue where prefix like '%' || :'cici' || '%'), 2,
   'File storage masuk antrean pembersihan');
 
--- Login lagi lewat OLT setelah akun dihapus: dibuat ulang sebagai akun baru --------
 select upsert_olt_profile(:'cici', 'test:' || :'cici', 'cici_kembali', 'Cici') as relogin \gset
 select ok((select deleted_at is null and trust_level = 0 and username::text = 'cici_kembali'
            from profiles where id = :'cici'), 'Akun yang dihapus dibuat ulang bersih (trust_level 0)');
@@ -79,7 +73,6 @@ insert into private.user_sanctions (user_id, kind, reason) values (:'ani', 'ban'
 select is((upsert_olt_profile(:'ani', 'test:' || :'ani', 'pv_ani') ->> 'banned')::boolean, true,
   'upsert_olt_profile mengembalikan status ban');
 
--- Retensi & promosi akun baru ----------------------------------------------------
 insert into notifications (user_id, actor_id, type, created_at) values
   (:'ani', :'budi', 'follow', now() - interval '100 days'),
   (:'ani', :'budi', 'like', now());

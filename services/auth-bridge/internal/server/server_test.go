@@ -302,7 +302,7 @@ func TestAccountLinkResultsAreCountedWithoutFailingExchange(t *testing.T) {
 			t.Errorf("metrik tidak memuat %q:\n%s", want, out)
 		}
 	}
-	if !strings.Contains(logs.String(), "gagal menyimpan tautan rekening") {
+	if !strings.Contains(logs.String(), "failed to store account links") {
 		t.Errorf("kegagalan tautan rekening harus dicatat:\n%s", logs.String())
 	}
 }

@@ -1,16 +1,10 @@
-# Profil dev: laptop developer.   make up   (= PROFILE=dev)
-#
-# - Traefik HTTP di http://localhost:8000 (EDGE_HTTP_BIND / EDGE_HTTP_PORT).
-#   Semua path diteruskan, termasuk Studio (login basic-auth Kong).
-# - CORS semua origin (app contoh versi web di http://localhost:8086).
-# - auth-bridge mode mock (token mock:<olt_user_id>:<username>) dan log debug.
-# - Seed data: make seed. OLT dummy: make up DUMMY_OLT=1 (compose.dummy-olt.yml).
+# Developer laptop profile. CORS allows every origin and auth-bridge runs in mock mode, so never
+# use it on a shared server.
 
 services:
   traefik:
     ports:
       - ${EDGE_HTTP_BIND:-127.0.0.1}:${EDGE_HTTP_PORT:-8000}:8000/tcp
-      # Web CS React: http://localhost:8085 (entrypoint `console`).
       - ${EDGE_HTTP_BIND:-127.0.0.1}:${CS_CONSOLE_PORT:-8085}:8085/tcp
     configs:
       - source: traefik-routes-dev
@@ -28,7 +22,7 @@ services:
       APP_ENV: development
       LOG_LEVEL: ${AUTH_BRIDGE_LOG_LEVEL:-debug}
       OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-mock}
-      # Tes & hot reload memakai user yang sama berulang kali. Produksi: 10.
+      # Tests and hot reload log in as the same user repeatedly; production uses 10.
       RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-60}
 
   cs-console:

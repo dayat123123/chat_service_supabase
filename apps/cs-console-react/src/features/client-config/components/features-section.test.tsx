@@ -172,7 +172,7 @@ describe('FeaturesSection', () => {
     const input = await screen.findByLabelText('Android')
     await user.type(input, '2.10.0')
     const row = input.closest('li')
-    if (!row) throw new Error('baris versi tidak ditemukan')
+    if (!row) throw new Error('version row not found')
     await user.click(within(row).getByRole('button', { name: 'Simpan' }))
     const confirm = screen.getByRole('alertdialog', {
       name: 'Wajibkan Android versi 2.10.0 atau lebih baru?',

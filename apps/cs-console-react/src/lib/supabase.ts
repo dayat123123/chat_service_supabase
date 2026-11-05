@@ -56,12 +56,12 @@ export function cachedAccessToken() {
 }
 
 export function supabase(): Client {
-  if (!current) throw new Error('Supabase belum diinisialisasi')
+  if (!current) throw new Error('Supabase is not initialized')
   return current.client
 }
 
 export function appEnv(): AppEnv {
-  if (!current) throw new Error('Supabase belum diinisialisasi')
+  if (!current) throw new Error('Supabase is not initialized')
   return current.env
 }
 

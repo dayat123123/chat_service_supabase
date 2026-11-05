@@ -11,7 +11,7 @@ import (
 	"olt-social/auth-bridge/internal/olt"
 )
 
-var ErrBanned = errors.New("user diblokir dari fitur sosial")
+var ErrBanned = errors.New("user is banned from social features")
 
 type Profile struct {
 	ID          string     `json:"id"`
@@ -90,7 +90,7 @@ func (s *Service) Resolve(ctx context.Context, oltToken string) (id Identity, ca
 		Email:       user.Email,
 	})
 	if err != nil {
-		return Identity{}, false, fmt.Errorf("upsert profil: %w", err)
+		return Identity{}, false, fmt.Errorf("upsert profile: %w", err)
 	}
 	id = Identity{Profile: profile, Accounts: s.linkAccounts(ctx, profile.ID, user.Accounts)}
 	if profile.Banned {
@@ -115,11 +115,11 @@ func (s *Service) linkAccounts(ctx context.Context, profileID string, claim *olt
 	}
 	linker, ok := s.store.(AccountLinker)
 	if !ok {
-		result.Err = errors.New("penyimpan tautan rekening tidak tersedia")
+		result.Err = errors.New("account link store unavailable")
 		return result
 	}
 	if err := linker.ReplaceAccountLinks(ctx, profileID, claim.IDs); err != nil {
-		result.Err = fmt.Errorf("tautan rekening: %w", err)
+		result.Err = fmt.Errorf("account links: %w", err)
 		return result
 	}
 	result.Linked = len(claim.IDs)

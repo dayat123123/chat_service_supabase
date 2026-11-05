@@ -503,8 +503,8 @@ services:
       #      - ::1
       #    deny: []
 
-  ## OLT auth-bridge: tukar token OLT -> JWT Supabase
-  ## Wajib membawa apikey (anon key) agar endpoint tidak bisa dipanggil sembarangan.
+  ## OLT auth-bridge: exchanges an OLT token for a Supabase JWT.
+  ## Requires the anon apikey so the endpoint cannot be called by arbitrary clients.
   - name: bridge-v1
     _comment: 'OLT auth-bridge: /bridge/v1/* -> http://auth-bridge:8080/*'
     url: http://auth-bridge:8080/
@@ -525,7 +525,7 @@ services:
             - admin
             - anon
 
-  ## Upload media nasabah: /media/v1/* -> layanan media (cek isi file, buang EXIF/GPS, lalu ke Storage)
+  ## Customer media upload: the media service checks file content and strips EXIF/GPS before Storage.
   - name: media-v1
     _comment: 'Media: /media/v1/* -> http://media:8080/*'
     url: http://media:8080/
@@ -546,8 +546,8 @@ services:
             - admin
             - anon
 
-  ## Gateway integrasi OLT: /integration/v1/* -> layanan integration (API key integrasi di header
-  ## Authorization diverifikasi layanan itu; apikey anon tetap wajib di Kong).
+  ## OLT integration gateway: the integration service verifies its own API key in the Authorization
+  ## header; Kong still requires the anon apikey.
   - name: integration-v1
     _comment: 'Integrasi OLT: /integration/v1/* -> http://integration:8080/*'
     url: http://integration:8080/

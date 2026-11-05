@@ -1,4 +1,3 @@
--- Post: insert/RLS, parsing $KODE & @mention, edit, rate limit, blokir, soft delete.
 begin;
 select plan(20);
 
@@ -51,16 +50,15 @@ select isnt(
   (select edited_at from posts where id = 'a1000000-0000-4000-8000-000000000001'),
   null, 'edited_at terisi setelah edit');
 
--- Rate limit: 1 post sudah ada, tambah 4 = 5; post ke-6 ditolak.
+-- One post already exists; 4 more make 5, so the 6th is rejected.
 select lives_ok(
   $$insert into posts (author_id, body) select auth.uid(), 'post ' || g from generate_series(1, 4) g$$,
   'Hingga 5 post per menit diizinkan');
--- HTTP 429: body tetap {"code":"PT429","message":"rate_limited"} + header Retry-After.
+-- HTTP 429 keeps the body {"code":"PT429","message":"rate_limited"} plus a Retry-After header.
 select throws_like(
   $$insert into posts (author_id, body) values (auth.uid(), 'post ke-6')$$,
   '%"PT429"%"rate_limited"%Coba lagi dalam%', 'Post ke-6 dalam satu menit ditolak');
 
--- Blokir menyembunyikan post dua arah.
 reset role;
 insert into posts (id, author_id, body) values ('b1000000-0000-4000-8000-000000000001', :'bob', 'Post milik bob');
 insert into posts (id, author_id, body) values ('b1000000-0000-4000-8000-000000000002', :'carol', 'Post milik carol');
@@ -74,7 +72,6 @@ select tests.authenticate_as(:'alice');
 select is((select count(*)::int from posts where id = 'b1000000-0000-4000-8000-000000000001'), 0,
   'User yang diblokir tidak melihat post pemblokir');
 
--- Soft delete.
 select throws_ok(
   $$select delete_post('b1000000-0000-4000-8000-000000000002')$$,
   'PT403', 'forbidden', 'Tidak bisa menghapus post orang lain');

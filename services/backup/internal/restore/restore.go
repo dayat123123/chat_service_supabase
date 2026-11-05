@@ -69,7 +69,7 @@ func Choose(snaps []restic.Snapshot, target time.Time) (Plan, error) {
 		}
 	}
 	if !found {
-		return Plan{}, fmt.Errorf("tidak ada base backup sebelum %s; base tertua %s",
+		return Plan{}, fmt.Errorf("no base backup before %s; the oldest base is %s",
 			target.UTC().Format(time.RFC3339), bases[0].Time.UTC().Format(time.RFC3339))
 	}
 	for i := range wals {
@@ -79,11 +79,11 @@ func Choose(snaps []restic.Snapshot, target time.Time) (Plan, error) {
 		}
 	}
 	if plan.WAL == nil {
-		newest := "belum ada"
+		newest := "none"
 		if len(wals) > 0 {
 			newest = wals[len(wals)-1].Time.UTC().Format(time.RFC3339)
 		}
-		return Plan{}, fmt.Errorf("waktu target %s melewati kiriman WAL terbaru (%s); pilih waktu lebih awal atau latest",
+		return Plan{}, fmt.Errorf("target time %s is after the newest WAL upload (%s); choose an earlier time or latest",
 			target.UTC().Format(time.RFC3339), newest)
 	}
 	return plan, nil
@@ -164,10 +164,10 @@ func EnsureEmpty(dir string, wipe bool) error {
 		return nil
 	}
 	if _, err := os.Stat(filepath.Join(dir, "postmaster.pid")); err == nil {
-		return errors.New("postmaster.pid ada: database masih berjalan atau tidak dimatikan dengan bersih. Hentikan database dulu")
+		return errors.New("postmaster.pid exists: the database is still running or was not shut down cleanly; stop the database first")
 	}
 	if !wipe {
-		return fmt.Errorf("folder %s tidak kosong; tambahkan --wipe untuk menghapus isinya", dir)
+		return fmt.Errorf("directory %s is not empty; add --wipe to delete its contents", dir)
 	}
 	for _, e := range entries {
 		if err := os.RemoveAll(filepath.Join(dir, e.Name())); err != nil {
@@ -213,7 +213,7 @@ func ParseOwner(text string) (int, int, error) {
 	uid, err1 := strconv.Atoi(u)
 	gid, err2 := strconv.Atoi(g)
 	if !ok || err1 != nil || err2 != nil || uid < 0 || gid < 0 {
-		return 0, 0, fmt.Errorf("owner %q harus berbentuk uid:gid", text)
+		return 0, 0, fmt.Errorf("owner %q must be uid:gid", text)
 	}
 	return uid, gid, nil
 }
@@ -233,7 +233,7 @@ func ParseTarget(text string) (time.Time, error) {
 	}
 	t, err := time.Parse(time.RFC3339, text)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("--target-time harus RFC3339 (mis. 2026-11-03T10:00:00+07:00) atau latest")
+		return time.Time{}, fmt.Errorf("--target-time must be RFC3339 (e.g. 2026-11-03T10:00:00+07:00) or latest")
 	}
 	return t, nil
 }

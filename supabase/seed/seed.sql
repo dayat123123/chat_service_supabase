@@ -1,8 +1,5 @@
--- seed.sql - data dummy development (idempoten, aman dijalankan berulang).
---
--- ID user = UUID v5(namespace auth-bridge, olt_user_id), SAMA dengan yang
--- diterbitkan auth-bridge. Jadi token mock berikut langsung login sebagai
--- user di bawah (format: mock:<olt_user_id>:<username>):
+-- Idempotent. User IDs are UUID v5(auth-bridge namespace, olt_user_id), the SAME ids auth-bridge issues,
+-- so these mock tokens (mock:<olt_user_id>:<username>) log in as the users below:
 --   mock:1001:budi_santoso   mock:1002:sari_invest   mock:1003:andi_trader
 --   mock:1004:rina_saham     mock:1005:dewi_cuan     mock:1006:olt_official
 
@@ -14,9 +11,6 @@ as $$
   select extensions.uuid_generate_v5('0b7f6c1e-5a2d-4c8e-9f3b-7d1a2e4c6f80'::uuid, p_olt_user_id);
 $$;
 
--- ---------------------------------------------------------------------------
--- Filter kata (contoh)
--- ---------------------------------------------------------------------------
 insert into public.banned_words (word, action) values
   ('anjing', 'mask'),
   ('bangsat', 'mask'),
@@ -25,9 +19,6 @@ insert into public.banned_words (word, action) values
   ('pasti cuan 100 persen', 'block')
 on conflict (word) do nothing;
 
--- ---------------------------------------------------------------------------
--- User
--- ---------------------------------------------------------------------------
 insert into public.profiles (id, olt_user_id, username, display_name, bio, is_verified)
 select pg_temp.uid(u.olt_id), u.olt_id, u.username, u.display_name, u.bio, u.verified
 from (values
@@ -58,9 +49,7 @@ from (values
 ) as w(u, code)
 on conflict do nothing;
 
--- ---------------------------------------------------------------------------
--- Post (created_at di masa lalu agar feed terlihat alami)
--- ---------------------------------------------------------------------------
+-- Posts use past created_at values so the feed looks natural.
 insert into public.posts (id, author_id, body, sentiment, created_at)
 select p.id::uuid, pg_temp.uid(p.author), p.body, p.sentiment, now() - p.age::interval
 from (values
@@ -97,10 +86,7 @@ from (values
 ) as p(id, author, body, sentiment, age)
 on conflict (id) do nothing;
 
--- ---------------------------------------------------------------------------
--- Thread komentar 5 level di post pertama (+ cabang lain)
--- Disisipkan satu per satu agar path parent selalu sudah ada.
--- ---------------------------------------------------------------------------
+-- Comments are inserted one by one so each parent path already exists.
 insert into public.comments (id, post_id, parent_id, author_id, body, created_at) values
   ('c0000000-0000-4000-8000-000000000001', 'a0000000-0000-4000-8000-000000000001', null,
    pg_temp.uid('1002'), 'Setuju, volume beli asing juga masuk. Tapi RSI sudah mendekati overbought.', now() - interval '5 hours 50 minutes')
@@ -138,9 +124,6 @@ insert into public.comments (id, post_id, parent_id, author_id, body, created_at
    pg_temp.uid('1004'), 'Siap, makasih Pak. Saya cicil dua-duanya.', now() - interval '2 hours 40 minutes')
 on conflict (id) do nothing;
 
--- ---------------------------------------------------------------------------
--- Reaksi
--- ---------------------------------------------------------------------------
 insert into public.reactions (user_id, target_type, target_id)
 select pg_temp.uid(r.u), r.t, r.id::uuid
 from (values
@@ -157,9 +140,6 @@ from (values
 ) as r(u, t, id)
 on conflict do nothing;
 
--- ---------------------------------------------------------------------------
--- Chat: DM Budi-Sari, grup "Diskusi Perbankan", room saham $BBCA
--- ---------------------------------------------------------------------------
 insert into public.chat_rooms (id, type, name, stock_code, direct_key, created_by, created_at)
 values
   ('d0000000-0000-4000-8000-000000000001', 'direct', null, null,

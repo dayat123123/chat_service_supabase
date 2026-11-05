@@ -1,23 +1,19 @@
-# Rahasia - jangan pernah di-commit
+# Secrets: never commit these (docker/secrets/ also holds the old .env backups).
 .env
 *.env
 !.env.example
 docker/.env.old
-# Docker secrets (make gen-secrets), termasuk cadangan .env lama
 docker/secrets/
-# Kode lama (csAdmin, notifEngine, app Flutter csAdmin): berisi kredensial default, hanya referensi lokal
+# Legacy code (csAdmin, notifEngine, csAdmin Flutter app) contains default credentials: local reference only.
 legacy/
 
-# Docker volume lokal (jika ada bind mount)
 docker/volumes/db/data/
 docker/volumes/storage/
 docker/volumes/snippets/*
 !docker/volumes/snippets/.gitkeep
 
-# Go
 services/auth-bridge/bin/
 
-# Flutter / Dart
 .dart_tool/
 .packages
 build/
@@ -26,16 +22,14 @@ build/
 pubspec_overrides.yaml
 coverage/
 
-# IDE / OS
 .idea/
 .vscode/
 *.iml
 .DS_Store
 Thumbs.db
 
-# Token agen uji untuk halaman demo CS (make cs-demo)
+# Test agent tokens and dev staff passwords (make cs-demo, make cs-staff).
 scripts/cs-demo/runtime/
 
-# Backup lokal
 backups/*
 !backups/.gitkeep

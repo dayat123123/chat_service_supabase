@@ -25,10 +25,10 @@ type Claims struct {
 }
 
 var (
-	ErrMalformed = errors.New("format token tidak valid")
-	ErrSignature = errors.New("tanda tangan token tidak valid")
-	ErrExpired   = errors.New("token kedaluwarsa")
-	ErrRevoked   = errors.New("token sudah logout")
+	ErrMalformed = errors.New("malformed token")
+	ErrSignature = errors.New("invalid token signature")
+	ErrExpired   = errors.New("token expired")
+	ErrRevoked   = errors.New("token logged out")
 )
 
 type Issuer struct {

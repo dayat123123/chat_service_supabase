@@ -31,8 +31,8 @@ type User struct {
 }
 
 var (
-	ErrInvalidCredentials = errors.New("username/email atau password salah")
-	ErrSuspended          = errors.New("akun ditangguhkan")
+	ErrInvalidCredentials = errors.New("invalid username/email or password")
+	ErrSuspended          = errors.New("account suspended")
 )
 
 type Directory struct {

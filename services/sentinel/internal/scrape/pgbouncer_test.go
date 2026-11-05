@@ -252,11 +252,11 @@ func TestPgBouncerFailures(t *testing.T) {
 		want     string
 	}{
 		{"wrong password", fakeBouncer{auth: "scram"}, "salah", "password authentication failed"},
-		{"bad server signature", fakeBouncer{auth: "scram-bad-signature"}, "pw", "tanda tangan server SCRAM tidak cocok"},
-		{"unsupported auth", fakeBouncer{auth: "unsupported"}, "pw", "metode autentikasi 7 tidak didukung"},
+		{"bad server signature", fakeBouncer{auth: "scram-bad-signature"}, "pw", "SCRAM server signature mismatch"},
+		{"unsupported auth", fakeBouncer{auth: "unsupported"}, "pw", "unsupported authentication method 7"},
 		{"query error", fakeBouncer{auth: "md5", queryErr: "not allowed"}, "pw", "not allowed"},
-		{"missing columns", fakeBouncer{auth: "md5", columns: []string{"database"}, rows: [][]string{{"postgres"}}}, "pw", "kolom cl_active tidak ada"},
-		{"no password", fakeBouncer{auth: "md5"}, "", "password user statistik PgBouncer belum diatur"},
+		{"missing columns", fakeBouncer{auth: "md5", columns: []string{"database"}, rows: [][]string{{"postgres"}}}, "pw", "column cl_active missing"},
+		{"no password", fakeBouncer{auth: "md5"}, "", "PgBouncer stats user password is not set"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

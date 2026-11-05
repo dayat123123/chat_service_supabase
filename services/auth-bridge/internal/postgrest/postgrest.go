@@ -117,7 +117,7 @@ func (c *Client) rpc(ctx context.Context, fn string, body []byte, out any) error
 			backoff := c.backoff << (attempt - 1)
 			select {
 			case <-ctx.Done():
-				return fmt.Errorf("rpc %s: %w (error terakhir: %v)", fn, ctx.Err(), err)
+				return fmt.Errorf("rpc %s: %w (last error: %v)", fn, ctx.Err(), err)
 			case <-time.After(backoff + time.Duration(rand.Int64N(int64(backoff)/2+1))):
 			}
 		}
@@ -152,7 +152,7 @@ func (c *Client) rpcOnce(ctx context.Context, fn string, body []byte, out any) (
 
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return true, fmt.Errorf("rpc %s: baca respons: %w", fn, err)
+		return true, fmt.Errorf("rpc %s: read response: %w", fn, err)
 	}
 	if resp.StatusCode >= 300 {
 		return resp.StatusCode >= 500, fmt.Errorf("rpc %s: status %d: %s", fn, resp.StatusCode, truncate(data, 300))
@@ -161,7 +161,7 @@ func (c *Client) rpcOnce(ctx context.Context, fn string, body []byte, out any) (
 		return false, nil
 	}
 	if err := json.Unmarshal(data, out); err != nil {
-		return false, fmt.Errorf("rpc %s: decode respons: %w", fn, err)
+		return false, fmt.Errorf("rpc %s: decode response: %w", fn, err)
 	}
 	return false, nil
 }
