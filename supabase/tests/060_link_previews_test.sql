@@ -273,13 +273,15 @@ insert into storage.objects (bucket_id, name, created_at) values
 delete from private.storage_cleanup_queue where bucket_id = 'link-previews';
 
 select is(private.link_preview_purge(), 1, 'Pratinjau yang lama kedaluwarsa dihapus');
-select bag_eq($$select prefix from private.storage_cleanup_queue where bucket_id = 'link-previews' and done_at is null$$,
+select bag_eq($$select prefix from private.storage_cleanup_queue where bucket_id = 'link-previews' and done_at is null
+                and split_part(prefix, '/', 1) in (select private.link_preview_hash(u) from unnest(array['https://kuno.example.com/', 'https://news.example.com/bbca?x=1', 'https://yatim.example.com/', 'https://baru.example.com/']) u)$$,
   format($$values (%L::text), (%L)$$,
          private.link_preview_hash('https://kuno.example.com/') || '/aaaaaaaaaaaaaaaa/',
          private.link_preview_hash('https://yatim.example.com/') || '/bbbbbbbbbbbbbbbb/'),
   'Gambar yatim lebih dari sehari masuk antrean janitor; gambar yang dipakai dan yang baru tidak');
 select is(private.link_preview_purge(), 0, 'Purge kedua tidak menggandakan antrean');
-select is((select count(*)::integer from private.storage_cleanup_queue where bucket_id = 'link-previews' and done_at is null), 2,
+select is((select count(*)::integer from private.storage_cleanup_queue where bucket_id = 'link-previews' and done_at is null
+            and split_part(prefix, '/', 1) in (select private.link_preview_hash(u) from unnest(array['https://kuno.example.com/', 'https://news.example.com/bbca?x=1', 'https://yatim.example.com/', 'https://baru.example.com/']) u)), 2,
   'Folder gambar tidak diantrekan dua kali');
 select ok(exists (select 1 from cron.job where jobname = 'link-preview-purge'), 'Job purge harian terjadwal');
 

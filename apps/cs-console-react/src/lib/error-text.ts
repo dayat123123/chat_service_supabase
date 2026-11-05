@@ -271,6 +271,12 @@ const bannerCodes = [
   'invalid_version',
   'invalid_priority',
   'invalid_schedule',
+  'invalid_display',
+  'invalid_image',
+  'invalid_cta',
+  'invalid_frequency',
+  'invalid_audience',
+  'invalid_link_schemes',
   'banner_not_found',
 ] as const
 

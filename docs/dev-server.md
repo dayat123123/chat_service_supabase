@@ -172,7 +172,7 @@ Berikan ke tim aplikasi OLT. Detail kodenya ada di [panduan integrasi library](h
 | `anonKey` | hasil `make anon-key` (aman disimpan di aplikasi) | sama |
 | Token sosial untuk `tokenProvider` | dari OLT dummy: `POST http://<IP-server>:8090/api/login` (username + password, balasan berisi `social_token`), perpanjang lewat `POST /api/social-token`, atau `make dummy-token U=<user>` di server | dari endpoint token sosial backend OLT dev |
 | Akun uji | user seed `budi_santoso`, `sari_invest`, `andi_trader`, `rina_saham`, `dewi_cuan`, password `olt12345` ([daftar lengkap](../services/dummy-olt/README.md)) | akun OLT dev |
-| Versi library | `ref: v1.6.0` | sama |
+| Versi library | `ref: v1.7.0` | sama |
 
 Catatan untuk aplikasi:
 - **Android di tahap A:** server memakai HTTP. Izinkan cleartext **hanya** di build debug (`src/debug/AndroidManifest.xml` atau network security config untuk IP server dev). Windows tidak butuh pengaturan tambahan. Di tahap B semuanya HTTPS.

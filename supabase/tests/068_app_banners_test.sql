@@ -1,6 +1,8 @@
 begin;
 select plan(21);
 
+delete from private.app_banners;
+
 select tests.create_agent('Sinta Banner', '{cs_super_admin}', '{}') as sinta \gset
 select tests.create_agent('Rina Banner', '{cs_agent}', '{"general": 1}') as rina \gset
 
@@ -45,7 +47,8 @@ select is((public.get_client_config('android', '2.5.1') -> 'banners' -> 0),
   jsonb_build_object('id', :'b1'::jsonb -> 'id', 'title', 'Pemeliharaan sistem',
                      'body', 'Layanan chat akan dipelihara pukul 22.00 WIB', 'link_url', 'https://olt.example/status',
                      'level', 'warning', 'dismissible', true, 'priority', 10,
-                     'starts_at', :'b1'::jsonb -> 'starts_at', 'ends_at', :'b1'::jsonb -> 'ends_at'),
+                     'starts_at', :'b1'::jsonb -> 'starts_at', 'ends_at', :'b1'::jsonb -> 'ends_at',
+                     'display', 'strip', 'image_url', null, 'cta_label', null, 'frequency', 'once'),
   'Bentuk banner untuk klien');
 select is((select jsonb_agg(b ->> 'title') from jsonb_array_elements(public.get_client_config('android', '2.4.0') -> 'banners') b)
           || (select jsonb_agg(b ->> 'title') from jsonb_array_elements(public.get_client_config('ios', '2.6.0') -> 'banners') b)

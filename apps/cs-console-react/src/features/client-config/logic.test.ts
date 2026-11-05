@@ -6,7 +6,10 @@ import {
   compareVersions,
   featureRows,
   killReasonValid,
+  linkProblem,
+  parseSchemes,
   phraseMatches,
+  schemeProblem,
   versionValid,
 } from './logic'
 
@@ -94,7 +97,7 @@ describe('banner validation', () => {
           ...bannerDraft(null),
           title: 'x'.repeat(81),
           body: 'y'.repeat(301),
-          link_url: 'ftp://olt.example',
+          link_url: 'olt.example',
           min_app_version: '3.0',
           max_app_version: '2.9',
           priority: 1001,
@@ -120,5 +123,40 @@ describe('banner validation', () => {
     ).toEqual({
       starts: 'format',
     })
+  })
+})
+
+describe('popup banner rules', () => {
+  const blank = { startsText: '', endsText: '', schemes: ['olt'] }
+
+  it('accepts https links and registered deep links only', () => {
+    expect(linkProblem('https://olt.example/promo', ['olt'])).toBeUndefined()
+    expect(linkProblem('olt://promo/akhir-tahun', ['olt'])).toBeUndefined()
+    expect(linkProblem('http://olt.example', ['olt'])).toBe('format')
+    expect(linkProblem('javascript://alert(1)', ['olt'])).toBe('scheme')
+    expect(linkProblem('intent://scan', ['olt'])).toBe('scheme')
+    expect(linkProblem('mitra://order/BBCA', ['olt'])).toBe('scheme')
+    expect(linkProblem('olt://promo dengan spasi', ['olt'])).toBe('format')
+    expect(linkProblem(`https://olt.example/${'a'.repeat(500)}`, ['olt'])).toBe('length')
+  })
+
+  it('needs a link for the button label and a day range for new users', () => {
+    const popup = { ...bannerDraft(null), title: 'Promo', display: 'popup' as const }
+    expect(bannerProblems({ ...popup, cta_label: 'Lihat' }, blank).cta).toBe('required')
+    expect(bannerProblems({ ...popup, cta_label: 'x'.repeat(25), link_url: 'olt://a' }, blank).cta).toBe(
+      'length',
+    )
+    expect(bannerProblems({ ...popup, audience: 'new_users', audience_days: 91 }, blank).audienceDays).toBe(
+      'range',
+    )
+    expect(bannerProblems({ ...popup, audience: 'new_users', audience_days: 14 }, blank)).toEqual({})
+  })
+
+  it('parses and validates deep link schemes', () => {
+    expect(parseSchemes(' OLT://, mitra  olt ')).toEqual(['mitra', 'olt'])
+    expect(schemeProblem(['olt', 'https'], ['http', 'https'], 5)).toBe('forbidden')
+    expect(schemeProblem(['9olt'], [], 5)).toBe('format')
+    expect(schemeProblem(['a', 'b', 'c', 'd', 'e', 'f'], [], 5)).toBe('count')
+    expect(schemeProblem(['olt'], ['https'], 5)).toBeUndefined()
   })
 })

@@ -88,7 +88,7 @@ describe('AppIntegrationSection', () => {
     await user.click(screen.getByRole('button', { name: 'Sembunyikan' }))
     expect(key.textContent).not.toBe(ANON_KEY)
 
-    expect(screen.getByText('rendezvous_community versi 1.6.0 atau lebih baru')).toBeVisible()
+    expect(screen.getByText('rendezvous_community versi 1.7.0 atau lebih baru')).toBeVisible()
     expect(await screen.findByText('Android 2.4.0')).toBeVisible()
     expect(screen.getByRole('link', { name: /Panduan integrasi library/ })).toHaveAttribute(
       'href',
