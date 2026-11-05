@@ -145,7 +145,7 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 
 ## Feature flag, kill switch, versi minimum (`0077`, `0091`)
 
-Daftar flag **tetap**: aplikasi hanya membaca delapan kunci `search`, `trending`, `bookmarks`, `post_edit`, `message_reactions`, `share_post_to_chat`, `notification_prefs`, `analytics` (`private.known_feature_flags()`). Kunci yang tidak ada di `flags` dianggap **mati** oleh aplikasi. Flag baru tidak bisa dibuat dan flag tidak bisa dihapus; di web CS (Pengaturan → Fitur & versi) setiap fitur hanya punya sakelar nyala/mati. Menambah fitur baru = migrasi baru yang memperluas daftar.
+Daftar flag **tetap**: aplikasi hanya membaca delapan kunci `search`, `trending`, `bookmarks`, `post_edit`, `message_reactions`, `share_post_to_chat`, `notification_prefs`, `analytics` (`private.known_feature_flags()`). Kunci yang tidak ada di `flags` dianggap **mati** oleh aplikasi. Flag baru tidak bisa dibuat dan flag tidak bisa dihapus; di web CS (Aplikasi → Fitur & versi) setiap fitur hanya punya sakelar nyala/mati. Menambah fitur baru = migrasi baru yang memperluas daftar.
 
 ### `get_client_config(p_platform = null, p_app_version = null)` → `jsonb` (`anon` dan `authenticated`)
 

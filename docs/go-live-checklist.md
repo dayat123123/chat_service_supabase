@@ -14,7 +14,7 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 
 - [ ] JWKS (kunci publik) diserahkan; kunci privat hanya di server OLT
 - [ ] Endpoint token sosial: `iss`, `aud`, `sub` tetap, `exp` ≤ 15 menit; jam server OLT sinkron
-- [ ] Login dengan token OLT asli berhasil — Hub → **Pengaturan → Integrasi aplikasi**: Aktif, tanpa peringatan kunci dev
+- [ ] Login dengan token OLT asli berhasil — Hub → **Aplikasi → Koneksi aplikasi**: Aktif, tanpa peringatan kunci dev
 
 ## C. Server sosial — Tim IT
 
@@ -38,7 +38,7 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 - [ ] Library `rendezvous_community` v1.7.0; URL HTTPS produksi dan anon key dari `config/prod.json`
 - [ ] Build release Android tanpa cleartext; tidak ada `service_role` key di aplikasi
 - [ ] Uji manual Android dan Windows: login, feed, chat dua akun, chat CS, unggah gambar
-- [ ] **Pengaturan → Fitur & versi**: versi minimum aplikasi diset; versi lama mendapat "Perbarui aplikasi"
+- [ ] **Aplikasi → Fitur & versi**: versi minimum aplikasi diset; versi lama mendapat "Perbarui aplikasi"
 
 ## F. Kepatuhan & legal — Kepatuhan
 
@@ -57,5 +57,5 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 ## H. Hari-H — Semua
 
 - [ ] Rilis di luar jam bursa; `make backup` sebelum rilis
-- [ ] Penanggung jawab kill switch (**Pengaturan → Fitur & versi**) siaga
+- [ ] Penanggung jawab kill switch (**Aplikasi → Fitur & versi**) siaga
 - [ ] Kontak darurat vendor IT, tim OLT, dan pengembang dibagikan; runbook gangguan dicetak

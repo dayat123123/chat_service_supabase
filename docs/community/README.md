@@ -34,7 +34,7 @@ Tab yang tampil mengikuti izin: Stream dan Notifikasi (`post`/`publish`), Modera
 
 Alur: **draf → diajukan → disetujui (terbit sekarang atau terjadwal) → terbit**. Penolakan wajib beralasan dan mengembalikan draf ke pembuatnya.
 
-- **Aturan empat mata** (`community.four_eyes`, default aktif, diatur di **Pengaturan → Komunitas**): pembuat tidak bisa menyetujui postingannya sendiri. Bila dimatikan, staf yang juga punya izin terbit bisa langsung menerbitkan buatannya sendiri.
+- **Aturan empat mata** (`community.four_eyes`, default aktif, diatur di **Pengaturan → Aturan persetujuan**, kelompok Komunitas): pembuat tidak bisa menyetujui postingannya sendiri. Bila dimatikan, staf yang juga punya izin terbit bisa langsung menerbitkan buatannya sendiri.
 - **Pengumuman** wajib berjudul dan selalu disematkan. **Sematkan** di stream umum atau stream saham (`$KODE`), opsional sampai tanggal tertentu. Aplikasi menampilkan maksimal 3 sematan di atas stream (pengumuman lebih dulu), lewat `public.get_pinned_posts(scope, stock_code)`, dan tidak mengulanginya di daftar biasa.
 - **Jadwal**: job pg_cron `cs-community` (tiap 15 detik) menerbitkan postingan yang jatuh tempo. Bila gagal (misalnya akun dinonaktifkan atau teks terkena kata terlarang baru), statusnya menjadi "Gagal terbit" dengan alasannya, dan pembuat bisa memperbaikinya.
 - Gambar maksimal 4 (bucket `attachments`, folder `posts/<id akun>/`), teks 1–2.000 karakter, kata terlarang dicek sejak draf.
