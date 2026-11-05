@@ -18,6 +18,7 @@ Paket fitur komunitas tahap 3 November 2026: pencarian, trending & sentimen saha
 | `0090_post_drafts_stock_cards` | sinkron draf postingan, kartu saham di chat, ekspor & hapus akun | `069_post_drafts_stock_cards_test` |
 | `0091_fixed_feature_flags` | daftar feature flag tetap (8 kunci), hanya sakelar nyala/mati | `070_fixed_feature_flags_test` |
 | `0103_message_gap_index` | indeks id pesan untuk gap-fill (`get_message_ids`) dan ambil pesan per id (`get_messages_by_ids`), lihat [Mengisi celah](#mengisi-celah) | `083_message_gap_index_test` |
+| `0119_banner_popup` | popup promo (gambar, label tombol, frekuensi, sasaran pengguna baru), deep link banner, statistik tayang/klik/tutup, lihat [Popup promo](#popup-promo-dan-deep-link-banner-0119) | `099_banner_popup_test` |
 
 Semua pengaturan baru ada di `private.settings` (ubah lewat `update private.settings set value = ... where key = ...`), batas laju di `private.rate_limits`. Kode error memakai pola yang sudah ada: HTTP status dari `PTxxx`, field `message` berisi kode stabil (mis. `query_too_short`), `details` berisi teks bahasa Indonesia. Error `429 rate_limited` membawa header `Retry-After`.
 
@@ -251,6 +252,42 @@ RPC Super Admin (`cs_api`, peran `cs_super_admin`, semua tercatat di audit denga
 - `admin_save_banner(p_id uuid, p_title text, p_body text = '', p_link_url text = null, p_level text = 'info', p_starts_at timestamptz = null, p_ends_at timestamptz = null, p_platforms text[] = '{}', p_min_app_version text = null, p_max_app_version text = null, p_dismissible boolean = true, p_priority integer = 0)` → satu banner (bentuk seperti daftar). `p_id = null` membuat baru; `p_starts_at = null` berarti sekarang (saat membuat) atau tetap (saat mengubah). Audit `banner.save`. Error `400`: `invalid_title` (1–80), `invalid_body` (> 300), `invalid_link` (harus `http(s)://`, ≤ 500), `invalid_level`, `invalid_platform` (android, ios, web, windows, macos, linux), `invalid_version` (format `2.4.0`, min ≤ max), `invalid_priority` (0–1000), `invalid_schedule` (`ends_at` harus setelah `starts_at`); `404 banner_not_found`.
 - `admin_delete_banner(p_id)` → `{"id", "deleted": true}`; audit `banner.delete`; `404 banner_not_found`.
 
+## Popup promo dan deep link banner (`0119`)
+
+Banner kini punya dua tampilan: `strip` (bawaan, perilaku `0089`) dan `popup` (kartu di tengah layar). Semua tambahan bersifat aditif; banner lama tetap `strip`, field lama tidak berubah.
+
+```json
+"banners": [{"id": "uuid", "title": "Promo akhir tahun", "body": "Diskon biaya transaksi 50%",
+             "link_url": "olt://promo/akhir-tahun", "level": "info", "dismissible": true, "priority": 50,
+             "starts_at": "2026-11-05T01:00:00+00:00", "ends_at": "2026-11-12T01:00:00+00:00",
+             "display": "popup",
+             "image_url": "https://api.olt.example/storage/v1/object/public/app-banners/3f2a…c1.jpg",
+             "cta_label": "Lihat promo", "frequency": "daily"}]
+```
+
+- `display`: `strip` | `popup`. `image_url`: URL publik penuh gambar popup di bucket `app-banners` atau `null` (strip selalu `null`). `cta_label`: label tombol ≤ 24 karakter atau `null`; bila ada `link_url` tanpa label, klien memakai label bawaan. `frequency` (hanya bermakna untuk popup, strip selalu `once`): `once` (sekali per pengguna), `daily` (sekali per hari), `every_open` (setiap aplikasi dibuka). Penjadwalan frekuensi disimpan klien, seperti penutupan banner.
+- **Sasaran** disaring server: `audience = all` atau `new_users` (profil dibuat ≤ `audience_days` hari lalu, 1–90). Pemanggil tanpa login hanya menerima banner `all`. Field sasaran tidak dikirim ke klien.
+- **`link_url`** boleh `https://…` atau deep link `<skema>://…` dengan skema dari setting `banners.deep_link_schemes` (`cs.cs_settings`, bawaan `["olt"]`, maks 5, `^[a-z][a-z0-9+.-]{0,31}$`; `http`, `https`, `javascript`, `vbscript`, `data`, `file`, `filesystem`, `blob`, `about`, `intent`, `content` ditolak). Server hanya mengirim `link_url` (dan `cta_label`) bila tautan masih valid: `http(s)://` lama tetap dikirim, deep link yang skemanya sudah dicabut dikirim sebagai `null`. Constraint tabel `app_banners_link_url_check` menolak skema berbahaya walau lewat SQL langsung.
+- Maksimal tetap 10 banner aktif (strip dan popup bersama), urut prioritas.
+
+### `record_banner_event(p_banner_id uuid, p_event text)` → `{"recorded": boolean}` (authenticated, nasabah)
+
+- `p_event`: `impression` (popup/strip ditampilkan), `click` (tombol/tautan diketuk), `dismiss` (ditutup). Lainnya → `400 invalid_event`.
+- Dedupe per (banner, pengguna, event, hari WIB): panggilan berulang menjawab `recorded: false`, tidak pernah error. Banner yang tidak ada, belum mulai, sudah selesai, atau di luar sasaran pengguna juga menjawab `recorded: false` (tidak membocorkan keberadaan banner).
+- Tanpa login → `401 not_authenticated` (anon tidak punya hak execute). Akun CS → `403 customer_required`. Rate limit `banner_event` 120/menit (`429 rate_limited`).
+- Disimpan di `private.app_banner_events` (RLS, tanpa akses langsung), retensi 180 hari (`banners.events_retention_days` di `private.settings`) lewat job harian `app-banner-maintenance` (03:47 UTC), yang juga membersihkan baris rate limit `banner_event` lama dan memasukkan gambar `app-banners` yatim > 1 hari ke antrean janitor.
+
+### Gambar popup
+
+Bucket `app-banners`: publik baca (`/storage/v1/object/public/app-banners/<uuid>.<jpg|png|webp>`), maks 2 MB, JPEG/PNG/WebP. Tulis dan daftar objek hanya untuk Super Admin (`private.can_manage_banners()`, aal2) lewat upload Storage langsung dari Hub, sama dengan foto akun resmi; kebijakan restriktif `cs_staff_public_edge` (`0105`) tetap menolak staf dari domain publik. Tidak ada kebijakan update/delete; gambar yang diganti, dilepas, atau banner yang dihapus masuk `private.storage_cleanup_queue` dan dihapus janitor. Hub memotong gambar ke 4:5 (960×1200) atau 1:1 (960×960) dan mengecilkannya di bawah 2 MB sebelum unggah.
+
+### RPC Super Admin tambahan
+
+- `admin_save_banner(..., p_display text = 'strip', p_image_url text = null, p_cta_label text = null, p_frequency text = 'once', p_audience text = 'all', p_audience_days integer = 7)`: `p_image_url` adalah URL publik hasil unggah (path diambil dari URL dan objeknya harus ada di `app-banners`). Error `400` baru: `invalid_display`, `invalid_image` (bukan popup, bukan bucket `app-banners`, atau objek tidak ada), `invalid_cta` (> 24 atau tanpa tautan), `invalid_frequency`, `invalid_audience` (atau hari di luar 1–90); `invalid_link` kini berarti bukan `https://` atau skema deep link terdaftar.
+- `admin_banners()` dan hasil `admin_save_banner` bertambah `display`, `image_path`, `image_url`, `cta_label`, `frequency`, `audience`, `audience_days`, dan `stats {impressions, clicks, dismissals, unique_viewers, ctr}` (`ctr` = klik ÷ tayang × 100, satu desimal, `null` bila belum ada tayang).
+- `admin_banner_stats(p_id)` → `stats` + `{"id", "days": [{day, impressions, clicks, dismissals, ctr}]}` untuk 7 hari terakhir (WIB, termasuk hari tanpa event); `404 banner_not_found`.
+- `admin_banner_settings()` → `{deep_link_schemes, forbidden_schemes, max_schemes, updated_at, updated_by}`; `admin_set_banner_link_schemes(p_schemes text[])` (dinormalkan huruf kecil, unik) → bentuk yang sama, audit `banner.link_schemes` dengan nilai sebelum/sesudah; `400 invalid_link_schemes`.
+
 ## Statistik dibuka/diketuk notifikasi (`0088`)
 
 ### `report_notification_event(p_event, p_notification_id = null, p_campaign_id = null, p_broadcast_id = null)` → `jsonb` (authenticated)
@@ -331,7 +368,7 @@ Tabel `public.post_drafts` (hanya bisa dibaca pemiliknya; tulis lewat RPC). Maks
 
 ## Catatan untuk klien (`0087`–`0090`)
 
-1. Render `banners` dari `get_client_config`; simpan id yang ditutup secara lokal; hormati `dismissible`.
+1. Render `banners` dari `get_client_config` sesuai `display` (strip atau popup); simpan id yang ditutup dan jadwal `frequency` secara lokal; hormati `dismissible`; laporkan `impression`/`click`/`dismiss` lewat `record_banner_event` (`0119`).
 2. Laporkan `opened` saat push dibuka atau item kotak notifikasi dibuka, dan `tapped` saat tujuan diikuti, lewat `report_notification_event` (pakai `notification_id` bila ada, selain itu `campaign_id`/`broadcast_id` dari data push). Server menandai notifikasi dibaca.
 3. Tampilkan jenis preferensi baru dari `get_notification_prefs`; nonaktifkan sakelar in-app bila `in_app_locked`.
 4. Tangani tipe notifikasi `followed_post`, `watchlist_digest`, `moderation`, dan `mention` ber-`room_id` (lihat payload di atas). Klien lama menampilkan tipe yang belum dikenal sebagai notifikasi umum.

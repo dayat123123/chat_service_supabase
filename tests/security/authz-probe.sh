@@ -247,6 +247,15 @@ if [ -n "$AVATAR" ]; then
   expect_unchanged nasabah "timpa avatar user lain (upsert)" "select coalesce(max(updated_at)::text, '') from storage.objects where bucket_id = 'avatars' and name = '$AVATAR'" \
     PUT "/storage/v1/object/avatars/$AVATAR" 'bukan-gambar' -H 'x-upsert: true' -H 'Content-Type: image/jpeg'
 fi
+BANNER_OBJ="$(cat /proc/sys/kernel/random/uuid).jpg"
+for a in nasabah agen; do
+  expect_denied "$a" "upload langsung ke app-banners (khusus Super Admin)" POST "/storage/v1/object/app-banners/$BANNER_OBJ" 'x' -H 'Content-Type: image/jpeg'
+done
+for a in anon nasabah agen; do
+  expect_empty "$a" "list bucket app-banners (termasuk gambar promo terjadwal)" POST /storage/v1/object/list/app-banners '{"prefix":"","limit":20}'
+done
+expect_denied anon "rpc record_banner_event tanpa login" POST /rest/v1/rpc/record_banner_event '{"p_banner_id":"00000000-0000-4000-8000-000000000000","p_event":"impression"}'
+expect_denied agen "rpc record_banner_event oleh akun CS" POST /rest/v1/rpc/record_banner_event '{"p_banner_id":"00000000-0000-4000-8000-000000000000","p_event":"impression"}'
 expect_denied nasabah "upload langsung ke evidence" POST "/storage/v1/object/evidence/probe/$ATTACKER_ID.txt" 'x' -H 'Content-Type: text/plain'
 expect_denied nasabah "upload langsung ke cs-documents room orang lain" POST "/storage/v1/object/cs-documents/rooms/${SUPPORT:-x}/$ATTACKER_ID/probe.pdf" 'x' -H 'Content-Type: application/pdf'
 expect_denied nasabah "buat bucket baru" POST /storage/v1/bucket '{"id":"probe","name":"probe","public":true}'

@@ -25,6 +25,8 @@ export type Database = {
         Args: { p_from?: string; p_to?: string }
         Returns: Json
       }
+      admin_banner_settings: { Args: Record<PropertyKey, never>; Returns: Json }
+      admin_banner_stats: { Args: { p_id: string }; Returns: Json }
       admin_banners: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_delete_banner: { Args: { p_id: string }; Returns: Json }
       admin_delete_feature_flag: { Args: { p_key: string }; Returns: Json }
@@ -41,10 +43,16 @@ export type Database = {
       admin_reset_password: { Args: { p_agent_id: string }; Returns: Json }
       admin_save_banner: {
         Args: {
+          p_audience?: string
+          p_audience_days?: number
           p_body?: string
+          p_cta_label?: string
           p_dismissible?: boolean
+          p_display?: string
           p_ends_at?: string
+          p_frequency?: string
           p_id: string
+          p_image_url?: string
           p_level?: string
           p_link_url?: string
           p_max_app_version?: string
@@ -85,6 +93,7 @@ export type Database = {
         }
         Returns: Json
       }
+      admin_set_banner_link_schemes: { Args: { p_schemes: string[] }; Returns: Json }
       admin_set_community_permissions: {
         Args: { p_agent_id: string; p_permissions: string[] }
         Returns: Json

@@ -331,7 +331,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
 | **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
 | **Fitur & versi** | Kill switch, sakelar fitur aplikasi, versi minimum | Insiden, rilis aplikasi |
-| **Banner aplikasi** | Pengumuman singkat di atas aplikasi nasabah | Gangguan, pemeliharaan, info |
+| **Banner aplikasi** | Strip di atas atau popup di tengah aplikasi nasabah, dengan statistik tayang dan klik | Gangguan, pemeliharaan, info, promo |
 | **Backup** | Tujuan, password, jadwal backup, uji restore | Pemasangan awal, cek mingguan |
 | **Alert** | Kanal alert gangguan (Telegram/email) | Pemasangan awal, ganti penerima |
 
@@ -408,9 +408,18 @@ Halaman hanya-baca: data koneksi untuk tim aplikasi OLT (URL API, anon key, vers
 
 #### Banner aplikasi
 
-1. **Tambah banner**: isi **Judul**, **Isi (opsional)**, **Tautan (opsional)**, **Tingkat** (**Info**, **Peringatan**, **Kritis**), **Mulai (WIB)**, **Berakhir (WIB)**, **Platform**, versi, **Boleh ditutup pengguna**, dan **Prioritas (0–1000)**.
-2. Periksa **Pratinjau**, lalu simpan.
-3. Aplikasi menampilkan paling banyak 10 banner aktif. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru.
+Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi, misalnya gangguan atau pemeliharaan) dan **Popup tengah** (kartu di tengah layar dengan latar gelap, cocok untuk promo).
+
+1. **Tambah banner**, pilih **Tampilan**, lalu isi **Judul**, **Isi (opsional)**, **Tautan (opsional)**, **Label tombol (opsional)**, **Sasaran**, **Tingkat** (**Info**, **Peringatan**, **Kritis**), **Mulai (WIB)**, **Berakhir (WIB)**, **Platform**, versi, **Boleh ditutup pengguna**, dan **Prioritas (0–1000)**.
+2. **Tautan** boleh `https://…` atau deep link aplikasi dengan skema yang diizinkan, misalnya `olt://promo/akhir-tahun` untuk membuka halaman di dalam aplikasi OLT. `http://`, `javascript:`, `intent:`, dan skema yang belum didaftarkan ditolak. **Label tombol** (maksimal 24 karakter) hanya dipakai bila ada tautan; bila kosong, aplikasi memakai label bawaan.
+3. Khusus **Popup tengah**:
+   - **Gambar (opsional)**: JPEG, PNG, atau WebP. Pilih **Rasio potong** **4:5 (disarankan)** atau **1:1**, geser dan perbesar gambar, lalu **Pakai gambar**. Gambar dikecilkan otomatis sampai di bawah 2 MB dan baru diunggah saat banner disimpan. **Ganti gambar** atau **Hapus gambar** bisa dilakukan kapan saja; gambar lama dibersihkan otomatis.
+   - **Frekuensi**: **Sekali per pengguna**, **Sekali sehari**, atau **Setiap buka aplikasi**.
+4. **Sasaran**: **Semua pengguna** atau **Pengguna baru ≤ N hari** (1–90 hari sejak profil dibuat). Pengunjung yang belum login hanya melihat banner untuk semua pengguna.
+5. Periksa **Pratinjau** di sisi kanan (strip, atau ponsel kecil untuk popup), lalu simpan.
+6. Daftar banner menampilkan jenis (**Strip**/**Popup**), status (**Terjadwal**, **Aktif**, **Selesai**), dan ringkasan statistik (tayang, klik, CTR). Tombol grafik di setiap baris membuka **Statistik**: tayang, klik, tutup, pengguna unik, CTR, dan rincian 7 hari terakhir. Satu pengguna dihitung paling banyak sekali per hari (WIB) untuk setiap jenis event; data disimpan 180 hari.
+7. **Skema deep link** (di bawah daftar): daftar skema yang boleh dipakai tautan banner, maksimal 5, bawaan `olt`. Tambahkan skema hanya atas permintaan tim aplikasi OLT. Mencabut skema membuat tautan banner yang memakainya tidak lagi dikirim ke aplikasi. Perubahan tercatat di jejak audit.
+8. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
 
 #### Backup
 

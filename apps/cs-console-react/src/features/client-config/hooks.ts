@@ -6,6 +6,8 @@ import type { AppPlatform, BannerDraft, ClientConfig } from './types'
 export const clientConfigKeys = {
   config: ['client-config'] as const,
   banners: ['client-config', 'banners'] as const,
+  bannerStats: (id: string) => ['client-config', 'banners', 'stats', id] as const,
+  bannerSettings: ['client-config', 'banner-settings'] as const,
 }
 
 export function useClientConfig() {
@@ -49,6 +51,34 @@ function useBannerMutation<TArgs, TResult>(run: (args: TArgs) => Promise<TResult
 }
 
 export const useSaveBanner = () =>
-  useBannerMutation((args: { id: string | null; draft: BannerDraft }) => bannersApi.save(args.id, args.draft))
+  useBannerMutation(async (args: { id: string | null; draft: BannerDraft; image?: Blob | null }) => {
+    const imageUrl = args.image ? await bannersApi.uploadImage(args.image) : args.draft.image_url
+    return bannersApi.save(args.id, { ...args.draft, image_url: imageUrl })
+  })
 
 export const useDeleteBanner = () => useBannerMutation((id: string) => bannersApi.remove(id))
+
+export function useBannerStats(id: string) {
+  return useQuery({
+    queryKey: clientConfigKeys.bannerStats(id),
+    queryFn: () => bannersApi.stats(id),
+    staleTime: 15_000,
+  })
+}
+
+export function useBannerSettings() {
+  return useQuery({
+    queryKey: clientConfigKeys.bannerSettings,
+    queryFn: bannersApi.settings,
+    staleTime: 60_000,
+  })
+}
+
+export function useSetLinkSchemes() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (schemes: string[]) => bannersApi.setLinkSchemes(schemes),
+    onSuccess: (settings) => client.setQueryData(clientConfigKeys.bannerSettings, settings),
+    onError: () => void client.invalidateQueries({ queryKey: clientConfigKeys.bannerSettings }),
+  })
+}

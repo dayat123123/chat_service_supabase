@@ -1,5 +1,5 @@
 export const LIBRARY_NAME = 'rendezvous_community'
-export const LIBRARY_MIN_VERSION = '1.6.0'
+export const LIBRARY_MIN_VERSION = '1.7.0'
 export const INTEGRATION_GUIDE_URL =
   'https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md'
 

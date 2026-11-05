@@ -63,12 +63,57 @@ export type BannerLevel = (typeof bannerLevels)[number]
 export const bannerStatuses = ['active', 'scheduled', 'ended'] as const
 export type BannerStatus = (typeof bannerStatuses)[number]
 
+export const bannerDisplays = ['strip', 'popup'] as const
+export type BannerDisplay = (typeof bannerDisplays)[number]
+
+export const bannerFrequencies = ['once', 'daily', 'every_open'] as const
+export type BannerFrequency = (typeof bannerFrequencies)[number]
+
+export const bannerAudiences = ['all', 'new_users'] as const
+export type BannerAudience = (typeof bannerAudiences)[number]
+
+export const bannerRatios = ['portrait', 'square'] as const
+export type BannerRatio = (typeof bannerRatios)[number]
+
+export type BannerStats = {
+  impressions: number
+  clicks: number
+  dismissals: number
+  unique_viewers: number
+  ctr: number | null
+}
+
+export type BannerDayStats = {
+  day: string
+  impressions: number
+  clicks: number
+  dismissals: number
+  ctr: number | null
+}
+
+export type BannerStatsDetail = BannerStats & { id: string; days: BannerDayStats[] }
+
+export type BannerSettings = {
+  deep_link_schemes: string[]
+  forbidden_schemes: string[]
+  max_schemes: number
+  updated_at: string | null
+  updated_by: StaffRef
+}
+
 export type AppBanner = {
   id: string
   title: string
   body: string
   link_url: string | null
   level: BannerLevel
+  display: BannerDisplay
+  image_path: string | null
+  image_url: string | null
+  cta_label: string | null
+  frequency: BannerFrequency
+  audience: BannerAudience
+  audience_days: number
   starts_at: string
   ends_at: string | null
   platforms: AppPlatform[]
@@ -77,6 +122,7 @@ export type AppBanner = {
   dismissible: boolean
   priority: number
   status: BannerStatus
+  stats: BannerStats
   created_by: StaffRef
   updated_by: StaffRef
   created_at: string
@@ -88,6 +134,12 @@ export type BannerDraft = {
   body: string
   link_url: string | null
   level: BannerLevel
+  display: BannerDisplay
+  image_url: string | null
+  cta_label: string | null
+  frequency: BannerFrequency
+  audience: BannerAudience
+  audience_days: number
   starts_at: string | null
   ends_at: string | null
   platforms: AppPlatform[]
@@ -101,3 +153,6 @@ export const BANNER_TITLE_MAX = 80
 export const BANNER_BODY_MAX = 300
 export const BANNER_LINK_MAX = 500
 export const BANNER_PRIORITY_MAX = 1000
+export const BANNER_CTA_MAX = 24
+export const BANNER_AUDIENCE_DAYS_MAX = 90
+export const BANNER_IMAGE_MAX_BYTES = 2 * 1024 * 1024
