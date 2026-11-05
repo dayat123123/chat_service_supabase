@@ -111,7 +111,7 @@ func TestLoadRejectsInvalidConfig(t *testing.T) {
 		},
 		"mode tidak dikenal": {
 			map[string]string{"JWT_SECRET": secret, "OLT_MODE": "ldap"},
-			"OLT_MODE tidak dikenal",
+			"unknown OLT_MODE",
 		},
 		"produksi tanpa valkey": {
 			map[string]string{"JWT_SECRET": secret, "APP_ENV": "production", "OLT_MODE": "websocket",

@@ -1,6 +1,5 @@
-# Web CS (React) - build statis lalu disajikan nginx non-root.
-# Runtime: SUPABASE_URL, SUPABASE_ANON_KEY atau SUPABASE_ANON_KEY_FILE, APP_ENV.
-# env.js ditulis saat container start (docker/15-cs-console.envsh), bukan saat build.
+# Runtime env: SUPABASE_URL, SUPABASE_ANON_KEY or SUPABASE_ANON_KEY_FILE, APP_ENV. env.js is written at
+# container start (docker/15-cs-console.envsh), not at build time.
 
 FROM node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0adabf288ee3f4077d765542f85 AS build
 WORKDIR /app

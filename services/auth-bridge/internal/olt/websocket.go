@@ -67,16 +67,16 @@ func (v *WebSocketVerifier) Verify(ctx context.Context, token string) (User, err
 	vars := strings.NewReplacer(config.TokenPlaceholder, token, config.RequestIDPlaceholder, newRequestID())
 	msg, err := json.Marshal(substitute(v.template, vars))
 	if err != nil {
-		return User{}, fmt.Errorf("susun pesan login: %w", err)
+		return User{}, fmt.Errorf("build login message: %w", err)
 	}
 	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
-		return User{}, fmt.Errorf("%w: kirim login: %v", ErrUnavailable, err)
+		return User{}, fmt.Errorf("%w: send login: %v", ErrUnavailable, err)
 	}
 
 	for {
 		_, data, err := conn.ReadMessage()
 		if err != nil {
-			return User{}, fmt.Errorf("%w: menunggu respons login: %v", ErrUnavailable, err)
+			return User{}, fmt.Errorf("%w: waiting for login response: %v", ErrUnavailable, err)
 		}
 		doc, ok := decodeJSON(data)
 		if !ok {
@@ -97,7 +97,7 @@ func (v *WebSocketVerifier) parseLoginResponse(doc any) (User, error) {
 		if !ok || !strings.EqualFold(val, v.cfg.SuccessValue) {
 			reason, _ := Lookup(doc, v.cfg.ErrorMessagePath)
 			if reason == "" {
-				reason = "login ditolak"
+				reason = "login rejected"
 			}
 			return User{}, fmt.Errorf("%w: %s", ErrInvalidToken, reason)
 		}
@@ -105,7 +105,7 @@ func (v *WebSocketVerifier) parseLoginResponse(doc any) (User, error) {
 
 	id, ok := Lookup(doc, v.cfg.UserIDPath)
 	if !ok || id == "" {
-		return User{}, fmt.Errorf("%w: respons login tanpa user id (%s)", ErrInvalidToken, v.cfg.UserIDPath)
+		return User{}, fmt.Errorf("%w: login response has no user id (%s)", ErrInvalidToken, v.cfg.UserIDPath)
 	}
 	u := User{ID: id}
 	u.Username, _ = Lookup(doc, v.cfg.UsernamePath)

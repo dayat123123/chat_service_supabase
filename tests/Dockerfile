@@ -1,6 +1,4 @@
-# Image alat uji keamanan, beban, dan chaos (tests/README di docs/testing/README.md).
-# Berisi k6, tokengen (token sosial dev untuk user uji lt_*), bash, curl, jq, openssl, psql 17,
-# docker CLI (chaos: restart/kill/putus jaringan container stack lewat docker.sock).
+# docker-cli lets chaos tests stop, kill, and disconnect stack containers through docker.sock.
 FROM golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS tokengen
 WORKDIR /src
 COPY load/tokengen/ ./

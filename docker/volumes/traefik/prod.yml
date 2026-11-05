@@ -1,24 +1,22 @@
-# Router profil single (dan cluster): HTTPS di entrypoint `websecure`.
+# Single (and cluster) routers: HTTPS on the `websecure` entrypoint.
 #
-# Ke internet hanya dibuka path yang dipakai app OLT: REST/RPC, Realtime,
-# Storage, upload media (/media/v1), auth-bridge, dan gateway integrasi OLT
-# (/integration/v1, server-ke-server dengan API key).
-# /auth/v1 (GoTrue tidak dipakai client), /functions/v1 (cs-admin hanya untuk web
-# CS, lihat cs.yml), /graphql/v1, /pg, dan Studio TIDAK dipublikasikan; path lain 404.
+# Only the paths the OLT app uses are public: REST/RPC, Realtime, Storage, media upload
+# (/media/v1), auth-bridge, and the OLT integration gateway (/integration/v1, server-to-server
+# with an API key). /auth/v1 (GoTrue is not used by clients), /functions/v1 (cs-admin is for the
+# web CS only, see cs.yml), /graphql/v1, /pg, and Studio are NOT published; other paths are 404.
 #
-# API staf (T4, docs/testing/report-2026-11-03.md): skema cs_api di domain publik
-# hanya untuk RPC chat CS yang dipanggil app nasabah (api-cs-customer, daftar sama
-# dengan pemanggilan cs_api di rendezvous_community (repo terpisah)). Permintaan cs_api
-# lain (Accept-Profile/Content-Profile) dijawab 403 (api-cs-staff-block), dan router
-# api membuang header profil sehingga hanya skema public yang terjangkau. RPC agen
-# dan cs-admin hanya lewat CS_CONSOLE_DOMAIN (ipAllowList VPN_SOURCE_RANGES).
-# Router REST, Realtime, Storage, dan media publik memasang X-Olt-Edge: public (menimpa
-# nilai klien). JWT akun CS dengan penanda ini ditolak DB: REST oleh private.check_request
-# (0100), Realtime (join/presence) dan Storage (semua bucket) oleh RLS (0105); media
-# meneruskan penanda ke Storage. postgres_changes ditolak untuk akun CS di semua domain.
+# Staff API: on the public domain the cs_api schema only serves the customer-app CS chat RPCs
+# (api-cs-customer, same list as the cs_api calls in rendezvous_community). Any other cs_api
+# request (Accept-Profile/Content-Profile) gets 403 (api-cs-staff-block), and the api router
+# strips the profile headers so only the public schema is reachable. Agent RPCs and cs-admin
+# go only through CS_CONSOLE_DOMAIN (ipAllowList VPN_SOURCE_RANGES).
+# Public REST, Realtime, Storage, and media routers set X-Olt-Edge: public (overwriting any
+# client value). The DB rejects CS-account JWTs carrying it: REST via private.check_request,
+# Realtime (join/presence) and Storage (all buckets) via RLS; media forwards it to Storage.
+# postgres_changes is rejected for CS accounts on every domain.
 #
-# Entrypoint `admin` (semua path, termasuk Studio) hanya di-bind ke 127.0.0.1
-# server; akses lewat WireGuard atau SSH tunnel. Lihat docs/PRODUCTION.md.
+# The `admin` entrypoint (all paths, including Studio) is bound to the server's 127.0.0.1
+# only; reach it over WireGuard or an SSH tunnel. See docs/PRODUCTION.md.
 http:
   middlewares:
     public-edge:

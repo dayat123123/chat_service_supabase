@@ -28,11 +28,11 @@ func Sign(claims map[string]any, secret []byte) (string, error) {
 func Verify(tok string, secret []byte, now time.Time) (map[string]any, error) {
 	parts := strings.Split(tok, ".")
 	if len(parts) != 3 {
-		return nil, errors.New("format JWT tidak valid")
+		return nil, errors.New("invalid JWT format")
 	}
 	sig, err := b64.DecodeString(parts[2])
 	if err != nil || !hmac.Equal(sig, mac(parts[0]+"."+parts[1], secret)) {
-		return nil, errors.New("tanda tangan JWT tidak valid")
+		return nil, errors.New("invalid JWT signature")
 	}
 	raw, err := b64.DecodeString(parts[1])
 	if err != nil {
@@ -43,7 +43,7 @@ func Verify(tok string, secret []byte, now time.Time) (map[string]any, error) {
 		return nil, fmt.Errorf("payload JWT: %w", err)
 	}
 	if exp, ok := claims["exp"].(float64); !ok || now.Unix() >= int64(exp) {
-		return nil, errors.New("JWT kedaluwarsa")
+		return nil, errors.New("JWT expired")
 	}
 	return claims, nil
 }

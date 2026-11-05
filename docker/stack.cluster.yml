@@ -1,19 +1,7 @@
-# Profil cluster: Docker Swarm multi-node.  KERANGKA (dilengkapi di Tahap 7).
-#
-#   make up PROFILE=cluster     (= docker stack deploy -c compose.yml -c stack.cluster.yml olt-social)
-#
-# File ini HANYA menimpa konfigurasi deploy di atas compose.yml: image, nama
-# service, dan nama env tetap sama, sehingga tidak ada perubahan kode aplikasi.
-# Yang berbeda dari profil single:
-#   - replika per service, rolling update `start-first`, rollback otomatis;
-#   - overlay network terenkripsi;
-#   - Realtime di-cluster (libcluster DNS), Storage memakai backend S3 (SeaweedFS);
-#   - Postgres primary di node berlabel `olt.db=primary` (replica: Tahap 7).
-#
-# Prasyarat & langkah migrasi: docs/scaling.md.
-# Catatan Swarm: `depends_on`, `build`, `security_opt`, `shm_size`, dan
-# `network_mode` diabaikan; image buatan sendiri harus ada di registry
-# (${REGISTRY}/olt-social/...).
+# Docker Swarm overlay for compose.yml. Still a skeleton that has not been fully tested; see
+# docs/scaling.md for prerequisites and migration. It only overrides deploy settings: images, service
+# names, and env names stay the same. Swarm ignores depends_on, build, security_opt, shm_size, and
+# network_mode, so self-built images must be pushed to ${REGISTRY}/olt-social/... first.
 
 x-deploy: &deploy
   restart_policy:
@@ -43,23 +31,23 @@ services:
       - source: traefik-routes-cs
         target: /etc/traefik/dynamic/cs.yml
     environment:
-      CS_CONSOLE_DOMAIN: ${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN wajib diisi}
-      VPN_SOURCE_RANGES: ${VPN_SOURCE_RANGES:?VPN_SOURCE_RANGES wajib diisi}
+      CS_CONSOLE_DOMAIN: ${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN is required}
+      VPN_SOURCE_RANGES: ${VPN_SOURCE_RANGES:?VPN_SOURCE_RANGES is required}
       TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":8080"
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: ":443"
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https
       TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS: ":8443"
       TRAEFIK_ENTRYPOINTS_ADMIN_ADDRESS: ":9000"
-      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL wajib diisi}
+      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_STORAGE: /acme/acme.json
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_HTTPCHALLENGE_ENTRYPOINT: web
-      PROXY_DOMAIN: ${PROXY_DOMAIN:?PROXY_DOMAIN wajib diisi}
-      # Tahap 7: rate limit terdistribusi antar replika Traefik lewat Valkey.
+      PROXY_DOMAIN: ${PROXY_DOMAIN:?PROXY_DOMAIN is required}
+      # Rate limits are counted per Traefik instance; they are not shared across nodes yet.
     volumes:
       - traefik-acme:/acme
     deploy:
       <<: *deploy
-      # Satu instance per manager; sertifikat ACME di volume node tersebut (Tahap 7: penyimpanan bersama).
+      # One instance per manager; ACME certificates live on that node's volume, not on shared storage.
       mode: global
       placement:
         constraints: [node.role == manager]
@@ -78,7 +66,6 @@ services:
       replicas: 2
   realtime:
     environment:
-      # Node Realtime saling menemukan lewat DNS Swarm (tasks.<service>).
       CLUSTER_STRATEGIES: DNS
       DNS_NODES: tasks.realtime
     deploy:
@@ -87,8 +74,8 @@ services:
   storage:
     environment:
       STORAGE_BACKEND: s3
-      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET:?GLOBAL_S3_BUCKET wajib diisi}
-      GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT:?GLOBAL_S3_ENDPOINT wajib diisi}
+      GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET:?GLOBAL_S3_BUCKET is required}
+      GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT:?GLOBAL_S3_ENDPOINT is required}
       AWS_ACCESS_KEY_ID: "{{secret:storage_s3_access_key_id}}"
       AWS_SECRET_ACCESS_KEY: "{{secret:storage_s3_secret_access_key}}"
     secrets: [anon_key, service_role_key, jwt_secret, postgres_password, s3_protocol_access_key_id, s3_protocol_access_key_secret, storage_s3_access_key_id, storage_s3_secret_access_key]
@@ -104,7 +91,7 @@ services:
       <<: *deploy
       replicas: 2
   auth-bridge:
-    image: ${REGISTRY:?REGISTRY wajib diisi}/olt-social/auth-bridge:0.6.0
+    image: ${REGISTRY:?REGISTRY is required}/olt-social/auth-bridge:0.6.0
     deploy:
       <<: *deploy
       replicas: 2
@@ -138,27 +125,27 @@ services:
     deploy:
       <<: *deploy
       replicas: 1
-  # Disk yang diukur adalah node tempat sentinel berjalan: ditaruh di node DB.
+  # Sentinel measures the disk of the node it runs on, so it is pinned to the DB node.
   sentinel:
     image: ${REGISTRY}/olt-social/sentinel:0.4.0
     environment:
-      # tasks.<service>: setiap replika dibaca sendiri (counter per replika, bukan lewat VIP).
+      # tasks.<service> scrapes each replica directly because counters are per replica; the VIP would mix them.
       METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://tasks.rest:3001/metrics,realtime=jwt+http://tasks.realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@tasks.pgbouncer:6432}
-      # Healer tidak berjalan di cluster: status healer tidak dibaca (tanpa alert healer:stale).
+      # Healer does not run in the cluster, so its state is not read (no false healer:stale alert).
       HEALER_STATE_FILE: ""
     deploy:
       <<: *deploy
       replicas: 1
       placement:
         constraints: [node.labels.olt.db == primary]
-  # Swarm sudah mengganti task yang unhealthy; healer (restart otomatis lewat Docker socket) hanya
-  # untuk profil single/dev.
+  # Swarm already replaces unhealthy tasks; healer (auto-restart through the Docker socket) is for the
+  # single/dev profiles only.
   healer:
     image: ${REGISTRY}/olt-social/healer:0.1.0
     deploy:
       replicas: 0
-  # File storage cluster ada di SeaweedFS (S3); backup restic di sini hanya untuk database.
-  # Tujuan "Folder lokal" di cluster: isi BACKUP_LOCAL_REPO_DIR dengan path absolut di node DB.
+  # Cluster file storage lives in SeaweedFS (S3), so restic here backs up the database only.
+  # For a "Folder lokal" destination in the cluster, set BACKUP_LOCAL_REPO_DIR to an absolute path on the DB node.
   backup:
     image: ${REGISTRY}/olt-social/backup:0.2.0
     deploy:
@@ -189,7 +176,7 @@ services:
     deploy:
       <<: *deploy
       replicas: 1
-      # Primary tetap di satu node (volume lokal). Rolling update DB tidak boleh start-first.
+      # The primary stays on one node (local volume), so a DB rolling update must never be start-first.
       update_config:
         parallelism: 1
         order: stop-first
@@ -207,7 +194,6 @@ services:
     image: ${REGISTRY}/olt-social/tools:0.1.0
     deploy:
       replicas: 0
-  # Admin & storage lokal tidak dipakai di cluster.
   studio:
     deploy:
       replicas: 0

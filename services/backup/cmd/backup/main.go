@@ -34,10 +34,10 @@ const (
 	version     = "0.2.0"
 	pingTimeout = 5 * time.Second
 	systemPath  = "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-	usage       = `Pemakaian:
-  backup [run]          menjalankan layanan backup (default)
-  backup healthcheck    cek /healthz untuk healthcheck container
-  backup snapshots      daftar snapshot di repositori (kredensial dari env RESTIC_* (+ AWS_* untuk S3) atau dari database)
+	usage       = `Usage:
+  backup [run]          run the backup service (default)
+  backup healthcheck    check /healthz for the container healthcheck
+  backup snapshots      list snapshots in the repository (credentials from RESTIC_* env (+ AWS_* for S3) or from the database)
   backup restore --target-time <RFC3339|latest> --data-dir <folder> [--owner 100:101] [--wipe]
 `
 )
@@ -199,24 +199,24 @@ func healthcheck() int {
 func resticEnvFromDatabase(ctx context.Context) ([]string, error) {
 	cfg, err := config.Load()
 	if err != nil {
-		return nil, errors.New("isi RESTIC_REPOSITORY dan RESTIC_PASSWORD(_FILE), atau jalankan di container backup agar kredensial dibaca dari database")
+		return nil, errors.New("set RESTIC_REPOSITORY and RESTIC_PASSWORD(_FILE), or run inside the backup container so the credentials are read from the database")
 	}
 	s, err := store.NewPostgREST(cfg.PostgRESTURL, cfg.JWTSecret, cfg.JWTIssuer, cfg.RequestTimeout).Config(ctx, settings.UnknownRevision)
 	if err != nil {
-		return nil, fmt.Errorf("pengaturan backup tidak bisa dibaca dari database: %v", err)
+		return nil, fmt.Errorf("could not read the backup settings from the database: %v", err)
 	}
 	if !s.Configured {
-		return nil, errors.New("backup belum dikonfigurasi di web CS")
+		return nil, errors.New("backup is not configured in the Hub yet")
 	}
 	if err := s.Validate(cfg.LocalRepoDir); err != nil {
-		return nil, fmt.Errorf("pengaturan backup tidak valid: %v", err)
+		return nil, fmt.Errorf("invalid backup settings: %v", err)
 	}
 	return s.Credentials().Env(), nil
 }
 
 func snapshots(args []string, out io.Writer) int {
 	fs := flag.NewFlagSet("snapshots", flag.ContinueOnError)
-	asJSON := fs.Bool("json", false, "cetak JSON dari restic")
+	asJSON := fs.Bool("json", false, "print the restic JSON")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -230,13 +230,13 @@ func snapshots(args []string, out io.Writer) int {
 		creds, err = resticEnvFromDatabase(ctx)
 	}
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "gagal:", err)
+		fmt.Fprintln(os.Stderr, "error:", err)
 		return 1
 	}
 	client := &restic.Client{Runner: runner.Exec{}, Env: runner.Env(cliEnv(), creds...), NoCache: true}
 	snaps, err := client.Snapshots(ctx, "")
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "gagal membaca snapshot:", runner.Detail(err))
+		fmt.Fprintln(os.Stderr, "could not read snapshots:", runner.Detail(err))
 		return 1
 	}
 	if *asJSON {
@@ -260,10 +260,10 @@ func wib() *time.Location {
 func printSnapshots(out io.Writer, snaps []restic.Snapshot) {
 	loc := wib()
 	tw := tabwriter.NewWriter(out, 2, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "WAKTU\tID\tJENIS\tUKURAN\tKETERANGAN")
+	fmt.Fprintln(tw, "TIME\tID\tKIND\tSIZE\tNOTE")
 	var firstBase, lastBase, lastWAL time.Time
 	for _, s := range snaps {
-		kind, note := "lain", strings.Join(s.Paths, ",")
+		kind, note := "other", strings.Join(s.Paths, ",")
 		switch {
 		case s.Has(restic.TagBase):
 			kind, note = "base", s.Label()
@@ -282,15 +282,15 @@ func printSnapshots(out io.Writer, snaps []restic.Snapshot) {
 	_ = tw.Flush()
 	fmt.Fprintln(out)
 	if firstBase.IsZero() {
-		fmt.Fprintln(out, "Belum ada base backup: pemulihan belum bisa dilakukan.")
+		fmt.Fprintln(out, "No base backup yet: nothing can be restored.")
 		return
 	}
-	fmt.Fprintf(out, "Base backup: %s s.d. %s\n", firstBase.In(loc).Format(time.RFC3339), lastBase.In(loc).Format(time.RFC3339))
+	fmt.Fprintf(out, "Base backups: %s to %s\n", firstBase.In(loc).Format(time.RFC3339), lastBase.In(loc).Format(time.RFC3339))
 	if lastWAL.IsZero() || lastWAL.Before(firstBase) {
-		fmt.Fprintln(out, "Belum ada kiriman WAL setelah base: pemulihan hanya ke titik base (--target-time latest).")
+		fmt.Fprintln(out, "No WAL uploaded after the base yet: restore only to the base point (--target-time latest).")
 		return
 	}
-	fmt.Fprintf(out, "Pemulihan titik waktu (--target-time) bisa antara %s dan %s (WAL dalam retensi), atau latest.\n",
+	fmt.Fprintf(out, "Point-in-time restore (--target-time) is possible between %s and %s (WAL within retention), or latest.\n",
 		firstBase.In(loc).Format(time.RFC3339), lastWAL.In(loc).Format(time.RFC3339))
 }
 
@@ -316,10 +316,10 @@ func size(n int64) string {
 
 func restoreCommand(args []string, out io.Writer) int {
 	fs := flag.NewFlagSet("restore", flag.ContinueOnError)
-	target := fs.String("target-time", "", "waktu tujuan RFC3339 (mis. 2026-11-03T10:00:00+07:00) atau latest")
-	dataDir := fs.String("data-dir", "", "folder data PostgreSQL tujuan (kosong, atau pakai --wipe)")
-	owner := fs.String("owner", "100:101", "uid:gid pemilik data dir (user postgres di image supabase/postgres)")
-	wipe := fs.Bool("wipe", false, "hapus isi data dir tujuan lebih dulu (ditolak bila postmaster.pid ada)")
+	target := fs.String("target-time", "", "target time in RFC3339 (e.g. 2026-11-03T10:00:00+07:00) or latest")
+	dataDir := fs.String("data-dir", "", "target PostgreSQL data directory (empty, or use --wipe)")
+	owner := fs.String("owner", "100:101", "uid:gid owner of the data dir (the postgres user in the supabase/postgres image)")
+	wipe := fs.Bool("wipe", false, "delete the target data dir contents first (refused when postmaster.pid exists)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -330,7 +330,7 @@ func restoreCommand(args []string, out io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := restoreTo(ctx, out, *target, filepath.Clean(*dataDir), *owner, *wipe); err != nil {
-		fmt.Fprintln(os.Stderr, "Restore gagal:", err)
+		fmt.Fprintln(os.Stderr, "Restore failed:", err)
 		return 1
 	}
 	return 0
@@ -347,7 +347,7 @@ func restoreTo(ctx context.Context, out io.Writer, targetText, dataDir, ownerTex
 	}
 	euid := os.Geteuid()
 	if euid != 0 && euid != uid {
-		return fmt.Errorf("jalankan sebagai root (docker run --user 0:0) agar pemilik data dir bisa diubah ke %s", ownerText)
+		return fmt.Errorf("run as root (docker run --user 0:0) so the data dir owner can be changed to %s", ownerText)
 	}
 	creds, err := restic.FromEnv(os.Getenv)
 	if err != nil {
@@ -357,10 +357,10 @@ func restoreTo(ctx context.Context, out io.Writer, targetText, dataDir, ownerTex
 	exec := runner.Exec{WaitDelay: 30 * time.Second}
 	client := &restic.Client{Runner: exec, Env: env, NoCache: true}
 	loc := wib()
-	fmt.Fprintln(out, "Membaca daftar snapshot dari repositori...")
+	fmt.Fprintln(out, "Reading snapshots from the repository...")
 	snaps, err := client.Snapshots(ctx, "")
 	if err != nil {
-		return fmt.Errorf("daftar snapshot tidak bisa dibaca: %s", runner.Detail(err))
+		return fmt.Errorf("could not read snapshots: %s", runner.Detail(err))
 	}
 	plan, err := restore.Choose(snaps, target)
 	if err != nil {
@@ -370,17 +370,17 @@ func restoreTo(ctx context.Context, out io.Writer, targetText, dataDir, ownerTex
 	if plan.WAL != nil {
 		fmt.Fprintf(out, "WAL  : snapshot %s (%s, %s)\n", plan.WAL.Short(), plan.WAL.Time.In(loc).Format(time.RFC3339), size(plan.WAL.Bytes()))
 	} else {
-		fmt.Fprintln(out, "WAL  : tidak ada kiriman WAL; pemulihan hanya sampai titik akhir base")
+		fmt.Fprintln(out, "WAL  : no WAL uploads; restore only up to the end of the base")
 	}
 	if err := restore.EnsureEmpty(dataDir, wipe); err != nil {
 		return err
 	}
 	if usage, err := disk.Stat(dataDir); err == nil {
 		if need := plan.Bytes() * 11 / 10; usage.Avail < need {
-			return fmt.Errorf("ruang disk tidak cukup di %s: tersedia %s, dibutuhkan sekitar %s", dataDir, size(usage.Avail), size(need))
+			return fmt.Errorf("not enough disk space in %s: %s available, about %s needed", dataDir, size(usage.Avail), size(need))
 		}
 	}
-	fmt.Fprintf(out, "Memulihkan base dan WAL ke %s ...\n", dataDir)
+	fmt.Fprintf(out, "Restoring base and WAL to %s ...\n", dataDir)
 	started := time.Now()
 	prepared, err := restore.Prepare(ctx, client, plan, dataDir)
 	if err != nil {
@@ -388,41 +388,41 @@ func restoreTo(ctx context.Context, out io.Writer, targetText, dataDir, ownerTex
 	}
 	tools := pg.Tools{Runner: exec, Base: cliEnv()}
 	if err := tools.VerifyBackup(ctx, dataDir, restore.WALDir); err != nil {
-		return fmt.Errorf("pg_verifybackup menolak hasil restore: %s", runner.Detail(err))
+		return fmt.Errorf("pg_verifybackup rejected the restored data: %s", runner.Detail(err))
 	}
 	if err := restore.WriteRecovery(dataDir, target); err != nil {
 		return err
 	}
 	if euid == 0 {
 		if err := restore.Chown(dataDir, uid, gid); err != nil {
-			return fmt.Errorf("pemilik data dir tidak bisa diubah: %v", err)
+			return fmt.Errorf("could not change the data dir owner: %v", err)
 		}
 	}
 	if err := os.Chmod(dataDir, 0o700); err != nil {
 		return err
 	}
-	goal := "akhir WAL yang tersedia (latest)"
+	goal := "end of the available WAL (latest)"
 	if !target.IsZero() {
 		goal = target.In(loc).Format(time.RFC3339)
 	}
 	fmt.Fprintf(out, `
-Selesai dalam %s. Data dir siap (%s, pemilik %s).
-  Base terverifikasi pg_verifybackup, WAL mulai %s, %d file WAL (%s) di %s/.
-  Target pemulihan: %s (recovery_target_action = promote).
+Done in %s. Data dir ready (%s, owner %s).
+  Base verified with pg_verifybackup, WAL starts at %s, %d WAL files (%s) in %s/.
+  Recovery target: %s (recovery_target_action = promote).
 
-Langkah berikutnya:
-  1. Jalankan database (make restore-pitr melakukannya otomatis) dan pantau log sampai muncul
-     "archive recovery complete" lalu "database system is ready to accept connections".
-     Bila muncul "recovery ended before configured recovery target was reached", tidak ada transaksi
-     setelah waktu target: ulangi restore dengan --target-time latest.
-  2. Bersihkan pengaturan pemulihan dan WAL hasil restore:
+Next steps:
+  1. Start the database (make restore-pitr does this automatically) and watch the log until
+     "archive recovery complete" and then "database system is ready to accept connections" appear.
+     If "recovery ended before configured recovery target was reached" appears, there were no
+     transactions after the target time: run the restore again with --target-time latest.
+  2. Clear the recovery settings and the restored WAL:
        ALTER SYSTEM RESET restore_command; ALTER SYSTEM RESET recovery_target_time;
        ALTER SYSTEM RESET recovery_target_action; ALTER SYSTEM RESET recovery_target_timeline;
        SELECT pg_reload_conf();
-     lalu hapus folder %s di data dir.
-  3. Nyalakan semua layanan. Layanan backup membuat slot replikasi baru dan base backup baru otomatis.
-  4. Server baru: kunci Vault (volume db-config) tidak ikut backup. Unggah ulang kunci Firebase dan
-     simpan ulang tujuan backup (S3 atau folder lokal + password) dari web CS.
+     then delete the %s folder in the data dir.
+  3. Start all services. The backup service creates a new replication slot and a new base backup automatically.
+  4. New server: the Vault key (db-config volume) is not part of the backup. Upload the Firebase key again and
+     save the backup target (S3 or local folder + password) again from the Hub.
 `, time.Since(started).Round(time.Second), dataDir, ownerText, prepared.StartWAL, prepared.Segments, size(prepared.WALBytes),
 		restore.WALDir, goal, restore.WALDir)
 	return nil

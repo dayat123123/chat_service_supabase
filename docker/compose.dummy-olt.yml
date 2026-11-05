@@ -1,11 +1,6 @@
-# Tambahan profil dev: OLT DUMMY (services/dummy-olt) menerbitkan token sosial bertanda
-# tangan, dan auth-bridge memverifikasinya dengan kunci publik (mode jwt), persis seperti
-# produksi. Yang berubah hanya KONFIGURASI auth-bridge, bukan kodenya.
-#
-#   make up DUMMY_OLT=1          Windows: .\make.ps1 up -DummyOlt
-#   make down DUMMY_OLT=1        (ikut menghentikan dummy-olt)
-#
-# JANGAN dipakai di produksi (Makefile hanya mengizinkannya di profil dev).
+# Dev-only overlay: dummy-olt issues signed social tokens and auth-bridge verifies them with the
+# public key (jwt mode), exactly like production; only auth-bridge configuration changes.
+# Never use it in production (the Makefile only allows it with the dev profile).
 
 services:
   dummy-olt:
@@ -21,7 +16,7 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-    # app: dijangkau smoke test (container tools). egress: port host untuk app contoh / curl.
+    # app: reached by the smoke tests in the tools container. egress: host port for the sample app and curl.
     networks: [app, egress]
     secrets: [olt_dev_signing_key]
     ports:
@@ -36,7 +31,7 @@ services:
       DUMMY_OLT_SIGNING_KID: dev-olt-1
       DUMMY_OLT_SOCIAL_TTL: ${DUMMY_OLT_SOCIAL_TTL:-10m}
     healthcheck:
-      # Image distroless: binary menyediakan subcommand healthcheck.
+      # Distroless image: the binary provides its own healthcheck subcommand.
       test: ["CMD", "/dummy-olt", "healthcheck"]
       interval: 5s
       timeout: 3s
@@ -46,8 +41,7 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 64M, pids: 64}
 
-  # Mode jwt, persis produksi: auth-bridge memverifikasi token sosial dummy dengan kunci publik
-  # di docker/secrets/olt_jwks, tanpa menghubungi dummy-olt.
+  # Verifies dummy social tokens with the public key in docker/secrets/olt_jwks, without calling dummy-olt.
   auth-bridge:
     environment:
       OLT_MODE: jwt

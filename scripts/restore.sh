@@ -1,28 +1,24 @@
 #!/usr/bin/env bash
-# Restore database dari file backup (hasil backup.sh).
-#   restore <nama-file.dump>      (file di folder backups/)
-# MENIMPA data yang ada. Hentikan service lain dulu agar tidak ada koneksi aktif:
-#   make down   (lalu jalankan restore lewat: make restore FILE=... CONFIRM=yes)
-#   restore otomatis menyalakan db + tools; setelah selesai: make up
-# Lihat README bagian "Backup & restore".
+# OVERWRITES the existing data. Stop the other services first (make down) so no connections are
+# active, then: make restore FILE=... CONFIRM=yes, and afterwards: make up.
 set -euo pipefail
 
 name="${1:-}"
 if [ -z "$name" ]; then
-  echo "restore: sebutkan file, mis. restore olt-20261029-020000.dump" >&2
+  echo "restore: specify a file, e.g. restore olt-20261029-020000.dump" >&2
   ls -1 /olt/backups/*.dump 2>/dev/null | xargs -r -n1 basename >&2
   exit 2
 fi
 file="/olt/backups/$(basename "$name")"
 if [ ! -f "$file" ]; then
-  echo "restore: $file tidak ditemukan" >&2
+  echo "restore: $file not found" >&2
   exit 1
 fi
 if [ "${CONFIRM:-}" != "yes" ]; then
-  echo "restore: ini akan MENIMPA database. Jalankan ulang dengan CONFIRM=yes." >&2
+  echo "restore: this will OVERWRITE the database. Re-run with CONFIRM=yes." >&2
   exit 1
 fi
 
-echo "restore: memulihkan $(basename "$file")"
+echo "restore: restoring $(basename "$file")"
 PGUSER=supabase_admin pg_restore --no-password --clean --if-exists -d "${PGDATABASE:-postgres}" "$file"
-echo "restore: selesai. Jalankan 'make up' untuk menyalakan semua service."
+echo "restore: done. Run 'make up' to start all services."

@@ -1,28 +1,14 @@
-# OLT Social - definisi dasar stack, dipakai SEMUA profil.
+# Base stack shared by every profile (dev: + compose.dev.yml, single: + compose.prod.yml,
+# cluster: + stack.cluster.yml). Derived from supabase/supabase docker/ at commit 6a421fe,
+# without Analytics (Logflare), Vector, and Supavisor.
 #
-#   dev     : compose.yml + compose.dev.yml   (+ compose.dummy-olt.yml)   laptop developer
-#   single  : compose.yml + compose.prod.yml                               produksi 1 server
-#   cluster : compose.yml + stack.cluster.yml (docker stack deploy)        Docker Swarm
-#
-# Pakai lewat Makefile / make.ps1 di root repo:  make up [PROFILE=dev|single]
-#
-# Diturunkan dari docker-compose resmi supabase/supabase (folder docker, commit
-# 6a421fe, 2026-10-29). Analytics (Logflare), Vector, dan Supavisor tidak disertakan.
-#
-# Prinsip (docs/PROMPT-PRODUCTION.md):
-# - Image, nama service, dan nama env SAMA di semua profil; profil hanya mengubah
-#   konfigurasi. Semua image di-pin tag + digest.
-# - Rahasia hanya dari Docker secrets (docker/secrets/, dibuat `make gen-secrets`).
-#   Env berisi placeholder {{secret:nama}} yang diisi volumes/olt/with-secrets.sh.
-# - Hanya Traefik yang membuka port (diatur di file profil). Network dipisah:
-#     edge   Traefik <-> Kong
-#     app    Kong <-> service API, dan antar service aplikasi
-#     data   Postgres, PgBouncer, Valkey, dan kliennya
-#     egress hanya untuk service yang butuh internet atau port di host
-# - Aplikasi konek ke Postgres lewat PgBouncer. Pengecualian: Realtime (replikasi
-#   logis), backup (replikasi fisik), dan migrate/tools (operasi DB sebagai superuser).
-# - Hardening: non-root bila image mendukung, read-only + tmpfs, cap_drop ALL,
-#   no-new-privileges, batas CPU/memori/pids, healthcheck, log dirotasi.
+# - Profiles only change configuration; images, service names, and env names stay identical.
+# - Secrets come only from Docker secrets: env values hold {{secret:name}} placeholders that
+#   volumes/olt/with-secrets.sh fills in.
+# - Only Traefik publishes ports. Networks: edge (Traefik <-> Kong), app (Kong <-> API services),
+#   data (Postgres, PgBouncer, Valkey and their clients), egress (internet or host ports only).
+# - Apps reach Postgres through PgBouncer, except Realtime (logical replication), backup
+#   (physical replication), and migrate/tools (superuser DB operations).
 
 name: olt-social
 
@@ -39,8 +25,6 @@ x-base: &base
 
 services:
 
-  # --- Edge ------------------------------------------------------------------
-
   traefik:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -52,7 +36,7 @@ services:
         condition: service_healthy
     stop_grace_period: 30s
     tmpfs:
-      # Body request/response yang di-buffer middleware `buffering`.
+      # Holds request/response bodies buffered by the `buffering` middleware.
       - /tmp:size=256m,mode=1777
     configs:
       - source: traefik-common
@@ -64,11 +48,11 @@ services:
       TRAEFIK_LOG_FORMAT: json
       TRAEFIK_ACCESSLOG: "true"
       TRAEFIK_ACCESSLOG_FORMAT: json
-      # Header tidak pernah dicatat (bisa berisi token).
+      # Headers are never logged (they can carry tokens).
       TRAEFIK_ACCESSLOG_FIELDS_HEADERS_DEFAULTMODE: drop
       TRAEFIK_PROVIDERS_FILE_DIRECTORY: /etc/traefik/dynamic
       TRAEFIK_PROVIDERS_FILE_WATCH: "true"
-      # Ping (healthcheck) & metrik Prometheus hanya di port internal 8082.
+      # Ping (healthcheck) and Prometheus metrics only on the internal port 8082.
       TRAEFIK_ENTRYPOINTS_PING_ADDRESS: ":8082"
       TRAEFIK_ENTRYPOINTS_PING_HTTP_ALIASHEADERSSTRATEGY: delete
       TRAEFIK_PING: "true"
@@ -77,8 +61,8 @@ services:
       TRAEFIK_METRICS_PROMETHEUS_ENTRYPOINT: ping
       TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":8000"
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_MAXHEADERBYTES: "32768"
-      # Header yang namanya alias header lain (X_Forwarded_For) dibuang; karakter
-      # path ter-encode yang bisa disalahartikan backend ditolak.
+      # Drops headers whose names alias another header (X_Forwarded_For) and rejects encoded
+      # path characters that a backend could misinterpret.
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_ALIASHEADERSSTRATEGY: delete
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDNULLCHARACTER: "false"
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDBACKSLASH: "false"
@@ -90,24 +74,23 @@ services:
       TRAEFIK_ENTRYPOINTS_WEB_TRANSPORT_RESPONDINGTIMEOUTS_IDLETIMEOUT: 180s
       TRAEFIK_ENTRYPOINTS_WEB_TRANSPORT_LIFECYCLE_GRACETIMEOUT: 20s
       TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_DIALTIMEOUT: 5s
-      # Edge Functions boleh berjalan hingga ~150 detik (idle timeout runtime).
+      # Edge Functions may run for up to ~150 s (runtime idle timeout).
       TRAEFIK_SERVERSTRANSPORT_FORWARDINGTIMEOUTS_RESPONSEHEADERTIMEOUT: 170s
-      # Batas edge per IP (docs/PRODUCTION.md bagian Batas & rate limit), dipakai volumes/traefik/common.yml.
+      # Per-IP edge limits, consumed by volumes/traefik/common.yml.
       EDGE_RATE_AVERAGE: ${EDGE_RATE_AVERAGE:-600}
       EDGE_RATE_BURST: ${EDGE_RATE_BURST:-1200}
       EDGE_WS_PER_IP: ${EDGE_WS_PER_IP:-1500}
       EDGE_BODY_MAX_API: ${EDGE_BODY_MAX_API:-262144}
       EDGE_BODY_MAX_UPLOAD: ${EDGE_BODY_MAX_UPLOAD:-10485760}
     healthcheck:
-      # Tanpa flag: memakai konfigurasi statis dari env (ping di :8082).
       test: ["CMD", "traefik", "healthcheck"]
       interval: 10s
       timeout: 5s
       retries: 3
     deploy:
       resources:
-        # ±0,26 MiB per WebSocket yang diteruskan (uji 4 Nov: 300 → 122 MiB, 800 → 254 MiB).
-        # 768M menampung EDGE_WS_PER_IP 1500 dari satu IP plus koneksi IP lain (T3).
+        # About 0.26 MiB per proxied WebSocket (measured: 300 -> 122 MiB, 800 -> 254 MiB).
+        # 768M fits EDGE_WS_PER_IP 1500 from one IP plus connections from other IPs.
         limits: {cpus: "1", memory: 768M, pids: 256}
 
   kong:
@@ -120,7 +103,7 @@ services:
         condition: service_completed_successfully
     stop_grace_period: 30s
     tmpfs:
-      # KONG_PREFIX (nginx.conf, pid, socket) dan config deklaratif hasil substitusi.
+      # KONG_PREFIX (nginx.conf, pid, socket) and the substituted declarative config.
       - /tmp:size=64m,mode=1777
     configs:
       - source: with-secrets
@@ -140,14 +123,14 @@ services:
       KONG_DNS_NOT_FOUND_TTL: 1
       KONG_DNS_VALID_TTL: 5
       KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth,request-termination,ip-restriction,post-function
-      # Default nginx = 1 worker per core host; dibatasi agar memori terkendali.
+      # nginx defaults to one worker per host core; capped to keep memory bounded.
       KONG_NGINX_WORKER_PROCESSES: ${KONG_WORKER_PROCESSES:-2}
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
       KONG_PROXY_ACCESS_LOG: /dev/stdout combined
       KONG_PROXY_ERROR_LOG: /dev/stderr
       KONG_ADMIN_ACCESS_LOG: "off"
-      # IP klien asli dari X-Forwarded-For, hanya bila datang dari Traefik (network edge).
+      # Real client IP from X-Forwarded-For, only when the request comes from Traefik (edge network).
       KONG_TRUSTED_IPS: ${EDGE_SUBNET:-10.250.250.0/24}
       KONG_REAL_IP_HEADER: X-Forwarded-For
       KONG_REAL_IP_RECURSIVE: "on"
@@ -159,7 +142,7 @@ services:
       SERVICE_ROLE_KEY_ASYMMETRIC: ""
       DASHBOARD_USERNAME: ${DASHBOARD_USERNAME:-supabase}
       DASHBOARD_PASSWORD: "{{secret:dashboard_password}}"
-      # Kosong = tidak ada origin web yang diizinkan (secure by default). Dev: "*".
+      # Empty allows no web origin (secure by default). Dev uses "*".
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
     healthcheck:
       test: ["CMD", "kong", "health"]
@@ -169,8 +152,6 @@ services:
     deploy:
       resources:
         limits: {cpus: "2", memory: "${KONG_MEMORY:-1G}", pids: 256}
-
-  # --- API Supabase ----------------------------------------------------------
 
   auth:
     <<: *base
@@ -196,8 +177,8 @@ services:
       GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:{{secret:postgres_password}}@${DB_POOLER_HOST:-pgbouncer}:${DB_POOLER_PORT:-6432}/${POSTGRES_DB:-postgres}
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
-      # User OLT tidak signup lewat GoTrue; JWT diterbitkan auth-bridge.
-      # Login email + password hanya untuk akun staf. Web CS tidak memakai TOTP; admin moderasi tetap wajib TOTP (aal2).
+      # OLT users never sign up through GoTrue; auth-bridge issues their JWTs.
+      # Email + password login is for staff accounts only. The web CS does not use TOTP; moderation admins still require TOTP (aal2).
       GOTRUE_DISABLE_SIGNUP: "true"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_PASSWORD_MIN_LENGTH: "12"
@@ -231,35 +212,35 @@ services:
       pgbouncer:
         condition: service_healthy
     stop_grace_period: 15s
-    # Image tanpa shell: secret dibaca langsung dari file (sintaks @file PostgREST).
+    # Shell-less image: secrets are read straight from files (PostgREST @file syntax).
     secrets: [jwt_secret, postgrest_db_uri]
     configs:
       - source: rest-pg-service
         target: /etc/olt/pg_service.conf
     environment:
       PGRST_DB_URI: "@/run/secrets/postgrest_db_uri"
-      # Keepalive/tcp_user_timeout libpq: koneksi menggantung terdeteksi ±8 dtk, /ready jadi 503
-      # dan healthcheck di bawah menandai rest unhealthy (volumes/rest/pg_service.conf).
+      # libpq keepalive/tcp_user_timeout detect a hung connection in about 8 s, so /ready returns 503
+      # and the healthcheck below marks rest unhealthy (volumes/rest/pg_service.conf).
       PGSERVICEFILE: /etc/olt/pg_service.conf
       PGSERVICE: rest
       PGRST_DB_SCHEMAS: ${PGRST_DB_SCHEMAS:-public,graphql_public,cs_api}
       PGRST_DB_MAX_ROWS: ${PGRST_DB_MAX_ROWS:-1000}
       PGRST_DB_EXTRA_SEARCH_PATH: ${PGRST_DB_EXTRA_SEARCH_PATH:-public}
       PGRST_DB_POOL: ${PGRST_DB_POOL:-10}
-      # Pool habis: gagal cepat (PGRST003, 504) setelah 2 dtk, bukan antre 10 dtk (T17, docs/PRODUCTION.md).
+      # When the pool is exhausted, fail fast after 2 s (PGRST003, 504) instead of queueing for 10 s.
       PGRST_DB_POOL_ACQUISITION_TIMEOUT: ${PGRST_DB_POOL_ACQUISITION_TIMEOUT:-2}
-      # Runtime GHC: jumlah capability = batas CPU di bawah. Bawaan image (-N) membuat satu capability
-      # per core host; di kuota 1 vCPU rest runtuh pada ±90 req/dtk dan tidak pulih (T20).
+      # GHC runtime capabilities follow the CPU limit below. The image default (-N) creates one per host
+      # core; under a 1 vCPU quota rest collapsed at about 90 req/s and never recovered.
       GHCRTS: ${PGRST_GHCRTS:--N1}
       PGRST_DB_ANON_ROLE: anon
-      # Admin server (/live, /ready, /metrics, /schema_cache) di network internal saja: tidak
-      # di-publish dan tidak di-route Kong/Traefik. Sentinel membaca /metrics (pool PostgREST).
+      # The admin server (/live, /ready, /metrics, /schema_cache) stays on the internal network: it is
+      # never published or routed by Kong/Traefik. Sentinel reads its /metrics (PostgREST pool).
       PGRST_ADMIN_SERVER_PORT: 3001
       PGRST_ADMIN_SERVER_HOST: 0.0.0.0
       PGRST_JWT_SECRET: "@/run/secrets/jwt_secret"
       PGRST_DB_USE_LEGACY_GUCS: "false"
       PGRST_APP_SETTINGS_JWT_EXP: ${JWT_EXPIRY:-3600}
-      # Setiap request: tolak user yang di-ban dan JWT yang sesinya sudah dicabut (0013).
+      # On every request, reject banned users and JWTs whose session was revoked.
       PGRST_DB_PRE_REQUEST: private.check_request
     command: ["postgrest"]
     healthcheck:
@@ -277,7 +258,7 @@ services:
     image: supabase/realtime:v2.148.6@sha256:d18b6f4c54413ca6536531befc84663d96435e55efbbfb124dfb82e30e8240dc
     networks:
       app:
-        # Realtime menurunkan tenant id dari hostname (realtime-dev); Kong memakai nama ini.
+        # Realtime derives the tenant id from the hostname (realtime-dev); Kong uses this name.
         aliases: [realtime-dev.supabase-realtime]
       data: {}
     depends_on:
@@ -294,7 +275,7 @@ services:
     command: ["/app/bin/server"]
     environment:
       PORT: 4000
-      # Koneksi langsung (bukan PgBouncer): Realtime butuh replikasi logis.
+      # Direct connection, not PgBouncer: Realtime needs logical replication.
       DB_HOST: ${POSTGRES_HOST:-db}
       DB_PORT: ${POSTGRES_PORT:-5432}
       DB_USER: supabase_admin
@@ -305,7 +286,7 @@ services:
       API_JWT_SECRET: "{{secret:jwt_secret}}"
       SECRET_KEY_BASE: "{{secret:secret_key_base}}"
       METRICS_JWT_SECRET: "{{secret:jwt_secret}}"
-      # Cookie Erlang: dipakai saat Realtime di-cluster (profil cluster).
+      # Erlang cookie, used when Realtime is clustered (cluster profile).
       RELEASE_COOKIE: "{{secret:realtime_erlang_cookie}}"
       RELEASE_TMP: /tmp
       ERL_AFLAGS: -proto_dist inet_tcp
@@ -313,14 +294,14 @@ services:
       RLIMIT_NOFILE: "10000"
       APP_NAME: realtime
       SEED_SELF_HOST: "true"
-      # Wajib sama dengan region tenant hasil seed self-host (dikunci "us-east-1" di image).
-      # Bila berbeda (default "local"), Realtime mematikan koneksi DB tenant tiap 10 menit
-      # ("Rebalancing ... for a closer region") dan broadcast dari database (centang) hilang.
+      # Must match the tenant region seeded by self-host (fixed to "us-east-1" in the image).
+      # Otherwise (default "local") Realtime drops the tenant DB connection every 10 minutes
+      # ("Rebalancing ... for a closer region") and database broadcasts (message ticks) are lost.
       REGION: us-east-1
       RUN_JANITOR: "true"
       DISABLE_HEALTHCHECK_LOGGING: "true"
-      # Batas tenant, di-seed ulang dari env setiap start (SEED_SELF_HOST). Pesan chat lewat broadcast
-      # dari database (0098): setiap event yang diterima satu klien dihitung. Lihat docs/PRODUCTION.md.
+      # Tenant limits, re-seeded from env on every start (SEED_SELF_HOST). Chat messages use database
+      # broadcast (0098), so every event delivered to each client counts. See docs/PRODUCTION.md.
       TENANT_MAX_CONCURRENT_USERS: ${REALTIME_MAX_CONCURRENT_USERS:-10000}
       TENANT_MAX_EVENTS_PER_SECOND: ${REALTIME_MAX_EVENTS_PER_SECOND:-20000}
       TENANT_MAX_CHANNELS_PER_CLIENT: ${REALTIME_MAX_CHANNELS_PER_CLIENT:-100}
@@ -368,10 +349,10 @@ services:
       DATABASE_URL: postgres://supabase_storage_admin:{{secret:postgres_password}}@${DB_POOLER_HOST:-pgbouncer}:${DB_POOLER_PORT:-6432}/${POSTGRES_DB:-postgres}
       STORAGE_PUBLIC_URL: ${SUPABASE_PUBLIC_URL}
       REQUEST_ALLOW_X_FORWARDED_PATH: "true"
-      # Batas global; batas per bucket (avatars/attachments) diatur di migrasi.
+      # Global limit; per-bucket limits (avatars/attachments) are set in migrations.
       FILE_SIZE_LIMIT: 52428800
-      # `file` (volume) di dev/single. Pindah ke S3/SeaweedFS cukup lewat env:
-      # STORAGE_BACKEND=s3 + GLOBAL_S3_* (lihat docs/scaling.md).
+      # `file` (volume) in dev/single. Switching to S3/SeaweedFS only needs env:
+      # STORAGE_BACKEND=s3 + GLOBAL_S3_* (see docs/scaling.md).
       STORAGE_BACKEND: ${STORAGE_BACKEND:-file}
       GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET:-stub}
       GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT:-}
@@ -457,7 +438,7 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 256M, pids: 128}
 
-  # Dashboard admin. Profil single/cluster: mati secara default (profile `admin`).
+  # Admin dashboard. Off by default in single/cluster (profile `admin`).
   studio:
     <<: *base
     image: supabase/studio:2026.10.26-sha-478bd88@sha256:b733f739a7d41bf33c86f52dffbddde6b9dee82f9aa451811cdb62709ea9e88b
@@ -515,7 +496,7 @@ services:
     labels: ["olt.autoheal=true"]
     image: supabase/edge-runtime:v1.77.9@sha256:6b850a2ccf0bf50ecac9accff8098095cd191c389c2a53c59b857aa0f53a8343
     user: "65534:65534"
-    # egress: unduh dependensi Deno (import remote) saat fungsi pertama kali jalan.
+    # egress: downloads remote Deno imports the first time a function runs.
     networks: [app, egress]
     depends_on:
       volume-init:
@@ -551,13 +532,11 @@ services:
       resources:
         limits: {cpus: "1", memory: 512M, pids: 256}
 
-  # --- Data ------------------------------------------------------------------
-
   db:
     <<: *base
     image: supabase/postgres:17.11.0.008@sha256:fef2654e52424e2748b1cd6763b73afcb2618c6ec696bd3af5ad572687be1dc7
     networks: [data]
-    # Entrypoint mulai sebagai root, menyiapkan direktori, lalu turun ke user postgres.
+    # The entrypoint starts as root to prepare directories, then drops to the postgres user.
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
     stop_grace_period: 60s
     shm_size: 256m
@@ -569,15 +548,15 @@ services:
         target: /opt/olt/with-secrets.sh
       - source: db-realtime
         target: /docker-entrypoint-initdb.d/migrations/99-realtime.sql
-      # Harus superuser untuk membuat event trigger
+      # Must be superuser to create event trigger
       - source: db-webhooks
         target: /docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql
-      # Harus superuser untuk mengubah reserved role
+      # Must be superuser to alter reserved role
       - source: db-roles
         target: /docker-entrypoint-initdb.d/init-scripts/99-roles.sql
       - source: db-jwt
         target: /docker-entrypoint-initdb.d/init-scripts/99-jwt.sql
-      # pg_hba image + izin replikasi untuk layanan backup (role olt_backup)
+      # Image pg_hba plus replication access for the backup service (role olt_backup)
       - source: db-hba
         target: /etc/postgresql/pg_hba.conf
     secrets: [postgres_password]
@@ -585,7 +564,7 @@ services:
     command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "log_min_messages=fatal"]
     volumes:
       - db-data:/var/lib/postgresql/data
-      # Menyimpan kunci pgsodium agar tetap sama antar restart
+      # Persists the pgsodium key so it stays the same across restarts
       - db-config:/etc/postgresql-custom
     environment:
       POSTGRES_HOST: /var/run/postgresql
@@ -623,14 +602,14 @@ services:
     secrets: [postgres_password, pgbouncer_stats_password]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "/bin/sh", "/usr/local/bin/pgbouncer-entrypoint.sh"]
     environment:
-      # Password user `pgbouncer` (diset sama dengan POSTGRES_PASSWORD oleh volumes/db/roles.sql).
+      # Password of the `pgbouncer` user (set equal to POSTGRES_PASSWORD by volumes/db/roles.sql).
       PGBOUNCER_AUTH_PASSWORD: "{{secret:postgres_password}}"
-      # User `olt_stats`: hanya SHOW di konsol admin, dipakai sentinel (alert antrean PgBouncer).
+      # `olt_stats` user: admin console SHOW only, used by sentinel for PgBouncer queue alerts.
       PGBOUNCER_STATS_PASSWORD: "{{secret:pgbouncer_stats_password}}"
       PGBOUNCER_SERVER_LOGIN_RETRY: ${PGBOUNCER_SERVER_LOGIN_RETRY:-0.25}
       PGBOUNCER_DB_HOST: ${POSTGRES_HOST:-db}
       PGBOUNCER_DB_PORT: ${POSTGRES_PORT:-5432}
-      # Cek IP host database tiap N dtk; IP baru dipakai tanpa menunggu cache DNS c-ares (T6).
+      # Re-resolve the database host every N s so a new IP is used without waiting for the c-ares DNS cache.
       PGBOUNCER_DB_WATCH_SECONDS: ${PGBOUNCER_DB_WATCH_SECONDS:-2}
       PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-session}
       PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-500}
@@ -645,8 +624,8 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
-  # Rate limit, cache, dan lock terdistribusi (dipakai auth-bridge & Traefik).
-  # Tanpa persistence: isinya boleh hilang saat restart.
+  # Distributed rate limits, cache, and locks for auth-bridge and Traefik.
+  # No persistence: contents may be lost on restart.
   valkey:
     <<: *base
     image: valkey/valkey:9.0.7-alpine@sha256:2d04268dfa26ab31cfa3fdc538866e76438b2d00e41db41b8cb86d780ac5a416
@@ -670,7 +649,7 @@ services:
       VALKEY_PASSWORD: "{{secret:valkey_password}}"
       VALKEY_MAXMEMORY: ${VALKEY_MAXMEMORY:-192mb}
     healthcheck:
-      # Tanpa password: balasan NOAUTH pun berarti server hidup.
+      # No password needed: even a NOAUTH reply means the server is up.
       test: ["CMD-SHELL", "valkey-cli ping 2>&1 | grep -qE 'PONG|NOAUTH'"]
       interval: 5s
       timeout: 3s
@@ -679,9 +658,7 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 256M, pids: 64}
 
-  # --- One-shot & aplikasi ---------------------------------------------------
-
-  # Menyamakan kepemilikan volume dengan user non-root service (sekali, idempoten).
+  # Aligns volume ownership with the services' non-root users (one-shot, idempotent).
   volume-init:
     image: alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
     restart: "no"
@@ -705,9 +682,9 @@ services:
         own /volumes/acme 65532:65532
         chmod 700 /volumes/acme
 
-  # One-shot: menjalankan migrasi OLT yang belum pernah dijalankan, lalu selesai.
-  # Menunggu auth/storage/realtime healthy karena migrasi memakai skema mereka
-  # (storage.buckets, realtime.messages). Koneksi langsung ke DB (superuser).
+  # One-shot: applies pending OLT migrations, then exits.
+  # Waits for auth/storage/realtime to be healthy because migrations use their schemas
+  # (storage.buckets, realtime.messages). Connects directly to the DB as superuser.
   migrate:
     <<: *base
     restart: "no"
@@ -749,8 +726,8 @@ services:
     build:
       context: ../services/auth-bridge
     image: olt-social/auth-bridge:0.6.0
-    # Tanpa egress: token OLT diverifikasi lokal dengan kunci publik OLT (mode jwt),
-    # jadi auth-bridge tidak memanggil sistem OLT. data: Valkey.
+    # No egress: OLT tokens are verified locally with the OLT public key (jwt mode),
+    # so auth-bridge never calls OLT. data: Valkey.
     networks: [app, data]
     depends_on:
       migrate:
@@ -763,17 +740,17 @@ services:
     secrets: [jwt_secret, valkey_password, olt_jwks]
     environment:
       PORT: 8080
-      # Port internal /metrics, /livez, /readyz (tidak dipublikasikan, tidak lewat Kong).
+      # Internal /metrics, /livez, /readyz port (not published, not routed through Kong).
       OPS_PORT: 9100
-      # Secure by default: production. Profil dev menimpa ke development.
+      # Secure by default: production. The dev profile overrides it to development.
       APP_ENV: production
       LOG_LEVEL: ${AUTH_BRIDGE_LOG_LEVEL:-info}
-      # Image distroless (tanpa shell): secret dibaca dari file oleh auth-bridge.
+      # Distroless image (no shell): auth-bridge reads the secret from the file itself.
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       JWT_TTL: ${AUTH_BRIDGE_JWT_TTL:-900}
-      # Upsert profil lewat PostgREST internal (RPC khusus service_role).
+      # Profile upserts go through internal PostgREST (service_role-only RPC).
       POSTGREST_URL: http://rest:3000
-      # Rate limit & cache verifikasi dibagi semua replika lewat Valkey.
+      # Rate limits and the verification cache are shared by all replicas through Valkey.
       VALKEY_ADDR: valkey:6379
       VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
       VERIFY_CACHE_TTL: ${AUTH_BRIDGE_CACHE_TTL:-60}
@@ -781,14 +758,14 @@ services:
       RATE_LIMIT_PER_USER_PER_MINUTE: ${AUTH_BRIDGE_RATE_LIMIT_PER_USER_PER_MINUTE:-10}
       BREAKER_FAILURE_THRESHOLD: ${AUTH_BRIDGE_BREAKER_FAILURE_THRESHOLD:-5}
       BREAKER_COOLDOWN: ${AUTH_BRIDGE_BREAKER_COOLDOWN:-30}
-      # Token sosial bertanda tangan OLT, diverifikasi dengan kunci publik OLT (docs/olt-integration.md).
+      # OLT-signed social tokens, verified with the OLT public key (docs/olt-integration.md).
       OLT_MODE: ${AUTH_BRIDGE_OLT_MODE:-jwt}
       OLT_JWT_JWKS_FILE: /run/secrets/olt_jwks
       OLT_JWT_ISSUER: ${OLT_JWT_ISSUER:-olt}
       OLT_JWT_AUDIENCE: ${OLT_JWT_AUDIENCE:-olt-social}
       OLT_JWT_MAX_TTL: ${OLT_JWT_MAX_TTL:-900}
     healthcheck:
-      # Image distroless tidak punya shell/curl; binary menyediakan subcommand healthcheck.
+      # The distroless image has no shell or curl; the binary provides a healthcheck subcommand.
       test: ["CMD", "/auth-bridge", "healthcheck"]
       interval: 10s
       timeout: 5s
@@ -798,11 +775,11 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
-  # Push notification ke HP (services/notifier, docs/push/README.md). Mengambil antrean push dari
-  # Postgres lewat PostgREST (RPC khusus service_role) dan mengirimnya lewat Firebase Cloud Messaging.
-  # Kunci Firebase diunggah Super Admin di web CS (Pengaturan → Push notification), disimpan
-  # terenkripsi di Vault, dan dimuat notifier tanpa restart. Tanpa kunci, notifier berjalan dalam
-  # status "belum dipasang" dan notifikasi tetap masuk ke kotak notifikasi aplikasi. Satu-satunya egress: Google (FCM + OAuth).
+  # Mobile push notifications (services/notifier, docs/push/README.md). Pulls the push queue from
+  # Postgres through PostgREST (service_role-only RPC) and sends it via Firebase Cloud Messaging.
+  # The Firebase key is uploaded by a Super Admin in the web CS (Pengaturan → Push notification),
+  # stored encrypted in Vault, and loaded without a restart. Without a key notifier stays "not
+  # installed" and notifications still reach the in-app inbox. Only egress: Google (FCM + OAuth).
   notifier:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -826,7 +803,6 @@ services:
       BATCH_SIZE: ${NOTIFIER_BATCH_SIZE:-100}
       CONCURRENCY: ${NOTIFIER_CONCURRENCY:-20}
     healthcheck:
-      # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/notifier", "healthcheck"]
       interval: 10s
       timeout: 3s
@@ -836,10 +812,10 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
-  # Pembersih file Storage (services/janitor). Menghapus file akun yang dihapus (avatar, lampiran
-  # postingan/chat, dokumen CS) dan surat yang lewat masa simpan, dari antrean
-  # private.storage_cleanup_queue, lewat API storage agar file di disk/S3 ikut terhapus. Juga menyalin
-  # file konten yang dilaporkan/dihapus ke bucket evidence (karantina bukti, migrasi 0095) sebelum dihapus.
+  # Storage file cleaner (services/janitor). Drains private.storage_cleanup_queue (files of deleted
+  # accounts: avatars, post/chat attachments, CS documents; and letters past retention) through the
+  # Storage API so files on disk/S3 are removed too. Reported/removed content is first copied to the
+  # evidence bucket (evidence quarantine, migration 0095).
   janitor:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -863,7 +839,6 @@ services:
       POSTGREST_URL: http://rest:3000
       STORAGE_URL: http://storage:5000
     healthcheck:
-      # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/janitor", "healthcheck"]
       interval: 10s
       timeout: 3s
@@ -873,9 +848,9 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
-  # Klasifikasi gambar NSFW (services/classifier, MODEL.md): MobileNetV4 Apache-2.0 di ONNX Runtime
-  # (CPU). Dipanggil media untuk setiap gambar nasabah sebelum disimpan; bila mati, upload gambar
-  # ditolak (fail closed). Ambang diatur Kepatuhan dari web CS.
+  # NSFW image classifier (services/classifier, MODEL.md): Apache-2.0 MobileNetV4 on ONNX Runtime
+  # (CPU). media calls it for every customer image before storing it; when it is down, image
+  # uploads are rejected (fail closed). Compliance sets the threshold from the web CS.
   classifier:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -907,10 +882,10 @@ services:
       resources:
         limits: {cpus: "1", memory: 512M, pids: 64}
 
-  # Pintu upload nasabah (services/media): cek isi file dari magic bytes, buang metadata (EXIF/GPS,
-  # XMP, IPTC) tanpa re-encode, periksa PDF, lalu teruskan ke Storage dengan klaim media_verified
-  # (wajib untuk upload nasabah sejak migrasi 0063). Kong: /media/v1/* -> media:8080; port ops 9100
-  # (/livez, /readyz, /metrics) tidak dirutekan.
+  # Customer upload gateway (services/media): checks content by magic bytes, strips metadata
+  # (EXIF/GPS, XMP, IPTC) without re-encoding, checks PDFs, then forwards to Storage with the
+  # media_verified claim (required for customer uploads since migration 0063). Kong routes
+  # /media/v1/* to media:8080; the ops port 9100 (/livez, /readyz, /metrics) is not routed.
   media:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -942,7 +917,6 @@ services:
       MODERATION_REFRESH: 30s
       MODEL_MISSING_POLICY: ${MEDIA_MODEL_MISSING_POLICY:-reject}
     healthcheck:
-      # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/media", "healthcheck"]
       interval: 10s
       timeout: 3s
@@ -952,20 +926,20 @@ services:
       resources:
         limits: {cpus: "1", memory: 384M, pids: 64}
 
-  # Backup PostgreSQL (PITR) + file Storage ke repositori restic (services/backup, docs/backup):
-  # pg_receivewal lewat slot olt_backup + pg_basebackup harian + uji restore mingguan. Tujuan (S3 atau
-  # folder lokal BACKUP_LOCAL_REPO_DIR), password enkripsi, dan jadwal diatur Super Admin dari web CS
-  # (Pengaturan -> Backup). Koneksi replikasi langsung ke Postgres (tidak bisa lewat PgBouncer).
+  # PostgreSQL (PITR) and Storage file backups to a restic repository (services/backup, docs/backup):
+  # pg_receivewal on slot olt_backup, a daily pg_basebackup, and a weekly restore test. Destination
+  # (S3 or local folder BACKUP_LOCAL_REPO_DIR), encryption password, and schedule are set by a Super
+  # Admin in the web CS (Pengaturan -> Backup). Replication connects directly, not through PgBouncer.
   backup:
     <<: *base
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/backup
     image: olt-social/backup:0.2.0
-    # Hostname tetap agar restic mengenali lock basi miliknya sendiri setelah restart.
+    # Fixed hostname so restic recognizes its own stale locks after a restart.
     hostname: backup
     networks: [data, app, egress]
-    # Membaca file storage milik 1000:1000 walau mode 0640.
+    # Reads storage files owned by 1000:1000 even though their mode is 0640.
     group_add: ["1000"]
     depends_on:
       migrate:
@@ -991,7 +965,7 @@ services:
     volumes:
       - backup-data:/var/lib/olt-backup
       - storage-data:/mnt/storage:ro
-      # Repositori restic untuk tujuan "Folder lokal di server"; dipakai hanya bila tujuan itu dipilih.
+      # restic repository for the "Folder lokal di server" destination; used only when that destination is chosen.
       - ${BACKUP_LOCAL_REPO_DIR:-../backups/restic}:/var/lib/olt-backup-repo
     healthcheck:
       test: ["CMD", "/usr/local/bin/backup", "healthcheck"]
@@ -1003,10 +977,10 @@ services:
       resources:
         limits: {cpus: "1", memory: "${BACKUP_MEMORY:-1G}", pids: 256}
 
-  # Gateway integrasi OLT (services/integration, docs/integration): notifEngine mengirim notifikasi
-  # transaksi per cust_id (dipetakan dari klaim `accounts` token sosial) dan bot resmi memposting
-  # berita, memakai API key yang dibuat Super Admin di web CS. Kong: /integration/v1/* -> :8080;
-  # port ops 9100 tidak dirutekan.
+  # OLT integration gateway (services/integration, docs/integration): notifEngine sends transaction
+  # notifications per cust_id (mapped from the social token `accounts` claim) and official bots post
+  # news, using API keys created by a Super Admin in the web CS. Kong routes /integration/v1/* to
+  # :8080; the ops port 9100 is not routed.
   integration:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -1030,7 +1004,6 @@ services:
       MAX_BODY_BYTES: ${INTEGRATION_MAX_BODY_BYTES:-2097152}
       MAX_CONCURRENT: ${INTEGRATION_MAX_CONCURRENT:-8}
     healthcheck:
-      # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/integration", "healthcheck"]
       interval: 10s
       timeout: 3s
@@ -1040,11 +1013,11 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
-  # Pratinjau link (services/link-preview): satu-satunya layanan yang menghubungi host internet
-  # sembarang. Proteksi SSRF menolak alamat privat (termasuk jaringan Docker), port selain 80/443,
-  # dan lebih dari 3 redirect. Setiap gambar pratinjau diklasifikasi classifier dengan ambang yang
-  # sama dengan media; bila classifier mati, pratinjau tampil tanpa gambar (fail closed). Hasil
-  # dibaca klien lewat RPC get_link_previews.
+  # Link previews (services/link-preview): the only service that contacts arbitrary internet hosts.
+  # SSRF protection rejects private addresses (Docker networks included), ports other than 80/443,
+  # and more than 3 redirects. Every preview image goes through the classifier with the same
+  # threshold as media; when the classifier is down, previews show no image (fail closed). Clients
+  # read results through the get_link_previews RPC.
   link-preview:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -1084,10 +1057,10 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
-  # Pemantau sistem (services/sentinel): probe HTTP/TCP ke layanan internal + pemakaian disk setiap
-  # 30 dtk ke database (aturan alert dihitung di DB, docs/system-health), lalu mengirim alert ke
-  # Telegram/email yang diatur Super Admin dari web CS. Probe web CS dan gateway nasabah ditambahkan
-  # overlay profil CS lewat PROBES_EXTRA.
+  # System monitor (services/sentinel): every 30 s it probes internal services over HTTP/TCP and
+  # reports disk usage to the database (alert rules are evaluated in the DB, docs/system-health),
+  # then sends alerts to the Telegram/email channels a Super Admin sets in the web CS. The CS
+  # profile overlays add the web CS and customer gateway probes through PROBES_EXTRA.
   sentinel:
     <<: *base
     build:
@@ -1106,7 +1079,6 @@ services:
       - storage-data:/mnt/disks/storage:ro
       - backup-data:/mnt/disks/backup:ro
       - ${BACKUP_LOCAL_REPO_DIR:-../backups/restic}:/mnt/disks/backup-repo:ro
-      # File status healer (restart otomatis), hanya dibaca.
       - healer-state:/mnt/healer:ro
     environment:
       PORT: 8080
@@ -1115,11 +1087,11 @@ services:
       POSTGREST_URL: http://rest:3000
       PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
       DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup,backup-repo=/mnt/disks/backup-repo
-      # Metrik untuk alert pool PostgREST, laju event Realtime (JWT dari jwt_secret = METRICS_JWT_SECRET),
-      # dan antrean PgBouncer (SHOW POOLS sebagai olt_stats). services/sentinel/README.md.
+      # Metrics for the PostgREST pool, Realtime event rate (JWT from jwt_secret = METRICS_JWT_SECRET),
+      # and PgBouncer queue (SHOW POOLS as olt_stats) alerts. See services/sentinel/README.md.
       METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://rest:3001/metrics,realtime=jwt+http://realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@pgbouncer:6432}
       PGBOUNCER_STATS_PASSWORD_FILE: /run/secrets/pgbouncer_stats_password
-      # Status healer ikut laporan kesehatan (alert healer:*). Kosong = tidak dibaca (profil cluster).
+      # Healer state feeds the health report (healer:* alerts). Empty disables it (cluster profile).
       HEALER_STATE_FILE: /mnt/healer/state.json
     healthcheck:
       test: ["CMD", "/sentinel", "healthcheck"]
@@ -1131,12 +1103,12 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
-  # Restart otomatis (services/healer): me-restart container project ini berlabel olt.autoheal=true
-  # yang unhealthy >= HEALER_UNHEALTHY_SECONDS dan sudah berjalan >= HEALER_MIN_UPTIME_SECONDS,
-  # maks HEALER_MAX_RESTARTS_PER_HOUR per layanan lalu menyerah (alert healer:gave_up:<layanan>).
-  # Ditahan bila db/pgbouncer tidak sehat atau banyak layanan unhealthy bersamaan. Satu-satunya
-  # container dengan Docker socket: tanpa jaringan sama sekali, tanpa port, rootfs read-only.
-  # Hanya profil dev/single; di cluster Swarm sudah mengganti task unhealthy (replicas 0).
+  # Auto-restart (services/healer): restarts this project's containers labeled olt.autoheal=true
+  # that have been unhealthy for >= HEALER_UNHEALTHY_SECONDS and up for >= HEALER_MIN_UPTIME_SECONDS,
+  # at most HEALER_MAX_RESTARTS_PER_HOUR per service before giving up (alert healer:gave_up:<service>).
+  # Holds off while db/pgbouncer is unhealthy or many services are unhealthy at once. The only
+  # container with the Docker socket: no network at all, no ports, read-only rootfs.
+  # dev/single only; in the cluster Swarm already replaces unhealthy tasks (replicas 0).
   healer:
     <<: *base
     build:
@@ -1144,8 +1116,8 @@ services:
     image: olt-social/healer:0.1.0
     network_mode: none
     user: "65532:65532"
-    # Grup pemilik /var/run/docker.sock: 0 di Docker Desktop, grup `docker` di Linux
-    # (getent group docker | cut -d: -f3) lewat HEALER_DOCKER_GID.
+    # Group owning /var/run/docker.sock: 0 on Docker Desktop, the `docker` group on Linux
+    # (getent group docker | cut -d: -f3), set through HEALER_DOCKER_GID.
     group_add: ["${HEALER_DOCKER_GID:-0}"]
     stop_grace_period: 10s
     volumes:
@@ -1163,7 +1135,7 @@ services:
       HEALER_SYSTEMIC_FRACTION: ${HEALER_SYSTEMIC_FRACTION:-0.5}
       HEALER_STATE_FILE: /var/lib/olt-healer/state.json
     healthcheck:
-      # Tanpa jaringan: sehat bila file status diperbarui dalam 3 interval terakhir.
+      # No network: healthy when the state file was updated within the last 3 intervals.
       test: ["CMD", "/healer", "healthcheck"]
       interval: 15s
       timeout: 3s
@@ -1173,13 +1145,12 @@ services:
       resources:
         limits: {cpus: "0.1", memory: 32M, pids: 32}
 
-  # --- Customer service lewat chat (docs/cs-chat) -------------------------------
-  # Profil compose `cs`: selalu aktif di dev; produksi menyalakannya dengan
+  # Compose profile `cs` (docs/cs-chat): always on in dev; production enables it with
   # CS=1 (Windows: -Cs).
 
-  # Web CS React (apps/cs-console-react): SPA statis di nginx non-root. Browser
-  # agen memanggil API lewat SUPABASE_URL; env.js ditulis saat container start.
-  # Produksi hanya lewat VPN (compose.cs.yml + volumes/traefik/cs.yml).
+  # Web CS (apps/cs-console-react): static SPA on non-root nginx. Agent browsers call the API
+  # through SUPABASE_URL; env.js is written at container start. Production is reachable only
+  # over the VPN (compose.cs.yml + volumes/traefik/cs.yml).
   cs-console:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -1208,12 +1179,12 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
-  # Gateway menu Akun Nasabah di web CS (services/nasabah-gateway, docs/nasabah/README.md).
-  # Hanya meneruskan rute staf /online/* ke csAdmin dengan token integrasi: gateway menandatangani
-  # assertion Ed25519 (docker/secrets/csadmin_signing_key), csAdmin memverifikasinya dengan kunci
-  # publik di blok integration config CS Admin service. Alamat dan client id diatur Super Admin di web CS
-  # (Pengaturan -> Integrasi API Nasabah); sebelum disimpan dengan tes koneksi berhasil, gateway menjawab
-  # 503 not_configured. Memeriksa permission per akun CS dan mencatat aksi di cs_audit_log.
+  # Customer Account menu gateway for the web CS (services/nasabah-gateway, docs/nasabah/README.md).
+  # Forwards only staff /online/* routes to csAdmin with an integration token: the gateway signs an
+  # Ed25519 assertion (docker/secrets/csadmin_signing_key) and csAdmin verifies it with the public key
+  # in its integration config block. Address and client id are set by a Super Admin in the web CS
+  # (Pengaturan -> Integrasi API Nasabah); until they are saved after a successful connection test,
+  # the gateway answers 503 not_configured. Checks per-account CS permissions and logs actions to cs_audit_log.
   nasabah-gateway:
     <<: *base
     labels: ["olt.autoheal=true"]
@@ -1221,7 +1192,7 @@ services:
     build:
       context: ../services/nasabah-gateway
     image: olt-social/nasabah-gateway:0.1.0
-    # edge: dari Traefik; app: PostgREST; egress: server csAdmin di jaringan lokal.
+    # edge: from Traefik; app: PostgREST; egress: the csAdmin server on the local network.
     networks: [edge, app, egress]
     depends_on:
       rest:
@@ -1236,7 +1207,6 @@ services:
       CSADMIN_SIGNING_KEY_FILE: /run/secrets/csadmin_signing_key
       CSADMIN_TIMEOUT: ${CSADMIN_TIMEOUT:-15s}
     healthcheck:
-      # Image distroless: binary menyediakan subcommand healthcheck.
       test: ["CMD", "/nasabah-gateway", "healthcheck"]
       interval: 10s
       timeout: 3s
@@ -1246,9 +1216,9 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
-  # Service operasional (tidak ikut `up`). Dipakai Makefile/make.ps1:
+  # Ops service (not started by `up`), used by Makefile/make.ps1:
   #   docker compose run --rm tools migrate|seed|test-db|smoke|backup|restore|psql
-  # Semua skrip berjalan di container Linux sehingga host Windows tidak butuh bash/psql.
+  # Scripts run in a Linux container, so Windows hosts need no bash/psql.
   tools:
     <<: *base
     restart: "no"
@@ -1261,7 +1231,7 @@ services:
     configs:
       - source: with-secrets
         target: /opt/olt/with-secrets.sh
-    # jwt_secret: smoke-cs, akun staf dev, dan bootstrap super admin menandatangani JWT seperti GoTrue.
+    # jwt_secret: smoke-cs, dev staff accounts, and the super admin bootstrap sign JWTs like GoTrue.
     secrets: [postgres_password, anon_key, jwt_secret]
     entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", "bash", "/olt/scripts/tools.sh"]
     volumes:
@@ -1283,7 +1253,7 @@ networks:
     internal: true
     ipam:
       config:
-        # Subnet tetap: Kong hanya mempercayai X-Forwarded-For dari sini (Traefik).
+        # Fixed subnet: Kong trusts X-Forwarded-For only from here (Traefik).
         - subnet: ${EDGE_SUBNET:-10.250.250.0/24}
   app:
     internal: true
@@ -1322,7 +1292,7 @@ configs:
   rest-pg-service:
     file: ./volumes/rest/pg_service.conf
 
-# Dibuat `make gen-secrets`; folder docker/secrets/ tidak pernah di-commit.
+# Created by `make gen-secrets`; docker/secrets/ is never committed.
 secrets:
   postgres_password:
     file: ./secrets/postgres_password

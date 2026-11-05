@@ -58,10 +58,9 @@ awk '{
 # Remove empty key-auth credentials (unconfigured opaque keys)
 sed -i '/^[[:space:]]*- key:[[:space:]]*$/d' "$KONG_DECLARATIVE_CONFIG"
 
-# OLT: origin CORS dari CORS_ALLOWED_ORIGINS (dipisah koma), dipasang ke setiap
-# plugin `cors`. "*" = semua origin (development). Kosong = tidak ada origin web
-# yang diizinkan; app native tidak mengirim Origin sehingga tidak terpengaruh.
-# Kong selalu mengirim satu origin literal, jadi origin lain ditolak browser.
+# OLT: every `cors` plugin gets the comma-separated CORS_ALLOWED_ORIGINS. "*" allows any origin
+# (development only). Empty allows no web origin; native apps send no Origin and are unaffected.
+# Kong always answers with one literal origin, so browsers reject every other origin.
 cors_origins="${CORS_ALLOWED_ORIGINS:-}"
 [ -n "$cors_origins" ] || cors_origins="https://cors-disabled.invalid"
 cors_yaml="[$(printf '%s' "$cors_origins" | awk -F, '{

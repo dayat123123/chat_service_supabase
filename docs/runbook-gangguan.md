@@ -20,7 +20,7 @@ Biasanya bukan gangguan sistem, melainkan aturan yang bekerja. Minta tangkapan l
 | Tidak bisa kirim di room tertentu | Dibisukan moderator, akun dibatasi | Hub → Komunitas → Moderasi |
 | "Perbarui aplikasi" | Versi aplikasi di bawah versi minimum | Hub → Pengaturan → Fitur & versi |
 | "Sementara tidak tersedia" untuk semua fitur sosial | Kill switch sedang aktif | Hub → Pengaturan → Fitur & versi → Kill switch |
-| Login gagal terus / "Sesi berakhir" | Token dari backend OLT ditolak: jam server OLT meleset, kunci OLT berubah, `iss`/`aud` tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (cari `exchange ditolak` dan field `reason`) |
+| Login gagal terus / "Sesi berakhir" | Token dari backend OLT ditolak: jam server OLT meleset, kunci OLT berubah, `iss`/`aud` tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (cari `exchange rejected` dan field `reason`) |
 
 ### B. Semua orang kena
 

@@ -33,9 +33,9 @@ export const accountApi = {
     const updated = await auth.updateUser({ password: next })
     if (updated.error) throw toApiError(updated.error)
     const others = await auth.signOut({ scope: 'others' })
-    if (others.error) logger.warn('Sesi lain belum dikeluarkan setelah ganti password', others.error)
+    if (others.error) logger.warn('Other sessions stayed signed in after the password change', others.error)
     await rpc('agent_password_changed').catch((error: unknown) =>
-      logger.warn('Audit ganti password gagal dicatat', error),
+      logger.warn('Password change audit could not be recorded', error),
     )
     return { othersSignedOut: !others.error }
   },

@@ -1,11 +1,11 @@
--- Helper untuk tes pgTAP. Dimuat oleh scripts/test-db.sh sebelum pg_prove dan
--- dihapus setelahnya (schema `tests` tidak pernah ada di produksi).
+-- Loaded by scripts/test-db.sh before pg_prove and dropped afterwards; the `tests` schema never exists in
+-- production.
 --
--- Pola di file tes:
+-- Pattern in test files:
 --   select tests.create_user('alice') as alice \gset
---   select tests.authenticate_as(:'alice');   -- role authenticated + JWT sub
+--   select tests.authenticate_as(:'alice');   -- authenticated role + JWT sub
 --   ...
---   reset role;                                -- kembali ke postgres
+--   reset role;                                -- back to postgres
 
 create schema if not exists tests;
 grant usage on schema tests to anon, authenticated;
@@ -37,7 +37,7 @@ begin
 end;
 $$;
 
--- Harus dipanggil saat role masih postgres (jalankan `reset role;` dulu).
+-- Must be called while the role is still postgres (run `reset role;` first).
 create or replace function tests.authenticate_anon()
 returns void
 language plpgsql
@@ -49,7 +49,7 @@ begin
 end;
 $$;
 
--- Seperti authenticate_as, dengan klaim JWT tambahan (mis. {"aal":"aal2"} atau {"iat": ...}).
+-- Like authenticate_as, with extra JWT claims (e.g. {"aal":"aal2"} or {"iat": ...}).
 create or replace function tests.authenticate_with(p_user_id uuid, p_extra jsonb)
 returns void
 language plpgsql
@@ -62,8 +62,8 @@ begin
 end;
 $$;
 
--- Admin uji: akun GoTrue terpisah (bukan profil sosial) dengan peran tertentu.
--- Harus dipanggil saat role masih postgres. Login: tests.authenticate_admin(id).
+-- Test admin: a separate GoTrue account (not a social profile) with the given role. Must be called
+-- while the role is still postgres. Log in with tests.authenticate_admin(id).
 create or replace function tests.create_admin(p_role text)
 returns uuid
 language plpgsql

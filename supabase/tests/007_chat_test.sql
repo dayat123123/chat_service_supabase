@@ -1,5 +1,3 @@
--- Chat: DM tanpa duplikat, keanggotaan & RLS, kirim idempoten, unread, blokir,
--- grup, room saham, soft delete, rate limit.
 begin;
 select plan(28);
 
@@ -8,7 +6,6 @@ select tests.create_user('bob_user') as bob \gset
 select tests.create_user('carol') as carol \gset
 insert into follows (follower_id, following_id) values (:'bob', :'alice');
 
--- DM
 select tests.authenticate_as(:'alice');
 select get_or_create_direct_room(:'bob') as dm \gset
 select is(get_or_create_direct_room(:'bob'), :'dm'::uuid, 'DM dengan user yang sama memakai room yang sama');
@@ -18,8 +15,8 @@ select throws_ok(
   format('select get_or_create_direct_room(%L)', :'bob'),
   'PT400', 'invalid_user', 'Tidak bisa DM diri sendiri');
 
--- now() konstan dalam satu transaksi; mundurkan last_read_at agar pesan
--- yang dikirim di tes ini terhitung belum dibaca.
+-- now() is constant within a transaction; move last_read_at back so messages sent in this test
+-- count as unread.
 reset role;
 update chat_members set last_read_at = now() - interval '1 minute' where room_id = :'dm';
 
@@ -47,7 +44,6 @@ select throws_ok(
   format($$select get_messages(%L)$$, :'dm'),
   'PT403', 'not_member', 'Non-anggota tidak bisa memanggil get_messages');
 
--- Unread
 select tests.authenticate_as(:'bob');
 select is(
   (select unread_count from get_unread_counts() where room_id = :'dm'), 3,
@@ -68,7 +64,6 @@ select is(
   (select count(*)::int from notifications where user_id = :'bob' and type = 'message'), 1,
   'Notifikasi pesan digabung per room');
 
--- Blokir menutup DM
 insert into blocks (blocker_id, blocked_id) values (:'bob', :'alice');
 select tests.authenticate_as(:'alice');
 select throws_ok(
@@ -78,7 +73,6 @@ select throws_ok(
   format('select get_or_create_direct_room(%L)', :'bob'),
   'PT403', 'blocked', 'Tidak bisa membuat DM dengan user yang memblokir');
 
--- Grup
 select create_group_room('Diskusi Bank', array[:'carol']::uuid[]) as grp \gset
 reset role;
 select results_eq(
@@ -92,7 +86,6 @@ select is(
   (select role from chat_members where room_id = :'grp' and user_id = :'carol'), 'owner',
   'Kepemilikan grup diwariskan ke anggota tersisa');
 
--- Room saham
 select tests.authenticate_as(:'carol');
 select join_stock_room('bbca') as stock_room \gset
 select tests.authenticate_as(:'bob');
@@ -108,7 +101,6 @@ select throws_like($$select join_stock_room('XYZW')$$, '%"PT429"%"rate_limited"%
   'Pembuatan room saham baru dibatasi rate limit');
 select is(join_stock_room('BBCA'), :'stock_room'::uuid, 'Bergabung ke room saham yang sudah ada tidak terkena rate limit');
 
--- Soft delete pesan & rate limit
 reset role;
 update private.rate_limits set max_count = 1 where action = 'message';
 select tests.authenticate_as(:'carol');

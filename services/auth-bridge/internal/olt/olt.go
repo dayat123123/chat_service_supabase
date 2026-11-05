@@ -21,8 +21,8 @@ type AccountClaim struct {
 }
 
 var (
-	ErrInvalidToken = errors.New("token OLT tidak valid")
-	ErrUnavailable  = errors.New("server OLT tidak dapat dihubungi")
+	ErrInvalidToken = errors.New("invalid OLT token")
+	ErrUnavailable  = errors.New("OLT server unreachable")
 )
 
 type Verifier interface {

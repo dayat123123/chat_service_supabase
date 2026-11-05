@@ -75,28 +75,28 @@ export default async function () {
   try {
     const csStaff = await open(CS, staff, { 'X-Olt-Edge': 'public' });
     let r = await joinPrivate(csStaff, 'cs:queue');
-    result(r.joined, 'staf lewat domain CS (penanda public palsu dibuang) bisa join cs:queue', r.status);
+    result(r.joined, 'staff via CS domain (forged public marker stripped) can join cs:queue', r.status);
 
     const pubStaff = await open(PUBLIC, staff);
     r = await joinPrivate(pubStaff, 'cs:queue');
-    result(!r.joined, 'staf lewat domain publik tidak bisa join cs:queue (walau JWT yang sama sudah join di domain CS)', r.status);
+    result(!r.joined, 'staff via public domain cannot join cs:queue (even though the same JWT joined on the CS domain)', r.status);
 
     const spoofStaff = await open(PUBLIC, staff, { 'X-Olt-Edge': 'cs' });
     r = await joinPrivate(spoofStaff, 'cs:queue');
-    result(!r.joined, 'staf lewat domain publik dengan X-Olt-Edge: cs palsu tetap ditolak', r.status);
+    result(!r.joined, 'staff via public domain with forged X-Olt-Edge: cs is still rejected', r.status);
 
     const c = await joinChanges(pubStaff, 'edge-staff-posts');
-    result(!c.subscribed, 'staf tidak bisa berlangganan postgres_changes di domain publik', c.status);
+    result(!c.subscribed, 'staff cannot subscribe to postgres_changes on the public domain', c.status);
 
     const pubCustomer = await open(PUBLIC, customer);
     r = await joinPrivate(pubCustomer, `user:${customerId}`);
-    result(r.joined, 'kontrol: nasabah lewat domain publik tetap bisa join user:<id> miliknya', r.status);
+    result(r.joined, 'control: customer via public domain can still join own user:<id>', r.status);
     r = await joinPrivate(pubCustomer, 'online');
-    result(!r.joined, 'topik online ditutup (0105)', r.status);
+    result(!r.joined, 'online topic is closed (0105)', r.status);
     const cc = await joinChanges(pubCustomer, 'edge-customer-posts');
-    result(cc.subscribed, 'kontrol: nasabah lewat domain publik tetap bisa postgres_changes posts', cc.status);
+    result(cc.subscribed, 'control: customer via public domain can still use postgres_changes on posts', cc.status);
   } catch (e) {
-    result(false, 'probe realtime-edge selesai tanpa error', String(e.message || e));
+    result(false, 'realtime-edge probe finished without error', String(e.message || e));
   } finally {
     sockets.forEach((rt) => rt.close());
   }

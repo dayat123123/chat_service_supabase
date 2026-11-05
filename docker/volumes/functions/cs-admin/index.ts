@@ -8,7 +8,7 @@ class ApiError extends Error {
 
 const required = (name: string): string => {
   const value = Deno.env.get(name)
-  if (!value) throw new Error(`${name} belum diatur`)
+  if (!value) throw new Error(`${name} is not set`)
   return value
 }
 
@@ -107,7 +107,7 @@ async function createAgent(adminId: string, body: Json): Promise<Response> {
   const userId = String(user.id)
   try {
     const agent = await rpc('service_create_agent', serviceKey, { p_user_id: userId, ...agentFields(body), p_created_by: adminId })
-    console.log(`cs-admin: akun CS ${userId} dibuat oleh ${adminId}`)
+    console.log(`cs-admin: CS account ${userId} created by ${adminId}`)
     return Response.json({ agent, temporary_password: password }, { status: 201 })
   } catch (error) {
     await authAdmin('DELETE', `users/${userId}`).catch(() => undefined)
@@ -132,7 +132,7 @@ async function resetPassword(token: string, agentId: string): Promise<Response> 
   const agent = await rpc('admin_reset_password', token, { p_agent_id: agentId })
   const password = temporaryPassword()
   await authAdmin('PUT', `users/${agentId}`, { password, user_metadata: { must_change_password: true } })
-  console.log(`cs-admin: password akun CS ${agentId} direset`)
+  console.log(`cs-admin: password reset for CS account ${agentId}`)
   return Response.json({ agent, temporary_password: password })
 }
 

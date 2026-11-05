@@ -1,4 +1,3 @@
--- Struktur skema & hak akses dasar.
 begin;
 select plan(12);
 

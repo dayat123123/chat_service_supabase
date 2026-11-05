@@ -1,15 +1,10 @@
 #!/bin/sh
-# Entrypoint pembungkus untuk semua service yang punya shell, di semua profil.
-#
-# Nilai environment boleh berisi placeholder {{secret:NAMA}}. Sebelum perintah
-# asli image dijalankan, placeholder diganti dengan isi /run/secrets/NAMA
-# (Docker secrets: file di compose, secret Swarm di cluster). Dengan begitu
-# rahasia tidak pernah tertulis di file compose, `.env`, atau `docker inspect`.
+# Wrapper entrypoint: replaces {{secret:NAME}} placeholders in environment values with the
+# contents of /run/secrets/NAME before exec'ing the image's original entrypoint, so secrets never
+# appear in compose files, .env, or `docker inspect`. Usage:
 #
 #   GOTRUE_DB_DATABASE_URL: "postgres://user:{{secret:postgres_password}}@pgbouncer:6432/postgres"
-#   entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", <entrypoint asli image>]
-#
-# Service gagal start dengan pesan jelas bila secret yang dibutuhkan tidak ada.
+#   entrypoint: ["/bin/sh", "/opt/olt/with-secrets.sh", <original image entrypoint>]
 set -eu
 
 secrets_dir="${OLT_SECRETS_DIR:-/run/secrets}"
@@ -28,8 +23,8 @@ for name in $(env | sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*{{secret:[a-z0-9_]*}
     value=${rest#*'}}'}
     file="$secrets_dir/$secret"
     if [ ! -r "$file" ]; then
-      echo "with-secrets: secret '$secret' (untuk $name) tidak ditemukan di $file." >&2
-      echo "with-secrets: jalankan 'make gen-secrets' (Windows: .\\make.ps1 gen-secrets)." >&2
+      echo "with-secrets: secret '$secret' (for $name) not found at $file." >&2
+      echo "with-secrets: run 'make gen-secrets' (Windows: .\\make.ps1 gen-secrets)." >&2
       exit 1
     fi
     result="$result$prefix$(cat "$file")"

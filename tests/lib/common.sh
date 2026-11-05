@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# Helper bersama skrip uji keamanan, beban, dan chaos (berjalan di image olt-social/testkit).
 
 STACK="${STACK:-olt-social}"
 SECRETS="${SECRETS_DIR:-/olt/secrets}"

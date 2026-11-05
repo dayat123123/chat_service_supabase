@@ -108,7 +108,7 @@ export async function loadStrings(...bundles: Bundle[]) {
     try {
       await Promise.all(bundles.map((bundle) => loadBundle(bundle, 'en')))
     } catch (error) {
-      logger.warn('Terjemahan bahasa Inggris gagal dimuat', error)
+      logger.warn('English translations failed to load', error)
     }
   }
 }
@@ -127,7 +127,7 @@ export async function prepareLanguage() {
   try {
     await loadLanguage(storedLanguage())
   } catch (error) {
-    logger.warn('Terjemahan bahasa Inggris gagal dimuat', error)
+    logger.warn('English translations failed to load', error)
     await i18n.changeLanguage('id')
   }
 }

@@ -17,7 +17,7 @@ type SupportHome = { room_id: string | null; active: boolean; ticket: CustomerTi
 
 async function json<T>(response: Response, label: string): Promise<T> {
   const text = await response.text()
-  if (!response.ok) throw new Error(`${label} gagal (${response.status}): ${text.slice(0, 300)}`)
+  if (!response.ok) throw new Error(`${label} failed (${response.status}): ${text.slice(0, 300)}`)
   return (text ? JSON.parse(text) : null) as T
 }
 
@@ -39,7 +39,7 @@ export class Customer {
       }),
       `login OLT dummy ${username}`,
     )
-    if (!olt.social_token) throw new Error(`OLT dummy tidak memberi token sosial untuk ${username}`)
+    if (!olt.social_token) throw new Error(`The dummy OLT returned no social token for ${username}`)
     const session = await json<{ access_token: string; user: { id: string } }>(
       await fetch(`${apiUrl}/bridge/v1/exchange`, {
         method: 'POST',

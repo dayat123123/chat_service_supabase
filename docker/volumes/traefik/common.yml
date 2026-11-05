@@ -1,12 +1,7 @@
-# Konfigurasi dinamis Traefik yang sama di semua profil: middleware & upstream.
-# Router ada di file profil (dev.yml / prod.yml). Nilai batas diambil dari
-# environment service traefik (lihat compose.yml) dan bisa diubah tanpa ubah kode.
 http:
   middlewares:
-    # Rate limit per IP: rata-rata EDGE_RATE_AVERAGE req/detik, burst EDGE_RATE_BURST.
-    # Default longgar untuk nasabah di balik CGNAT/Wi-Fi kantor saat 09:00 (T3,
-    # docs/testing/report-2026-11-03.md). Penyalahgunaan per akun tetap dibatasi
-    # rate limit per user di DB (private.rate_limits) dan auth-bridge (per user OLT).
+    # Generous per-IP default because many customers share one CGNAT or office Wi-Fi IP at peak
+    # hours; per-account abuse is still capped by private.rate_limits and auth-bridge.
     rate-limit:
       rateLimit:
         average: {{ env "EDGE_RATE_AVERAGE" | default "600" }}
@@ -16,9 +11,9 @@ http:
           ipStrategy:
             depth: 0
 
-    # Maksimum koneksi WebSocket Realtime bersamaan per IP. Default 1500: ±1.000 nasabah
-    # di balik satu IP CGNAT/kantor (1 WebSocket per nasabah) plus ruang sambung ulang.
-    # Total koneksi, join, dan event tetap dijaga batas tenant Realtime (REALTIME_* di compose.yml).
+    # Concurrent Realtime WebSockets per IP: 1500 covers about 1,000 customers behind one
+    # CGNAT/office IP (one socket each) plus reconnect headroom. Overall connections, joins, and
+    # events are still capped by the Realtime tenant limits in compose.yml.
     ws-limit:
       inFlightReq:
         amount: {{ env "EDGE_WS_PER_IP" | default "1500" }}
@@ -26,7 +21,6 @@ http:
           ipStrategy:
             depth: 0
 
-    # Batas ukuran body request (413 bila terlampaui).
     body-api:
       buffering:
         maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_API" | default "262144" }}
@@ -40,7 +34,6 @@ http:
         maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_INTEGRATION" | default "2097152" }}
         memRequestBodyBytes: 1048576
 
-    # Header keamanan untuk respons API (JSON, gambar, WebSocket).
     security-headers:
       headers:
         frameDeny: true
@@ -51,7 +44,7 @@ http:
           Server: ""
           X-Powered-By: ""
 
-    # Header keamanan untuk halaman web (Studio): Next.js butuh script & style inline.
+    # For web pages (Studio): Next.js needs inline scripts and styles.
     security-headers-ui:
       headers:
         frameDeny: true
@@ -62,7 +55,7 @@ http:
           Server: ""
           X-Powered-By: ""
 
-    # HSTS hanya untuk HTTPS (profil single/cluster).
+    # HTTPS profiles only (single/cluster).
     hsts:
       headers:
         stsSeconds: 31536000

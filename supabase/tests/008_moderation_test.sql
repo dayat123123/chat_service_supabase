@@ -1,4 +1,3 @@
--- Moderasi: filter kata, report, notifikasi milik sendiri.
 begin;
 select plan(14);
 
@@ -18,7 +17,6 @@ select throws_ok(
   'PT422', 'content_blocked', 'Frasa terlarang (block) ditolak');
 select throws_ok($$select word from banned_words$$, '42501', null, 'Daftar kata terlarang tidak bisa dibaca user');
 
--- Report
 select lives_ok(
   $$insert into reports (reporter_id, target_type, target_id, reason, details)
     values (auth.uid(), 'post', 'a5000000-0000-4000-8000-000000000001', 'pump_and_dump', 'Ajakan goreng saham')$$,
@@ -48,7 +46,6 @@ select is(
   (select report_count::int from private.report_queue where target_id = 'a5000000-0000-4000-8000-000000000001'),
   1, 'Antrean moderasi memuat target yang dilaporkan');
 
--- Notifikasi hanya untuk pemiliknya
 select tests.authenticate_as(:'alice');
 select is((select count(*)::int from notifications where user_id = :'bob'), 0,
   'Notifikasi user lain tidak terlihat');

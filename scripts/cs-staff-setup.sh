@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
-# Akun staf dev untuk web CS (make cs-staff): CS, super admin, dan kepatuhan demo dengan ID tetap, login GoTrue
-# email + password tanpa TOTP. Mencetak JSON (email, password) ke stdout; make menyimpannya di
-# scripts/cs-demo/runtime/staff.json (di-gitignore). Password diturunkan dari JWT secret lingkungan ini.
-# Hanya untuk profil dev.
+# Dev profile only. Passwords are derived from this environment's JWT secret and the printed JSON
+# is stored in the gitignored scripts/cs-demo/runtime/staff.json.
 set -euo pipefail
 source "$(dirname "$0")/cs-lib.sh"
-: "${ANON_KEY:?ANON_KEY wajib diisi}"
+: "${ANON_KEY:?ANON_KEY is required}"
 
 AUTH="${SUPABASE_URL:-http://kong:8000}/auth/v1"
 STAFF=(

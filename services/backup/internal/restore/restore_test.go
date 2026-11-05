@@ -66,10 +66,10 @@ func TestChooseTargetPicksLatestBaseBeforeAndFirstWALAfter(t *testing.T) {
 }
 
 func TestChooseRejectsTargetsOutsideCoverage(t *testing.T) {
-	if _, err := Choose(catalog(), t0.Add(-time.Minute)); err == nil || !strings.Contains(err.Error(), "tidak ada base backup sebelum") {
+	if _, err := Choose(catalog(), t0.Add(-time.Minute)); err == nil || !strings.Contains(err.Error(), "no base backup before") {
 		t.Fatalf("err = %v", err)
 	}
-	if _, err := Choose(catalog(), t0.Add(48*time.Hour)); err == nil || !strings.Contains(err.Error(), "melewati kiriman WAL terbaru") {
+	if _, err := Choose(catalog(), t0.Add(48*time.Hour)); err == nil || !strings.Contains(err.Error(), "is after the newest WAL upload") {
 		t.Fatalf("err = %v", err)
 	}
 	if _, err := Choose(catalog()[1:3], time.Time{}); err == nil {

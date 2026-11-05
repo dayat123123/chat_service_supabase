@@ -408,7 +408,7 @@ describe('RoomsTab', () => {
     await user.click(screen.getByText('Sematkan dengan ID pesan'))
     const idInput = screen.getByLabelText('Sematkan pesan (ID pesan)')
     const fallback = idInput.closest('form')
-    if (!fallback) throw new Error('form cadangan tidak ditemukan')
+    if (!fallback) throw new Error('fallback form not found')
     await user.type(idInput, 'bukan-id')
     await user.click(within(fallback).getByRole('button', { name: 'Sematkan' }))
     expect(screen.getByText('ID pesan tidak valid.')).toBeVisible()

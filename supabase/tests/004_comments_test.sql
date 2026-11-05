@@ -1,5 +1,3 @@
--- Komentar berantai: path/depth, thread RPC, pagination per cabang, counter,
--- soft delete, notifikasi, rate limit, blokir.
 begin;
 select plan(21);
 
@@ -10,7 +8,7 @@ insert into posts (id, author_id, body) values
   ('a2000000-0000-4000-8000-000000000001', :'alice', 'Post untuk diskusi'),
   ('a2000000-0000-4000-8000-000000000002', :'alice', 'Post lain');
 
--- Rantai 5 level: bob -> carol -> bob -> carol -> bob
+-- 5-level chain: bob -> carol -> bob -> carol -> bob
 select tests.authenticate_as(:'bob');
 select id as c1 from create_comment('a2000000-0000-4000-8000-000000000001', null, 'Level 1') \gset
 select tests.authenticate_as(:'carol');
@@ -35,7 +33,6 @@ select is((select reply_count from comments where id = :'c1'), 1, 'reply_count k
 select is((select comment_count from posts where id = 'a2000000-0000-4000-8000-000000000001'), 5,
   'comment_count post bertambah');
 
--- Saudara di bawah c1 dan komentar top-level tambahan.
 select id as c2b from create_comment('a2000000-0000-4000-8000-000000000001', :'c1', 'Level 2 saudara B') \gset
 select id as c2c from create_comment('a2000000-0000-4000-8000-000000000001', :'c1', 'Level 2 saudara C') \gset
 select tests.authenticate_as(:'alice');
@@ -73,7 +70,6 @@ select throws_ok(
   format($$select create_comment('a2000000-0000-4000-8000-000000000001', null, %L)$$, repeat('x', 1001)),
   'PT400', 'body_too_long', 'Komentar maksimal 1000 karakter');
 
--- Soft delete: struktur thread tetap utuh.
 select tests.authenticate_as(:'carol');
 select lives_ok(format('select delete_comment(%L)', :'c2'), 'Penulis bisa menghapus komentarnya');
 select results_eq(
@@ -103,7 +99,6 @@ select ok(
      and payload ->> 'comment_id' = :'c2') = 1,
   'Penulis komentar induk mendapat notifikasi balasan');
 
--- Blokir: komentar (dan turunannya) dari user yang diblokir disembunyikan.
 insert into blocks (blocker_id, blocked_id) values (:'alice', :'bob');
 select tests.authenticate_as(:'alice');
 select is(
@@ -111,9 +106,9 @@ select is(
    where id in (:'c1', :'c3', :'c5')),
   0, 'Komentar user yang diblokir tidak muncul di thread');
 
--- Rate limit komentar (diturunkan sementara agar tes cepat).
+-- Comment rate limit lowered temporarily to keep the test fast.
 reset role;
--- carol sudah menulis 2 komentar dalam semenit terakhir.
+-- carol already wrote 2 comments within the last minute.
 update private.rate_limits set max_count = 2 where action = 'comment';
 select tests.authenticate_as(:'carol');
 select throws_like(

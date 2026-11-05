@@ -10,13 +10,13 @@ const response = await fetch(`${api}/pg/generators/typescript?included_schemas=c
   headers: { apikey: key, Authorization: `Bearer ${key}` },
 })
 if (!response.ok) {
-  console.error(`Gagal membuat tipe database: HTTP ${response.status}`)
+  console.error(`Failed to generate database types: HTTP ${response.status}`)
   process.exit(1)
 }
 const source = await response.text()
 if (!source.includes('export type Database')) {
-  console.error('Respons generator tidak berisi tipe Database')
+  console.error('The generator response has no Database type')
   process.exit(1)
 }
 writeFileSync(target, source)
-console.warn(`Tipe database ditulis ke ${target}`)
+console.warn(`Database types written to ${target}`)

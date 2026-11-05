@@ -1,13 +1,6 @@
-# Profil single: produksi tahap awal di 1 server (VPS Ubuntu).   make up PROFILE=single
-#
-# - Hanya Traefik yang terbuka ke internet: 80 (redirect) dan 443 (HTTPS,
-#   sertifikat Let's Encrypt otomatis). Hanya path API yang dipublikasikan.
-# - Entrypoint admin (Studio & semua path) hanya di 127.0.0.1:${ADMIN_PORT}
-#   server; akses lewat WireGuard atau SSH tunnel:
-#     ssh -L 8000:127.0.0.1:8000 user@server   lalu buka http://localhost:8000
-# - Studio & pg-meta mati secara default:  make admin-up PROFILE=single
-# - auth-bridge selalu APP_ENV=production (mode mock ditolak saat start).
-# Lihat docs/PRODUCTION.md.
+# Single-server production. Only Traefik is reachable from the internet (80 redirects, 443 HTTPS
+# with automatic Let's Encrypt) and only API paths are published. The admin entrypoint (Studio and
+# all paths) listens on 127.0.0.1 only; reach it over WireGuard or an SSH tunnel. See docs/PRODUCTION.md.
 
 services:
   traefik:
@@ -22,7 +15,7 @@ services:
       - traefik-acme:/acme
     environment:
       TRAEFIK_ENTRYPOINTS_WEB_ADDRESS: ":8080"
-      # Port publik HTTPS (bukan port internal 8443 entrypoint websecure).
+      # Public HTTPS port, not the internal 8443 websecure port.
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO: ":${EDGE_HTTPS_PORT_PUBLIC:-443}"
       TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https
       TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS: ":8443"
@@ -39,19 +32,19 @@ services:
       TRAEFIK_ENTRYPOINTS_WEBSECURE_TRANSPORT_LIFECYCLE_GRACETIMEOUT: 20s
       TRAEFIK_ENTRYPOINTS_ADMIN_ADDRESS: ":9000"
       TRAEFIK_ENTRYPOINTS_ADMIN_HTTP_ALIASHEADERSSTRATEGY: delete
-      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL wajib diisi untuk profil single (docker/.env)}
+      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required for the single profile (docker/.env)}
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_STORAGE: /acme/acme.json
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_HTTPCHALLENGE_ENTRYPOINT: web
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_CASERVER: ${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
-      PROXY_DOMAIN: ${PROXY_DOMAIN:?PROXY_DOMAIN wajib diisi untuk profil single (docker/.env)}
+      PROXY_DOMAIN: ${PROXY_DOMAIN:?PROXY_DOMAIN is required for the single profile (docker/.env)}
       TLS_SNI_STRICT: ${TLS_SNI_STRICT:-true}
 
   kong:
     environment:
-      # Kosong = tidak ada origin web yang diizinkan; app native tidak butuh CORS.
+      # Empty allows no web origin; native apps do not need CORS.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
 
-  # Hanya dinyalakan saat dibutuhkan:  make admin-up PROFILE=single
+  # Off by default; start with: make admin-up PROFILE=single
   studio:
     profiles: [admin]
   meta:

@@ -31,10 +31,10 @@ for (const chunk of chunks) {
 
 console.log(`\nInitial JavaScript: ${total.toFixed(1)} KB gzip (limit ${LIMIT_KB} KB)`)
 if (initial.size === 0) {
-  console.error('Tidak menemukan entry script di dist/index.html')
+  console.error('No entry script found in dist/index.html')
   process.exit(1)
 }
 if (total > LIMIT_KB) {
-  console.error('Bundle awal melebihi batas')
+  console.error('Initial bundle exceeds the limit')
   process.exit(1)
 }

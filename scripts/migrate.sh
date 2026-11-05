@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# Menjalankan migrasi SQL bernomor di supabase/migrations secara berurutan.
-#
-# - Setiap file dijalankan sekali, di dalam satu transaksi.
-# - Versi yang sudah dijalankan dicatat di olt_internal.schema_migrations
-#   beserta checksum-nya; file yang berubah setelah dijalankan akan ditolak.
-# - Dijalankan otomatis oleh service one-shot `migrate` setiap kali stack naik,
-#   dan manual lewat `make migrate` (service tools).
-#
-# Env: PGHOST, PGPORT, PGDATABASE, PGPASSWORD (standar libpq).
+# Each numbered file runs once in its own transaction. Applied versions are recorded with their
+# checksum in olt_internal.schema_migrations, and a file that changed after it ran is rejected.
 set -euo pipefail
 
 MIGRATIONS_DIR="${MIGRATIONS_DIR:-/olt/supabase/migrations}"
@@ -31,7 +24,7 @@ SQL
 shopt -s nullglob
 files=("$MIGRATIONS_DIR"/[0-9]*.sql)
 if [ ${#files[@]} -eq 0 ]; then
-  echo "migrate: tidak ada file migrasi di $MIGRATIONS_DIR"
+  echo "migrate: no migration files in $MIGRATIONS_DIR"
   exit 0
 fi
 
@@ -46,23 +39,22 @@ SQL
 
   if [ -n "$existing" ]; then
     if [ "$existing" != "$checksum" ]; then
-      echo "migrate: GAGAL - $version sudah dijalankan tetapi isinya berubah." >&2
-      echo "         Jangan ubah migrasi lama; buat file migrasi baru." >&2
+      echo "migrate: FAILED - $version was already applied but its content changed." >&2
+      echo "         Never edit an applied migration; add a new migration file." >&2
       exit 1
     fi
     continue
   fi
 
-  # Baris "-- olt:run-as=supabase_admin" di awal file: jalankan sebagai superuser.
-  # Hanya untuk perubahan yang butuh superuser (role bawaan Supabase, tenant
-  # Realtime); objek baru tetap dibuat di migrasi biasa (pemilik: postgres).
+  # "-- olt:run-as=supabase_admin" near the top runs the file as superuser. Use it only for changes
+  # that need one (built-in Supabase roles, Realtime tenant); new objects belong in regular
+  # migrations so postgres owns them.
   run_as="$PGUSER" label=""
   if head -n 5 "$file" | grep -qx -- '-- olt:run-as=supabase_admin'; then
-    run_as=supabase_admin label=" (sebagai supabase_admin)"
+    run_as=supabase_admin label=" (as supabase_admin)"
   fi
 
-  echo "migrate: menjalankan $version$label"
-  # File migrasi dan pencatatannya berada dalam satu transaksi yang sama.
+  echo "migrate: applying $version$label"
   {
     echo "set client_min_messages = warning;"
     cat "$file"
@@ -72,15 +64,15 @@ SQL
   applied=$((applied + 1))
 done
 
-# Password role replikasi layanan backup dari Docker secret (tidak pernah ditulis di migrasi).
+# The backup replication role password comes from a Docker secret and is never written in a migration.
 backup_password_file="${BACKUP_DB_PASSWORD_FILE:-/run/secrets/backup_db_password}"
 if [ -s "$backup_password_file" ]; then
   backup_password="$(tr -d '\r\n' < "$backup_password_file")"
   if ! [[ "$backup_password" =~ ^[0-9a-f]{32,}$ ]]; then
-    echo "migrate: GAGAL - secret backup_db_password harus hex minimal 32 karakter (make gen-secrets)." >&2
+    echo "migrate: FAILED - secret backup_db_password must be at least 32 hex characters (make gen-secrets)." >&2
     exit 1
   fi
-  # Dikirim sebagai opsi koneksi (bukan teks statement) agar tidak tercatat di log statement/pgaudit.
+  # Passed as a connection option, not statement text, so it never reaches the statement/pgaudit logs.
   PGUSER=supabase_admin PGOPTIONS="-c olt.backup_password=$backup_password" psql_q <<'SQL'
 do $$
 begin
@@ -93,8 +85,7 @@ SQL
 fi
 
 if [ "$applied" -gt 0 ]; then
-  # PostgREST juga memantau DDL lewat event trigger; ini hanya untuk memastikan.
   psql_q -c "notify pgrst, 'reload schema';"
 fi
 
-echo "migrate: selesai ($applied migrasi baru, ${#files[@]} total)"
+echo "migrate: done ($applied new, ${#files[@]} total)"

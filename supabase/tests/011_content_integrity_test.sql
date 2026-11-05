@@ -1,9 +1,7 @@
--- Integritas konten (0014): client_id idempoten, validasi teks, anti-duplikat,
--- mute, dan persetujuan Syarat & Ketentuan.
 begin;
 select plan(19);
 
--- Batas post per menit dinaikkan: tes ini membuat banyak post dalam semenit.
+-- Per-minute post limit raised because this test creates many posts within a minute.
 update private.rate_limits set max_count = 100 where action = 'post' and window_seconds = 60;
 
 select tests.create_user('ci_ani') as ani \gset
@@ -11,7 +9,6 @@ select tests.create_user('ci_budi') as budi \gset
 select 'BBCA' as bbca \gset
 select tests.create_admin('compliance_admin') as compliance \gset
 
--- client_id idempoten -------------------------------------------------------
 select tests.authenticate_as(:'ani');
 select (create_post('Post idempoten $BBCA', null, '[]', 'c1000000-0000-4000-8000-000000000001')).id as post1 \gset
 select is((create_post('Post idempoten $BBCA', null, '[]', 'c1000000-0000-4000-8000-000000000001')).id,
@@ -24,7 +21,6 @@ select (create_comment(:'post1', null, 'Komentar idempoten', 'c2000000-0000-4000
 select is((create_comment(:'post1', null, 'Komentar idempoten', 'c2000000-0000-4000-8000-000000000001')).id,
   :'comment1'::uuid, 'create_comment dengan client_id sama tidak membuat komentar ganda');
 
--- Validasi teks --------------------------------------------------------------
 select throws_ok($$insert into posts (author_id, body) values (auth.uid(), E'halo\x07dunia')$$,
   'PT422', 'invalid_characters', 'Karakter kontrol ditolak');
 select lives_ok($$insert into posts (author_id, body) values (auth.uid(), E'baris satu\nbaris dua\tTAB')$$,
@@ -41,7 +37,6 @@ select throws_ok(format($$insert into posts (author_id, body) values (auth.uid()
 select throws_ok($$update profiles set bio = E'bio\x01' where id = auth.uid()$$,
   'PT422', 'invalid_characters', 'Karakter kontrol di bio ditolak');
 
--- Anti-duplikat ----------------------------------------------------------------
 insert into posts (author_id, body) values (auth.uid(), 'Gabung grup saham kami sekarang');
 insert into posts (author_id, body) values (auth.uid(), 'gabung   GRUP saham kami sekarang');
 select throws_ok($$insert into posts (author_id, body) values (auth.uid(), 'Gabung grup saham kami sekarang')$$,
@@ -55,7 +50,6 @@ select lives_ok($q$do $d$ begin
   end $d$$q$, 'Teks pendek tidak dicek duplikat');
 reset role;
 
--- Mute (sanksi) ----------------------------------------------------------------
 insert into private.user_sanctions (user_id, kind, reason, ends_at)
 values (:'budi', 'mute', 'uji', now() + interval '1 hour')
 returning id as mute_id \gset
@@ -71,7 +65,6 @@ select lives_ok($$insert into posts (author_id, body) values (auth.uid(), 'setel
   'Setelah mute dicabut, bisa posting lagi');
 reset role;
 
--- Persetujuan Syarat & Ketentuan ----------------------------------------------
 select tests.authenticate_admin(:'compliance');
 select admin_api.publish_legal_document('terms', 'Syarat & Ketentuan', 'Isi v1') as terms_v1 \gset
 reset role;

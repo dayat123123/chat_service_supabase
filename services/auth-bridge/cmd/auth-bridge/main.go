@@ -38,13 +38,13 @@ func main() {
 
 	cfg, err := config.Load()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "konfigurasi tidak valid:\n%v\n", err)
+		fmt.Fprintf(os.Stderr, "invalid configuration:\n%v\n", err)
 		os.Exit(1)
 	}
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
 	if err := run(cfg, log); err != nil {
-		log.Error("server berhenti dengan error", "error", err)
+		log.Error("server stopped with an error", "error", err)
 		os.Exit(1)
 	}
 }
@@ -62,7 +62,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 	}
 	brk := breaker.New(cfg.BreakerThreshold, cfg.BreakerCooldown)
 	reg.GaugeFunc("olt_auth_bridge_olt_breaker_open",
-		"1 bila circuit breaker ke server OLT terbuka (verifikasi baru langsung ditolak)",
+		"1 when the circuit breaker to the OLT server is open (new verifications are rejected immediately)",
 		func() float64 {
 			if brk.State() == breaker.Open {
 				return 1
@@ -88,7 +88,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 			{Name: "postgrest", Check: store.Ping},
 			{Name: "olt", Optional: true, Check: func(context.Context) error {
 				if brk.State() == breaker.Open {
-					return errors.New("circuit breaker terbuka")
+					return errors.New("circuit breaker open")
 				}
 				return nil
 			}},
@@ -107,7 +107,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 		Report:    bridgeReport(cfg, verifier, brk),
 	})
 	reg.GaugeFunc("olt_auth_bridge_last_heartbeat_timestamp_seconds",
-		"Waktu heartbeat terakhir yang berhasil ke database (detik Unix, 0 bila belum pernah)",
+		"Unix time of the last successful heartbeat to the database, 0 before the first one",
 		func() float64 {
 			if last := beats.LastSuccess(); !last.IsZero() {
 				return float64(last.Unix())
@@ -134,12 +134,12 @@ func run(cfg config.Config, log *slog.Logger) error {
 		})
 	}
 
-	log.Info("auth-bridge berjalan", "version", version, "instance", cfg.InstanceID,
+	log.Info("auth-bridge started", "version", version, "instance", cfg.InstanceID,
 		"port", cfg.Port, "ops_port", cfg.OpsPort, "app_env", cfg.AppEnv, "olt_mode", cfg.OLT.Mode,
 		"jwt_ttl_s", cfg.JWTTTL.Seconds(), "cache_ttl_s", cfg.VerifyCacheTTL.Seconds(),
 		"valkey", cfg.ValkeyAddr != "")
 	if cfg.OLT.Mode == config.OLTModeMock {
-		log.Warn("OLT_MODE=mock: token dummy diterima. Jangan dipakai di produksi.")
+		log.Warn("OLT_MODE=mock: dummy tokens are accepted; never use this in production")
 	}
 
 	go beats.Run(ctx)
@@ -157,7 +157,7 @@ func run(cfg config.Config, log *slog.Logger) error {
 	select {
 	case runErr = <-errCh:
 	case <-ctx.Done():
-		log.Info("menerima sinyal stop, shutdown...")
+		log.Info("stop signal received, shutting down")
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -179,7 +179,7 @@ type sharedState struct {
 
 func newSharedState(cfg config.Config, log *slog.Logger, reg *metrics.Registry) sharedState {
 	if cfg.ValkeyAddr == "" {
-		log.Warn("VALKEY_ADDR kosong: rate limit & cache in-memory per instance (hanya untuk development satu replika)")
+		log.Warn("VALKEY_ADDR is empty: rate limit and cache are in-memory per instance (single-replica development only)")
 		return sharedState{
 			ipLimiter:   ratelimit.New(cfg.RateLimitPerMinute, time.Minute),
 			userLimiter: ratelimit.New(cfg.RateLimitPerUserPerMinute, time.Minute),
@@ -199,12 +199,12 @@ func newSharedState(cfg config.Config, log *slog.Logger, reg *metrics.Registry) 
 	})
 
 	errorsTotal := reg.Counter("olt_auth_bridge_valkey_errors_total",
-		"Error Valkey (rate limit memakai fallback in-memory, cache dilewati)", "op")
+		"Valkey errors (rate limit falls back to in-memory, cache is skipped)", "op")
 	warn := throttled(time.Minute)
 	onError := func(op string) func(error) {
 		return func(err error) {
 			errorsTotal.Inc(op)
-			warn(func() { log.Warn("valkey bermasalah, memakai fallback", "op", op, "error", err.Error()) })
+			warn(func() { log.Warn("valkey error, using fallback", "op", op, "error", err.Error()) })
 		}
 	}
 
@@ -253,7 +253,7 @@ func bridgeReport(cfg config.Config, verifier olt.Verifier, brk *breaker.Breaker
 	detail := info.Detail()
 	return func() heartbeat.Report {
 		if brk.State() == breaker.Open {
-			return heartbeat.Report{Status: heartbeat.StatusDegraded, Error: "circuit breaker OLT terbuka", Detail: detail}
+			return heartbeat.Report{Status: heartbeat.StatusDegraded, Error: "OLT circuit breaker open", Detail: detail}
 		}
 		return heartbeat.Report{Status: heartbeat.StatusOK, Detail: detail}
 	}

@@ -78,7 +78,7 @@ describe('lazy English translations', () => {
   it('falls back to Indonesian when the English file cannot be loaded', async () => {
     vi.resetModules()
     vi.doMock('@/i18n/en', () => {
-      throw new Error('chunk gagal dimuat')
+      throw new Error('chunk failed to load')
     })
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     window.localStorage.setItem('cs-console.language', 'en')

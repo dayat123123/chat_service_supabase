@@ -43,18 +43,18 @@ const (
 )
 
 var messages = map[string]string{
-	codeNotFound:       "Alamat tidak ditemukan.",
-	codeModelMissing:   "Model klasifikasi gambar belum tersedia.",
-	codeBusy:           "Classifier sedang sibuk. Coba lagi sebentar lagi.",
-	codeEmpty:          "File kosong.",
-	codeTooLarge:       "Ukuran gambar melebihi 10 MB.",
-	codeUnsupported:    "Jenis gambar tidak didukung (JPEG, PNG, WebP, GIF).",
-	codeImageTooLarge:  "Dimensi gambar terlalu besar.",
-	codeInvalidImage:   "Gambar rusak atau tidak bisa dibaca.",
-	codeInferenceError: "Model gagal memproses gambar.",
-	codeRequestTimeout: "Gambar terlalu lama dikirim.",
-	codeInvalidRequest: "Data gambar tidak bisa dibaca.",
-	codeCanceled:       "Permintaan dibatalkan.",
+	codeNotFound:       "Not found.",
+	codeModelMissing:   "Image classification model is not available.",
+	codeBusy:           "Classifier is busy. Try again shortly.",
+	codeEmpty:          "Empty file.",
+	codeTooLarge:       "Image exceeds 10 MB.",
+	codeUnsupported:    "Unsupported image type (JPEG, PNG, WebP, GIF).",
+	codeImageTooLarge:  "Image dimensions are too large.",
+	codeInvalidImage:   "Image is corrupt or unreadable.",
+	codeInferenceError: "Model failed to process the image.",
+	codeRequestTimeout: "Image upload took too long.",
+	codeInvalidRequest: "Image data could not be read.",
+	codeCanceled:       "Request canceled.",
 }
 
 type Engine struct {

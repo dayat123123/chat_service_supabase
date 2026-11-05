@@ -132,8 +132,8 @@ func (l *Loop) send(ctx context.Context) {
 	l.mu.Unlock()
 	switch {
 	case err != nil && !was:
-		l.opts.Log.Warn("heartbeat gagal, dicoba lagi pada interval berikutnya", "error", err)
+		l.opts.Log.Warn("heartbeat failed, retrying on the next interval", "error", err)
 	case err == nil && was:
-		l.opts.Log.Info("heartbeat berhasil lagi", "status", beat.Status)
+		l.opts.Log.Info("heartbeat works again", "status", beat.Status)
 	}
 }

@@ -101,7 +101,7 @@ Saat start lalu tiap `HEARTBEAT_INTERVAL` (30 detik), auth-bridge memanggil RPC 
 
 - Hanya `kid` dan algoritma yang dikirim, **tidak pernah isi kunci**. Maksimal 20 kunci, `kid` dipotong 100 karakter. `issuer`, `audience`, dan `max_ttl_seconds` hanya dikirim di mode `jwt`.
 - Status `degraded` bila circuit breaker OLT terbuka (hanya mode `websocket`), selain itu `ok`.
-- Heartbeat berjalan di goroutine sendiri. Gagal (PostgREST mati, RPC ditolak) **tidak mengganggu exchange**: cukup dicatat di log sekali saat mulai gagal (`heartbeat gagal…`) dan sekali saat pulih (`heartbeat berhasil lagi`), lalu dicoba lagi di interval berikutnya.
+- Heartbeat berjalan di goroutine sendiri. Gagal (PostgREST mati, RPC ditolak) **tidak mengganggu exchange**: cukup dicatat di log sekali saat mulai gagal (`heartbeat failed…`) dan sekali saat pulih (`heartbeat works again`), lalu dicoba lagi di interval berikutnya.
 - Hub menganggap instance aktif bila heartbeat terakhir ≤ 3 menit. Peringatan muncul untuk `kid` berawalan `dev-`, mode bukan `jwt` di luar development, atau instance dengan konfigurasi kunci berbeda.
 
 ## Mode OLT
@@ -134,7 +134,7 @@ Daftar cust id (rekening efek) yang **dimiliki** login OLT itu. Dipakai layanan 
 
 - Tiap item harus string `^[A-Za-z0-9._-]{1,32}$`. Item lain (angka, kosong, karakter lain, duplikat tanpa memandang huruf besar/kecil) **diabaikan**. Maksimal 50 item; sisanya diabaikan. Token tidak pernah ditolak karena klaim ini.
 - Database menyimpan cust id dalam huruf besar (`private.account_links`) dengan `seen_at`. Tautan yang tidak diperbarui selama `integration.account_link_days` (30 hari) tidak dipakai lagi dan dibersihkan.
-- Penyimpanan dijalankan **setelah** upsert profil di setiap exchange yang tidak berasal dari cache, termasuk untuk user yang di-ban (notifikasi transaksi bukan fitur sosial). Bila RPC gagal (setelah retry), exchange **tetap berhasil**, error dicatat (`gagal menyimpan tautan rekening`), dan hasil exchange tidak di-cache supaya exchange berikutnya mencoba lagi.
+- Penyimpanan dijalankan **setelah** upsert profil di setiap exchange yang tidak berasal dari cache, termasuk untuk user yang di-ban (notifikasi transaksi bukan fitur sosial). Bila RPC gagal (setelah retry), exchange **tetap berhasil**, error dicatat (`failed to store account links`), dan hasil exchange tidak di-cache supaya exchange berikutnya mencoba lagi.
 - Log dan metrik hanya memuat **jumlah** rekening (`accounts`, `accounts_ignored`), tidak pernah cust id-nya.
 
 ### `mock` (development)

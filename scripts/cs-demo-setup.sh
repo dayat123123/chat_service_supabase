@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# Menyiapkan halaman demo CS (development): agen demo dengan ID tetap, lalu mencetak isi
-# runtime/config.js (URL API, anon key, dan token agen uji berlaku 8 jam) ke stdout.
-# Dipanggil `make cs-demo`; file hasilnya di-gitignore dan hanya disajikan ke localhost.
+# Prints runtime/config.js with 8-hour agent tokens: the file is gitignored and only served on localhost.
 set -euo pipefail
 source "$(dirname "$0")/cs-lib.sh"
-: "${ANON_KEY:?ANON_KEY wajib diisi}"
+: "${ANON_KEY:?ANON_KEY is required}"
 
 AGENTS=(
   '5e000000-0000-4000-8000-0000000000d1|Nadia|general|{"general": 2, "account": 3, "funds": 2, "technical": 2}'

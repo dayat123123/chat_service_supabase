@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Sampler metrik selama uji beban: CPU/memori container stack, koneksi Postgres, pool PgBouncer.
-# pemakaian: sample.sh <direktori-keluaran> [interval-detik]   (berhenti saat di-kill)
+# usage: sample.sh <output-dir> [interval-seconds]   (runs until killed)
 set -uo pipefail
 source /olt/tests/lib/common.sh
 

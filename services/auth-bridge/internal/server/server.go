@@ -59,14 +59,14 @@ type Metrics struct {
 
 func NewMetrics(r *metrics.Registry) *Metrics {
 	return &Metrics{
-		Requests: r.Counter("olt_auth_bridge_http_requests_total", "Jumlah request HTTP", "path", "status"),
-		Duration: r.Histogram("olt_auth_bridge_http_request_duration_seconds", "Durasi request HTTP",
+		Requests: r.Counter("olt_auth_bridge_http_requests_total", "HTTP requests", "path", "status"),
+		Duration: r.Histogram("olt_auth_bridge_http_request_duration_seconds", "HTTP request duration",
 			[]float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}, "path"),
 		Exchanges: r.Counter("olt_auth_bridge_exchanges_total",
-			"Hasil exchange token (ok, cached, invalid_token, olt_unavailable, banned, rate_limited_ip, rate_limited_user, error)",
+			"Token exchange results (ok, cached, invalid_token, olt_unavailable, banned, rate_limited_ip, rate_limited_user, error)",
 			"result"),
 		AccountLinks: r.Counter("olt_auth_bridge_account_links_total",
-			"Penyimpanan klaim accounts dari token sosial (ok, malformed, error)", "result"),
+			"Stored accounts claims from social tokens (ok, malformed, error)", "result"),
 	}
 }
 
@@ -115,11 +115,11 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 			if state == "ready" {
 				state = "degraded"
 			}
-			s.logger(r).Warn("readiness: dependensi opsional bermasalah", "check", c.Name, "error", err.Error())
+			s.logger(r).Warn("readiness: optional dependency degraded", "check", c.Name, "error", err.Error())
 		default:
 			checks[c.Name] = "fail"
 			status, state = http.StatusServiceUnavailable, "not_ready"
-			s.logger(r).Warn("readiness gagal", "check", c.Name, "error", err.Error())
+			s.logger(r).Warn("readiness failed", "check", c.Name, "error", err.Error())
 		}
 	}
 	writeJSON(w, status, map[string]any{"status": state, "checks": checks})
@@ -172,22 +172,22 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, olt.ErrInvalidToken):
 		s.countExchange("invalid_token")
-		s.logger(r).Info("exchange ditolak", "reason", err.Error(), "client_ip", ip)
+		s.logger(r).Info("exchange rejected", "reason", err.Error(), "client_ip", ip)
 		writeError(w, http.StatusUnauthorized, "invalid_token", "Sesi OLT tidak valid, silakan login ulang")
 		return
 	case errors.Is(err, olt.ErrUnavailable):
 		s.countExchange("olt_unavailable")
-		s.logger(r).Warn("server OLT tidak tersedia", "error", err.Error())
+		s.logger(r).Warn("OLT server unavailable", "error", err.Error())
 		writeError(w, http.StatusServiceUnavailable, "olt_unavailable", "Server OLT sedang tidak dapat dihubungi")
 		return
 	case errors.Is(err, exchange.ErrBanned):
 		s.countExchange("banned")
-		s.logger(r).Info("exchange ditolak: user di-ban", "user_id", id.Profile.ID)
+		s.logger(r).Info("exchange rejected: user banned", "user_id", id.Profile.ID)
 		writeError(w, http.StatusForbidden, "user_banned", "Akun Anda diblokir dari fitur sosial")
 		return
 	case err != nil:
 		s.countExchange("error")
-		s.logger(r).Error("exchange gagal", "error", err.Error())
+		s.logger(r).Error("exchange failed", "error", err.Error())
 		writeError(w, http.StatusBadGateway, "exchange_failed", "Gagal menyiapkan sesi sosial")
 		return
 	}
@@ -205,7 +205,7 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	jwt, exp, err := s.opts.Issuer.UserToken(token.User{ID: id.Profile.ID})
 	if err != nil {
 		s.countExchange("error")
-		s.logger(r).Error("gagal menandatangani JWT", "error", err.Error())
+		s.logger(r).Error("failed to sign JWT", "error", err.Error())
 		writeError(w, http.StatusInternalServerError, "internal_error", "Terjadi kesalahan")
 		return
 	}
@@ -215,7 +215,7 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	} else {
 		s.countExchange("ok")
 	}
-	s.logger(r).Info("exchange berhasil", "user_id", id.Profile.ID, "cached", cached)
+	s.logger(r).Info("exchange succeeded", "user_id", id.Profile.ID, "cached", cached)
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, http.StatusOK, exchangeResponse{
 		AccessToken: jwt,
@@ -236,14 +236,14 @@ func (s *Server) recordAccounts(r *http.Request, id exchange.Identity) {
 	switch {
 	case links.Malformed:
 		result = "malformed"
-		log.Warn("klaim accounts bukan array, tautan rekening tidak diubah")
+		log.Warn("accounts claim is not an array, account links unchanged")
 	case links.Err != nil:
 		result = "error"
-		log.Warn("gagal menyimpan tautan rekening", "error", links.Err.Error())
+		log.Warn("failed to store account links", "error", links.Err.Error())
 	case links.Ignored > 0:
-		log.Info("sebagian klaim accounts diabaikan", "accounts", links.Linked, "accounts_ignored", links.Ignored)
+		log.Info("some accounts claim entries ignored", "accounts", links.Linked, "accounts_ignored", links.Ignored)
 	default:
-		log.Debug("tautan rekening diperbarui", "accounts", links.Linked)
+		log.Debug("account links updated", "accounts", links.Linked)
 	}
 	if m := s.opts.Metrics; m != nil && m.AccountLinks != nil {
 		m.AccountLinks.Inc(result)

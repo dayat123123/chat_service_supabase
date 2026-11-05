@@ -44,7 +44,7 @@ type wire struct {
 
 func (s *Scraper) pgbouncer(ctx context.Context, source Source, addr string) (map[string]float64, error) {
 	if s.opts.Password == "" {
-		return nil, errors.New("password user statistik PgBouncer belum diatur")
+		return nil, errors.New("PgBouncer stats user password is not set")
 	}
 	conn, err := s.dialer.DialContext(ctx, "tcp", source.Address(addr))
 	if err != nil {
@@ -75,7 +75,7 @@ func poolValues(columns []string, rows [][]*string) (map[string]float64, error) 
 	}
 	for _, need := range []string{"database", "cl_active", "cl_waiting", "sv_active", "sv_idle", "maxwait"} {
 		if _, ok := index[need]; !ok {
-			return nil, fmt.Errorf("kolom %s tidak ada di SHOW POOLS", need)
+			return nil, fmt.Errorf("column %s missing from SHOW POOLS", need)
 		}
 	}
 	cell := func(row []*string, name string) float64 {
@@ -136,21 +136,21 @@ func (w *wire) startup(user, password string) error {
 			return parseError(msg)
 		case 'R':
 			if len(msg) < 4 {
-				return errors.New("pgbouncer: balasan autentikasi rusak")
+				return errors.New("pgbouncer: malformed authentication reply")
 			}
 			code, data := binary.BigEndian.Uint32(msg), msg[4:]
 			switch code {
 			case 0:
 			case 5:
 				if len(data) < 4 {
-					return errors.New("pgbouncer: salt md5 rusak")
+					return errors.New("pgbouncer: malformed md5 salt")
 				}
 				if err := w.send('p', cstring(md5Password(user, password, data[:4]))); err != nil {
 					return err
 				}
 			case 10:
 				if !hasMechanism(data, scramMechanism) {
-					return errors.New("pgbouncer: SCRAM-SHA-256 tidak ditawarkan")
+					return errors.New("pgbouncer: SCRAM-SHA-256 not offered")
 				}
 				scram, err = newScram(password)
 				if err != nil {
@@ -167,7 +167,7 @@ func (w *wire) startup(user, password string) error {
 				}
 			case 11:
 				if scram == nil {
-					return errors.New("pgbouncer: urutan SCRAM salah")
+					return errors.New("pgbouncer: unexpected SCRAM sequence")
 				}
 				final, err := scram.final(string(data))
 				if err != nil {
@@ -178,10 +178,10 @@ func (w *wire) startup(user, password string) error {
 				}
 			case 12:
 				if scram == nil || !scram.verify(string(data)) {
-					return errors.New("pgbouncer: tanda tangan server SCRAM tidak cocok")
+					return errors.New("pgbouncer: SCRAM server signature mismatch")
 				}
 			default:
-				return fmt.Errorf("pgbouncer: metode autentikasi %d tidak didukung", code)
+				return fmt.Errorf("pgbouncer: unsupported authentication method %d", code)
 			}
 		case 'Z':
 			return nil
@@ -237,7 +237,7 @@ func (w *wire) read() (byte, []byte, error) {
 	}
 	size := int(binary.BigEndian.Uint32(head[1:]))
 	if size < 4 || size > maxMessage {
-		return 0, nil, errors.New("pgbouncer: ukuran pesan tidak valid")
+		return 0, nil, errors.New("pgbouncer: invalid message size")
 	}
 	msg := make([]byte, size-4)
 	if _, err := io.ReadFull(w.r, msg); err != nil {
@@ -264,14 +264,14 @@ func parseError(msg []byte) error {
 		}
 	}
 	if e.Message == "" {
-		e.Message = "error tanpa pesan"
+		e.Message = "error without message"
 	}
 	return e
 }
 
 func rowDescription(msg []byte) ([]string, error) {
 	if len(msg) < 2 {
-		return nil, errors.New("pgbouncer: deskripsi kolom rusak")
+		return nil, errors.New("pgbouncer: malformed row description")
 	}
 	count := int(binary.BigEndian.Uint16(msg))
 	msg = msg[2:]
@@ -279,7 +279,7 @@ func rowDescription(msg []byte) ([]string, error) {
 	for range count {
 		end := strings.IndexByte(string(msg), 0)
 		if end < 0 || len(msg) < end+19 {
-			return nil, errors.New("pgbouncer: deskripsi kolom rusak")
+			return nil, errors.New("pgbouncer: malformed row description")
 		}
 		columns = append(columns, string(msg[:end]))
 		msg = msg[end+19:]
@@ -289,14 +289,14 @@ func rowDescription(msg []byte) ([]string, error) {
 
 func dataRow(msg []byte) ([]*string, error) {
 	if len(msg) < 2 {
-		return nil, errors.New("pgbouncer: baris data rusak")
+		return nil, errors.New("pgbouncer: malformed data row")
 	}
 	count := int(binary.BigEndian.Uint16(msg))
 	msg = msg[2:]
 	row := make([]*string, 0, count)
 	for range count {
 		if len(msg) < 4 {
-			return nil, errors.New("pgbouncer: baris data rusak")
+			return nil, errors.New("pgbouncer: malformed data row")
 		}
 		size := int32(binary.BigEndian.Uint32(msg))
 		msg = msg[4:]
@@ -305,7 +305,7 @@ func dataRow(msg []byte) ([]*string, error) {
 			continue
 		}
 		if int(size) > len(msg) {
-			return nil, errors.New("pgbouncer: baris data rusak")
+			return nil, errors.New("pgbouncer: malformed data row")
 		}
 		value := string(msg[:size])
 		row = append(row, &value)
@@ -358,15 +358,15 @@ func (c *scramClient) final(serverFirst string) (string, error) {
 	attrs := scramAttrs(serverFirst)
 	nonce, salt64, iter := attrs["r"], attrs["s"], attrs["i"]
 	if !strings.HasPrefix(nonce, c.nonce) || len(nonce) == len(c.nonce) {
-		return "", errors.New("pgbouncer: nonce SCRAM tidak cocok")
+		return "", errors.New("pgbouncer: SCRAM nonce mismatch")
 	}
 	salt, err := base64.StdEncoding.DecodeString(salt64)
 	if err != nil {
-		return "", errors.New("pgbouncer: salt SCRAM rusak")
+		return "", errors.New("pgbouncer: malformed SCRAM salt")
 	}
 	rounds, err := strconv.Atoi(iter)
 	if err != nil || rounds < 1 || rounds > 1_000_000 {
-		return "", errors.New("pgbouncer: jumlah iterasi SCRAM tidak valid")
+		return "", errors.New("pgbouncer: invalid SCRAM iteration count")
 	}
 	c.salted, err = pbkdf2.Key(sha256.New, c.password, salt, rounds, sha256.Size)
 	if err != nil {

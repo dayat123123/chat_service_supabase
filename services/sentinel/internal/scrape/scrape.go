@@ -144,7 +144,7 @@ func (s *Scraper) prometheus(ctx context.Context, source Source, addr string) (m
 	req.Header.Set("Accept", "text/plain")
 	if source.JWT {
 		if s.opts.Token == nil {
-			return nil, errors.New("token JWT tidak tersedia")
+			return nil, errors.New("JWT token unavailable")
 		}
 		token, err := s.opts.Token()
 		if err != nil {
@@ -194,7 +194,7 @@ func ParseText(r io.Reader) (map[string]float64, error) {
 		values[name] += value
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("metrik tidak terbaca: %w", err)
+		return nil, fmt.Errorf("read metrics: %w", err)
 	}
 	return values, nil
 }

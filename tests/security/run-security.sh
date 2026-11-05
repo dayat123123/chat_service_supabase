@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Rangkaian uji keamanan di dalam testkit: otorisasi (API, Storage, Realtime, integrasi),
-# review statis konfigurasi edge, dan uji dinamis routing produksi. Pindai dependensi/image
-# dijalankan terpisah di host: make scan-deps (tests/security/scan-deps.sh).
+# Dependency and image scanning runs separately on the host: make scan-deps.
 set -uo pipefail
 source /olt/tests/lib/common.sh
 
@@ -16,5 +14,5 @@ for part in authz-probe static-config prod-routing; do
 done
 echo
 grep -h -E '^(authz-probe|static-config|prod-routing):' "$OUT_DIR"/*.log
-echo "hasil: ${OUT_DIR#/olt/}"
+echo "results: ${OUT_DIR#/olt/}"
 exit "$status"

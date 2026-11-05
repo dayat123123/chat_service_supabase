@@ -58,7 +58,7 @@ export default async function () {
   }));
   await sleepMs(1500);
   const privDenied = privStatus !== 'ok' || errors.length > 0;
-  result(privDenied ? 'ok' : 'FAIL', 'nasabah', 'join kanal privat room:<DM orang lain>', privStatus, errors.join(','));
+  result(privDenied ? 'ok' : 'FAIL', 'customer', "join private channel room:<another user's DM>", privStatus, errors.join(','));
 
   const userErrors = [];
   const userStatus = await joinStatus(() => attacker.joinPrivate(`user:${victimId}`, {
@@ -68,7 +68,7 @@ export default async function () {
   }));
   await sleepMs(1000);
   const userDenied = userStatus !== 'ok' || userErrors.length > 0;
-  result(userDenied ? 'ok' : 'FAIL', 'nasabah', 'join kanal privat user:<nasabah lain>', userStatus, userErrors.join(','));
+  result(userDenied ? 'ok' : 'FAIL', 'customer', 'join private channel user:<another customer>', userStatus, userErrors.join(','));
 
   const got = { spoof: 0, message: null, typing: null, activity: 0, presence: 0 };
   let sentId = '';
@@ -88,17 +88,17 @@ export default async function () {
     },
     other: (msg) => { if (msg.event === 'presence_state' || msg.event === 'presence_diff') got.presence += 1; },
   }));
-  result(victimRoom === 'ok' ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: anggota room bisa join kanal privat room:<id>', victimRoom, '');
+  result(victimRoom === 'ok' ? 'ok' : 'FAIL', 'lt_sec_a', 'control: room member can join private channel room:<id>', victimRoom, '');
   const victimUser = await joinStatus(() => victim.joinPrivate(`user:${victimId}`, {
     broadcast: (p) => {
       const data = (p && p.payload) || {};
       if (p.event === 'room_activity' && data.preview === stamp) got.activity += 1;
     },
   }));
-  result(victimUser === 'ok' ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: nasabah bisa join kanal privat user miliknya', victimUser, '');
+  result(victimUser === 'ok' ? 'ok' : 'FAIL', 'lt_sec_a', 'control: customer can join own private user channel', victimUser, '');
   victim.push(roomTopic, 'presence', { type: 'presence', event: 'track', payload: { user_id: victimId } });
   await sleepMs(1500);
-  result(got.presence > 0 ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: presence anggota tetap berjalan', got.presence, '');
+  result(got.presence > 0 ? 'ok' : 'FAIL', 'lt_sec_a', 'control: member presence still works', got.presence, '');
 
   for (const event of SPOOFED) {
     victim.push(roomTopic, 'broadcast', {
@@ -111,11 +111,11 @@ export default async function () {
   const restUser = restBroadcast(__ENV.VICTIM_JWT, `user:${victimId}`, 'room_activity', { probe_spoof: true });
   await sleepMs(3000);
   result(got.spoof === 0 ? 'ok' : 'FAIL', 'lt_sec_a',
-    'anggota room tidak bisa mengirim event server (message, message_hidden, room_state, reaction, receipt, typing) ke room:<id>',
+    'room member cannot send server events (message, message_hidden, room_state, reaction, receipt, typing) to room:<id>',
     `${restVictim.join(',')}/${got.spoof}`, 'WebSocket + REST broadcast, self: true');
-  result(attackerBroadcast === 0 ? 'ok' : 'FAIL', 'nasabah', 'REST broadcast ke kanal privat room orang lain tidak sampai',
+  result(attackerBroadcast === 0 ? 'ok' : 'FAIL', 'customer', "REST broadcast to another user's private room channel is not delivered",
     `${restAttacker.status}/${attackerBroadcast}`, '');
-  result(got.spoof === 0 && got.activity === 0 ? 'ok' : 'FAIL', 'lt_sec_a', 'klien tidak bisa menulis ke kanal user:<id>',
+  result(got.spoof === 0 && got.activity === 0 ? 'ok' : 'FAIL', 'lt_sec_a', 'client cannot write to user:<id> channel',
     `${restUser.status}`, '');
 
   const sent = rpc(__ENV.VICTIM_JWT, 'send_message', { p_room_id: ROOM, p_body: stamp });
@@ -127,13 +127,13 @@ export default async function () {
   }
   const typed = rpc(__ENV.VICTIM_JWT, 'send_typing', { p_room_id: ROOM, p_typing: true });
   await sleepMs(4000);
-  result(sent.status === 200 && sentId ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: anggota mengirim pesan', sent.status,
+  result(sent.status === 200 && sentId ? 'ok' : 'FAIL', 'lt_sec_a', 'control: member sends a message', sent.status,
     sent.status === 200 ? '' : String(sent.body).slice(0, 200));
   result(got.message && got.message.room_id === ROOM && typeof got.message.body === 'string' ? 'ok' : 'FAIL', 'lt_sec_a',
-    'kontrol: pesan baru sampai lewat broadcast server di room:<id>', got.message ? 'diterima' : 'tidak diterima', '');
-  result(got.activity === 1 ? 'ok' : 'FAIL', 'lt_sec_a', 'kontrol: aktivitas room sampai di user:<id>', got.activity, '');
+    'control: new message arrives via server broadcast on room:<id>', got.message ? 'received' : 'not received', '');
+  result(got.activity === 1 ? 'ok' : 'FAIL', 'lt_sec_a', 'control: room activity arrives on user:<id>', got.activity, '');
   result(typed.status === 200 && got.typing && got.typing.user_id === victimId ? 'ok' : 'FAIL', 'lt_sec_a',
-    'typing lewat RPC membawa identitas dari JWT', `${typed.status}/${got.typing ? got.typing.user_id === victimId : 'tidak diterima'}`, '');
+    'typing via RPC carries the JWT identity', `${typed.status}/${got.typing ? got.typing.user_id === victimId : 'not received'}`, '');
 
   let attackerChanges = 0;
   let victimChanges = 0;
@@ -146,10 +146,10 @@ export default async function () {
   await sleepMs(2500);
   rpc(__ENV.VICTIM_JWT, 'send_message', { p_room_id: ROOM, p_body: `probe realtime ${Date.now()}` });
   await sleepMs(4000);
-  result(victimChanges === 0 ? 'ok' : 'FAIL', 'lt_sec_a', 'pesan tidak lagi dikirim lewat postgres_changes (beban RLS per penerima)',
+  result(victimChanges === 0 ? 'ok' : 'FAIL', 'lt_sec_a', 'messages are no longer sent via postgres_changes (per-recipient RLS cost)',
     victimChanges, '');
-  result(attackerChanges === 0 ? 'ok' : 'FAIL', 'nasabah', 'postgres_changes messages room orang lain tidak terkirim', attackerChanges, '');
-  result(attackerBroadcast === 0 ? 'ok' : 'FAIL', 'nasabah', 'broadcast kanal privat room/user orang lain tidak terkirim', attackerBroadcast, '');
+  result(attackerChanges === 0 ? 'ok' : 'FAIL', 'customer', "postgres_changes messages of another user's room not delivered", attackerChanges, '');
+  result(attackerBroadcast === 0 ? 'ok' : 'FAIL', 'customer', "broadcast on another user's private room/user channel not delivered", attackerBroadcast, '');
 
   const STOCK = __ENV.STOCK_ROOM;
   if (STOCK) {
@@ -170,11 +170,11 @@ export default async function () {
       track = 'timeout';
     }
     result(stockStatus === 'ok' && track === 'error' ? 'ok' : 'FAIL', 'lt_sec_a',
-      'presence di room saham ditolak server (0106), join tetap diterima', `${stockStatus}/${track}`, '');
+      'presence in stock room rejected by server (0106), join still accepted', `${stockStatus}/${track}`, '');
     rpc(__ENV.VICTIM_JWT, 'send_message', { p_room_id: STOCK, p_body: stockStamp });
     await sleepMs(3000);
     result(stockGot.message && !stockGot.closed ? 'ok' : 'FAIL', 'lt_sec_a',
-      'channel room saham tetap menerima pesan setelah track ditolak', stockGot.message ? 'diterima' : 'tidak diterima', '');
+      'stock room channel still receives messages after track is rejected', stockGot.message ? 'received' : 'not received', '');
   }
   attacker.close();
   victim.close();

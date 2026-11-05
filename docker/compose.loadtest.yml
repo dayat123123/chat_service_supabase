@@ -1,13 +1,7 @@
-# OPT-IN, hanya untuk mengukur kapasitas di stack DEV (docs/testing/README.md). JANGAN dipakai di produksi
-# dan jangan ditambahkan ke Makefile/make.ps1 target up. Menaikkan batas event/detik tenant Realtime agar
-# uji beban mengukur batas perangkat keras, bukan batas konfigurasi. Realtime men-seed ulang tenant dari env
-# ini setiap start (SEED_SELF_HOST), jadi mengubah _realtime.tenants langsung tidak bertahan.
-#
-#   docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml \
-#     -f docker/compose.loadtest.yml --profile cs up -d --no-deps realtime
-#   ... uji beban ...
-#   docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml \
-#     --profile cs up -d --no-deps realtime          (kembali ke batas bawaan)
+# Opt-in, dev stack capacity tests only (docs/testing/README.md). Never use it in production and
+# never add it to the Makefile/make.ps1 up targets. Raises the Realtime tenant event rate so load
+# tests measure hardware limits, not configuration limits. Realtime re-seeds the tenant from this
+# env on every start (SEED_SELF_HOST), so editing _realtime.tenants directly does not persist.
 
 services:
   realtime:

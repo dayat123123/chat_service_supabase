@@ -43,12 +43,12 @@ jobs:
         service: [auth-bridge, dummy-olt, nasabah-gateway, notifier, janitor, media, sentinel, healer, backup, integration, link-preview, classifier]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: gofmt, vet, test -race, tanpa komentar
+      - name: gofmt, vet, test -race, no comments
         run: |
           docker run --rm -v "$PWD:/repo" -w "/repo/services/${{ matrix.service }}" "$GO_IMG" sh -euc '
             apk add --no-cache gcc musl-dev >/dev/null
             unformatted="$(gofmt -l .)"
-            if [ -n "$unformatted" ]; then echo "Belum gofmt:"; echo "$unformatted"; exit 1; fi
+            if [ -n "$unformatted" ]; then echo "Not gofmt-formatted:"; echo "$unformatted"; exit 1; fi
             go vet ./...
             CGO_ENABLED=1 go test -race -count=1 ./...
             cd /repo/scripts/check-go-comments && go run . "/repo/services/${{ matrix.service }}"
@@ -70,15 +70,15 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Secret dev sekali pakai
+      - name: Throwaway dev secrets
         run: make gen-secrets
       - name: Stack dev + OLT dummy
         run: make up DUMMY_OLT=1
-      - name: Tes pgTAP
+      - name: pgTAP tests
         run: make test-db
       - name: Smoke auth-bridge, upload media
         run: make smoke-dummy
-      - name: Log stack bila gagal
+      - name: Stack logs on failure
         if: failure()
         run: docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs logs --no-color --tail 200
 

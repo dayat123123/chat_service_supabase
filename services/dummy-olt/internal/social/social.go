@@ -37,7 +37,7 @@ func NewSigner(key ed25519.PrivateKey, kid, issuer, audience string) *Signer {
 func ParsePrivateKey(pemBytes []byte) (ed25519.PrivateKey, error) {
 	block, _ := pem.Decode(pemBytes)
 	if block == nil {
-		return nil, errors.New("kunci penanda tangan harus PEM PKCS#8")
+		return nil, errors.New("signing key must be PEM PKCS#8")
 	}
 	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
@@ -45,7 +45,7 @@ func ParsePrivateKey(pemBytes []byte) (ed25519.PrivateKey, error) {
 	}
 	ed, ok := key.(ed25519.PrivateKey)
 	if !ok {
-		return nil, errors.New("kunci penanda tangan harus Ed25519")
+		return nil, errors.New("signing key must be Ed25519")
 	}
 	return ed, nil
 }

@@ -1,5 +1,3 @@
--- Moderasi & admin (0013): peran + 2FA, visibilitas konten, tindak laporan,
--- room_moderator, sanksi bertingkat, ban, pencabutan sesi, audit log.
 begin;
 select plan(39);
 
@@ -26,7 +24,6 @@ select tests.authenticate_as(:'reporter');
 insert into reports (reporter_id, target_type, target_id, reason) values (auth.uid(), 'post', :'post', 'spam');
 reset role;
 
--- Peran & 2FA -----------------------------------------------------------------
 select tests.authenticate_as(:'other');
 select throws_ok($$select admin_api.whoami()$$, 'PT403', 'admin_required', 'User biasa bukan admin');
 reset role;
@@ -43,7 +40,6 @@ select throws_ok(format($$select admin_api.resolve_target('post', %L, 'hide', 'u
   'PT403', 'admin_forbidden', 'viewer tidak bisa menindak laporan');
 reset role;
 
--- Sembunyikan / pulihkan / hapus post -----------------------------------------
 select tests.authenticate_admin(:'moderator');
 select lives_ok(format($$select admin_api.resolve_target('post', %L, 'hide', 'spam')$$, :'post'),
   'Moderator menyembunyikan post');
@@ -70,7 +66,6 @@ select is((select count(*)::int from private.content_archive
            where target_id = :'post' and reason = 'moderator_remove'), 1, 'Post terhapus diarsipkan');
 select isnt((select deleted_at from posts where id = :'post'), null, 'Post ditandai terhapus');
 
--- room_moderator hanya di room yang ditugaskan ------------------------------
 select tests.authenticate_admin(:'compliance');
 select lives_ok(format($$select admin_api.set_room_scope(%L, %L, true)$$, :'room_mod', :'room_r'),
   'compliance_admin menugaskan room_moderator ke room R');
@@ -88,7 +83,6 @@ select tests.authenticate_as(:'other');
 select is((select count(*)::int from messages where id = :'msg_r'), 1, 'Pengirim tetap melihat pesannya');
 reset role;
 
--- Sanksi bertingkat & ban -----------------------------------------------------
 select tests.authenticate_admin(:'moderator');
 select is(admin_api.sanction_user(:'other', 'spam berulang') ->> 'kind', 'warning', 'Pelanggaran 1: peringatan');
 select is(admin_api.sanction_user(:'other', 'spam berulang') ->> 'kind', 'mute', 'Pelanggaran 2: mute');
@@ -104,7 +98,6 @@ select tests.authenticate_with(:'other', jsonb_build_object('iat', extract(epoch
 select throws_ok($$select private.check_request()$$, 'PT403', 'user_banned', 'User yang di-ban ditolak di setiap request');
 reset role;
 
--- Pencabutan sesi ---------------------------------------------------------------
 select tests.authenticate_admin(:'moderator');
 select lives_ok(format($$select admin_api.revoke_user_sessions(%L, 'perangkat hilang')$$, :'author'),
   'Moderator mencabut semua sesi user');
@@ -116,13 +109,11 @@ select tests.authenticate_with(:'author', jsonb_build_object('iat', extract(epoc
 select lives_ok($$select private.check_request()$$, 'JWT baru (setelah pencabutan) diterima');
 reset role;
 
--- Audit log -----------------------------------------------------------------
 select is((select count(*)::int from private.admin_audit_log
            where actor_id = :'moderator' and action = 'resolve_hide'), 1, 'Aksi admin tercatat di audit log');
 select throws_ok($$update private.admin_audit_log set action = 'diubah'$$, '42501', null, 'Audit log tidak bisa diubah');
 select throws_ok($$delete from private.admin_audit_log$$, '42501', null, 'Audit log tidak bisa dihapus');
 
--- Hak per peran -----------------------------------------------------------------
 select tests.authenticate_admin(:'compliance');
 select throws_ok(format($$select admin_api.set_admin(%L, 'compliance_admin')$$, :'viewer'),
   'PT403', 'admin_forbidden', 'compliance_admin tidak bisa membuat compliance_admin');

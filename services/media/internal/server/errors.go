@@ -32,35 +32,35 @@ const (
 	codeClassifierUnavailable = "classifier_unavailable"
 	codeModerationUnavailable = "moderation_unavailable"
 
-	framesMessage = "Animasi GIF maksimal 500 frame."
+	framesMessage = "GIF animations are limited to 500 frames."
 )
 
 var messages = map[string]string{
-	codeInvalidToken:          "Sesi tidak valid atau sudah kedaluwarsa. Silakan masuk ulang.",
-	codeBucketNotAllowed:      "Tujuan upload tidak diizinkan.",
-	codeInvalidPath:           "Nama atau lokasi file tidak valid.",
-	codeEmptyFile:             "File kosong.",
-	codeFileTooLarge:          "Ukuran file melebihi batas.",
-	codeUnsupportedType:       "Jenis file tidak didukung untuk tujuan ini.",
-	codeInvalidImage:          "Gambar rusak atau tidak bisa dibaca.",
-	codeImageTooLarge:         "Dimensi gambar terlalu besar (maksimal 10000 piksel per sisi dan 40 megapiksel).",
-	codeInvalidPDF:            "PDF rusak atau tidak bisa dibaca.",
-	codePDFEncrypted:          "PDF terkunci atau terenkripsi tidak bisa diterima. Simpan ulang tanpa kata sandi.",
-	codePDFActiveContent:      "PDF berisi konten aktif (JavaScript, lampiran, atau multimedia) dan tidak bisa diterima.",
-	storage.CodeForbidden:     "Anda tidak diizinkan mengunggah file ke lokasi ini.",
-	storage.CodeExists:        "File dengan nama yang sama sudah ada.",
-	storage.CodeTooMany:       "Batas upload harian sudah tercapai. Coba lagi nanti.",
-	storage.CodeError:         "Penyimpanan menolak file. Coba lagi nanti.",
-	storage.CodeUnavailable:   "Penyimpanan sedang tidak bisa dihubungi. Coba lagi nanti.",
-	codeBusy:                  "Server sedang sibuk. Coba lagi sebentar lagi.",
-	codeNotFound:              "Alamat tidak ditemukan.",
-	codeRequestTimeout:        "Upload terlalu lama. Periksa koneksi lalu coba lagi.",
-	codeInvalidRequest:        "Data upload tidak bisa dibaca.",
-	codeInternal:              "Terjadi kesalahan di server. Coba lagi nanti.",
-	codeCanceled:              "Upload dibatalkan.",
-	codeImageBlocked:          "Gambar ini tidak bisa diunggah karena melanggar pedoman komunitas.",
-	codeClassifierUnavailable: "Pemeriksaan gambar sedang tidak tersedia. Coba lagi beberapa saat lagi.",
-	codeModerationUnavailable: "Pemeriksaan gambar sedang tidak tersedia. Coba lagi beberapa saat lagi.",
+	codeInvalidToken:          "Session is invalid or has expired. Sign in again.",
+	codeBucketNotAllowed:      "Upload destination is not allowed.",
+	codeInvalidPath:           "Invalid file name or location.",
+	codeEmptyFile:             "Empty file.",
+	codeFileTooLarge:          "File exceeds the size limit.",
+	codeUnsupportedType:       "File type is not supported for this destination.",
+	codeInvalidImage:          "Image is corrupt or unreadable.",
+	codeImageTooLarge:         "Image dimensions are too large (max 10000 pixels per side and 40 megapixels).",
+	codeInvalidPDF:            "PDF is corrupt or unreadable.",
+	codePDFEncrypted:          "Locked or encrypted PDFs are not accepted. Save it again without a password.",
+	codePDFActiveContent:      "PDF contains active content (JavaScript, attachments, or multimedia) and is not accepted.",
+	storage.CodeForbidden:     "You are not allowed to upload files to this location.",
+	storage.CodeExists:        "A file with the same name already exists.",
+	storage.CodeTooMany:       "Daily upload limit reached. Try again later.",
+	storage.CodeError:         "Storage rejected the file. Try again later.",
+	storage.CodeUnavailable:   "Storage is unreachable. Try again later.",
+	codeBusy:                  "Server is busy. Try again shortly.",
+	codeNotFound:              "Not found.",
+	codeRequestTimeout:        "Upload took too long. Check the connection and try again.",
+	codeInvalidRequest:        "Upload data could not be read.",
+	codeInternal:              "Internal server error. Try again later.",
+	codeCanceled:              "Upload canceled.",
+	codeImageBlocked:          "This image cannot be uploaded because it violates the community guidelines.",
+	codeClassifierUnavailable: "Image check is unavailable. Try again shortly.",
+	codeModerationUnavailable: "Image check is unavailable. Try again shortly.",
 }
 
 type apiError struct {
@@ -81,7 +81,7 @@ func fail(status int, code, detail string) *apiError {
 
 func tooLarge(limit int64, detail string) *apiError {
 	e := fail(http.StatusRequestEntityTooLarge, codeFileTooLarge, detail)
-	e.message = fmt.Sprintf("Ukuran file melebihi batas %d MB.", limit>>20)
+	e.message = fmt.Sprintf("File exceeds the %d MB limit.", limit>>20)
 	return e
 }
 

@@ -26,19 +26,19 @@ type user struct {
 var b64 = base64.RawURLEncoding
 
 func main() {
-	keyFile := flag.String("key", "/olt/secrets/olt_dev_signing_key", "kunci Ed25519 PEM PKCS#8")
-	prefix := flag.String("prefix", "lt_", "awalan username")
-	start := flag.Int("start", 1, "nomor user pertama")
-	count := flag.Int("count", 100, "jumlah user")
-	base := flag.Int64("base", 9100000, "olt_user_id = base + nomor")
-	ttl := flag.Duration("ttl", 14*time.Minute, "masa berlaku token sosial")
+	keyFile := flag.String("key", "/olt/secrets/olt_dev_signing_key", "Ed25519 PEM PKCS#8 key")
+	prefix := flag.String("prefix", "lt_", "username prefix")
+	start := flag.Int("start", 1, "first user number")
+	count := flag.Int("count", 100, "number of users")
+	base := flag.Int64("base", 9100000, "olt_user_id = base + number")
+	ttl := flag.Duration("ttl", 14*time.Minute, "social token lifetime")
 	kid := flag.String("kid", "dev-olt-1", "kid header")
 	issuer := flag.String("iss", "olt", "issuer")
 	audience := flag.String("aud", "olt-social", "audience")
 	flag.Parse()
 
 	if len(*prefix) < 3 || (*prefix)[:2] != "lt" {
-		fail(errors.New("awalan harus diawali lt dan minimal 3 karakter"))
+		fail(errors.New("prefix must start with lt and be at least 3 characters"))
 	}
 	raw, err := os.ReadFile(*keyFile)
 	if err != nil {
@@ -81,7 +81,7 @@ func syntheticIP(i int) string {
 func parseKey(raw []byte) (ed25519.PrivateKey, error) {
 	block, _ := pem.Decode(raw)
 	if block == nil {
-		return nil, errors.New("kunci harus PEM PKCS#8")
+		return nil, errors.New("key must be PEM PKCS#8")
 	}
 	parsed, err := x509.ParsePKCS8PrivateKey(block.Bytes)
 	if err != nil {
@@ -89,7 +89,7 @@ func parseKey(raw []byte) (ed25519.PrivateKey, error) {
 	}
 	key, ok := parsed.(ed25519.PrivateKey)
 	if !ok {
-		return nil, errors.New("kunci harus Ed25519")
+		return nil, errors.New("key must be Ed25519")
 	}
 	return key, nil
 }

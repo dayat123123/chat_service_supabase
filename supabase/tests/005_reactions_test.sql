@@ -1,4 +1,3 @@
--- Reaksi/like: unik per user per target, counter, notifikasi tergabung, validasi target.
 begin;
 select plan(12);
 

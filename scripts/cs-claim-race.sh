@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
-# Tes rebutan pengambilan tiket CS (docs/PROMPT-CS-REVISI-2.md bagian 2.3), berjalan di container tools:
-#   1. 50 CS mengambil 1 tiket yang sama bersamaan: tepat 1 berhasil, 49 mendapat "Tiket sudah diambil oleh …".
-#   2. 200 tiket diambil acak oleh 30 CS bersamaan: tidak ada tiket ganda, tidak ada CS melebihi batas 5 tiket.
-# Keduanya dijalankan langsung ke fungsi database lalu lewat API PostgREST yang dibagi rata ke semua replika.
-# Argumen: URL replika PostgREST (default http://rest:3000). `make cs-race` menyalakan 3 replika khusus tes.
-# Data uji (CS Race NN dengan UUID tetap, nasabah race:*) dibuat di awal dan selalu dihapus di akhir.
+# Arguments: PostgREST replica URLs (default http://rest:3000). Test data (CS Race NN with fixed UUIDs,
+# race:* customers) is created at the start and always removed on exit.
 set -uo pipefail
 source "$(dirname "$0")/cs-lib.sh"
 
@@ -24,7 +20,7 @@ check() {
     echo "ok   - $1"
     pass=$((pass + 1))
   else
-    echo "GAGAL - $1"
+    echo "FAILED - $1"
     fail=$((fail + 1))
     return 1
   fi
@@ -50,7 +46,7 @@ SQL
 }
 
 finish() {
-  remove_race_data || echo "GAGAL - data uji tidak bisa dihapus" >&2
+  remove_race_data || echo "FAILED - test data could not be removed" >&2
   rm -rf "$WORK"
 }
 trap finish EXIT
@@ -80,7 +76,7 @@ mapfile -t AGENTS < <(sql "$RACE_AGENTS order by a.user_id")
 mapfile -t TICKETS < <(sql "$RACE_TICKETS and t.status = 'open' order by t.id")
 T0=${TICKETS[0]}
 printf '%s\n' "${TICKETS[@]:1}" > "$WORK/tickets"
-check "persiapan: 50 CS Online dan 201 tiket open" '[ ${#AGENTS[@]} = 50 ] && [ ${#TICKETS[@]} = 201 ]'
+check "setup: 50 CS online and 201 open tickets" '[ ${#AGENTS[@]} = 50 ] && [ ${#TICKETS[@]} = 201 ]'
 
 declare -a TOKENS
 for i in "${!AGENTS[@]}"; do
@@ -135,11 +131,11 @@ single_ticket_checks() {
   losers=$(grep -l "$loser" "$WORK/$prefix"-*.out | wc -l)
   owner=$(sql "select owner_agent_id from cs.tickets where id = '$T0'")
   winner_index=$(grep -l '^CLAIMED' "$WORK/$prefix"-*.out | head -1 | sed 's/.*-\([0-9]*\)\.out$/\1/')
-  check "$label: 50 CS berebut 1 tiket bersamaan, tepat 1 berhasil" '[ "$winners" = 1 ]'
-  check "$label: 49 CS lain ditolak dengan 'Tiket sudah diambil oleh Race NN'" '[ "$losers" = 49 ]' ||
+  check "$label: 50 CS race for 1 ticket at once, exactly 1 wins" '[ "$winners" = 1 ]'
+  check "$label: the other 49 CS rejected with 'Tiket sudah diambil oleh Race NN'" '[ "$losers" = 49 ]' ||
     grep -hv -e '^CLAIMED' -e "$loser" "$WORK/$prefix"-*.out | sort | uniq -c | head -5 >&2
-  check "$label: pemilik tiket = CS yang menerima respons berhasil" '[ "$owner" = "${AGENTS[$winner_index]:-}" ]'
-  check "$label: tiket tercatat diambil tepat sekali" '[ "$(claimed_events "$T0" "$since")" = 1 ]'
+  check "$label: ticket owner = the CS that got the success response" '[ "$owner" = "${AGENTS[$winner_index]:-}" ]'
+  check "$label: ticket recorded as claimed exactly once" '[ "$(claimed_events "$T0" "$since")" = 1 ]'
 }
 
 many_tickets_checks() {
@@ -157,13 +153,13 @@ many_tickets_checks() {
   drift=$(sql "select count(*) from cs.agent_status st where st.agent_id in ($RACE_AGENTS)
                and st.active_tickets <> cs.active_ticket_count(st.agent_id)")
   full=$(sql "select count(*) from ($RACE_AGENTS) a where cs.active_ticket_count(a.user_id) = 5")
-  check "$label: total 150 tiket diambil (30 CS × batas 5)" '[ "$(wc -l < "$WORK/$prefix.db")" = 150 ]'
-  check "$label: tidak ada tiket yang diambil dua kali" '[ "$doubles" = 0 ]'
-  check "$label: respons berhasil yang diterima CS sama persis dengan pemilik di database" \
+  check "$label: 150 tickets claimed in total (30 CS x limit 5)" '[ "$(wc -l < "$WORK/$prefix.db")" = 150 ]'
+  check "$label: no ticket claimed twice" '[ "$doubles" = 0 ]'
+  check "$label: success responses received by CS match the owners in the database exactly" \
     'cmp -s "$WORK/$prefix.client" "$WORK/$prefix.db"'
-  check "$label: tidak ada CS melebihi batas 5 tiket aktif" '[ "$over" = 0 ]'
-  check "$label: semua 30 CS mendapat tepat 5 tiket" '[ "$full" = 30 ]'
-  check "$label: hitungan beban CS (active_tickets) konsisten" '[ "$drift" = 0 ]'
+  check "$label: no CS exceeds the 5 active ticket limit" '[ "$over" = 0 ]'
+  check "$label: all 30 CS got exactly 5 tickets" '[ "$full" = 30 ]'
+  check "$label: CS load counter (active_tickets) consistent" '[ "$drift" = 0 ]'
 }
 
 since=$(now_db)
@@ -183,7 +179,7 @@ for i in $(seq $GROUP_FROM 49); do
     | psql -X -q -tA -U postgres > "$WORK/db2-$i.out" 2>&1 &
 done
 wait
-many_tickets_checks "DB 200 tiket × 30 CS" db2 "$since"
+many_tickets_checks "DB 200 tickets x 30 CS" db2 "$since"
 
 ready=0
 for url in "${REPLICAS[@]}"; do
@@ -196,7 +192,7 @@ for url in "${REPLICAS[@]}"; do
     sleep 0.5
   done
 done
-check "API: ${#REPLICAS[@]} replika PostgREST siap" '[ "$ready" = ${#REPLICAS[@]} ]'
+check "API: ${#REPLICAS[@]} PostgREST replicas ready" '[ "$ready" = ${#REPLICAS[@]} ]'
 
 reset_tickets
 since=$(now_db)
@@ -204,7 +200,7 @@ for i in "${!AGENTS[@]}"; do
   ( await_go api1; api_claim "$i" "$T0" "$i" > "$WORK/api1-$i.out" ) &
 done
 release_api_clients api1
-single_ticket_checks "API ${#REPLICAS[@]} replika" api1 '^409 .*"details":"Tiket sudah diambil oleh Race [0-9]' "$since"
+single_ticket_checks "API ${#REPLICAS[@]} replicas" api1 '^409 .*"details":"Tiket sudah diambil oleh Race [0-9]' "$since"
 
 reset_tickets
 since=$(now_db)
@@ -223,8 +219,8 @@ for i in $(seq $GROUP_FROM 49); do
   ) &
 done
 release_api_clients api2
-many_tickets_checks "API ${#REPLICAS[@]} replika, 200 tiket × 30 CS" api2 "$since"
+many_tickets_checks "API ${#REPLICAS[@]} replicas, 200 tickets x 30 CS" api2 "$since"
 
 echo
-echo "Hasil: $pass ok, $fail gagal (replika API: ${#REPLICAS[@]})"
+echo "Result: $pass ok, $fail failed (API replicas: ${#REPLICAS[@]})"
 [ "$fail" -eq 0 ]

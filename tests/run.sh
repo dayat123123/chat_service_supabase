@@ -1,6 +1,4 @@
 #!/usr/bin/env bash
-# Entrypoint image olt-social/testkit. Dipanggil Makefile/make.ps1 (target test-security, load-test,
-# chaos-test, loadtest-cleanup); panduan: docs/testing/README.md.
 set -uo pipefail
 
 suite="${1:-help}"
@@ -17,7 +15,7 @@ case "$suite" in
   cleanup)       exec bash /olt/tests/load/cleanup.sh "$@" ;;
   shell)         exec bash "$@" ;;
   *)
-    echo "pemakaian: security | authz | static-config | prod-routing | zap | load [profil] | integration | chaos [eksperimen...] | cleanup" >&2
+    echo "usage: security | authz | static-config | prod-routing | zap | load [profile] | integration | chaos [experiment...] | cleanup" >&2
     exit 2
     ;;
 esac

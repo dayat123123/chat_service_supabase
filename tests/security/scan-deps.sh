@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Pemindaian kerentanan dependensi dan image: govulncheck, npm audit, osv-scanner, Trivy.
-# Jalankan dari mana saja (Git Bash / Linux): bash tests/security/scan-deps.sh [--strict] [--third-party] [--only go,npm,osv,trivy,third-party]
-# Ringkas ulang hasil lama tanpa memindai: bash tests/security/scan-deps.sh --summary tests/security/results/deps-<waktu>
-# Semua alat berjalan di container yang di-pin tag + digest. Hasil mentah: tests/security/results/deps-<waktu>/.
-# Kode keluar: 0 = selesai (temuan hanya dilaporkan), 1 = --strict dan ada temuan penghalang, 2 = ada alat yang gagal berjalan.
+# Vulnerability scan of dependencies and images: govulncheck, npm audit, osv-scanner, Trivy.
+# Run from anywhere (Git Bash / Linux): bash tests/security/scan-deps.sh [--strict] [--third-party] [--only go,npm,osv,trivy,third-party]
+# Re-summarize earlier results without scanning: bash tests/security/scan-deps.sh --summary tests/security/results/deps-<time>
+# Every tool runs in a container pinned by tag + digest. Raw results: tests/security/results/deps-<time>/.
+# Exit code: 0 = done (findings are only reported), 1 = --strict with blocking findings, 2 = a tool failed to run.
 set -uo pipefail
 
 GO_IMG=golang:1.27.3-alpine3.24@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb
@@ -25,10 +25,10 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --strict) strict=1 ;;
     --third-party) sections="$sections,third-party" ;;
-    --only) sections="${2:?--only butuh daftar bagian}"; shift ;;
-    --summary) summary_only="${2:?--summary butuh direktori hasil}"; shift ;;
+    --only) sections="${2:?--only needs a section list}"; shift ;;
+    --summary) summary_only="${2:?--summary needs a results directory}"; shift ;;
     -h|--help) sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) echo "Argumen tidak dikenal: $1" >&2; exit 2 ;;
+    *) echo "Unknown argument: $1" >&2; exit 2 ;;
   esac
   shift
 done
@@ -37,8 +37,8 @@ cd "$(dirname "$0")/../.." || exit 2
 ROOT="$(pwd -W 2>/dev/null || pwd)"
 if [ -n "$summary_only" ]; then
   OUT_REL="${summary_only%/}"
-  [ -f "$OUT_REL/run-info.txt" ] || { echo "Bukan direktori hasil: $OUT_REL" >&2; exit 2; }
-  sections="$(sed -n 's/^bagian: //p' "$OUT_REL/run-info.txt")"
+  [ -f "$OUT_REL/run-info.txt" ] || { echo "Not a results directory: $OUT_REL" >&2; exit 2; }
+  sections="$(sed -n -E 's/^(sections|bagian): //p' "$OUT_REL/run-info.txt")"
 else
   OUT_REL="tests/security/results/deps-$(date +%Y%m%d-%H%M%S)"
 fi
@@ -54,21 +54,21 @@ DOCKER_SOCK=(-v /var/run/docker.sock:/var/run/docker.sock)
 errors=0
 want() { [[ ",$sections," == *",$1,"* ]]; }
 tool_fail() {
-  echo "GAGAL - $1" >&2
+  echo "FAILED - $1" >&2
   echo "$1" >> "$OUT_REL/errors.txt"
   errors=$((errors + 1))
 }
 safe_name() { tr '/:@' '___' <<< "$1"; }
 
 [ -n "$summary_only" ] || {
-  echo "tanggal: $(date -Iseconds)"
-  echo "git: $(git rev-parse --short HEAD 2>/dev/null) $(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') berkas berubah"
+  echo "date: $(date -Iseconds)"
+  echo "git: $(git rev-parse --short HEAD 2>/dev/null) $(git status --porcelain 2>/dev/null | wc -l | tr -d ' ') files changed"
   echo "GO_IMG=$GO_IMG"
   echo "NODE_IMG=$NODE_IMG"
   echo "OSV_IMG=$OSV_IMG"
   echo "TRIVY_IMG=$TRIVY_IMG"
   echo "GOVULNCHECK_VERSION=$GOVULNCHECK_VERSION"
-  echo "bagian: $sections"
+  echo "sections: $sections"
 } > "$OUT_REL/run-info.txt"
 
 scan_go() {
@@ -93,7 +93,7 @@ scan_go() {
         rc=$?
         chown "$HOST_IDS" "/out/$NAME.json" "/out/$NAME.txt" 2>/dev/null || true
         [ "$rc" -eq 0 ] || [ "$rc" -eq 3 ] || exit 13
-      ' 2> "$OUT_REL/go/$name.log" || tool_fail "govulncheck $mod (lihat $OUT_REL/go/$name.log)"
+      ' 2> "$OUT_REL/go/$name.log" || tool_fail "govulncheck $mod (see $OUT_REL/go/$name.log)"
   done
 }
 
@@ -109,8 +109,8 @@ scan_npm() {
       rc=$?
       [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ] || exit "$rc"
     ' > "$OUT_REL/npm/audit-$mode.json" 2> "$OUT_REL/npm/audit-$mode.log" \
-      || tool_fail "npm audit $mode (lihat $OUT_REL/npm/audit-$mode.log)"
-    grep -q '"auditReportVersion"' "$OUT_REL/npm/audit-$mode.json" || tool_fail "npm audit $mode: keluaran bukan laporan audit"
+      || tool_fail "npm audit $mode (see $OUT_REL/npm/audit-$mode.log)"
+    grep -q '"auditReportVersion"' "$OUT_REL/npm/audit-$mode.json" || tool_fail "npm audit $mode: output is not an audit report"
   done
 }
 
@@ -127,7 +127,7 @@ scan_osv() {
     docker run --rm "${SRC_RO[@]}" "${PKG_RO[@]}" "$OSV_IMG" scan source --format "$fmt" "${args[@]}" \
       > "$OUT_REL/osv/osv.$fmt" 2> "$OUT_REL/osv/osv-$fmt.log"
     rc=$?
-    [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ] || tool_fail "osv-scanner $fmt keluar $rc (lihat $OUT_REL/osv/osv-$fmt.log)"
+    [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ] || tool_fail "osv-scanner $fmt exited $rc (see $OUT_REL/osv/osv-$fmt.log)"
   done
 }
 
@@ -136,9 +136,9 @@ trivy() {
 }
 
 trivy_db() {
-  echo "==> trivy: unduh basis data"
+  echo "==> trivy: download database"
   trivy image --cache-dir /cache --no-progress --download-db-only > /dev/null 2> "$OUT_REL/trivy/db.log" \
-    || { tool_fail "trivy unduh DB (lihat $OUT_REL/trivy/db.log)"; return 1; }
+    || { tool_fail "trivy DB download (see $OUT_REL/trivy/db.log)"; return 1; }
 }
 
 trivy_scan() {
@@ -146,9 +146,9 @@ trivy_scan() {
   base="$OUT_REL/$dir/$(safe_name "$label")"
   echo "==> trivy $label"
   trivy image --cache-dir /cache --no-progress --skip-db-update --scanners vuln --format json "$ref" \
-    > "$base.json" 2> "$base.log" || { tool_fail "trivy $label (lihat $base.log)"; return; }
+    > "$base.json" 2> "$base.log" || { tool_fail "trivy $label (see $base.log)"; return; }
   trivy image --cache-dir /cache --no-progress --skip-db-update --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --format table "$ref" \
-    > "$base.txt" 2>> "$base.log" || tool_fail "trivy tabel $label (lihat $base.log)"
+    > "$base.txt" 2>> "$base.log" || tool_fail "trivy table $label (see $base.log)"
 }
 
 own_images() {
@@ -263,12 +263,12 @@ function goSection() {
       const rec = byId.get(key);
       const where = l === 3 ? `${mod} (${i.pkg}.${i.fn}${i.entry ? ' <- ' + i.entry : ''})` : mod;
       rec[l === 3 ? 'called' : l === 2 ? 'imported' : 'required'].push(where);
-      if (l === 3) blocking.push(`go ${mod}: ${id} ${i.module}@${i.version} dipanggil`);
+      if (l === 3) blocking.push(`go ${mod}: ${id} ${i.module}@${i.version} called`);
     }
     rows.push([mod, n[3], n[2], n[1], n[1] + n[2] + n[3]]);
   }
   say('== Go (govulncheck, mode source; toolchain = image Go) ==');
-  table(['modul', 'called', 'imported', 'required', 'total'], rows);
+  table(['module', 'called', 'imported', 'required', 'total'], rows);
   const recs = [...byId.values()].sort((a, b) => b.called.length - a.called.length || a.id.localeCompare(b.id));
   for (const kind of ['called', 'imported', 'required']) {
     const sel = recs.filter((r) => r[kind].length);
@@ -299,19 +299,19 @@ function npmSection() {
     const j = readJson(path.join(OUT, 'npm', `audit-${mode}.json`));
     if (!j || !j.metadata) { rows.push([`cs-console-react (${mode})`, 'ERR', '', '', '', '']); continue; }
     const v = j.metadata.vulnerabilities || {};
-    rows.push([`cs-console-react (${mode === 'prod' ? '--omit=dev' : 'termasuk dev'})`, v.critical || 0, v.high || 0, v.moderate || 0, v.low || 0, v.total || 0]);
+    rows.push([`cs-console-react (${mode === 'prod' ? '--omit=dev' : 'including dev'})`, v.critical || 0, v.high || 0, v.moderate || 0, v.low || 0, v.total || 0]);
     for (const [name, e] of Object.entries(j.vulnerabilities || {})) {
       if (!['critical', 'high'].includes(e.severity)) continue;
       if (mode === 'all' && readJson(path.join(OUT, 'npm', 'audit-prod.json'))?.vulnerabilities?.[name]) continue;
       const versions = [...new Set((e.nodes || []).map((n) => lock.packages[n]?.version).filter(Boolean))].join(',');
-      const adv = (e.via || []).filter((x) => typeof x === 'object').map((x) => `${x.url ? x.url.split('/').pop() : x.source} ${x.title} (rentang ${x.range})`);
+      const adv = (e.via || []).filter((x) => typeof x === 'object').map((x) => `${x.url ? x.url.split('/').pop() : x.source} ${x.title} (range ${x.range})`);
       const via = (e.via || []).filter((x) => typeof x === 'string');
-      const fix = e.fixAvailable === true ? 'npm audit fix' : e.fixAvailable ? `${e.fixAvailable.name}@${e.fixAvailable.version}${e.fixAvailable.isSemVerMajor ? ' (major)' : ''}` : 'tidak ada';
+      const fix = e.fixAvailable === true ? 'npm audit fix' : e.fixAvailable ? `${e.fixAvailable.name}@${e.fixAvailable.version}${e.fixAvailable.isSemVerMajor ? ' (major)' : ''}` : 'none';
       details.push(`[${mode === 'prod' ? 'prod' : 'dev'}] ${e.severity.toUpperCase()} ${name}@${versions} fix: ${fix}${adv.length ? '\n    ' + adv.join('\n    ') : ''}${via.length ? '\n    via ' + via.join(',') : ''}`);
       if (mode === 'prod') blocking.push(`npm prod: ${name}@${versions} ${e.severity}`);
     }
   }
-  say('== npm audit (apps/cs-console-react, dari package-lock) ==');
+  say('== npm audit (apps/cs-console-react, from package-lock) ==');
   table(['target', 'crit', 'high', 'mod', 'low', 'total'], rows);
   if (details.length) { say(); say('-- npm HIGH/CRITICAL --'); details.forEach((d) => say(d)); }
   say();
@@ -328,8 +328,8 @@ function fixedVersions(vuln, pkgName) {
 
 function osvSection() {
   const j = readJson(path.join(OUT, 'osv', 'osv.json'));
-  say('== osv-scanner (mode lockfile) ==');
-  if (!j) { say('ERR: osv.json tidak terbaca'); say(); return; }
+  say('== osv-scanner (lockfile mode) ==');
+  if (!j) { say('ERR: osv.json unreadable'); say(); return; }
   const scanned = new Map();
   for (const l of lines(path.join(OUT, 'osv', 'osv-json.log'))) {
     const m = l.match(/^Scanned \/(?:src|pkg)\/(\S+) file and found (\d+) package/);
@@ -362,8 +362,8 @@ function osvSection() {
   }
   for (const [src, n] of scanned) if (!seenSrc.has(src)) rows.push([src, n, 0, 0, 0, 0, src.endsWith('go.mod') ? 0 : '-']);
   rows.sort((a, b) => a[0].localeCompare(b[0]));
-  table(['lockfile', 'paket', 'crit', 'high', 'med', 'low/unk', 'stdlib*'], rows);
-  say('* stdlib dari go.mod dihitung terhadap direktif "go", bukan toolchain image; acuan Go = govulncheck.');
+  table(['lockfile', 'packages', 'crit', 'high', 'med', 'low/unk', 'stdlib*'], rows);
+  say('* stdlib from go.mod is counted against the "go" directive, not the image toolchain; govulncheck is the Go reference.');
   if (details.length) { say(); say('-- osv HIGH/CRITICAL --'); details.forEach((d) => say(d)); }
   say();
 }
@@ -406,11 +406,11 @@ function trivySection(dir, title, own) {
   }
   say(`== ${title} ==`);
   table(['image', 'crit', 'high', 'med', 'low/unk', 'C+H fixable', 'os'], rows);
-  if (own) say('* = dirujuk docker/compose*.yml / stack (image yang dipakai); lainnya tag lama/tak terpakai di mesin lokal, tidak dirinci.');
-  if (own && old.images) say(`  tag lama (${old.images} image): ${old.CRITICAL} critical, ${old.HIGH} high, ${old.fixable} fixable -> cukup hapus image lama (docker image rm).`);
+  if (own) say('* = referenced by docker/compose*.yml / stack (images in use); others are old/unused tags on the local machine, not detailed.');
+  if (own && old.images) say(`  old tags (${old.images} images): ${old.CRITICAL} critical, ${old.HIGH} high, ${old.fixable} fixable -> just remove old images (docker image rm).`);
   if (agg.size) {
     say();
-    say(own ? `-- ${title}: HIGH/CRITICAL image yang dipakai --` : `-- ${title}: CRITICAL saja (HIGH lihat ${dir}/*.txt) --`);
+    say(own ? `-- ${title}: HIGH/CRITICAL in images in use --` : `-- ${title}: CRITICAL only (for HIGH see ${dir}/*.txt) --`);
     const sorted = [...agg.values()].sort((a, b) => SEV.indexOf(a.sev) - SEV.indexOf(b.sev) || a.v.VulnerabilityID.localeCompare(b.v.VulnerabilityID));
     for (const a of sorted) say(`${a.sev} ${a.v.VulnerabilityID} ${a.v.PkgName}@${a.v.InstalledVersion} -> fixed ${a.v.FixedVersion || 'none'} (${a.v.Status || '-'}) [${a.cls}] ${a.images.join(', ')}`);
   }
@@ -420,10 +420,10 @@ function trivySection(dir, title, own) {
 if (sections.has('go')) goSection();
 if (sections.has('npm')) npmSection();
 if (sections.has('osv')) osvSection();
-if (sections.has('trivy')) trivySection('trivy', 'Trivy image sendiri (olt-social/*)', true);
-if (sections.has('third-party')) trivySection('third-party', 'Trivy image pihak ketiga (docker/compose.yml, di luar --strict)', false);
-say('== Penghalang --strict (Go called, npm prod HIGH/CRIT, Trivy image dipakai HIGH/CRIT fixable, osv pubspec.lock HIGH/CRIT fixable) ==');
-say(blocking.length ? `${blocking.length} temuan` : 'tidak ada');
+if (sections.has('trivy')) trivySection('trivy', 'Trivy own images (olt-social/*)', true);
+if (sections.has('third-party')) trivySection('third-party', 'Trivy third-party images (docker/compose.yml, outside --strict)', false);
+say('== --strict blockers (Go called, npm prod HIGH/CRIT, Trivy images in use HIGH/CRIT fixable, osv pubspec.lock HIGH/CRIT fixable) ==');
+say(blocking.length ? `${blocking.length} findings` : 'none');
 blocking.forEach((b) => say('  ' + b));
 process.stdout.write(out.join('\n') + '\n');
 process.exitCode = strict && blocking.length ? 3 : 0;
@@ -448,13 +448,13 @@ docker run --rm -i "${SRC_RO[@]}" --mount "type=bind,source=$OUT,target=/out,rea
 sum_rc=${PIPESTATUS[0]}
 
 echo
-echo "Hasil mentah: $OUT_REL"
+echo "Raw results: $OUT_REL"
 if [ "$errors" -gt 0 ]; then
-  echo "$errors alat gagal berjalan (lihat $OUT_REL/errors.txt)" >&2
+  echo "$errors tools failed to run (see $OUT_REL/errors.txt)" >&2
   exit 2
 fi
 if [ "$sum_rc" -eq 3 ]; then
   exit 1
 fi
-[ "$sum_rc" -eq 0 ] || { echo "Ringkasan gagal dibuat" >&2; exit 2; }
+[ "$sum_rc" -eq 0 ] || { echo "Failed to build summary" >&2; exit 2; }
 exit 0

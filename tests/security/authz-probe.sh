@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Uji otorisasi otomatis: anon, nasabah lain, agen CS tanpa izin, agen nonaktif, token palsu.
-# Setiap probe mengharapkan PENOLAKAN (non-2xx) atau hasil kosong; probe yang berhasil = temuan.
-# Data korban dipilih dari DB dev (milik user selain penyerang); probe tulis diverifikasi lewat SQL.
+# Every probe expects a denial (non-2xx) or an empty result; a probe that succeeds is a finding.
+# Victim data comes from the dev DB (owned by users other than the attacker); write probes are verified via SQL.
 set -uo pipefail
 source /olt/tests/lib/common.sh
 
@@ -18,8 +17,8 @@ record() {
   case "$1" in
     ok) pass=$((pass + 1)) ;;
     SKIP) skip=$((skip + 1)); echo "skip - [$2] $3" ;;
-    REVIEW) review=$((review + 1)); echo "periksa - [$2] $3 -> $4" ;;
-    *) fail=$((fail + 1)); echo "TEMUAN - [$2] $3 -> $4 $(head -c 200 "$BODY")" ;;
+    REVIEW) review=$((review + 1)); echo "review - [$2] $3 -> $4" ;;
+    *) fail=$((fail + 1)); echo "FINDING - [$2] $3 -> $4 $(head -c 200 "$BODY")" ;;
   esac
 }
 
@@ -54,13 +53,13 @@ expect_empty() {
 expect_auth_denied() {
   local actor="$1" name="$2"; shift 2
   call "$actor" "$@"
-  if [[ "$code" =~ ^(401|403)$ ]]; then record ok "$actor" "$name" "$code"; else record FAIL "$actor" "$name (harus 401/403)" "$code"; fi
+  if [[ "$code" =~ ^(401|403)$ ]]; then record ok "$actor" "$name" "$code"; else record FAIL "$actor" "$name (must be 401/403)" "$code"; fi
 }
 expect_denied_sweep() {
   local actor="$1" name="$2"; shift 2
   call "$actor" "$@"
   if [[ ! "$code" =~ ^2 ]]; then record ok "$actor" "$name" "$code"
-  elif empty_body; then record REVIEW "$actor" "$name (2xx tanpa data, periksa manual)" "$code"
+  elif empty_body; then record REVIEW "$actor" "$name (2xx without data, review manually)" "$code"
   else record FAIL "$actor" "$name" "$code"; fi
 }
 expect_unchanged() {
@@ -69,54 +68,54 @@ expect_unchanged() {
   before=$(sql "$check")
   call "$actor" "$@"
   after=$(sql "$check")
-  if [ "$before" != "$after" ]; then record FAIL "$actor" "$name (data berubah: $before -> $after)" "$code"; else record ok "$actor" "$name" "$code"; fi
+  if [ "$before" != "$after" ]; then record FAIL "$actor" "$name (data changed: $before -> $after)" "$code"; else record ok "$actor" "$name" "$code"; fi
 }
 
 log "API: $API"
 ATTACKER=joko_prasetyo
 ATTACKER_ID=$(sql "select id from public.profiles where username = '$ATTACKER'")
-AUTH[nasabah]=$(customer_jwt "$API" "$ATTACKER" 198.51.100.21)
-[ -n "${AUTH[nasabah]}" ] || { echo "Gagal login nasabah $ATTACKER lewat OLT dummy + auth-bridge" >&2; exit 2; }
+AUTH[customer]=$(customer_jwt "$API" "$ATTACKER" 198.51.100.21)
+[ -n "${AUTH[customer]}" ] || { echo "Failed to log in customer $ATTACKER via dummy OLT + auth-bridge" >&2; exit 2; }
 AGENT_ID=5e000000-0000-4000-8000-0000000000c1
 DISABLED_ID=$(sql "select user_id from cs.agents where disabled_at is not null and not ('cs_super_admin' = any (roles)) order by created_at limit 1")
-AUTH[agen]=$(staff_jwt "$AGENT_ID")
-[ -n "$DISABLED_ID" ] && AUTH[agen_nonaktif]=$(staff_jwt "$DISABLED_ID")
-AUTH[jwt_palsu]=$(JWT_SECRET=bukan-rahasia-yang-benar sign_hs256 "{\"sub\":\"$ATTACKER_ID\",\"role\":\"service_role\",\"aud\":\"authenticated\",\"exp\":$(( $(date +%s) + 600 ))}")
+AUTH[agent]=$(staff_jwt "$AGENT_ID")
+[ -n "$DISABLED_ID" ] && AUTH[disabled_agent]=$(staff_jwt "$DISABLED_ID")
+AUTH[jwt_forged]=$(JWT_SECRET=not-the-real-secret sign_hs256 "{\"sub\":\"$ATTACKER_ID\",\"role\":\"service_role\",\"aud\":\"authenticated\",\"exp\":$(( $(date +%s) + 600 ))}")
 AUTH[jwt_alg_none]="$(printf '%s' '{"alg":"none","typ":"JWT"}' | b64url).$(printf '%s' "{\"sub\":\"$ATTACKER_ID\",\"role\":\"service_role\",\"exp\":$(( $(date +%s) + 600 ))}" | b64url)."
-AUTH[jwt_kedaluwarsa]=$(sign_hs256 "{\"sub\":\"$ATTACKER_ID\",\"role\":\"authenticated\",\"aud\":\"authenticated\",\"iat\":$(( $(date +%s) - 7200 )),\"exp\":$(( $(date +%s) - 3600 ))}")
+AUTH[jwt_expired]=$(sign_hs256 "{\"sub\":\"$ATTACKER_ID\",\"role\":\"authenticated\",\"aud\":\"authenticated\",\"iat\":$(( $(date +%s) - 7200 )),\"exp\":$(( $(date +%s) - 3600 ))}")
 AUTH[jwt_role_service]=$(sign_hs256 "{\"sub\":\"$ATTACKER_ID\",\"role\":\"supabase_admin\",\"aud\":\"authenticated\",\"exp\":$(( $(date +%s) + 600 ))}")
 grep -q . <<< "$AGENT_ID" && sql "select 1 from cs.agents where user_id = '$AGENT_ID' and roles = '{cs_agent}' and community_permissions = '{}' and nasabah_permissions = '{}'" | grep -q 1 \
-  || echo "Peringatan: agen uji $AGENT_ID tidak ada / punya izin tambahan (jalankan make smoke-cs sekali)" >&2
+  || echo "Warning: test agent $AGENT_ID is missing or has extra permissions (run make smoke-cs once)" >&2
 
-echo "== kontrol positif (token uji benar-benar berlaku)"
+echo "== positive controls (test tokens actually work)"
 control() {
   local actor="$1" name="$2"; shift 2
   call "$actor" "$@"
-  if [[ "$code" =~ ^2 ]]; then record ok "$actor" "kontrol: $name" "$code"; else record FAIL "$actor" "kontrol gagal (hasil probe tidak sah): $name" "$code"; fi
+  if [[ "$code" =~ ^2 ]]; then record ok "$actor" "control: $name" "$code"; else record FAIL "$actor" "control failed (probe results invalid): $name" "$code"; fi
 }
-control nasabah "nasabah membaca feed" GET '/rest/v1/rpc/get_feed?p_limit=1' ''
-control agen "agen membaca agent_me" POST /rest/v1/rpc/agent_me '{}' -H 'Content-Profile: cs_api'
-control anon "anon key: health auth-bridge" GET /bridge/v1/health ''
+control customer "customer reads feed" GET '/rest/v1/rpc/get_feed?p_limit=1' ''
+control agent "agent reads agent_me" POST /rest/v1/rpc/agent_me '{}' -H 'Content-Profile: cs_api'
+control anon "anon key: auth-bridge health" GET /bridge/v1/health ''
 
-echo "== token palsu / kedaluwarsa"
-for a in jwt_palsu jwt_alg_none jwt_kedaluwarsa jwt_role_service; do
-  expect_denied "$a" "baca feed dengan token tidak sah" GET '/rest/v1/rpc/get_feed?p_limit=1' ''
-  expect_denied "$a" "cs_api.agent_me dengan token tidak sah" POST /rest/v1/rpc/agent_me '{}' -H 'Content-Profile: cs_api'
+echo "== forged / expired tokens"
+for a in jwt_forged jwt_alg_none jwt_expired jwt_role_service; do
+  expect_denied "$a" "read feed with invalid token" GET '/rest/v1/rpc/get_feed?p_limit=1' ''
+  expect_denied "$a" "cs_api.agent_me with invalid token" POST /rest/v1/rpc/agent_me '{}' -H 'Content-Profile: cs_api'
 done
-expect_denied anon "REST tanpa apikey" GET '/rest/v1/messages?limit=1' '' -H 'apikey:'
+expect_denied anon "REST without apikey" GET '/rest/v1/messages?limit=1' '' -H 'apikey:'
 call anon GET '/rest/v1/' ''
-[[ "$code" =~ ^2 ]] && record FAIL anon "OpenAPI root /rest/v1/ dengan anon key" "$code" || record ok anon "OpenAPI root /rest/v1/ hanya service_role" "$code"
+[[ "$code" =~ ^2 ]] && record FAIL anon "OpenAPI root /rest/v1/ with anon key" "$code" || record ok anon "OpenAPI root /rest/v1/ service_role only" "$code"
 
-echo "== skema yang tidak boleh terekspos"
+echo "== schemas that must not be exposed"
 for schema in private cs auth vault storage olt_internal admin_api realtime _realtime cron net extensions supabase_functions; do
-  for a in anon nasabah agen; do
+  for a in anon customer agent; do
     expect_denied "$a" "Accept-Profile $schema" GET '/rest/v1/settings?limit=1' '' -H "Accept-Profile: $schema"
   done
 done
-call nasabah POST /graphql/v1 '{"query":"{ __schema { types { name } } }"}'
-if [[ "$code" =~ ^2 ]] && jq -e '.data != null' "$BODY" > /dev/null 2>&1; then record FAIL nasabah "GraphQL introspeksi" "$code"; else record ok nasabah "GraphQL introspeksi ditolak (pg_graphql nonaktif)" "$code"; fi
+call customer POST /graphql/v1 '{"query":"{ __schema { types { name } } }"}'
+if [[ "$code" =~ ^2 ]] && jq -e '.data != null' "$BODY" > /dev/null 2>&1; then record FAIL customer "GraphQL introspection" "$code"; else record ok customer "GraphQL introspection denied (pg_graphql disabled)" "$code"; fi
 
-echo "== tabel publik: data user lain"
+echo "== public tables: other users' data"
 DM=$(sql "select r.id from public.chat_rooms r where r.type = 'direct' and exists (select 1 from public.messages m where m.room_id = r.id)
           and not exists (select 1 from public.chat_members cm where cm.room_id = r.id and cm.user_id = '$ATTACKER_ID') limit 1")
 SUPPORT=$(sql "select r.id from public.chat_rooms r where r.type = 'support' and exists (select 1 from public.messages m where m.room_id = r.id)
@@ -135,69 +134,69 @@ MSG_OTHER=$(sql "select id from public.messages where room_id = '${DM:-00000000-
 
 for room in DM SUPPORT GROUP; do
   id=${!room}
-  if [ -z "$id" ]; then echo "skip: tidak ada room $room korban" >&2; continue; fi
+  if [ -z "$id" ]; then echo "skip: no victim $room room" >&2; continue; fi
   ids=$(sql "select coalesce(string_agg('\"' || id || '\"', ','), '') from (select id from public.messages where room_id = '$id' limit 5) x")
-  for a in anon nasabah agen; do
-    expect_empty "$a" "messages room $room orang lain (REST)" GET "/rest/v1/messages?room_id=eq.$id&select=id,body" ''
-    expect_empty "$a" "chat_members room $room orang lain" GET "/rest/v1/chat_members?room_id=eq.$id" ''
-    expect_empty "$a" "rpc get_messages room $room orang lain" POST /rest/v1/rpc/get_messages "{\"p_room_id\":\"$id\"}"
-    expect_empty "$a" "rpc get_room_members room $room orang lain" POST /rest/v1/rpc/get_room_members "{\"p_room_id\":\"$id\"}"
-    expect_empty "$a" "rpc get_message_ids room $room orang lain" POST /rest/v1/rpc/get_message_ids \
+  for a in anon customer agent; do
+    expect_empty "$a" "messages of someone else's $room room (REST)" GET "/rest/v1/messages?room_id=eq.$id&select=id,body" ''
+    expect_empty "$a" "chat_members of someone else's $room room" GET "/rest/v1/chat_members?room_id=eq.$id" ''
+    expect_empty "$a" "rpc get_messages on someone else's $room room" POST /rest/v1/rpc/get_messages "{\"p_room_id\":\"$id\"}"
+    expect_empty "$a" "rpc get_room_members on someone else's $room room" POST /rest/v1/rpc/get_room_members "{\"p_room_id\":\"$id\"}"
+    expect_empty "$a" "rpc get_message_ids on someone else's $room room" POST /rest/v1/rpc/get_message_ids \
       "{\"p_room_id\":\"$id\",\"p_after\":\"1970-01-01T00:00:00.000000Z|00000000-0000-0000-0000-000000000000\"}"
-    expect_empty "$a" "rpc get_messages_by_ids room $room orang lain" POST /rest/v1/rpc/get_messages_by_ids \
+    expect_empty "$a" "rpc get_messages_by_ids on someone else's $room room" POST /rest/v1/rpc/get_messages_by_ids \
       "{\"p_room_id\":\"$id\",\"p_ids\":[$ids]}"
   done
   if [ -n "$OWN_ROOM" ]; then
-    expect_empty nasabah "rpc get_messages_by_ids room sendiri dengan id pesan room $room orang lain" POST /rest/v1/rpc/get_messages_by_ids \
+    expect_empty customer "rpc get_messages_by_ids on own room with message ids from someone else's $room room" POST /rest/v1/rpc/get_messages_by_ids \
       "{\"p_room_id\":\"$OWN_ROOM\",\"p_ids\":[$ids]}"
   fi
-  expect_unchanged nasabah "send_message ke room $room orang lain" \
+  expect_unchanged customer "send_message to someone else's $room room" \
     "select count(*) from public.messages where room_id = '$id'" POST /rest/v1/rpc/send_message "{\"p_room_id\":\"$id\",\"p_body\":\"probe otorisasi\"}"
-  expect_unchanged nasabah "mark_room_read room $room orang lain" \
+  expect_unchanged customer "mark_room_read on someone else's $room room" \
     "select count(*) from public.chat_members where room_id = '$id' and user_id = '$ATTACKER_ID'" POST /rest/v1/rpc/mark_room_read "{\"p_room_id\":\"$id\"}"
 done
-[ -n "$SUPPORT" ] && expect_empty nasabah "cs_api.ticket_messages room support orang lain" POST /rest/v1/rpc/ticket_messages "{\"p_room_id\":\"$SUPPORT\"}" -H 'Content-Profile: cs_api'
+[ -n "$SUPPORT" ] && expect_empty customer "cs_api.ticket_messages of someone else's support room" POST /rest/v1/rpc/ticket_messages "{\"p_room_id\":\"$SUPPORT\"}" -H 'Content-Profile: cs_api'
 
-for a in anon nasabah agen; do
-  expect_empty "$a" "notifications user lain" GET "/rest/v1/notifications?user_id=eq.$VICTIM&select=id" ''
-  [ -n "$DRAFT_OWNER" ] && expect_empty "$a" "post_drafts user lain" GET "/rest/v1/post_drafts?user_id=eq.$DRAFT_OWNER" ''
-  [ -n "$BOOKMARK_OWNER" ] && expect_empty "$a" "bookmarks user lain" GET "/rest/v1/bookmarks?user_id=eq.$BOOKMARK_OWNER" ''
-  [ -n "$WATCH_OWNER" ] && expect_empty "$a" "stock_watchers user lain" GET "/rest/v1/stock_watchers?user_id=eq.$WATCH_OWNER" ''
-  expect_empty "$a" "user_consents user lain" GET "/rest/v1/user_consents?user_id=eq.$VICTIM" ''
-  expect_empty "$a" "blocks/mutes user lain" GET "/rest/v1/blocks?blocker_id=eq.$VICTIM" ''
-  expect_empty "$a" "reports semua user" GET "/rest/v1/reports?select=id&reporter_id=neq.$ATTACKER_ID" ''
-  expect_empty "$a" "profiles langsung (olt_user_id, email)" GET '/rest/v1/profiles?select=*&limit=5' ''
-  expect_empty "$a" "appeals / banned_words / link_previews langsung" GET '/rest/v1/banned_words?select=*&limit=5' ''
+for a in anon customer agent; do
+  expect_empty "$a" "other user's notifications" GET "/rest/v1/notifications?user_id=eq.$VICTIM&select=id" ''
+  [ -n "$DRAFT_OWNER" ] && expect_empty "$a" "other user's post_drafts" GET "/rest/v1/post_drafts?user_id=eq.$DRAFT_OWNER" ''
+  [ -n "$BOOKMARK_OWNER" ] && expect_empty "$a" "other user's bookmarks" GET "/rest/v1/bookmarks?user_id=eq.$BOOKMARK_OWNER" ''
+  [ -n "$WATCH_OWNER" ] && expect_empty "$a" "other user's stock_watchers" GET "/rest/v1/stock_watchers?user_id=eq.$WATCH_OWNER" ''
+  expect_empty "$a" "other user's user_consents" GET "/rest/v1/user_consents?user_id=eq.$VICTIM" ''
+  expect_empty "$a" "other user's blocks/mutes" GET "/rest/v1/blocks?blocker_id=eq.$VICTIM" ''
+  expect_empty "$a" "reports of all users" GET "/rest/v1/reports?select=id&reporter_id=neq.$ATTACKER_ID" ''
+  expect_empty "$a" "profiles directly (olt_user_id, email)" GET '/rest/v1/profiles?select=*&limit=5' ''
+  expect_empty "$a" "appeals / banned_words / link_previews directly" GET '/rest/v1/banned_words?select=*&limit=5' ''
 done
-expect_empty nasabah "rpc get_profile tidak membocorkan olt_user_id/email" GET "/rest/v1/rpc/get_profile?p_username=budi_santoso&select=olt_user_id" ''
-call nasabah GET "/rest/v1/rpc/get_profile?p_username=budi_santoso" ''
-if grep -q -E '"(olt_user_id|email)"' "$BODY"; then record FAIL nasabah "get_profile memuat olt_user_id/email" "$code"; else record ok nasabah "get_profile tanpa olt_user_id/email" "$code"; fi
+expect_empty customer "rpc get_profile does not leak olt_user_id/email" GET "/rest/v1/rpc/get_profile?p_username=budi_santoso&select=olt_user_id" ''
+call customer GET "/rest/v1/rpc/get_profile?p_username=budi_santoso" ''
+if grep -q -E '"(olt_user_id|email)"' "$BODY"; then record FAIL customer "get_profile includes olt_user_id/email" "$code"; else record ok customer "get_profile without olt_user_id/email" "$code"; fi
 
-[ -n "$NOTIF" ] && expect_unchanged nasabah "hapus notifikasi user lain (REST DELETE)" \
+[ -n "$NOTIF" ] && expect_unchanged customer "delete other user's notification (REST DELETE)" \
   "select count(*) from public.notifications where id = '$NOTIF'" DELETE "/rest/v1/notifications?id=eq.$NOTIF" ''
-expect_unchanged nasabah "tambah stock_watchers atas nama user lain" \
+expect_unchanged customer "insert stock_watchers on behalf of another user" \
   "select count(*) from public.stock_watchers where user_id = '$VICTIM'" POST /rest/v1/stock_watchers "{\"user_id\":\"$VICTIM\",\"stock_code\":\"PROBE\"}"
-expect_unchanged nasabah "follow atas nama user lain" \
+expect_unchanged customer "follow on behalf of another user" \
   "select count(*) from public.follows where follower_id = '$VICTIM'" POST /rest/v1/follows "{\"follower_id\":\"$VICTIM\",\"following_id\":\"$ATTACKER_ID\"}"
-[ -n "$POST_OTHER" ] && expect_unchanged nasabah "delete_post milik user lain" \
+[ -n "$POST_OTHER" ] && expect_unchanged customer "delete_post owned by another user" \
   "select count(*) from public.posts where id = '$POST_OTHER' and deleted_at is null" POST /rest/v1/rpc/delete_post "{\"p_post_id\":\"$POST_OTHER\"}"
-[ -n "$MSG_OTHER" ] && expect_unchanged nasabah "delete_message milik user lain" \
+[ -n "$MSG_OTHER" ] && expect_unchanged customer "delete_message owned by another user" \
   "select count(*) from public.messages where id = '$MSG_OTHER' and deleted_at is null" POST /rest/v1/rpc/delete_message "{\"p_message_id\":\"$MSG_OTHER\"}"
-expect_unchanged nasabah "PATCH posts milik user lain (REST)" \
+expect_unchanged customer "PATCH posts owned by other users (REST)" \
   "select md5(string_agg(body, '')) from public.posts where author_id <> '$ATTACKER_ID'" PATCH "/rest/v1/posts?author_id=neq.$ATTACKER_ID" '{"body":"diubah probe"}'
 
-echo "== RPC khusus service_role (public)"
+echo "== service_role-only RPCs (public)"
 mapfile -t SERVICE_FNS < <(sql "select p.proname || '|' || coalesce((select jsonb_object_agg(a, null)::text from unnest(p.proargnames[1:p.pronargs]) a), '{}')
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
   where n.nspname = 'public' and not has_function_privilege('authenticated', p.oid, 'execute') order by 1")
 for row in "${SERVICE_FNS[@]}"; do
   fn=${row%%|*}; args=${row#*|}
-  for a in anon nasabah agen; do
+  for a in anon customer agent; do
     expect_denied_sweep "$a" "rpc service-only public.$fn" POST "/rest/v1/rpc/$fn" "$args"
   done
 done
 
-echo "== cs_api: semua fungsi dengan argumen null"
+echo "== cs_api: every function with null arguments"
 STAFF_ONLY='^(admin_|app_integration_|agent_(heartbeat|me|my_profile|my_stats|password_changed|send_message|set_status|signed_out_everywhere|typing)|alert_|backup_|claim_ticket|community_|compliance_|customer_history|evidence_|flag_ticket|health_|integration_|legal_|nasabah_|notes|add_note|online_agents|push_|quick_replies|my_quick_replies|save_my_quick_reply|delete_my_quick_reply|ticket_labels|add_ticket_label|remove_ticket_label|report_ticket_labels|reassign_ticket|release_ticket|report_customer|report_summary|request_transfer|respond_transfer|cancel_transfer|resolve_ticket|search_tickets|service_|set_ticket_priority|supervisor_|system_health|ticket_customer_login|ticket_detail|ticket_lists|wait_customer|room_members|get_messages)'
 PERM_GATED='^(admin_|alert_|app_integration_|backup_|community_|compliance_|evidence_|health_acknowledge|integration_|legal_(draft_approve|draft_reject|set_required|cancel_scheduled)|nasabah_(save|clear)_integration|push_|service_|supervisor_|report_summary|report_customers|report_customer_trail|report_ticket_labels)'
 mapfile -t CS_FNS < <(sql "select p.proname || '|' || coalesce((select jsonb_object_agg(a, null)::text from unnest(p.proargnames[1:p.pronargs]) a), '{}')
@@ -206,20 +205,20 @@ for row in "${CS_FNS[@]}"; do
   fn=${row%%|*}; args=${row#*|}
   expect_denied_sweep anon "cs_api.$fn" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
   if [[ "$fn" =~ $STAFF_ONLY ]]; then
-    expect_denied_sweep nasabah "cs_api.$fn (khusus staf)" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
+    expect_denied_sweep customer "cs_api.$fn (staff only)" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
   fi
   if [[ "$fn" =~ $PERM_GATED ]]; then
-    expect_denied_sweep agen "cs_api.$fn (butuh izin/peran lain)" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
+    expect_denied_sweep agent "cs_api.$fn (needs another permission/role)" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
   fi
-  if [ -n "${AUTH[agen_nonaktif]:-}" ] && [[ "$fn" =~ $STAFF_ONLY ]]; then
-    expect_denied_sweep agen_nonaktif "cs_api.$fn (agen nonaktif)" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
+  if [ -n "${AUTH[disabled_agent]:-}" ] && [[ "$fn" =~ $STAFF_ONLY ]]; then
+    expect_denied_sweep disabled_agent "cs_api.$fn (disabled agent)" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
   fi
 done
 
 echo "== Edge Function cs-admin"
-for a in anon nasabah agen; do
-  expect_denied "$a" "cs-admin buat akun CS" POST /functions/v1/cs-admin/agents '{"email":"probe@invalid.test","display_name":"Probe"}'
-  expect_denied "$a" "cs-admin reset password (id fiktif)" POST /functions/v1/cs-admin/agents/00000000-0000-4000-8000-000000000000/reset-password '{}'
+for a in anon customer agent; do
+  expect_denied "$a" "cs-admin create CS account" POST /functions/v1/cs-admin/agents '{"email":"probe@invalid.test","display_name":"Probe"}'
+  expect_denied "$a" "cs-admin reset password (fake id)" POST /functions/v1/cs-admin/agents/00000000-0000-4000-8000-000000000000/reset-password '{}'
 done
 
 echo "== Storage"
@@ -227,54 +226,54 @@ pick() { sql "select name from storage.objects where bucket_id = '$1' and coales
 for target in "evidence|" "cs-documents|" "attachments|and name like 'rooms/%'"; do
   bucket=${target%%|*}; filter=${target#*|}
   obj=$(pick "$bucket" "$filter")
-  for a in anon nasabah agen; do
+  for a in anon customer agent; do
     call "$a" POST "/storage/v1/object/list/$bucket" '{"prefix":"","limit":20}'
     if [[ "$code" =~ ^2 ]] && jq -e 'map(select(.name != "posts")) | length > 0' "$BODY" > /dev/null 2>&1; then
-      record FAIL "$a" "list bucket $bucket (selain folder posts publik)" "$code"
-    else record ok "$a" "list bucket $bucket (hanya folder posts yang memang publik)" "$code"; fi
+      record FAIL "$a" "list bucket $bucket (beyond the public posts folder)" "$code"
+    else record ok "$a" "list bucket $bucket (only the intentionally public posts folder)" "$code"; fi
     expect_empty "$a" "list bucket $bucket prefix rooms/" POST "/storage/v1/object/list/$bucket" '{"prefix":"rooms/","limit":20}'
     if [ -n "$obj" ]; then
-      expect_denied "$a" "unduh objek $bucket milik orang lain" GET "/storage/v1/object/authenticated/$bucket/$obj" ''
-      expect_denied "$a" "signed URL objek $bucket milik orang lain" POST "/storage/v1/object/sign/$bucket/$obj" '{"expiresIn":60}'
-      expect_denied "$a" "objek $bucket lewat jalur public" GET "/storage/v1/object/public/$bucket/$obj" ''
+      expect_denied "$a" "download someone else's $bucket object" GET "/storage/v1/object/authenticated/$bucket/$obj" ''
+      expect_denied "$a" "signed URL for someone else's $bucket object" POST "/storage/v1/object/sign/$bucket/$obj" '{"expiresIn":60}'
+      expect_denied "$a" "$bucket object via public path" GET "/storage/v1/object/public/$bucket/$obj" ''
     fi
   done
 done
 AVATAR=$(sql "select name from storage.objects where bucket_id = 'avatars' and coalesce(owner_id, '') <> '$ATTACKER_ID' limit 1")
 if [ -n "$AVATAR" ]; then
-  expect_unchanged nasabah "hapus avatar user lain" "select count(*) from storage.objects where bucket_id = 'avatars' and name = '$AVATAR'" \
+  expect_unchanged customer "delete other user's avatar" "select count(*) from storage.objects where bucket_id = 'avatars' and name = '$AVATAR'" \
     DELETE "/storage/v1/object/avatars/$AVATAR" ''
-  expect_unchanged nasabah "timpa avatar user lain (upsert)" "select coalesce(max(updated_at)::text, '') from storage.objects where bucket_id = 'avatars' and name = '$AVATAR'" \
-    PUT "/storage/v1/object/avatars/$AVATAR" 'bukan-gambar' -H 'x-upsert: true' -H 'Content-Type: image/jpeg'
+  expect_unchanged customer "overwrite other user's avatar (upsert)" "select coalesce(max(updated_at)::text, '') from storage.objects where bucket_id = 'avatars' and name = '$AVATAR'" \
+    PUT "/storage/v1/object/avatars/$AVATAR" 'not-an-image' -H 'x-upsert: true' -H 'Content-Type: image/jpeg'
 fi
 BANNER_OBJ="$(cat /proc/sys/kernel/random/uuid).jpg"
-for a in nasabah agen; do
-  expect_denied "$a" "upload langsung ke app-banners (khusus Super Admin)" POST "/storage/v1/object/app-banners/$BANNER_OBJ" 'x' -H 'Content-Type: image/jpeg'
+for a in customer agent; do
+  expect_denied "$a" "direct upload to app-banners (Super Admin only)" POST "/storage/v1/object/app-banners/$BANNER_OBJ" 'x' -H 'Content-Type: image/jpeg'
 done
-for a in anon nasabah agen; do
-  expect_empty "$a" "list bucket app-banners (termasuk gambar promo terjadwal)" POST /storage/v1/object/list/app-banners '{"prefix":"","limit":20}'
+for a in anon customer agent; do
+  expect_empty "$a" "list bucket app-banners (includes scheduled promo images)" POST /storage/v1/object/list/app-banners '{"prefix":"","limit":20}'
 done
-expect_denied anon "rpc record_banner_event tanpa login" POST /rest/v1/rpc/record_banner_event '{"p_banner_id":"00000000-0000-4000-8000-000000000000","p_event":"impression"}'
-expect_denied agen "rpc record_banner_event oleh akun CS" POST /rest/v1/rpc/record_banner_event '{"p_banner_id":"00000000-0000-4000-8000-000000000000","p_event":"impression"}'
-expect_denied nasabah "upload langsung ke evidence" POST "/storage/v1/object/evidence/probe/$ATTACKER_ID.txt" 'x' -H 'Content-Type: text/plain'
-expect_denied nasabah "upload langsung ke cs-documents room orang lain" POST "/storage/v1/object/cs-documents/rooms/${SUPPORT:-x}/$ATTACKER_ID/probe.pdf" 'x' -H 'Content-Type: application/pdf'
-expect_denied nasabah "buat bucket baru" POST /storage/v1/bucket '{"id":"probe","name":"probe","public":true}'
-expect_denied nasabah "ubah bucket evidence jadi public" PUT /storage/v1/bucket/evidence '{"public":true}'
+expect_denied anon "rpc record_banner_event without login" POST /rest/v1/rpc/record_banner_event '{"p_banner_id":"00000000-0000-4000-8000-000000000000","p_event":"impression"}'
+expect_denied agent "rpc record_banner_event by a CS account" POST /rest/v1/rpc/record_banner_event '{"p_banner_id":"00000000-0000-4000-8000-000000000000","p_event":"impression"}'
+expect_denied customer "direct upload to evidence" POST "/storage/v1/object/evidence/probe/$ATTACKER_ID.txt" 'x' -H 'Content-Type: text/plain'
+expect_denied customer "direct upload to cs-documents of someone else's room" POST "/storage/v1/object/cs-documents/rooms/${SUPPORT:-x}/$ATTACKER_ID/probe.pdf" 'x' -H 'Content-Type: application/pdf'
+expect_denied customer "create new bucket" POST /storage/v1/bucket '{"id":"probe","name":"probe","public":true}'
+expect_denied customer "make evidence bucket public" PUT /storage/v1/bucket/evidence '{"public":true}'
 call anon GET /storage/v1/bucket ''
 if [[ "$code" =~ ^2 ]] && jq -e 'map(select(.public == false)) | length > 0' "$BODY" > /dev/null 2>&1; then
-  record FAIL anon "daftar bucket privat terlihat anon" "$code"; else record ok anon "daftar bucket (tanpa bucket privat)" "$code"; fi
+  record FAIL anon "private buckets visible to anon in bucket list" "$code"; else record ok anon "bucket list (no private buckets)" "$code"; fi
 
-echo "== Integrasi API"
+echo "== Integration API"
 NOTIFY='{"messages":[{"id":"probe-1","cust_id":"PROBE","title":"t","body":"b"}]}'
-for a in anon nasabah; do
-  expect_auth_denied "$a" "integration notify tanpa key integrasi" POST /integration/v1/notify/messages "$NOTIFY"
+for a in anon customer; do
+  expect_auth_denied "$a" "integration notify without integration key" POST /integration/v1/notify/messages "$NOTIFY"
 done
-expect_auth_denied anon "integration notify key salah" POST /integration/v1/notify/messages "$NOTIFY" -H "Authorization: Bearer olt_int_$(openssl rand -hex 24)"
-expect_auth_denied anon "integration notify anon key sebagai Bearer" POST /integration/v1/notify/messages "$NOTIFY" -H "Authorization: Bearer $ANON_KEY"
-expect_auth_denied anon "integration tanpa apikey Kong" POST /integration/v1/notify/messages "$NOTIFY" -H 'apikey:'
-expect_auth_denied anon "integration bot_post key salah" POST /integration/v1/bot/posts '{"posts":[]}' -H 'Authorization: Bearer salah'
+expect_auth_denied anon "integration notify with wrong key" POST /integration/v1/notify/messages "$NOTIFY" -H "Authorization: Bearer olt_int_$(openssl rand -hex 24)"
+expect_auth_denied anon "integration notify with anon key as Bearer" POST /integration/v1/notify/messages "$NOTIFY" -H "Authorization: Bearer $ANON_KEY"
+expect_auth_denied anon "integration without Kong apikey" POST /integration/v1/notify/messages "$NOTIFY" -H 'apikey:'
+expect_auth_denied anon "integration bot_post with wrong key" POST /integration/v1/bot/posts '{"posts":[]}' -H 'Authorization: Bearer wrong'
 
-echo "== Realtime: kanal room DM dua user uji lt_sec*"
+echo "== Realtime: DM room channel of two lt_sec* test users"
 tokengen -prefix lt_sec -start 1 -count 2 -base 9190000 > "$OUT/lt_sec.json"
 SEC_A=$(curl -sS -X POST "$API/bridge/v1/exchange" -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
   -H 'X-Forwarded-For: 198.51.100.31' -d "{\"token\":\"$(jq -r '.[0].token' "$OUT/lt_sec.json")\"}" | jq -r '.access_token // empty')
@@ -296,21 +295,21 @@ if [ -n "$SEC_A" ] && [ -n "$SEC_B_ID" ]; then
   SEC_STOCK=$(jq -r 'if type == "string" then . else empty end' "$BODY" 2>/dev/null)
 fi
 if [ -n "$SEC_ROOM" ]; then
-  if k6 run -q --summary-mode disabled --log-format raw -e API="$API" -e ANON_KEY="$ANON_KEY" -e JWT="${AUTH[nasabah]}" -e VICTIM_JWT="$SEC_A" -e ROOM="$SEC_ROOM" \
+  if k6 run -q --summary-mode disabled --log-format raw -e API="$API" -e ANON_KEY="$ANON_KEY" -e JWT="${AUTH[customer]}" -e VICTIM_JWT="$SEC_A" -e ROOM="$SEC_ROOM" \
        -e STOCK_ROOM="${SEC_STOCK:-}" \
        /olt/tests/security/realtime-authz.js > "$OUT/realtime-authz.log" 2>&1; then
     sed -n 's/^RESULT //p' "$OUT/realtime-authz.log" | jq -s . > "$OUT/realtime-authz.json"
     jq -r '.[] | [.verdict, .actor, .probe, .status, .detail] | @tsv' "$OUT/realtime-authz.json" >> "$TSV"
     while IFS=$'\t' read -r v a p s d; do
-      if [ "$v" = ok ]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "TEMUAN - [$a] $p -> $s $d"; fi
+      if [ "$v" = ok ]; then pass=$((pass + 1)); else fail=$((fail + 1)); echo "FINDING - [$a] $p -> $s $d"; fi
     done < <(jq -r '.[] | [.verdict, .actor, .probe, .status, .detail] | @tsv' "$OUT/realtime-authz.json")
   else
-    echo "k6 realtime-authz gagal, lihat $OUT/realtime-authz.log" >&2; fail=$((fail + 1))
+    echo "k6 realtime-authz failed, see $OUT/realtime-authz.log" >&2; fail=$((fail + 1))
   fi
 else
-  echo "skip: gagal menyiapkan room DM lt_sec (status $code)" >&2; skip=$((skip + 1))
+  echo "skip: failed to set up lt_sec DM room (status $code)" >&2; skip=$((skip + 1))
 fi
 
 echo
-echo "authz-probe: $pass ok, $fail temuan, $review perlu diperiksa, $skip dilewati  (detail: ${OUT#/olt/}/authz.tsv)"
+echo "authz-probe: $pass ok, $fail findings, $review to review, $skip skipped  (detail: ${OUT#/olt/}/authz.tsv)"
 [ "$fail" -eq 0 ]
