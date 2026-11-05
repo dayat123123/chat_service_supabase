@@ -59,6 +59,7 @@ Menu di bar atas mengikuti peran dan izin. Satu akun bisa punya lebih dari satu 
 | **Laporan** | – | Ya | – | – |
 | **Akun Nasabah** | Bila punya Akses Akun Nasabah | – | – | – |
 | **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas |
+| **Aplikasi** | – | Ya | – | – |
 | **Pengaturan** | – | Ya | – | – |
 | **Ringkasan**, **Kasus**, **Jejak Audit**, **Kebijakan**, **Kata terlarang**, **Kebijakan konten**, **Dokumen hukum** | – | – | Ya | – |
 | **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – |
@@ -314,26 +315,23 @@ Diperbarui otomatis. Angka di menu **Dashboard** adalah jumlah tiket yang perlu 
 
 ### 3.4 Pengaturan
 
-Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit.
+Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit. Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Pengaturan aplikasi nasabah (fitur, versi, banner, koneksi) ada di menu **Aplikasi** (bagian 3.5).
 
-| Bagian | Fungsi | Kapan dipakai |
-|---|---|---|
-| **Akun CS** | Tambah akun staf, peran, tim, batas tiket, izin, reset password, nonaktifkan | Staf baru, pindah tugas, lupa password, staf keluar |
-| **Topik** | Topik yang dipilih nasabah, prioritas default, skill, tautan bantuan | Ada jenis masalah baru |
-| **Quick reply** | Balasan cepat untuk semua CS | Jawaban baku baru atau berubah |
-| **Label tiket** | Daftar label yang dipasang CS pada tiket (nama, warna, aktif, urutan) | Pengelompokan kasus baru untuk laporan |
-| **Jam layanan & libur** | Jam buka CS (WIB) dan hari libur | Awal tahun, perubahan jam kerja |
-| **Pesan otomatis** | Pesan sistem ke nasabah (ID/EN) | Mengubah kata-kata pesan sistem |
-| **Penugasan, tiket & alert** | Mode penugasan, lepas otomatis, tutup otomatis, batas alert | Mengatur alur kerja tim |
-| **Komunitas** | Aturan empat mata postingan/notifikasi dan kebijakan konten | Jarang; atas permintaan Kepatuhan |
-| **Push notification** | Kunci Firebase dan push uji | Pemasangan awal, ganti kunci |
-| **Integrasi API Nasabah** | Sambungan menu Akun Nasabah | Pemasangan awal bersama IT |
-| **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
-| **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
-| **Fitur & versi** | Kill switch, sakelar fitur aplikasi, versi minimum | Insiden, rilis aplikasi |
-| **Banner aplikasi** | Strip di atas atau popup di tengah aplikasi nasabah, dengan statistik tayang dan klik | Gangguan, pemeliharaan, info, promo |
-| **Backup** | Tujuan, password, jadwal backup, uji restore | Pemasangan awal, cek mingguan |
-| **Alert** | Kanal alert gangguan (Telegram/email) | Pemasangan awal, ganti penerima |
+| Kelompok | Bagian | Fungsi | Kapan dipakai |
+|---|---|---|---|
+| **Layanan CS** | **Akun CS** | Tambah akun staf, peran, tim, batas tiket, izin, reset password, nonaktifkan | Staf baru, pindah tugas, lupa password, staf keluar |
+| | **Topik** | Topik yang dipilih nasabah, prioritas default, skill, tautan bantuan | Ada jenis masalah baru |
+| | **Quick reply** | Balasan cepat untuk semua CS | Jawaban baku baru atau berubah |
+| | **Label tiket** | Daftar label yang dipasang CS pada tiket (nama, warna, aktif, urutan) | Pengelompokan kasus baru untuk laporan |
+| | **Jam layanan & libur** | Jam buka CS (WIB) dan hari libur | Awal tahun, perubahan jam kerja |
+| | **Pesan otomatis** | Pesan sistem ke nasabah (ID/EN) | Mengubah kata-kata pesan sistem |
+| | **Penugasan, tiket & alert** | Mode penugasan, lepas otomatis, tutup otomatis, batas alert | Mengatur alur kerja tim |
+| **Komunitas** | **Aturan persetujuan** | Aturan empat mata postingan/notifikasi dan kebijakan konten | Jarang; atas permintaan Kepatuhan |
+| **Integrasi** | **Integrasi API Nasabah** | Sambungan menu Akun Nasabah | Pemasangan awal bersama IT |
+| | **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
+| | **Push notification** | Kunci Firebase dan push uji | Pemasangan awal, ganti kunci |
+| **Sistem** | **Backup** | Tujuan, password, jadwal backup, uji restore | Pemasangan awal, cek mingguan |
+| | **Alert** | Kanal alert gangguan (Telegram/email) | Pemasangan awal, ganti penerima |
 
 #### Akun CS
 
@@ -369,18 +367,11 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 - **Tutup tiket selesai**: **Batas tanpa rating (hari, 1–30)**. Tiket yang sudah dinilai selalu langsung ditutup.
 - **Alert Super Admin**: batas menit tiket belum diambil, dan batas khusus tiket P1.
 
-#### Komunitas (empat mata)
+#### Aturan persetujuan (empat mata)
 
 - **Aturan empat mata**: default aktif. Postingan dan notifikasi resmi wajib disetujui staf lain, bukan pembuatnya.
 - **Empat mata kebijakan konten**: default aktif. Perubahan kebijakan konten wajib disetujui staf Kepatuhan lain.
 - **Risiko:** mematikan empat mata membuat satu orang bisa langsung menerbitkan ke semua pengguna. Biarkan aktif kecuali tim memang hanya satu orang, dan catat alasannya.
-
-#### Push notification
-
-- Status layanan: **Aktif**, **Belum dipasang**, **Bermasalah**, atau **Layanan mati**. Bila push mati, notifikasi tetap masuk ke kotak notifikasi aplikasi.
-- Kunci Firebase diunggah sebagai file JSON (**Pilih file JSON**, lalu **Simpan kunci**). Langkahnya tertulis di layar. **Setelah diunggah, hapus file JSON dari komputer Anda.** Kunci tidak bisa diunduh lagi dari Hub.
-- **Hapus kunci** menghentikan push ke HP untuk semua pengguna. Jangan dilakukan tanpa koordinasi IT.
-- **Kirim push uji**: cari pengguna, lalu **Kirim uji**, untuk memastikan push sampai.
 
 #### Integrasi API Nasabah
 
@@ -396,30 +387,12 @@ API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman)
 4. **Rotasi:** buat key baru, pasang di sistem pengirim, pastikan **Terakhir dipakai** key baru bergerak, baru **Cabut** key lama.
 5. **Cabut** bersifat permanen. Untuk berhenti sementara, matikan **Key aktif**.
 
-#### Integrasi aplikasi
+#### Push notification
 
-Halaman hanya-baca: data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Status login OLT**. Anon key memang publik, bukan rahasia. Bila status bukan **Aktif**, laporkan ke IT. Kunci OLT tidak bisa diganti dari Hub.
-
-#### Fitur & versi
-
-- **Kill switch fitur sosial**: lihat bagian 6.
-- **Fitur aplikasi**: nyalakan/matikan fitur seperti **Pencarian**, **Trending**, **Simpan postingan**, **Edit postingan**, **Reaksi pesan**, **Bagikan ke chat**, **Pengaturan notifikasi**, **Analitik aplikasi**. Berlaku saat aplikasi berikutnya membaca pengaturan.
-- **Versi minimum aplikasi** per platform: pengguna versi lebih lama diminta memperbarui aplikasi. **Risiko:** pastikan versi itu sudah tersedia di toko aplikasi; bila belum, pengguna tidak bisa memakai aplikasi.
-
-#### Banner aplikasi
-
-Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi, misalnya gangguan atau pemeliharaan) dan **Popup tengah** (kartu di tengah layar dengan latar gelap, cocok untuk promo).
-
-1. **Tambah banner**, pilih **Tampilan**, lalu isi **Judul**, **Isi (opsional)**, **Tautan (opsional)**, **Label tombol (opsional)**, **Sasaran**, **Tingkat** (**Info**, **Peringatan**, **Kritis**), **Mulai (WIB)**, **Berakhir (WIB)**, **Platform**, versi, **Boleh ditutup pengguna**, dan **Prioritas (0–1000)**.
-2. **Tautan** boleh `https://…` atau deep link aplikasi dengan skema yang diizinkan, misalnya `olt://promo/akhir-tahun` untuk membuka halaman di dalam aplikasi OLT. `http://`, `javascript:`, `intent:`, dan skema yang belum didaftarkan ditolak. **Label tombol** (maksimal 24 karakter) hanya dipakai bila ada tautan; bila kosong, aplikasi memakai label bawaan.
-3. Khusus **Popup tengah**:
-   - **Gambar (opsional)**: JPEG, PNG, atau WebP. Pilih **Rasio potong** **4:5 (disarankan)** atau **1:1**, geser dan perbesar gambar, lalu **Pakai gambar**. Gambar dikecilkan otomatis sampai di bawah 2 MB dan baru diunggah saat banner disimpan. **Ganti gambar** atau **Hapus gambar** bisa dilakukan kapan saja; gambar lama dibersihkan otomatis.
-   - **Frekuensi**: **Sekali per pengguna**, **Sekali sehari**, atau **Setiap buka aplikasi**.
-4. **Sasaran**: **Semua pengguna** atau **Pengguna baru ≤ N hari** (1–90 hari sejak profil dibuat). Pengunjung yang belum login hanya melihat banner untuk semua pengguna.
-5. Periksa **Pratinjau** di sisi kanan (strip, atau ponsel kecil untuk popup), lalu simpan.
-6. Daftar banner menampilkan jenis (**Strip**/**Popup**), status (**Terjadwal**, **Aktif**, **Selesai**), dan ringkasan statistik (tayang, klik, CTR). Tombol grafik di setiap baris membuka **Statistik**: tayang, klik, tutup, pengguna unik, CTR, dan rincian 7 hari terakhir. Satu pengguna dihitung paling banyak sekali per hari (WIB) untuk setiap jenis event; data disimpan 180 hari.
-7. **Skema deep link** (di bawah daftar): daftar skema yang boleh dipakai tautan banner, maksimal 5, bawaan `olt`. Tambahkan skema hanya atas permintaan tim aplikasi OLT. Mencabut skema membuat tautan banner yang memakainya tidak lagi dikirim ke aplikasi. Perubahan tercatat di jejak audit.
-8. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
+- Status layanan: **Aktif**, **Belum dipasang**, **Bermasalah**, atau **Layanan mati**. Bila push mati, notifikasi tetap masuk ke kotak notifikasi aplikasi.
+- Kunci Firebase diunggah sebagai file JSON (**Pilih file JSON**, lalu **Simpan kunci**). Langkahnya tertulis di layar. **Setelah diunggah, hapus file JSON dari komputer Anda.** Kunci tidak bisa diunduh lagi dari Hub.
+- **Hapus kunci** menghentikan push ke HP untuk semua pengguna. Jangan dilakukan tanpa koordinasi IT.
+- **Kirim push uji**: cari pengguna, lalu **Kirim uji**, untuk memastikan push sampai.
 
 #### Backup
 
@@ -446,7 +419,42 @@ Ke mana alert gangguan sistem dikirim.
 
 Halaman **Kesehatan sistem** (status layanan dan alert terbuka) tidak tampil di menu. Bila diminta IT saat gangguan, Super Admin bisa membukanya lewat alamat yang diberikan IT.
 
-### 3.5 Analitik komunitas
+### 3.5 Aplikasi
+
+Menu **Aplikasi** hanya untuk Super Admin dan mengatur apa yang tampil dan berjalan di aplikasi nasabah. Isinya tiga tab; tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama Super Admin. Setiap perubahan tercatat di Jejak Audit.
+
+| Tab | Fungsi | Kapan dipakai |
+|---|---|---|
+| **Fitur & versi** | Kill switch, sakelar fitur aplikasi, versi minimum | Insiden, rilis aplikasi |
+| **Banner & popup** | Strip di atas atau popup di tengah aplikasi nasabah, dengan statistik tayang dan klik | Gangguan, pemeliharaan, info, promo |
+| **Koneksi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
+
+#### Fitur & versi
+
+- **Kill switch fitur sosial**: lihat bagian 6.
+- **Fitur aplikasi**: nyalakan/matikan fitur seperti **Pencarian**, **Trending**, **Simpan postingan**, **Edit postingan**, **Reaksi pesan**, **Bagikan ke chat**, **Pengaturan notifikasi**, **Analitik aplikasi**. Berlaku saat aplikasi berikutnya membaca pengaturan.
+- **Versi minimum aplikasi** per platform: pengguna versi lebih lama diminta memperbarui aplikasi. **Risiko:** pastikan versi itu sudah tersedia di toko aplikasi; bila belum, pengguna tidak bisa memakai aplikasi.
+
+#### Banner & popup
+
+Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi, misalnya gangguan atau pemeliharaan) dan **Popup tengah** (kartu di tengah layar dengan latar gelap, cocok untuk promo).
+
+1. **Tambah banner**, pilih **Tampilan**, lalu isi **Judul**, **Isi (opsional)**, **Tautan (opsional)**, **Label tombol (opsional)**, **Sasaran**, **Tingkat** (**Info**, **Peringatan**, **Kritis**), **Mulai (WIB)**, **Berakhir (WIB)**, **Platform**, versi, **Boleh ditutup pengguna**, dan **Prioritas (0–1000)**.
+2. **Tautan** boleh `https://…` atau deep link aplikasi dengan skema yang diizinkan, misalnya `olt://promo/akhir-tahun` untuk membuka halaman di dalam aplikasi OLT. `http://`, `javascript:`, `intent:`, dan skema yang belum didaftarkan ditolak. **Label tombol** (maksimal 24 karakter) hanya dipakai bila ada tautan; bila kosong, aplikasi memakai label bawaan.
+3. Khusus **Popup tengah**:
+   - **Gambar (opsional)**: JPEG, PNG, atau WebP. Pilih **Rasio potong** **4:5 (disarankan)** atau **1:1**, geser dan perbesar gambar, lalu **Pakai gambar**. Gambar dikecilkan otomatis sampai di bawah 2 MB dan baru diunggah saat banner disimpan. **Ganti gambar** atau **Hapus gambar** bisa dilakukan kapan saja; gambar lama dibersihkan otomatis.
+   - **Frekuensi**: **Sekali per pengguna**, **Sekali sehari**, atau **Setiap buka aplikasi**.
+4. **Sasaran**: **Semua pengguna** atau **Pengguna baru ≤ N hari** (1–90 hari sejak profil dibuat). Pengunjung yang belum login hanya melihat banner untuk semua pengguna.
+5. Periksa **Pratinjau** di sisi kanan (strip, atau ponsel kecil untuk popup), lalu simpan.
+6. Daftar banner menampilkan jenis (**Strip**/**Popup**), status (**Terjadwal**, **Aktif**, **Selesai**), dan ringkasan statistik (tayang, klik, CTR). Tombol grafik di setiap baris membuka **Statistik**: tayang, klik, tutup, pengguna unik, CTR, dan rincian 7 hari terakhir. Satu pengguna dihitung paling banyak sekali per hari (WIB) untuk setiap jenis event; data disimpan 180 hari.
+7. **Skema deep link** (di bawah daftar): daftar skema yang boleh dipakai tautan banner, maksimal 5, bawaan `olt`. Tambahkan skema hanya atas permintaan tim aplikasi OLT. Mencabut skema membuat tautan banner yang memakainya tidak lagi dikirim ke aplikasi. Perubahan tercatat di jejak audit.
+8. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
+
+#### Koneksi aplikasi
+
+Tab hanya-baca: data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Status login OLT**. Anon key memang publik, bukan rahasia. Bila status bukan **Aktif**, laporkan ke IT. Kunci OLT tidak bisa diganti dari Hub.
+
+### 3.6 Analitik komunitas
 
 Super Admin selalu punya tab **Analitik** di menu **Komunitas**: pengguna aktif harian (DAU, WAU, MAU), konten, retensi mingguan, **Saham paling dibahas**, dan **Dari sosial ke order**. Data ini tidak memuat teks pengguna.
 
@@ -667,7 +675,7 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 
 ### 6.1 Kill switch fitur sosial
 
-**Siapa:** hanya **Super Admin**, di **Pengaturan → Fitur & versi → Kill switch fitur sosial**.
+**Siapa:** hanya **Super Admin**, di **Aplikasi → Fitur & versi → Kill switch fitur sosial**.
 
 **Kapan:** insiden besar seperti spam masif, konten berbahaya yang menyebar, atau gangguan yang belum dipahami dan butuh waktu untuk diperbaiki.
 
@@ -683,7 +691,7 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 1. Klik **Matikan fitur sosial**.
 2. Isi **Alasan** (10–500 karakter; terlihat oleh Super Admin lain).
 3. Ketik **MATIKAN** untuk konfirmasi.
-4. Beri tahu tim CS, Kepatuhan, dan IT bahwa kill switch aktif. Pertimbangkan **Banner aplikasi** untuk memberi tahu pengguna.
+4. Beri tahu tim CS, Kepatuhan, dan IT bahwa kill switch aktif. Pertimbangkan **Aplikasi → Banner & popup** untuk memberi tahu pengguna.
 5. Setelah masalah beres: **Nyalakan kembali**, isi alasan, ketik **NYALAKAN**.
 
 Jangan lupa menyalakan kembali; kill switch tidak mati sendiri.

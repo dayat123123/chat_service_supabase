@@ -273,7 +273,7 @@ otomatis di-rebase ke versi terbaru: hanya butir yang diubah staf yang menimpa k
 | Riwayat & detail versi | `compliance_policy_versions`, `compliance_policy_version` | Detail memuat diff versi dan diff pemulihan terhadap kebijakan berlaku |
 | Pulihkan versi | `compliance_policy_rollback(p_version, p_reason)` | Membuat permintaan `rollback` berisi snapshot versi lama; setelah disetujui terbentuk versi baru dengan isi identik. Bila kebijakan berubah sebelum disetujui: `409 policy_stale` |
 | Simulasi | `compliance_policy_simulate` | Lihat di bawah |
-| Saklar empat mata | `admin_policy_four_eyes`, `admin_set_policy_four_eyes` | Super Admin, Pengaturan → Komunitas. Default aktif (`compliance.policy_four_eyes`) |
+| Saklar empat mata | `admin_policy_four_eyes`, `admin_set_policy_four_eyes` | Super Admin, Pengaturan → Aturan persetujuan (kelompok Komunitas). Default aktif (`compliance.policy_four_eyes`) |
 
 Audit: `policy_change.submit`, `policy_change.apply` (empat mata nonaktif), `policy_change.approve`,
 `policy_change.reject`, `policy_change.withdraw`, `policy.rollback`, dan `setting.update` untuk saklar.
