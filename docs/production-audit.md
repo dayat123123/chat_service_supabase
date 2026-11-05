@@ -488,7 +488,7 @@ Batas per user di DB, sekarang vs addendum:
 
 | # | Syarat | Status | Sekarang → perubahan | Effort |
 |---|---|---|---|---|
-| 8.1 | Pipeline CI | ✅ | GitHub Actions: `cs-console-react.yml`, `rendezvous-community.yml`, dan 3 Nov 2026 `backend.yml` (Go: gofmt, vet, `-race`, tanpa komentar, image + Trivy; pgTAP + smoke vs stack dev; gitleaks). | M |
+| 8.1 | Pipeline CI | ✅ | GitHub Actions: `cs-console-react.yml` (sejak 5 Nov 2026 `ci.yml` di repo `rendezvous_hub`), `rendezvous-community.yml`, dan 3 Nov 2026 `backend.yml` (Go: gofmt, vet, `-race`, tanpa komentar, image + Trivy; pgTAP + smoke vs stack dev; gitleaks). | M |
 | 8.2 | Migrasi berurutan dan terlacak | ✅ | `olt_internal.schema_migrations` dengan checksum. | – |
 | 8.3 | Migrasi backward-compatible; destruktif tidak otomatis | ❌ | Belum ada aturan tertulis maupun penjaga. → panduan expand → migrate → contract; `migrate` menolak `DROP`/`TRUNCATE`/ubah tipe tanpa persetujuan eksplisit. | S |
 | 8.4 | Rolling update + rollback satu perintah | 🟡 | Panduan update ada. → `make deploy SERVICE=… TAG=…`, `make rollback`, tag image = versi/commit. | M |

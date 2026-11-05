@@ -36,7 +36,9 @@ curl -fsSL https://get.docker.com | sh
 sudo ufw allow OpenSSH && sudo ufw allow 80/tcp && sudo ufw allow 443 && sudo ufw enable
 
 # 2. Kode & rahasia
-git clone <repo> olt-social && cd olt-social
+git clone <repo> chat_service_supabase
+git clone <repo rendezvous_hub> rendezvous_hub   # hanya bila Hub (CS=1) dipasang; bersebelahan dengan repo ini
+cd chat_service_supabase
 make gen-secrets                 # docker/secrets/ (rahasia acak) + docker/.env
 ```
 
@@ -85,7 +87,7 @@ Catatan:
   Bila app nasabah menambah pemanggilan RPC `cs_api`, tambahkan namanya ke regex `api-cs-customer`. `make test-security` (static-config) mencocokkan allowlist ini dengan `lib/` repo library `rendezvous_community` (clone di `../rendezvous_community` atau `PKG=<path>`) dan gagal bila ada yang terlewat. Profil dev tidak membatasi apa pun (web CS dev di `:8085` memakai API `:8000`). Pastikan `SUPABASE_URL` cs-console di server = domain CS. Kalau diarahkan ke domain publik, REST, Realtime, dan Storage staf ditolak.
 
   Setelah `prod.yml`/`cs.yml` berubah, jalankan `docker compose ... up -d --force-recreate traefik`, karena watcher file belum tentu menangkap file bind mount yang diganti `git pull`. Di cluster (Swarm), isi config tidak bisa diubah, jadi buat config dengan nama baru lalu `docker stack deploy`.
-- **Web CS React** ([`apps/cs-console-react`](../apps/cs-console-react/README.md)) mati secara default di profil single. Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`), yang memakai overlay `docker/compose.cs.yml`. Isi di `docker/.env`:
+- **Rendezvous Hub** (web CS, repo [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub)) mati secara default di profil single. Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`), yang memakai overlay `docker/compose.cs.yml` dan membangun image `cs-console` dari checkout Hub di sebelah repo ini (`../rendezvous_hub`, atau `HUB_DIR` di `docker/.env`, relatif terhadap `docker/`). Tanpa checkout itu `make up ... CS=1` berhenti dengan pesan `Rendezvous Hub checkout not found at ...`. Update Hub: `git -C ../rendezvous_hub pull --ff-only` sebelum `make up`. Isi di `docker/.env`:
   1. `CS_CONSOLE_DOMAIN`: domain khusus web CS. Web CS dan API agen (`/auth/v1`, `/functions/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`) disajikan di domain ini, jadi tidak perlu CORS.
   2. `VPN_SOURCE_RANGES`: rentang IP yang boleh membuka web CS, dipisah koma. Semua router domain ini (`docker/volumes/traefik/cs.yml`) memakai `ipAllowList`; IP lain mendapat 403. VPN **tidak wajib**: isi dengan jaringan kantor, tanpa mengubah kode.
      - Server di jaringan kantor: isi rentang LAN, mis. `192.168.1.0/24`. Arahkan domain CS ke IP LAN server lewat DNS internal (atau file hosts). Bila PC staf membuka IP publik server dari dalam kantor (hairpin NAT), yang terlihat adalah IP router, jadi tambahkan IP itu.
@@ -153,6 +155,7 @@ Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Setelah me
    ```bash
    make backup PROFILE=single
    git pull
+   git -C ../rendezvous_hub pull --ff-only   # bila Hub dipasang
    make up PROFILE=single   # service `migrate` menjalankan migrasi baru secara otomatis
    ```
 
@@ -369,8 +372,8 @@ Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat d
 - [ ] Revisi CS-2 (R1–R4) selesai. `make test-db`, `make cs-race`, dan `make smoke-cs` lulus di staging. `make cs-race` mencakup tes rebutan lewat beberapa replika API.
 - [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
 - [ ] Kalender libur tahun berjalan dan tahun depan sudah diperiksa kepatuhan (`cs.holidays.verified = true`), termasuk libur bursa dari pengumuman BEI.
-- [ ] API agen (`cs_api.agent_*`) dan web CS (`apps/cs-console-react`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses dari IP di `VPN_SOURCE_RANGES` (LAN kantor atau VPN): uji dari jaringan lain harus mendapat 403. Staf CS login dengan email + password (tanpa TOTP, jadi pembatasan jaringan dan password kuat minimal 12 karakter adalah lapisan utamanya), dan pendaftaran publik GoTrue tetap mati.
-- [ ] `make test-cs-console` lulus dan E2E web CS (`make e2e-cs-console`) lulus di staging.
+- [ ] API agen (`cs_api.agent_*`) dan web CS (Rendezvous Hub, repo `rendezvous_hub`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses dari IP di `VPN_SOURCE_RANGES` (LAN kantor atau VPN): uji dari jaringan lain harus mendapat 403. Staf CS login dengan email + password (tanpa TOTP, jadi pembatasan jaringan dan password kuat minimal 12 karakter adalah lapisan utamanya), dan pendaftaran publik GoTrue tetap mati.
+- [ ] `make test-cs-console` (CI repo `rendezvous_hub`) lulus dan E2E web CS (`make e2e-cs-console`) lulus di staging, dari commit Hub yang akan dirilis.
 - [ ] Endpoint login GoTrue (`/auth/v1/token`, `/auth/v1/factors`, `/auth/v1/user`) hanya dari jaringan yang diizinkan. Nasabah tidak memakainya karena JWT nasabah diterbitkan auth-bridge.
 - [ ] Edge Function `cs-admin` (`/functions/v1/cs-admin/*`, dipakai menu Pengaturan → Akun CS) hanya dari jaringan yang diizinkan: `https://<PROXY_DOMAIN>/functions/v1/cs-admin/agents` harus 404, dan RPC agen (`Accept-Profile: cs_api`, mis. `/rest/v1/rpc/agent_me`) di domain publik harus 403. Kunci service role hanya ada sebagai secret container functions, tidak pernah di client.
 - [ ] Super admin pertama dibuat sekali dari server:

@@ -126,6 +126,8 @@ cd chat_service_supabase
 make gen-secrets
 ```
 
+Rendezvous Hub ada di repo terpisah ([`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub)) dan tidak wajib di server ini. Tanpa checkout-nya, `make up` profil dev menampilkan peringatan `Rendezvous Hub checkout not found at ...` lalu berjalan tanpa `cs-console`. Bila Hub ingin dicoba juga, clone repo itu di sebelah `chat_service_supabase` (`git clone <repo rendezvous_hub> ../rendezvous_hub`) sebelum `make up`.
+
 Ubah di `docker/.env`:
 
 ```bash

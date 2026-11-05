@@ -15,10 +15,12 @@
 
 ---
 
-Repo ini berisi seluruh sisi server fitur sosial aplikasi OLT, dari database sampai web back office:
+Repo ini berisi seluruh sisi server fitur sosial aplikasi OLT, dari database sampai deploy web back office:
 - **Database dan API:** Supabase self-hosted (Postgres, PostgREST, Realtime, Storage). Logika bisnis ada di migrasi SQL, dilindungi RLS, dan diuji pgTAP.
 - **Layanan Go:** auth-bridge, media gateway, push notifier, integrasi OLT, dan layanan pendukung lain.
-- **Rendezvous Hub** (`apps/cs-console-react`): web untuk CS, Super Admin, dan Kepatuhan.
+- **Rendezvous Hub**: web untuk CS, Super Admin, Kepatuhan, dan Komunitas. Kodenya di repo terpisah [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub); repo ini membangun image-nya dari checkout bersebelahan.
+
+Library Flutter untuk aplikasi nasabah juga punya repo sendiri, [`rendezvous_community`](https://github.com/dayat123123/rendezvous_community).
 
 > **Batas integrasi.** Server sosial tidak pernah memanggil sistem OLT. OLT menerbitkan *token sosial* bertanda tangan, dan server memverifikasinya secara lokal. Order, daftar dan harga saham, portofolio, serta data nasabah tetap milik OLT. Rinciannya di [docs/olt-integration.md](docs/olt-integration.md).
 
@@ -81,15 +83,31 @@ flowchart LR
 | [`supabase/`](supabase/) | Migrasi SQL bernomor (`0001`–`0107`), seed development, 87 file tes pgTAP |
 | [`docker/`](docker/) | Compose + overlay per profil, Traefik, Kong, PgBouncer, secrets. Semua image di-pin tag + digest |
 | [`services/`](services/) | Layanan Go: [`auth-bridge`](services/auth-bridge/), [`media`](services/media/), [`integration`](services/integration/), [`notifier`](services/notifier/), [`link-preview`](services/link-preview/), [`classifier`](services/classifier/), [`janitor`](services/janitor/), [`sentinel`](services/sentinel/), [`backup`](services/backup/), [`nasabah-gateway`](services/nasabah-gateway/), dan [`dummy-olt`](services/dummy-olt/) (OLT tiruan, hanya dev/test) |
-| [`apps/cs-console-react/`](apps/cs-console-react/) | **Rendezvous Hub**: tiket & chat CS, Super Admin, Kepatuhan, Komunitas, Kesehatan sistem |
 | [`tests/`](tests/) | Alat uji keamanan, beban (k6), dan chaos ([docs/testing](docs/testing/README.md)) |
 | [`docs/`](docs/) | Integrasi, produksi, desain per fitur, laporan uji |
+
+Dua repo lain dipakai dari checkout di sebelah repo ini:
+
+| Repo | Isi | Dipakai oleh |
+|---|---|---|
+| [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub) | **Rendezvous Hub** (React): tiket & chat CS, Super Admin, Kepatuhan, Komunitas, Kesehatan sistem | Image `cs-console` (`HUB`, bawaan `../rendezvous_hub`; di `docker/.env`: `HUB_DIR`), `test-cs-console`, `e2e-cs-console`, `scan-deps` |
+| [`rendezvous_community`](https://github.com/dayat123123/rendezvous_community) | Library Flutter untuk aplikasi nasabah | Target Flutter, `web-example`, cek allowlist `cs_api` di `test-security` (`PKG`, bawaan `../rendezvous_community`) |
 
 ## Mulai cepat
 
 **Prasyarat:**
 - Docker dengan Compose v2.24+. Semua backend, migrasi, seed, dan tes berjalan di container.
 - Windows memakai `.\make.ps1 <target>`, sedangkan Linux/macOS/VPS memakai `make <target>`.
+- Tiga repo di-clone bersebelahan dalam satu folder kerja:
+
+```bash
+git clone https://github.com/dayat123123/chat_service_supabase.git
+git clone https://github.com/dayat123123/rendezvous_hub.git          # Rendezvous Hub (web CS)
+git clone https://github.com/dayat123123/rendezvous_community.git    # library Flutter (tidak wajib untuk backend)
+cd chat_service_supabase
+```
+
+Tanpa checkout `rendezvous_hub`, `make up` profil dev tetap jalan tetapi tanpa `cs-console` (ada peringatan), dan target Hub berhenti dengan pesan `Rendezvous Hub checkout not found at ...`. Untuk lokasi lain pakai `HUB=<path>` (Windows: `$env:HUB`) atau `HUB_DIR` di `docker/.env` (relatif terhadap `docker/`).
 
 ```bash
 make gen-secrets        # docker/secrets/ + docker/.env (aman diulang)
@@ -115,7 +133,7 @@ make cs-console-react   # Rendezvous Hub di http://localhost:8085
 | Database | `make test-db` | pgTAP: skema, RLS, RPC, realtime, chat CS, moderasi, privasi, rate limit |
 | Go | `make test` (+ `test-<layanan>`) | Unit test semua layanan di container, `check-go-comments` |
 | End-to-end | `make smoke-dummy`, `make smoke-cs` | Login token sosial, exchange, chat CS dari buka tiket sampai rating |
-| Web | `make test-cs-console`, `make e2e-cs-console` | Lint, typecheck, unit, build, ukuran bundle, lisensi; Playwright |
+| Web (repo `rendezvous_hub`) | `make test-cs-console`, `make e2e-cs-console` | `npm run ci` repo Hub (lint, typecheck, unit, build, ukuran bundle, lisensi) di container Node; Playwright |
 | Keamanan | `make test-security`, `make scan-deps` | Probe otorisasi, routing produksi, konfigurasi edge, CVE dependensi & image |
 | Beban & chaos | `make load-test P=step`, `make chaos-test` | k6 pembukaan pasar, API integrasi, Realtime/DB/PgBouncer dimatikan di bawah beban |
 

@@ -37,6 +37,7 @@ Aplikasi OLT (nasabah)            Rendezvous Hub (staf, jaringan internal)
 Aturan:
 
 - File compose (`docker/compose*.yml`) dan kode datang dari Git lewat `git pull`. Jangan diedit langsung di server.
+- Kode Hub ada di repo terpisah [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub), di-clone di `~/rendezvous_hub` (sebelah `~/chat_service_supabase`) oleh [server-install.sh](server-install.md). Image `cs-console` dibangun dari sana saat `make up`.
 - Jangan mengedit file di dalam container (`docker exec`). Container dibuat ulang saat update dan perubahannya hilang.
 - Kode dari Git, rahasia di luar server, pengaturan dari Hub, kesehatan dari alert, data dari backup.
 
@@ -47,6 +48,7 @@ Aturan:
 | `PROXY_DOMAIN`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL` | Domain API (`https://<domain>`, `API_EXTERNAL_URL` diakhiri `/auth/v1`) | — |
 | `ACME_EMAIL` | Notifikasi sertifikat Let's Encrypt | — |
 | `CS_CONSOLE_DOMAIN`, `VPN_SOURCE_RANGES` | Domain Hub dan IP/rentang yang boleh membukanya, dipisah koma (`203.0.113.10/32,10.8.0.0/24`) | — |
+| `HUB_DIR` | Lokasi checkout `rendezvous_hub`, absolut atau relatif terhadap `docker/` | `../../rendezvous_hub` |
 | `EDGE_WS_PER_IP`, `EDGE_RATE_AVERAGE`, `EDGE_RATE_BURST` | Batas WebSocket dan request per IP | 1.500, 600, 1.200 |
 | `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` | Login (tukar token) per IP per menit | 1.500 |
 | `REALTIME_MAX_EVENTS_PER_SECOND` | Batas event chat live seluruh server | 20.000 |
@@ -68,6 +70,7 @@ make up                 # nyalakan / terapkan perubahan .env; migrasi baru berja
 make ps                 # semua harus healthy
 make logs s=rest        # ikuti log satu layanan
 git pull && make up     # update versi
+git -C ~/rendezvous_hub pull --ff-only && make up   # update Hub (bila dipasang)
 make backup             # salinan sesaat (pg_dump + file) sebelum update besar
 make psql               # konsol SQL sebagai postgres (hati-hati)
 ```
@@ -102,11 +105,11 @@ Rincian setiap alert: [system-health](system-health/README.md) dan [PRODUCTION.m
 |---|---|
 | Harian | Tidak ada; tanggapi alert yang masuk |
 | Mingguan | Hub → Pengaturan → Backup: uji restore otomatis terakhir berhasil |
-| Bulanan | `git pull && make up` untuk patch, di luar jam bursa, setelah `make backup` |
+| Bulanan | `git pull` (dan `git -C ~/rendezvous_hub pull --ff-only` bila Hub dipasang) lalu `make up` untuk patch, di luar jam bursa, setelah `make backup` |
 | Sebelum restart database terencana | Di luar jam bursa; `make psql` lalu `CHECKPOINT;` agar shutdown singkat |
 | Sekali, simpan di luar server | `docker/.env`, `docker/secrets/`, password backup, salinan `pgsodium_root.key` ([backup](backup/README.md#pemulihan)) |
 
-Bila server hilang total, yang dibutuhkan untuk bangkit lagi: repo dari GitHub, empat salinan di baris terakhir, dan backup.
+Bila server hilang total, yang dibutuhkan untuk bangkit lagi: repo dari GitHub (`chat_service_supabase`, dan `rendezvous_hub` bila Hub dipasang), empat salinan di baris terakhir, dan backup.
 
 ## 6. Domain dan akses publik
 

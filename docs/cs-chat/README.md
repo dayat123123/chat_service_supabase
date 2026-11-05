@@ -20,7 +20,7 @@ Spesifikasi: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) dan revisinya [PROMPT-CS-
 | **R2** | Web CS khusus (versi Flutter, dihapus 31 Okt 2026 setelah cutover ke React): login + TOTP, 3 kolom, ambil tiket, chat, catatan internal, balasan cepat, notifikasi | **Selesai** |
 | **R3** | Integrasi aplikasi nasabah: modul `support` di `rendezvous_community` (room CS disematkan, pilih topik, header status, aksi, rating di chat, tiket saya, notifikasi lokal, antrean offline, peringatan data sensitif). Windows: panel samping. Android: layar penuh | **Selesai** |
 | **R4** | Dashboard supervisor realtime + alert tiket terlambat, laporan + ekspor CSV, pengaturan admin (akun CS, topik, quick reply global, jam layanan & libur, pesan otomatis, lepas otomatis, mode penugasan), halaman demo dev dipindah ke model tiket (bagian 5) | **Selesai** |
-| React | Web CS ditulis ulang dengan React + TypeScript ([`apps/cs-console-react`](../../apps/cs-console-react/README.md), [prompt](../PROMPT-CS-CONSOLE-REACT.md), [paritas](../cs-console-parity.md)). M1–M5 selesai; console Flutter dihapus 31 Okt 2026 | **Selesai** |
+| React | Web CS ditulis ulang dengan React + TypeScript (repo [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub), [prompt](../PROMPT-CS-CONSOLE-REACT.md), [paritas](../cs-console-parity.md)). M1–M5 selesai; console Flutter dihapus 31 Okt 2026 | **Selesai** |
 
 | Dokumen | Untuk |
 |---|---|
@@ -215,7 +215,7 @@ Mengetik dan tanda dibaca tetap memakai channel `room:<id>` milik widget chat.
 | `make test-db` | pgTAP CS (018–023, 026–027): kalender, alur tiket (82 tes), keamanan & akses (61 tes), masking, anggota room, super admin hanya memantau (17 tes), super admin & tanpa TOTP (11 tes), dashboard & pengaturan (69 tes: dashboard, laporan, nonaktifkan akun, validasi pengaturan, hak akses) |
 | `make cs-race` | Tes rebutan (Revisi CS-2 bagian 2.3). 50 CS mengambil 1 tiket bersamaan: tepat 1 berhasil, 49 mendapat "Tiket sudah diambil oleh …". 200 tiket × 30 CS acak bersamaan: tidak ada tiket ganda, tidak ada CS melebihi 5 tiket aktif, respons yang diterima CS sama persis dengan pemilik di database. Dijalankan langsung ke fungsi database dan lewat 3 replika PostgREST khusus tes. Data uji dihapus setelahnya |
 | `make smoke-cs` | End-to-end lewat Kong + OLT dummy (30 pemeriksaan): buka tiket, ambil, rebutan, balas, OTP diblokir, catatan, lampiran gambar dari CS, transfer, versi kedaluwarsa, selesai, rating |
-| `make test-cs-console` | Web CS React: lint, typecheck, 74 unit test, build, bundle awal ≤ 300 KB gzip, lisensi |
+| `make test-cs-console` | Web CS React (repo `rendezvous_hub`, checkout di `../rendezvous_hub` atau `HUB`): `npm run ci` = lint, typecheck, unit test, build, bundle awal ≤ 300 KB gzip, lisensi |
 | `make e2e-cs-console` | Web CS React, Playwright vs stack dev (22 tes): login email + password, dua akun di dua tab tanpa saling memutus, rebutan klaim, chat + lampiran + tanda dibaca, lepas/transfer/selesai, non-pemilik hanya-baca, putus-sambung tanpa duplikat, supervisor memantau + memindahkan tiket, tampilan terang/gelap, kinerja 1000 tiket + 5000 pesan |
 
 ## Menjalankan
