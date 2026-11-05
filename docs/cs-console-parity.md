@@ -2,7 +2,7 @@
 
 > **Catatan 31 Okt 2026:** dokumen historis. Cutover M5 selesai: `apps/cs-console` (Flutter) dihapus, dan panel data nasabah dari OLT ikut dihapus karena server hanya boleh memvalidasi token ke OLT ([olt-integration.md](olt-integration.md)).
 
-Checklist migrasi [PROMPT-CS-CONSOLE-REACT.md](PROMPT-CS-CONSOLE-REACT.md). Sumber fitur Flutter: [cs-console-audit.md](cs-console-audit.md). Aplikasi baru: [`apps/cs-console-react`](../apps/cs-console-react/README.md).
+Checklist migrasi [PROMPT-CS-CONSOLE-REACT.md](PROMPT-CS-CONSOLE-REACT.md). Sumber fitur Flutter: [cs-console-audit.md](cs-console-audit.md). Aplikasi baru: repo [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub) (dulu `apps/cs-console-react`).
 
 Status: ✅ setara atau lebih baik · ⏳ menunggu backend (B1–B4 di audit, tidak dikerjakan karena keputusan "frontend saja").
 

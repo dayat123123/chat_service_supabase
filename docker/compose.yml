@@ -1148,15 +1148,16 @@ services:
   # Compose profile `cs` (docs/cs-chat): always on in dev; production enables it with
   # CS=1 (Windows: -Cs).
 
-  # Web CS (apps/cs-console-react): static SPA on non-root nginx. Agent browsers call the API
-  # through SUPABASE_URL; env.js is written at container start. Production is reachable only
-  # over the VPN (compose.cs.yml + volumes/traefik/cs.yml).
+  # Rendezvous Hub (web CS, github.com/dayat123123/rendezvous_hub): static SPA on non-root nginx,
+  # built from the checkout next to this repo (HUB_DIR, relative to docker/). Agent browsers call
+  # the API through SUPABASE_URL; env.js is written at container start. Production is reachable
+  # only over the VPN (compose.cs.yml + volumes/traefik/cs.yml).
   cs-console:
     <<: *base
     labels: ["olt.autoheal=true"]
     profiles: [cs]
     build:
-      context: ../apps/cs-console-react
+      context: ${HUB_DIR:-../../rendezvous_hub}
     image: olt-social/cs-console:0.1.1
     user: "101:101"
     networks: [edge]

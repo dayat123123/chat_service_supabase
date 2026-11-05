@@ -3,6 +3,8 @@ set -euo pipefail
 
 REPO_SSH="${REPO_SSH:-git@github.com:dayat123123/chat_service_supabase.git}"
 APP_DIR="${APP_DIR:-$HOME/chat_service_supabase}"
+HUB_REPO_SSH="${HUB_REPO_SSH:-git@github-hub:dayat123123/rendezvous_hub.git}"
+HUB_APP_DIR="${HUB_APP_DIR:-$HOME/rendezvous_hub}"
 SCRIPT_PATH="$(readlink -f "$0")"
 
 say() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
@@ -43,7 +45,7 @@ bashrc_export() {
 [ "${ID:-}" = ubuntu ] || die "This script is for Ubuntu (detected: ${ID:-unknown})."
 sudo -v
 
-say "1/9 System packages, automatic security updates, clock"
+say "1/10 System packages, automatic security updates, clock"
 sudo apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq upgrade
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y -qq install git make curl ca-certificates unattended-upgrades ufw python3
@@ -52,7 +54,7 @@ sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure -f noninteractive unattende
 sudo timedatectl set-ntp true
 ok "packages installed, automatic security updates on, NTP on"
 
-say "2/9 Docker"
+say "2/10 Docker"
 if ! command -v docker >/dev/null 2>&1; then
   sudo install -m 0755 -d /etc/apt/keyrings
   sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -73,7 +75,7 @@ compose_version=$(docker compose version --short | sed 's/^v//')
 printf '%s\n2.24.0\n' "$compose_version" | sort -V -C -r || die "docker compose $compose_version is too old (needs 2.24 or newer)."
 ok "docker $(docker version --format '{{.Server.Version}}'), compose $compose_version"
 
-say "3/9 Swap (only when RAM < 8 GB)"
+say "3/10 Swap (only when RAM < 8 GB)"
 mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
 if [ "$mem_kb" -lt 7500000 ] && ! swapon --show | grep -q .; then
   sudo fallocate -l 4G /swapfile
@@ -86,7 +88,7 @@ else
   ok "no extra swap needed"
 fi
 
-say "4/9 Server firewall (ufw, extra layer)"
+say "4/10 Server firewall (ufw, extra layer)"
 ssh_port=$(sudo sshd -T 2>/dev/null | awk '/^port / && !seen {print $2; seen = 1}' || true)
 ssh_port=${ssh_port:-22}
 sudo ufw allow "$ssh_port/tcp" > /dev/null
@@ -96,7 +98,7 @@ sudo ufw --force enable > /dev/null
 ok "ufw: $ssh_port (SSH), 80, 443"
 warn "Docker container ports bypass ufw; the main restriction stays in the hosting provider's firewall"
 
-say "5/9 Code from GitHub"
+say "5/10 Code from GitHub"
 if [ -d "$APP_DIR/.git" ]; then
   git -C "$APP_DIR" pull --ff-only
   ok "code updated in $APP_DIR"
@@ -122,7 +124,7 @@ else
 fi
 cd "$APP_DIR"
 
-say "6/9 Configuration (docker/.env)"
+say "6/10 Configuration (docker/.env)"
 make -s gen-secrets
 domain=$(ask "API domain (e.g. social-api.company.co.id)" "$(env_get PROXY_DOMAIN)")
 [[ $domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid domain: $domain"
@@ -156,7 +158,38 @@ if [ -n "$backup_dir" ]; then
 fi
 ok "docker/.env updated"
 
-say "7/9 OLT public keys (docker/secrets/olt_jwks)"
+say "7/10 Rendezvous Hub code (only when the Hub is installed)"
+if [ -d "$HUB_APP_DIR/.git" ]; then
+  git -C "$HUB_APP_DIR" pull --ff-only
+  ok "Hub code updated in $HUB_APP_DIR"
+elif [ -n "$hub_domain" ]; then
+  mkdir -p "$HOME/.ssh"
+  chmod 700 "$HOME/.ssh"
+  [ -f "$HOME/.ssh/github_deploy_hub" ] || ssh-keygen -q -t ed25519 -N "" -C "deploy-hub@$(hostname)" -f "$HOME/.ssh/github_deploy_hub"
+  grep -qx 'Host github-hub' "$HOME/.ssh/config" 2>/dev/null \
+    || printf 'Host github-hub\n  HostName github.com\n  IdentityFile ~/.ssh/github_deploy_hub\n  IdentitiesOnly yes\n' >> "$HOME/.ssh/config"
+  chmod 600 "$HOME/.ssh/config"
+  ssh-keygen -F github.com > /dev/null 2>&1 || ssh-keyscan -t ed25519 github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+  until git clone -q "$HUB_REPO_SSH" "$HUB_APP_DIR" 2>/dev/null; do
+    echo
+    echo "  Add this second deploy key on GitHub (GitHub needs a separate deploy key per repo):"
+    echo "  repo rendezvous_hub -> Settings -> Deploy keys -> Add deploy key"
+    echo "  (any title, do NOT tick \"Allow write access\")"
+    echo
+    cat "$HOME/.ssh/github_deploy_hub.pub"
+    echo
+    read -r -p "  Press Enter once the deploy key is added... " _
+  done
+  ok "Hub code in $HUB_APP_DIR"
+else
+  ok "skipped (no Hub domain)"
+fi
+if [ -d "$HUB_APP_DIR/.git" ] && { [ -n "$(env_get HUB_DIR)" ] || [ "$HUB_APP_DIR" != "$(dirname "$APP_DIR")/rendezvous_hub" ]; }; then
+  env_set HUB_DIR "$HUB_APP_DIR"
+  ok "docker/.env: HUB_DIR=$HUB_APP_DIR"
+fi
+
+say "8/10 OLT public keys (docker/secrets/olt_jwks)"
 jwks_file="$APP_DIR/docker/secrets/olt_jwks"
 jwks_check() {
   python3 - "$1" <<'PY'
@@ -191,7 +224,7 @@ else
   fi
 fi
 
-say "8/9 DNS check"
+say "9/10 DNS check"
 check_dns() {
   local name=$1 resolved
   resolved=$(getent ahostsv4 "$name" | awk '!seen {print $1; seen = 1}' || true)
@@ -203,7 +236,7 @@ check_dns "$domain"
 confirm "Is the IP above this server's public IP (or the office public IP forwarded to this server)?" \
   || die "Fix DNS first, then run this script again."
 
-say "9/9 Starting services"
+say "10/10 Starting services"
 export PROFILE=single
 bashrc_export PROFILE single
 if [ -n "$hub_domain" ]; then

@@ -6,7 +6,7 @@
 #   cluster Docker Swarm (skeleton)
 # PROD=1 is a legacy alias for PROFILE=single.
 # DUMMY_OLT=1 adds the dummy OLT (social token issuer) + auth-bridge jwt mode (dev profile only).
-# CS=1 enables chat customer service (React web CS) in the single profile.
+# CS=1 enables chat customer service (Rendezvous Hub web CS, built from HUB) in the single profile.
 
 PROFILE ?= dev
 ifdef PROD
@@ -43,6 +43,15 @@ WEB_IMG       := caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79
 # The Flutter package lives in its own repo (github.com/dayat123123/rendezvous_community): clone it next to
 # this repo or set PKG=<path>. Used by the Flutter targets, web-example and the static-config cs_api check.
 PKG           ?= ../rendezvous_community
+# Rendezvous Hub (web CS) lives in its own repo (github.com/dayat123123/rendezvous_hub): clone it next to
+# this repo, set HUB=<path>, or set HUB_DIR in docker/.env (relative to docker/). Compose builds the
+# cs-console image from HUB_DIR; test-cs-console, e2e-cs-console and scan-deps use it too.
+HUB_DIR_SET   := $(or $(HUB_DIR),$(shell sed -n 's/^HUB_DIR=//p' $(ENV) 2>/dev/null | tail -n 1 | tr -d '"'))
+HUB           ?= $(if $(HUB_DIR_SET),$(if $(filter /%,$(HUB_DIR_SET)),,docker/)$(HUB_DIR_SET),../rendezvous_hub)
+export HUB_DIR := $(abspath $(HUB))
+HUB_MISSING   := Rendezvous Hub checkout not found at $(HUB_DIR); clone https://github.com/dayat123123/rendezvous_hub next to this repo or set HUB
+HUB_SKIP      := $(if $(wildcard $(HUB_DIR)/package.json),,$(CS_$(PROFILE)))
+HUB_REQUIRED  = @test -f "$(HUB_DIR)/package.json" || { echo "$(HUB_MISSING)" >&2; exit 1; }
 TESTKIT_IMG   := olt-social/testkit:0.1.0
 TESTKIT_SECRETS := anon_key jwt_secret postgres_password olt_dev_signing_key
 # Security/load/chaos test kit (k6, psql, docker CLI; docker.sock is for chaos) on the dev stack's
@@ -64,7 +73,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
                  olt_jwks backup_db_password \
 
 .DEFAULT_GOAL := help
-.PHONY: help up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
+.PHONY: help check-hub up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit perf-flutter smoke backup restore gen-secrets gen-keys psql check-config \
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
         test-media test-sentinel test-healer test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
@@ -85,11 +94,23 @@ check-config:
 	    v=$$(sed -n "s/^$$k=\([0-9]*\).*/\1/p" $(ENV) | tail -1); \
 	    [ -z "$$v" ] || [ "$$v" -ge 1000 ] || { echo "Profile $(PROFILE): $$k=$$v in docker/.env is too low (minimum 1000, see docs/PRODUCTION.md 'Batas & rate limit')"; exit 1; }; done; fi
 
+check-hub:
+	$(HUB_REQUIRED)
+
 up: check-config ## Build and start the stack (PROFILE=dev|single|cluster), wait until healthy
 ifeq ($(PROFILE),cluster)
 	set -a; . ./$(ENV); set +a; docker stack deploy --detach=false -c docker/compose.yml -c docker/stack.cluster.yml $(STACK)
 else
+ifneq ($(HUB_SKIP),)
+ifeq ($(PROFILE),dev)
+	@echo "$(HUB_MISSING); starting the dev stack without cs-console" >&2
+	$(COMPOSE) up -d --build --wait --wait-timeout 300 --remove-orphans $$($(COMPOSE) config --services | grep -vx cs-console)
+else
+	@echo "$(HUB_MISSING) (needed for CS=1)" >&2; exit 1
+endif
+else
 	$(COMPOSE) up -d --build --wait --wait-timeout 300 --remove-orphans
+endif
 	@$(COMPOSE) ps
 	@echo "API: $$(grep '^SUPABASE_PUBLIC_URL=' $(ENV) | cut -d= -f2)  (profile $(PROFILE))"
 endif
@@ -236,16 +257,16 @@ cs-staff: check-config ## Dev staff accounts (CS, super admin, compliance) in sc
 	@(cat scripts/cs-demo/runtime/staff.json 2>/dev/null || echo '{}') | $(DUMMY_COMPOSE) run --rm -T tools cs-staff \
 	  > scripts/cs-demo/runtime/staff.json.new && mv scripts/cs-demo/runtime/staff.json.new scripts/cs-demo/runtime/staff.json
 
-cs-console-react: cs-staff ## React web CS (nginx container) at http://localhost:8085 (needs up DUMMY_OLT=1)
+cs-console-react: check-hub cs-staff ## Rendezvous Hub (web CS, nginx container built from HUB) at http://localhost:8085 (needs up DUMMY_OLT=1)
 	$(COMPOSE) up -d --build --wait traefik cs-console
-	@echo "React web CS: http://localhost:8085  (dev accounts: scripts/cs-demo/runtime/staff.json)"
+	@echo "Rendezvous Hub: http://localhost:8085  (dev accounts: scripts/cs-demo/runtime/staff.json)"
 
-test-cs-console: ## React web CS lint, typecheck, unit tests, build, bundle size, licenses (in a Node container)
-	docker run --rm -v "$(CURDIR)/apps/cs-console-react:/app" -v /app/node_modules -v /app/dist -w /app $(NODE_IMG) \
+test-cs-console: check-hub ## Rendezvous Hub CI (npm run ci: lint, typecheck, unit tests, build, bundle size, licenses) in a Node container
+	docker run --rm -v "$(HUB_DIR):/app" -v /app/node_modules -v /app/dist -w /app $(NODE_IMG) \
 	  sh -c 'npm ci --no-audit --no-fund && npm run ci'
 
-e2e-cs-console: cs-console-react ## Playwright E2E of the React web CS against the dev stack (needs up DUMMY_OLT=1, Node 24 + Playwright Chromium)
-	cd apps/cs-console-react && E2E_BASE_URL=http://localhost:8085 npx playwright test
+e2e-cs-console: cs-console-react ## Rendezvous Hub Playwright E2E against the dev stack (needs up DUMMY_OLT=1, Node 24 + Playwright Chromium)
+	cd "$(HUB_DIR)" && MONOREPO_DIR="$(CURDIR)" E2E_BASE_URL=http://localhost:8085 npx playwright test
 
 cs-demo: check-config ## CS demo page (customer + agent panel) at http://localhost:8082 (needs up DUMMY_OLT=1)
 	mkdir -p scripts/cs-demo/runtime

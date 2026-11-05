@@ -2,7 +2,7 @@
 
 Konten yang dilaporkan atau dihapus disimpan utuh sebagai **bukti** untuk keperluan hukum (permintaan penyidik, OJK, sengketa). Bukti terpisah dari data hidup: saat akun dihapus atau file dibersihkan, salinan aslinya tetap dihapus seperti biasa (privasi), tetapi bukti tetap ada sampai masa simpannya habis atau selama ada legal hold.
 
-Migrasi: `0095_evidence_quarantine`. Tes: `supabase/tests/075_evidence_quarantine_test.sql`. Penyalin file: [services/janitor](../../services/janitor/README.md) (versi 0.2.0). Web CS: **Kepatuhan → Bukti** (`/compliance/evidence`, `apps/cs-console-react/src/features/compliance/evidence`).
+Migrasi: `0095_evidence_quarantine`. Tes: `supabase/tests/075_evidence_quarantine_test.sql`. Penyalin file: [services/janitor](../../services/janitor/README.md) (versi 0.2.0). Web CS: **Kepatuhan → Bukti** (`/compliance/evidence`, `src/features/compliance/evidence` di repo `rendezvous_hub`).
 
 ## Kapan bukti direkam
 

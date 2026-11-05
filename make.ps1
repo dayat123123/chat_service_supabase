@@ -64,6 +64,16 @@ $NodeImage = 'node:24.22.2-alpine@sha256:8a32c8cf649a49915a66e81e7a609223c708d0a
 $WebImage = 'caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d'
 $TestkitImage = 'olt-social/testkit:0.1.0'
 $PackageDir = if ($env:PKG) { $env:PKG } else { Join-Path (Split-Path $PSScriptRoot -Parent) 'rendezvous_community' }
+# Rendezvous Hub (web CS) lives in its own repo (github.com/dayat123123/rendezvous_hub): clone it next to
+# this repo, set $env:HUB (relative to this repo), or set HUB_DIR in docker/.env (relative to docker/).
+$envHubDir = if (Test-Path -LiteralPath $EnvFile) { Select-String -LiteralPath $EnvFile -Pattern '^HUB_DIR=(.+)$' | Select-Object -Last 1 }
+$HubDir = if ($env:HUB) { [IO.Path]::Combine($PSScriptRoot, $env:HUB) }
+          elseif ($env:HUB_DIR) { [IO.Path]::Combine($PSScriptRoot, 'docker', $env:HUB_DIR) }
+          elseif ($envHubDir) { [IO.Path]::Combine($PSScriptRoot, 'docker', $envHubDir.Matches[0].Groups[1].Value.Trim('"')) }
+          else { [IO.Path]::Combine((Split-Path $PSScriptRoot -Parent), 'rendezvous_hub') }
+$HubDir = [IO.Path]::GetFullPath($HubDir)
+$HubFound = Test-Path -LiteralPath (Join-Path $HubDir 'package.json')
+$HubMissing = "Rendezvous Hub checkout not found at $HubDir; clone https://github.com/dayat123123/rendezvous_hub next to this repo or set HUB"
 $Stack = 'olt-social'
 
 if ($DummyOlt -and $DeployProfile -ne 'dev') { throw 'DummyOlt is only allowed with the dev profile.' }
@@ -92,9 +102,13 @@ function Invoke-Native {
 function Invoke-Docker {
     param([string[]]$Arguments)
     $prev = $env:BUILDX_NO_DEFAULT_ATTESTATIONS
+    $prevHub = $env:HUB_DIR
     $env:BUILDX_NO_DEFAULT_ATTESTATIONS = '1'
-    try { Invoke-Native 'docker' $Arguments } finally { $env:BUILDX_NO_DEFAULT_ATTESTATIONS = $prev }
+    $env:HUB_DIR = $HubDir
+    try { Invoke-Native 'docker' $Arguments } finally { $env:BUILDX_NO_DEFAULT_ATTESTATIONS = $prev; $env:HUB_DIR = $prevHub }
 }
+
+function Assert-Hub { if (-not $HubFound) { throw $HubMissing } }
 
 function Invoke-Compose { param([string[]]$Arguments) Invoke-Docker ($Compose + $Arguments) }
 
@@ -258,9 +272,9 @@ switch ($Target) {
   cs-demo       CS demo page (customer + agent panel) at http://localhost:8082 (needs up -DummyOlt)
   cs-staff      Dev staff accounts (CS, super admin, compliance) in scripts/cs-demo/runtime/staff.json
   cs-bootstrap-admin  First web CS super admin: -Email name@domain -Name "Name" [-Force] [-Profile single]
-  cs-console-react  React web CS (nginx container) at http://localhost:8085 (needs up -DummyOlt)
-  test-cs-console   React web CS lint, typecheck, unit tests, build, bundle size, licenses (in a Node container)
-  e2e-cs-console    Playwright E2E of the React web CS against the dev stack (needs up -DummyOlt, Node 24 + Playwright Chromium)
+  cs-console-react  Rendezvous Hub (web CS, nginx container built from $env:HUB, default ..\rendezvous_hub) at http://localhost:8085 (needs up -DummyOlt)
+  test-cs-console   Rendezvous Hub CI (npm run ci: lint, typecheck, unit tests, build, bundle size, licenses) in a Node container
+  e2e-cs-console    Rendezvous Hub Playwright E2E against the dev stack (needs up -DummyOlt, Node 24 + Playwright Chromium)
 
   Security, load and chaos tests (dev stack only: .\make.ps1 up -DummyOlt; docs/testing/README.md)
   testkit           Build the test image (k6, tokengen, psql, docker CLI)
@@ -278,7 +292,14 @@ switch ($Target) {
         if ($DeployProfile -eq 'cluster') {
             throw 'The cluster profile runs on a Swarm manager (Linux): make up PROFILE=cluster. See docs/scaling.md.'
         }
-        Invoke-Compose @('up', '-d', '--build', '--wait', '--wait-timeout', '300', '--remove-orphans')
+        $upArgs = @('up', '-d', '--build', '--wait', '--wait-timeout', '300', '--remove-orphans')
+        if (-not $HubFound -and ($DeployProfile -eq 'dev' -or $Cs)) {
+            if ($DeployProfile -ne 'dev') { throw "$HubMissing (needed for -Cs)" }
+            Write-Warning "$HubMissing; starting the dev stack without cs-console"
+            $upArgs += @(& docker @($Compose + @('config', '--services')) | Where-Object { $_ -ne 'cs-console' })
+            if ($LASTEXITCODE -ne 0) { throw "docker compose config --services failed (exit $LASTEXITCODE)" }
+        }
+        Invoke-Compose $upArgs
         Invoke-Compose @('ps')
         Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profile $DeployProfile)"
     }
@@ -435,21 +456,23 @@ switch ($Target) {
     }
     'cs-console-react' {
         Assert-Config
+        Assert-Hub
         Update-StaffAccounts
         Invoke-Compose @('up', '-d', '--build', '--wait', 'traefik', 'cs-console')
-        Write-Host 'React web CS: http://localhost:8085  (dev accounts: scripts/cs-demo/runtime/staff.json)'
+        Write-Host 'Rendezvous Hub: http://localhost:8085  (dev accounts: scripts/cs-demo/runtime/staff.json)'
     }
     'test-cs-console' {
-        $src = Join-Path $PSScriptRoot 'apps/cs-console-react'
-        Invoke-Docker @('run', '--rm', '-v', "${src}:/app", '-v', '/app/node_modules', '-v', '/app/dist', '-w', '/app', $NodeImage,
+        Assert-Hub
+        Invoke-Docker @('run', '--rm', '-v', "${HubDir}:/app", '-v', '/app/node_modules', '-v', '/app/dist', '-w', '/app', $NodeImage,
                         'sh', '-c', 'npm ci --no-audit --no-fund && npm run ci')
     }
     'e2e-cs-console' {
         & $PSCommandPath cs-console-react -Profile $DeployProfile -DummyOlt:$DummyOlt
-        Push-Location (Join-Path $PSScriptRoot 'apps/cs-console-react')
+        Push-Location -LiteralPath $HubDir
         $env:E2E_BASE_URL = 'http://localhost:8085'
+        $env:MONOREPO_DIR = $PSScriptRoot
         try { Invoke-Native 'npx' @('playwright', 'test') }
-        finally { Remove-Item Env:E2E_BASE_URL; Pop-Location }
+        finally { Remove-Item Env:E2E_BASE_URL, Env:MONOREPO_DIR; Pop-Location }
     }
     'test-dummy-olt' {
         $src = Join-Path $PSScriptRoot 'services/dummy-olt'
@@ -510,7 +533,9 @@ switch ($Target) {
         $scanArgs = @('tests/security/scan-deps.sh')
         if ($Strict) { $scanArgs += '--strict' }
         if ($ThirdParty) { $scanArgs += '--third-party' }
-        Invoke-Native 'bash' $scanArgs
+        $prevHub = $env:HUB
+        $env:HUB = $HubDir
+        try { Invoke-Native 'bash' $scanArgs } finally { $env:HUB = $prevHub }
     }
     'load-test' { Assert-Config; Invoke-Testkit @('load', $Load) }
     'load-integration' { Assert-Config; Invoke-Testkit @('integration') }

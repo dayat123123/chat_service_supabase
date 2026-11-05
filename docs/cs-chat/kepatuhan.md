@@ -2,7 +2,7 @@
 
 Peran **Kepatuhan** (`compliance`) mengawasi penanganan pengaduan dan kasus penipuan di chat CS. Peran ini tidak menangani tiket: tidak mengambil, membalas, atau menyelesaikan. Semua aksinya tercatat di audit log.
 
-Migrasi: `0042_cs_compliance`. Tes: `supabase/tests/030_cs_compliance_test.sql`. Web CS: `apps/cs-console-react/src/features/compliance`.
+Migrasi: `0042_cs_compliance`. Tes: `supabase/tests/030_cs_compliance_test.sql`. Web CS: `src/features/compliance` di repo [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub).
 
 ## Halaman
 

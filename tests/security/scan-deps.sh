@@ -49,6 +49,9 @@ SRC_RO=(--mount "type=bind,source=$ROOT,target=/src,readonly")
 PKG_DIR="${PKG:-../rendezvous_community}"
 PKG_RO=()
 [ -d "$PKG_DIR" ] && PKG_RO=(--mount "type=bind,source=$(cd "$PKG_DIR" && { pwd -W 2>/dev/null || pwd; }),target=/pkg/rendezvous_community,readonly")
+HUB_PATH="${HUB:-${HUB_DIR:-../rendezvous_hub}}"
+HUB_RO=()
+[ -f "$HUB_PATH/package-lock.json" ] && HUB_RO=(--mount "type=bind,source=$(cd "$HUB_PATH" && { pwd -W 2>/dev/null || pwd; }),target=/pkg/rendezvous_hub,readonly")
 DOCKER_SOCK=(-v /var/run/docker.sock:/var/run/docker.sock)
 
 errors=0
@@ -98,13 +101,17 @@ scan_go() {
 }
 
 scan_npm() {
-  local app=apps/cs-console-react mode flag
+  local mode flag
+  if [ ${#HUB_RO[@]} -eq 0 ]; then
+    echo "Rendezvous Hub checkout not found at $HUB_PATH; skipping npm audit (clone https://github.com/dayat123123/rendezvous_hub next to this repo or set HUB)" | tee "$OUT_REL/npm/skipped.txt" >&2
+    return
+  fi
   for mode in prod all; do
     flag=""
     [ "$mode" = prod ] && flag="--omit=dev"
-    echo "==> npm audit $app ($mode)"
-    docker run --rm "${SRC_RO[@]}" -e FLAG="$flag" -e APP="$app" "$NODE_IMG" sh -uc '
-      mkdir -p /tmp/audit && cp "/src/$APP/package.json" "/src/$APP/package-lock.json" /tmp/audit/ && cd /tmp/audit || exit 10
+    echo "==> npm audit rendezvous_hub ($mode)"
+    docker run --rm "${HUB_RO[@]}" -e FLAG="$flag" "$NODE_IMG" sh -uc '
+      mkdir -p /tmp/audit && cp /pkg/rendezvous_hub/package.json /pkg/rendezvous_hub/package-lock.json /tmp/audit/ && cd /tmp/audit || exit 10
       npm audit $FLAG --package-lock-only --json
       rc=$?
       [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ] || exit "$rc"
@@ -119,12 +126,13 @@ scan_osv() {
   for f in rendezvous_community/pubspec.lock rendezvous_community/example/pubspec.lock; do
     [ -f "$PKG_DIR/${f#rendezvous_community/}" ] && args+=(-L "/pkg/$f")
   done
-  for f in apps/cs-console-react/package-lock.json services/*/go.mod scripts/check-go-comments/go.mod; do
+  [ ${#HUB_RO[@]} -gt 0 ] && args+=(-L /pkg/rendezvous_hub/package-lock.json)
+  for f in services/*/go.mod scripts/check-go-comments/go.mod; do
     [ -f "$f" ] && args+=(-L "/src/$f")
   done
   for fmt in json table; do
     echo "==> osv-scanner ($fmt)"
-    docker run --rm "${SRC_RO[@]}" "${PKG_RO[@]}" "$OSV_IMG" scan source --format "$fmt" "${args[@]}" \
+    docker run --rm "${SRC_RO[@]}" "${PKG_RO[@]}" "${HUB_RO[@]}" "$OSV_IMG" scan source --format "$fmt" "${args[@]}" \
       > "$OUT_REL/osv/osv.$fmt" 2> "$OUT_REL/osv/osv-$fmt.log"
     rc=$?
     [ "$rc" -eq 0 ] || [ "$rc" -eq 1 ] || tool_fail "osv-scanner $fmt exited $rc (see $OUT_REL/osv/osv-$fmt.log)"
@@ -292,14 +300,14 @@ function sevOfScore(s, fallback) {
 }
 
 function npmSection() {
-  const lock = readJson('/src/apps/cs-console-react/package-lock.json') || { packages: {} };
+  const lock = readJson('/pkg/rendezvous_hub/package-lock.json') || { packages: {} };
   const rows = [];
   const details = [];
   for (const mode of ['prod', 'all']) {
     const j = readJson(path.join(OUT, 'npm', `audit-${mode}.json`));
-    if (!j || !j.metadata) { rows.push([`cs-console-react (${mode})`, 'ERR', '', '', '', '']); continue; }
+    if (!j || !j.metadata) { rows.push([`rendezvous_hub (${mode})`, 'ERR', '', '', '', '']); continue; }
     const v = j.metadata.vulnerabilities || {};
-    rows.push([`cs-console-react (${mode === 'prod' ? '--omit=dev' : 'including dev'})`, v.critical || 0, v.high || 0, v.moderate || 0, v.low || 0, v.total || 0]);
+    rows.push([`rendezvous_hub (${mode === 'prod' ? '--omit=dev' : 'including dev'})`, v.critical || 0, v.high || 0, v.moderate || 0, v.low || 0, v.total || 0]);
     for (const [name, e] of Object.entries(j.vulnerabilities || {})) {
       if (!['critical', 'high'].includes(e.severity)) continue;
       if (mode === 'all' && readJson(path.join(OUT, 'npm', 'audit-prod.json'))?.vulnerabilities?.[name]) continue;
@@ -311,7 +319,9 @@ function npmSection() {
       if (mode === 'prod') blocking.push(`npm prod: ${name}@${versions} ${e.severity}`);
     }
   }
-  say('== npm audit (apps/cs-console-react, from package-lock) ==');
+  say('== npm audit (rendezvous_hub, from package-lock) ==');
+  const skipped = read(path.join(OUT, 'npm', 'skipped.txt'));
+  if (skipped) { say(skipped.trim()); say(); return; }
   table(['target', 'crit', 'high', 'mod', 'low', 'total'], rows);
   if (details.length) { say(); say('-- npm HIGH/CRITICAL --'); details.forEach((d) => say(d)); }
   say();
@@ -443,7 +453,7 @@ if [ -z "$summary_only" ]; then
 fi
 
 echo
-docker run --rm -i "${SRC_RO[@]}" --mount "type=bind,source=$OUT,target=/out,readonly" \
+docker run --rm -i "${SRC_RO[@]}" "${HUB_RO[@]}" --mount "type=bind,source=$OUT,target=/out,readonly" \
   -e STRICT="$strict" -e SECTIONS="$sections" "$NODE_IMG" node - < <(summarizer) | tee "$OUT_REL/summary.txt"
 sum_rc=${PIPESTATUS[0]}
 

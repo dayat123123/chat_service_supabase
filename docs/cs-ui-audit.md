@@ -1,6 +1,6 @@
 # Audit Tampilan Web CS (sebelum perbaikan)
 
-Acuan: [PROMPT-CS-UI-POLISH.md](PROMPT-CS-UI-POLISH.md). Aplikasi: `apps/cs-console-react`. Screenshot sebelum (terang dan gelap, 1440×900) diambil dengan `e2e/visual.spec.ts` dari build 30 Okt 2026: login, verifikasi 2 langkah, ruang kerja kosong, percakapan, dialog selesaikan, palet perintah, layar sempit (820 px), dashboard, laporan, dan pengaturan admin.
+Acuan: [PROMPT-CS-UI-POLISH.md](PROMPT-CS-UI-POLISH.md). Aplikasi: repo [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub) (dulu `apps/cs-console-react`). Screenshot sebelum (terang dan gelap, 1440×900) diambil dengan `e2e/visual.spec.ts` dari build 30 Okt 2026: login, verifikasi 2 langkah, ruang kerja kosong, percakapan, dialog selesaikan, palet perintah, layar sempit (820 px), dashboard, laporan, dan pengaturan admin.
 
 ## Masalah
 
