@@ -59,7 +59,7 @@ Menu di bar atas mengikuti peran dan izin. Satu akun bisa punya lebih dari satu 
 | **Laporan** | – | Ya | – | – |
 | **Akun Nasabah** | Bila punya Akses Akun Nasabah | – | – | – |
 | **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas |
-| **Aplikasi** | – | Ya | – | – |
+| **Fitur & Kampanye** | – | Ya | – | – |
 | **Pengaturan** | – | Ya | – | – |
 | **Ringkasan**, **Kasus**, **Jejak Audit**, **Kebijakan**, **Kata terlarang**, **Kebijakan konten**, **Dokumen hukum** | – | – | Ya | – |
 | **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – |
@@ -315,7 +315,7 @@ Diperbarui otomatis. Angka di menu **Dashboard** adalah jumlah tiket yang perlu 
 
 ### 3.4 Pengaturan
 
-Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit. Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Pengaturan aplikasi nasabah (fitur, versi, banner, koneksi) ada di menu **Aplikasi** (bagian 3.5).
+Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit. Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Fitur sosial, versi minimum, serta banner dan popup untuk nasabah ada di menu **Fitur & Kampanye** (bagian 3.5).
 
 | Kelompok | Bagian | Fungsi | Kapan dipakai |
 |---|---|---|---|
@@ -328,6 +328,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | | **Penugasan, tiket & alert** | Mode penugasan, lepas otomatis, tutup otomatis, batas alert | Mengatur alur kerja tim |
 | **Komunitas** | **Aturan persetujuan** | Aturan empat mata postingan/notifikasi dan kebijakan konten | Jarang; atas permintaan Kepatuhan |
 | **Integrasi** | **Integrasi API Nasabah** | Sambungan menu Akun Nasabah | Pemasangan awal bersama IT |
+| | **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
 | | **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
 | | **Push notification** | Kunci Firebase dan push uji | Pemasangan awal, ganti kunci |
 | **Sistem** | **Backup** | Tujuan, password, jadwal backup, uji restore | Pemasangan awal, cek mingguan |
@@ -377,6 +378,10 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 
 Dipakai bersama tim IT saat pemasangan. Isi **Alamat API Nasabah** dan **Client id**, lalu **Simpan & aktifkan**: koneksi dites dulu dan hanya disimpan bila berhasil. **Putuskan** langsung menyembunyikan menu Akun Nasabah untuk semua CS.
 
+#### Integrasi aplikasi
+
+Bagian hanya-baca: data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Status login OLT**. Anon key memang publik, bukan rahasia. Bila status bukan **Aktif**, laporkan ke IT. Kunci OLT tidak bisa diganti dari Hub.
+
 #### API Notifikasi
 
 API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman) atau memposting sebagai bot resmi.
@@ -419,15 +424,14 @@ Ke mana alert gangguan sistem dikirim.
 
 Halaman **Kesehatan sistem** (status layanan dan alert terbuka) tidak tampil di menu. Bila diminta IT saat gangguan, Super Admin bisa membukanya lewat alamat yang diberikan IT.
 
-### 3.5 Aplikasi
+### 3.5 Fitur & Kampanye
 
-Menu **Aplikasi** hanya untuk Super Admin dan mengatur apa yang tampil dan berjalan di aplikasi nasabah. Isinya tiga tab; tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama Super Admin. Setiap perubahan tercatat di Jejak Audit.
+Menu **Fitur & Kampanye** hanya untuk Super Admin: fitur sosial, kill switch, versi minimum aplikasi, serta kampanye banner dan popup untuk nasabah. Isinya dua tab; tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama Super Admin. Setiap perubahan tercatat di Jejak Audit.
 
 | Tab | Fungsi | Kapan dipakai |
 |---|---|---|
 | **Fitur & versi** | Kill switch, sakelar fitur aplikasi, versi minimum | Insiden, rilis aplikasi |
 | **Banner & popup** | Strip di atas atau popup di tengah aplikasi nasabah, dengan statistik tayang dan klik | Gangguan, pemeliharaan, info, promo |
-| **Koneksi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
 
 #### Fitur & versi
 
@@ -450,9 +454,7 @@ Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi
 7. **Skema deep link** (di bawah daftar): daftar skema yang boleh dipakai tautan banner, maksimal 5, bawaan `olt`. Tambahkan skema hanya atas permintaan tim aplikasi OLT. Mencabut skema membuat tautan banner yang memakainya tidak lagi dikirim ke aplikasi. Perubahan tercatat di jejak audit.
 8. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
 
-#### Koneksi aplikasi
-
-Tab hanya-baca: data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Status login OLT**. Anon key memang publik, bukan rahasia. Bila status bukan **Aktif**, laporkan ke IT. Kunci OLT tidak bisa diganti dari Hub.
+Data koneksi untuk tim aplikasi OLT ada di **Pengaturan → Integrasi → Integrasi aplikasi** (bagian 3.4). Tautan lama berawalan `/app` otomatis dialihkan ke menu ini atau ke Pengaturan.
 
 ### 3.6 Analitik komunitas
 
@@ -675,7 +677,7 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 
 ### 6.1 Kill switch fitur sosial
 
-**Siapa:** hanya **Super Admin**, di **Aplikasi → Fitur & versi → Kill switch fitur sosial**.
+**Siapa:** hanya **Super Admin**, di **Fitur & Kampanye → Fitur & versi → Kill switch fitur sosial**.
 
 **Kapan:** insiden besar seperti spam masif, konten berbahaya yang menyebar, atau gangguan yang belum dipahami dan butuh waktu untuk diperbaiki.
 
@@ -691,7 +693,7 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 1. Klik **Matikan fitur sosial**.
 2. Isi **Alasan** (10–500 karakter; terlihat oleh Super Admin lain).
 3. Ketik **MATIKAN** untuk konfirmasi.
-4. Beri tahu tim CS, Kepatuhan, dan IT bahwa kill switch aktif. Pertimbangkan **Aplikasi → Banner & popup** untuk memberi tahu pengguna.
+4. Beri tahu tim CS, Kepatuhan, dan IT bahwa kill switch aktif. Pertimbangkan **Fitur & Kampanye → Banner & popup** untuk memberi tahu pengguna.
 5. Setelah masalah beres: **Nyalakan kembali**, isi alasan, ketik **NYALAKAN**.
 
 Jangan lupa menyalakan kembali; kill switch tidak mati sendiri.

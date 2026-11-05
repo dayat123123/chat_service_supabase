@@ -87,7 +87,7 @@ Aturan verifikasi di auth-bridge:
 - `make up DUMMY_OLT=1` menjalankan auth-bridge mode `jwt` dengan kunci publik dummy, persis seperti produksi.
 - `make smoke-dummy` menguji 22 skenario: login, perpanjangan, token diubah, kedaluwarsa, audience lain, akun ditangguhkan, dan logout.
 - Untuk menguji token buatan OLT asli sebelum produksi: isi `docker/secrets/olt_jwks` dengan JWKS OLT, lalu tukar token sosial dari OLT ke `POST /bridge/v1/exchange`.
-- **Cek status di Hub** tanpa SSH: Super Admin membuka **Aplikasi → Koneksi aplikasi**. Tab ini hanya-baca dan berisi:
+- **Cek status di Hub** tanpa SSH: Super Admin membuka **Pengaturan → Integrasi → Integrasi aplikasi**. Bagian ini hanya-baca dan berisi:
   - **Data koneksi aplikasi** untuk tim aplikasi OLT: URL API, anon key, contoh `config/prod.json`, versi library minimum, dan versi minimum aplikasi per platform. Semuanya bisa disalin.
   - **Status login OLT** dari heartbeat auth-bridge (tiap 30 detik): *Aktif*, *Peringatan*, atau *Tidak ada heartbeat* (tidak ada heartbeat dalam 3 menit), beserta mode, `kid` + algoritma yang terpasang, issuer, audience, dan umur maksimal token. Isi kunci tidak pernah dikirim ke database.
   - Login nasabah terakhir (WIB) dan jumlah nasabah yang login 24 jam terakhir, tanpa data pribadi.

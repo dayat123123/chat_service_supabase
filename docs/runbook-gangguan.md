@@ -18,8 +18,8 @@ Biasanya bukan gangguan sistem, melainkan aturan yang bekerja. Minta tangkapan l
 | Terlalu sering / batas tercapai | Rate limit per akun | Normal, hilang sendiri |
 | Pesan ditahan atau ditolak | Filter konten, kata terlarang | Hub → Kepatuhan |
 | Tidak bisa kirim di room tertentu | Dibisukan moderator, akun dibatasi | Hub → Komunitas → Moderasi |
-| "Perbarui aplikasi" | Versi aplikasi di bawah versi minimum | Hub → Aplikasi → Fitur & versi |
-| "Sementara tidak tersedia" untuk semua fitur sosial | Kill switch sedang aktif | Hub → Aplikasi → Fitur & versi → Kill switch |
+| "Perbarui aplikasi" | Versi aplikasi di bawah versi minimum | Hub → Fitur & Kampanye → Fitur & versi |
+| "Sementara tidak tersedia" untuk semua fitur sosial | Kill switch sedang aktif | Hub → Fitur & Kampanye → Fitur & versi → Kill switch |
 | Login gagal terus / "Sesi berakhir" | Token dari backend OLT ditolak: jam server OLT meleset, kunci OLT berubah, `iss`/`aud` tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (cari `exchange rejected` dan field `reason`) |
 
 ### B. Semua orang kena
@@ -50,7 +50,7 @@ Gangguan sistem. Lanjut ke langkah 2.
 | Alert kapasitas (`rest:pool`, `realtime:events`, `pgbouncer:queue`) di jam ramai | Sementara: nyalakan slow mode di room saham yang ramai dari Hub. Sesudahnya: naikkan batas atau CPU di `docker/.env`, lalu `make up` |
 | Disk penuh (`disk:*`) | Tambah kapasitas atau kosongkan file di luar folder data. Jangan hapus volume database atau storage |
 | Database tidak sehat (`db` unhealthy, `rest:pool` terus) | `docker logs olt-social-db-1 --since 15m`. Restart database hanya bila perlu, di luar jam bursa bila bisa |
-| Spam masif, konten berbahaya, atau masalah yang belum dipahami dan butuh waktu | **Kill switch** di Hub → Aplikasi → Fitur & versi. Fitur sosial tampil "sementara tidak tersedia", chat CS tetap berjalan. Nyalakan lagi setelah beres |
+| Spam masif, konten berbahaya, atau masalah yang belum dipahami dan butuh waktu | **Kill switch** di Hub → Fitur & Kampanye → Fitur & versi. Fitur sosial tampil "sementara tidak tersedia", chat CS tetap berjalan. Nyalakan lagi setelah beres |
 | Rusak setelah update | Lihat "Bila penyebabnya update" |
 
 **Jangan lakukan saat panik:**

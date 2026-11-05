@@ -127,6 +127,6 @@ Port forwarding biasa (NAT) tidak mengubah IP klien. Bila di depan server dipasa
 | Backend OLT | Kunci Ed25519, endpoint token sosial (`iss`, `aud`, `sub`, `exp` ≤ 15 menit) | [olt-integration.md](olt-integration.md) |
 | Aplikasi Flutter OLT | Dependency `rendezvous_community`, `supabaseUrl` + `anonKey` lewat `--dart-define-from-file`, `tokenProvider` | [panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md) |
 
-Data untuk tim aplikasi (URL API, anon key, contoh `config/prod.json`, versi library minimum) dan status login OLT (heartbeat auth-bridge, `kid` terpasang, login nasabah terakhir) ada di Hub: **Aplikasi → Koneksi aplikasi** (Super Admin, hanya-baca). Kunci OLT tetap diganti lewat server (`docker/secrets/olt_jwks` lalu `make up`), bukan dari Hub.
+Data untuk tim aplikasi (URL API, anon key, contoh `config/prod.json`, versi library minimum) dan status login OLT (heartbeat auth-bridge, `kid` terpasang, login nasabah terakhir) ada di Hub: **Pengaturan → Integrasi → Integrasi aplikasi** (Super Admin, hanya-baca). Kunci OLT tetap diganti lewat server (`docker/secrets/olt_jwks` lalu `make up`), bukan dari Hub.
 
 Anon key aman berada di aplikasi: tanpa token sosial yang sah, anon key tidak bisa membaca atau menulis data. Yang tidak boleh ada di aplikasi: kunci privat OLT, `service_role` key, isi `docker/secrets/`, dan API key notifikasi.
