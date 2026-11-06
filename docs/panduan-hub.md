@@ -44,6 +44,7 @@ Super Admin memberi setiap akun **peran** dan, bila perlu, **izin tambahan**:
 | **Super Admin** | Supervisor / admin operasional CS. Memantau tiket dan CS, tidak membalas nasabah. Mengelola akun staf dan semua pengaturan |
 | **Kepatuhan** | Tim kepatuhan: pengaduan, penipuan, audit, kebijakan, dokumen hukum, bukti |
 | **Komunitas** | Tim riset/marketing/moderasi yang tidak menangani tiket. Menunya ditentukan **Izin Komunitas** |
+| **Fitur & Kampanye** | Tim produk/marketing yang mengelola fitur sosial, kill switch, versi minimum aplikasi, serta banner dan popup. Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
 
 Izin tambahan:
 
@@ -52,17 +53,17 @@ Izin tambahan:
 
 Menu di bar atas mengikuti peran dan izin. Satu akun bisa punya lebih dari satu peran; menunya digabung.
 
-| Menu | CS | Super Admin | Kepatuhan | Komunitas |
-|---|---|---|---|---|
-| **Layanan Nasabah** (tiket) | Ya | Ya, hanya pantau | – | – |
-| **Dashboard** | – | Ya | – | – |
-| **Laporan** | – | Ya | – | – |
-| **Akun Nasabah** | Bila punya Akses Akun Nasabah | – | – | – |
-| **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas |
-| **Fitur & Kampanye** | – | Ya | – | – |
-| **Pengaturan** | – | Ya | – | – |
-| **Ringkasan**, **Kasus**, **Jejak Audit**, **Kebijakan**, **Kata terlarang**, **Kebijakan konten**, **Dokumen hukum** | – | – | Ya | – |
-| **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – |
+| Menu | CS | Super Admin | Kepatuhan | Komunitas | Fitur & Kampanye |
+|---|---|---|---|---|---|
+| **Layanan Nasabah** (tiket) | Ya | Ya, hanya pantau | – | – | – |
+| **Dashboard** | – | Ya | – | – | – |
+| **Laporan** | – | Ya | – | – | – |
+| **Akun Nasabah** | Bila punya Akses Akun Nasabah | – | – | – | – |
+| **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas | – |
+| **Fitur & Kampanye** | – | Ya | – | – | Ya |
+| **Pengaturan** | – | Ya | – | – | – |
+| **Ringkasan**, **Kasus**, **Jejak Audit**, **Kebijakan**, **Kata terlarang**, **Kebijakan konten**, **Dokumen hukum** | – | – | Ya | – | – |
+| **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – | – |
 
 Bila akun tidak punya menu sama sekali, Hub menampilkan **Peran akun ini belum punya menu di web CS. Hubungi Super Admin.**
 
@@ -426,7 +427,7 @@ Halaman **Kesehatan sistem** (status layanan dan alert terbuka) tidak tampil di 
 
 ### 3.5 Fitur & Kampanye
 
-Menu **Fitur & Kampanye** hanya untuk Super Admin: fitur sosial, kill switch, versi minimum aplikasi, serta kampanye banner dan popup untuk nasabah. Isinya dua tab; tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama Super Admin. Setiap perubahan tercatat di Jejak Audit.
+Menu **Fitur & Kampanye** untuk Super Admin dan akun berperan **Fitur & Kampanye**: fitur sosial, kill switch, versi minimum aplikasi, serta kampanye banner dan popup untuk nasabah. Isinya dua tab; tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama pengelola. Setiap perubahan tercatat di Jejak Audit.
 
 | Tab | Fungsi | Kapan dipakai |
 |---|---|---|
@@ -677,7 +678,7 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 
 ### 6.1 Kill switch fitur sosial
 
-**Siapa:** hanya **Super Admin**, di **Fitur & Kampanye → Fitur & versi → Kill switch fitur sosial**.
+**Siapa:** **Super Admin** atau akun berperan **Fitur & Kampanye**, di **Fitur & Kampanye → Fitur & versi → Kill switch fitur sosial**.
 
 **Kapan:** insiden besar seperti spam masif, konten berbahaya yang menyebar, atau gangguan yang belum dipahami dan butuh waktu untuk diperbaiki.
 
