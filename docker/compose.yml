@@ -248,6 +248,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 3
+      # A fresh database has no cs_api schema until migrate (which waits for storage) has run.
+      start_period: 300s
     deploy:
       resources:
         limits: {cpus: "1", memory: 512M, pids: 256}
