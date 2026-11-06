@@ -108,6 +108,13 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 - Disiarkan seperti tanda baca: `realtime.send` event **`reaction`** ke channel privat `room:<room_id>` dengan payload `{message_id, user_id, emoji, reactions: [{emoji, count}]}` (tanpa `me`; klien menghitung sendiri dari `user_id`).
 - Tidak tersedia di chat CS (`400 reactions_not_supported`). Error lain: `400 invalid_emoji`, `404 message_not_found` (bukan anggota, pesan dihapus/tidak terlihat, atau saling blokir), `429 rate_limited` (`message_reaction` 60/menit).
 
+### Info pesan (`0122`)
+
+- Seperti "Info pesan" WhatsApp: pengirim melihat kapan pesannya **terkirim** ke perangkat dan **dibaca** tiap penerima. Ada di DM, grup, dan chat CS; room saham tidak.
+- Waktu per pesan dicatat di `private.message_receipts` oleh trigger `chat_members_message_receipts` saat watermark `last_delivered_at`/`last_read_at` anggota naik (`mark_rooms_delivered`, `mark_room_read`, `cs_api.mark_read`, dan pesan yang dikirim anggota itu sendiri). Pesan yang dibuka lagi kemudian tidak mengubah waktu pertama. Satu pembaruan watermark mencatat paling banyak 1.000 pesan dari 14 hari terakhir.
+- `get_message_info(p_message_id)` → `{"message_id", "sent_at", "room_type", "recipients": [{user_id, username, display_name, avatar_url, delivered, read, delivered_at, read_at}]}`, urut yang terakhir membaca lebih dulu. `delivered`/`read` berasal dari watermark, jadi tetap benar meski waktunya sudah tidak tersimpan (`*_at` = `null`, klien menampilkan "Waktu tidak tercatat"). Hanya pengirim pesan yang masih anggota room; selain itu `404 message_not_found`. Room saham mengembalikan `recipients: []`.
+- Retensi 30 hari (cron harian `message-receipts-retention`). Super Admin yang memantau tiket bukan anggota room, jadi tidak pernah muncul sebagai pembaca.
+
 ### Bagikan postingan ke chat
 
 - Kirim pesan dengan lampiran `{"type": "post", "post_id": "<uuid>"}` lewat `send_message`, atau `share_post_to_chat(p_room_id, p_post_id, p_body = null, p_client_id = null)` → `setof chat_message`. Maksimal satu postingan per pesan (boleh digabung gambar, total lampiran ≤ 4). Lampiran dinormalkan menjadi persis `{"type": "post", "post_id": ...}`.
@@ -164,7 +171,7 @@ Daftar flag **tetap**: aplikasi hanya membaca delapan kunci `search`, `trending`
 - Flag aktif bila `enabled` dan cocok platform (kosong = semua) dan versi ≥ `min_app_version`, lalu: persentase 100, **atau** user ada di `user_ids`, **atau** `md5(key:sub)` jatuh di bawah persentase (deterministik per user, berbeda per flag). Pengguna anonim hanya mendapat flag 100%.
 - **Kill switch** (`social_enabled = false`): klien menyembunyikan UI sosial. Server menolak postingan, komentar, edit, dan pesan chat **non-CS** baru dari pengguna aplikasi dengan `403 social_disabled` (SQLSTATE `PT403`, migrasi `0109`; sebelumnya `503`, yang membuat PostgREST mengira database putus, T24). Chat CS tetap berjalan. Membaca, like, follow, reaksi tetap jalan. Postingan staf/akun resmi/bot (bukan pengguna aplikasi) tidak diblokir.
 
-### RPC Super Admin (`cs_api`, peran `cs_super_admin`, semua tercatat di audit)
+### RPC Super Admin (`cs_api`, peran `cs_super_admin` atau `product` sejak `0121`, semua tercatat di audit)
 
 - `admin_feature_flags()` → `{kill_switch: {social_enabled, reason, changed_by, changed_at}, flags: [...], min_versions: [...]}`; `flags` hanya berisi delapan flag tetap dalam urutan di atas.
 - `admin_toggle_feature_flag(p_key, p_enabled)` — satu-satunya yang dipakai web CS: hanya mengubah `enabled`, kolom lain tetap; audit `feature_flag.set` (before/after). Error `400 unknown_flag` (kunci di luar daftar), `400 invalid_flag` (`p_enabled` kosong).
@@ -281,7 +288,7 @@ Banner kini punya dua tampilan: `strip` (bawaan, perilaku `0089`) dan `popup` (k
 
 Bucket `app-banners`: publik baca (`/storage/v1/object/public/app-banners/<uuid>.<jpg|png|webp>`), maks 2 MB, JPEG/PNG/WebP. Tulis dan daftar objek hanya untuk Super Admin (`private.can_manage_banners()`, aal2) lewat upload Storage langsung dari Hub, sama dengan foto akun resmi; kebijakan restriktif `cs_staff_public_edge` (`0105`) tetap menolak staf dari domain publik. Tidak ada kebijakan update/delete; gambar yang diganti, dilepas, atau banner yang dihapus masuk `private.storage_cleanup_queue` dan dihapus janitor. Hub memotong gambar ke 4:5 (960×1200) atau 1:1 (960×960) dan mengecilkannya di bawah 2 MB sebelum unggah.
 
-### RPC Super Admin tambahan
+### RPC Super Admin tambahan (juga peran `product`, `0121`)
 
 - `admin_save_banner(..., p_display text = 'strip', p_image_url text = null, p_cta_label text = null, p_frequency text = 'once', p_audience text = 'all', p_audience_days integer = 7)`: `p_image_url` adalah URL publik hasil unggah (path diambil dari URL dan objeknya harus ada di `app-banners`). Error `400` baru: `invalid_display`, `invalid_image` (bukan popup, bukan bucket `app-banners`, atau objek tidak ada), `invalid_cta` (> 24 atau tanpa tautan), `invalid_frequency`, `invalid_audience` (atau hari di luar 1–90); `invalid_link` kini berarti bukan `https://` atau skema deep link terdaftar.
 - `admin_banners()` dan hasil `admin_save_banner` bertambah `display`, `image_path`, `image_url`, `cta_label`, `frequency`, `audience`, `audience_days`, dan `stats {impressions, clicks, dismissals, unique_viewers, ctr}` (`ctr` = klik ÷ tayang × 100, satu desimal, `null` bila belum ada tayang).
