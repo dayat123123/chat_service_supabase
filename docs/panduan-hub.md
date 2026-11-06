@@ -360,7 +360,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 
 - **Jam layanan (WIB)**: atur **Buka**/**Tutup** per hari, lalu **Simpan jam layanan**. Di luar jam layanan nasabah menerima pesan otomatis.
 - **Hari libur**: **Libur nasional** dan **Cuti bersama** menutup layanan CS. **Libur bursa** hanya menutup pasar; layanan CS tetap buka. Periksa kalender tahun berikutnya sebelum pergantian tahun.
-- **Pesan otomatis**: ubah teks Bahasa Indonesia dan Bahasa Inggris. Variabel dalam kurung kurawal diisi otomatis; hanya variabel yang sudah ada yang boleh dipakai.
+- **Pesan otomatis**: ubah teks Bahasa Indonesia dan Bahasa Inggris. Variabel dalam kurung kurawal diisi otomatis; hanya variabel yang sudah ada yang boleh dipakai. Setiap pesan sistem disimpan dalam kedua bahasa, jadi nasabah dan staf melihatnya mengikuti bahasa aplikasi atau Hub yang sedang dipakai (tanggal ikut diformat sesuai bahasa). Perubahan teks berlaku untuk pesan baru; pesan yang dibuat sebelum 6 Nov 2026 tetap dalam bahasa tiketnya.
 
 #### Penugasan, tiket & alert
 
