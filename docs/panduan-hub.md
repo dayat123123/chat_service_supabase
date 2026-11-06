@@ -316,7 +316,11 @@ Diperbarui otomatis. Angka di menu **Dashboard** adalah jumlah tiket yang perlu 
 
 ### 3.4 Pengaturan
 
-Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit. Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Fitur sosial, versi minimum, serta banner dan popup untuk nasabah ada di menu **Fitur & Kampanye** (bagian 3.5).
+Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit.
+
+**Form penting terkunci.** Integrasi API Nasabah, Integrasi aplikasi (skema deep link), Push notification (kunci Firebase), Alert, Backup, Penugasan, dan Komunitas tampil terkunci. Klik **Ubah** untuk membuka, lalu **Simpan**: Hub menampilkan konfirmasi yang menjelaskan dampaknya, dan perubahan baru tersimpan setelah dikonfirmasi. **Batal** atau **Esc** mengembalikan nilai semula. Tes koneksi, Kirim uji, dan push uji tetap bisa langsung dijalankan; Backup penuh dan Uji restore meminta konfirmasi.
+
+ Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Fitur sosial, versi minimum, serta banner dan popup untuk nasabah ada di menu **Fitur & Kampanye** (bagian 3.5).
 
 | Kelompok | Bagian | Fungsi | Kapan dipakai |
 |---|---|---|---|
@@ -381,7 +385,9 @@ Dipakai bersama tim IT saat pemasangan. Isi **Alamat API Nasabah** dan **Client 
 
 #### Integrasi aplikasi
 
-Bagian hanya-baca: data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Status login OLT**. Anon key memang publik, bukan rahasia. Bila status bukan **Aktif**, laporkan ke IT. Kunci OLT tidak bisa diganti dari Hub.
+Data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Status login OLT** bersifat hanya-baca. Anon key memang publik, bukan rahasia. Bila status bukan **Aktif**, laporkan ke IT. Kunci OLT tidak bisa diganti dari Hub.
+
+**Skema deep link aplikasi** (terkunci, **Ubah** → **Simpan** → konfirmasi): awalan tautan yang membuka halaman di dalam aplikasi OLT dari banner atau popup, mis. `olt://promo/akhir-tahun` membuka halaman promo di aplikasi, bukan di browser. Isi sesuai skema yang didaftarkan aplikasi OLT (bawaan `olt`, maksimal 5); biasanya cukup diatur sekali oleh tim IT. Dikosongkan berarti tautan banner hanya boleh `https://`. Skema web dan skema berbahaya (javascript, data, file, intent, content, dan sejenisnya) selalu ditolak. Banner aktif yang memakai skema yang dicabut tetap tampil, tetapi tanpa tautan dan tombol. Hanya Super Admin yang bisa mengubahnya; peran Fitur & Kampanye hanya melihat daftarnya saat mengisi tautan banner.
 
 #### API Notifikasi
 
@@ -437,8 +443,8 @@ Menu **Fitur & Kampanye** untuk Super Admin dan akun berperan **Fitur & Kampanye
 #### Fitur & versi
 
 - **Kill switch fitur sosial**: lihat bagian 6.
-- **Fitur aplikasi**: nyalakan/matikan fitur seperti **Pencarian**, **Trending**, **Simpan postingan**, **Edit postingan**, **Reaksi pesan**, **Bagikan ke chat**, **Pengaturan notifikasi**, **Analitik aplikasi**. Berlaku saat aplikasi berikutnya membaca pengaturan.
-- **Versi minimum aplikasi** per platform: pengguna versi lebih lama diminta memperbarui aplikasi. **Risiko:** pastikan versi itu sudah tersedia di toko aplikasi; bila belum, pengguna tidak bisa memakai aplikasi.
+- **Fitur aplikasi** (klik **Ubah** dulu; setiap sakelar meminta konfirmasi, lalu **Selesai** untuk mengunci lagi): nyalakan/matikan fitur seperti **Pencarian**, **Trending**, **Simpan postingan**, **Edit postingan**, **Reaksi pesan**, **Bagikan ke chat**, **Pengaturan notifikasi**, **Analitik aplikasi**. Berlaku saat aplikasi berikutnya membaca pengaturan.
+- **Versi minimum aplikasi** per platform (terkunci per baris: **Ubah** → **Simpan** → konfirmasi): pengguna versi lebih lama diminta memperbarui aplikasi. **Risiko:** pastikan versi itu sudah tersedia di toko aplikasi; bila belum, pengguna tidak bisa memakai aplikasi.
 
 #### Banner & popup
 
@@ -452,7 +458,7 @@ Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi
 4. **Sasaran**: **Semua pengguna** atau **Pengguna baru ≤ N hari** (1–90 hari sejak profil dibuat). Pengunjung yang belum login hanya melihat banner untuk semua pengguna.
 5. Periksa **Pratinjau** di sisi kanan (strip, atau ponsel kecil untuk popup), lalu simpan.
 6. Daftar banner menampilkan jenis (**Strip**/**Popup**), status (**Terjadwal**, **Aktif**, **Selesai**), dan ringkasan statistik (tayang, klik, CTR). Tombol grafik di setiap baris membuka **Statistik**: tayang, klik, tutup, pengguna unik, CTR, dan rincian 7 hari terakhir. Satu pengguna dihitung paling banyak sekali per hari (WIB) untuk setiap jenis event; data disimpan 180 hari.
-7. **Skema deep link** (di bawah daftar): daftar skema yang boleh dipakai tautan banner, maksimal 5, bawaan `olt`. Tambahkan skema hanya atas permintaan tim aplikasi OLT. Mencabut skema membuat tautan banner yang memakainya tidak lagi dikirim ke aplikasi. Perubahan tercatat di jejak audit.
+7. **Skema deep link**: tautan banner boleh `https://` atau deep link aplikasi dengan skema yang diizinkan (ditampilkan di bawah kolom tautan). Daftar skemanya diatur Super Admin di **Pengaturan → Integrasi → Integrasi aplikasi**.
 8. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
 
 Data koneksi untuk tim aplikasi OLT ada di **Pengaturan → Integrasi → Integrasi aplikasi** (bagian 3.4). Tautan lama berawalan `/app` otomatis dialihkan ke menu ini atau ke Pengaturan.
@@ -693,9 +699,9 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 
 1. Klik **Matikan fitur sosial**.
 2. Isi **Alasan** (10–500 karakter; terlihat oleh Super Admin lain).
-3. Ketik **MATIKAN** untuk konfirmasi.
+3. Ketik **MATIKAN**, lalu klik tombolnya. Hub menampilkan konfirmasi terakhir berisi dampak dan alasannya; konfirmasi untuk menerapkan.
 4. Beri tahu tim CS, Kepatuhan, dan IT bahwa kill switch aktif. Pertimbangkan **Fitur & Kampanye → Banner & popup** untuk memberi tahu pengguna.
-5. Setelah masalah beres: **Nyalakan kembali**, isi alasan, ketik **NYALAKAN**.
+5. Setelah masalah beres: **Nyalakan kembali**, isi alasan, ketik **NYALAKAN**, lalu konfirmasi.
 
 Jangan lupa menyalakan kembali; kill switch tidak mati sendiri.
 
