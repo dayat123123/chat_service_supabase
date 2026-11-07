@@ -77,8 +77,8 @@ select is((cs_api.compliance_overview() ->> 'overdue')::integer, 1, 'Ringkasan m
 select throws_ok(format('select cs_api.compliance_extend_deadline(%L, %L)', :'complaint_id', 'Butuh data dari bank kustodian'),
   'PT409', 'deadline_passed', 'Tenggat yang sudah lewat tidak bisa diperpanjang');
 
-select throws_ok(format('select cs_api.compliance_case(%L)', :'plain_id'), 'PT404', 'ticket_not_found',
-  'Kepatuhan tidak membuka tiket tanpa tanda');
+select throws_ok(format('select cs_api.compliance_review(%L, %L, %L)', :'plain_id', 'compliant', 'Sudah sesuai'),
+  'PT404', 'ticket_not_found', 'Tinjauan Kepatuhan hanya untuk tiket bertanda');
 select is(jsonb_array_length(cs_api.compliance_case(:'complaint_id') -> 'notes'), 1,
   'Detail kasus memuat catatan internal tiket');
 select ok(jsonb_array_length(cs_api.compliance_case(:'complaint_id') -> 'events') > 0,
