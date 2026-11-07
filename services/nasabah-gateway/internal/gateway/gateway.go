@@ -24,6 +24,7 @@ const (
 	Prefix          = "/api-nasabah"
 	maxRequestBody  = 1 << 20
 	maxResponseBody = 16 << 20
+	computeTimeout  = 25 * time.Second
 )
 
 type Request struct {
@@ -38,6 +39,8 @@ type Caller interface {
 }
 
 type Guard func(ctx context.Context, call Caller, req *Request) error
+
+type Compute func(ctx context.Context, call Caller, req *Request) (any, error)
 
 type Rejection struct {
 	Status  int
@@ -56,6 +59,7 @@ type Route struct {
 	SubjectFields []string
 	Query         map[string]*regexp.Regexp
 	Guard         Guard
+	Compute       Compute
 	Audit         bool
 }
 
@@ -151,6 +155,10 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if route.Compute != nil {
+		g.compute(w, r, route, caller{g: g, session: session}, req, started)
+		return
+	}
 	var body []byte
 	if fields != nil {
 		if body, err = json.Marshal(req.Fields); err != nil {
@@ -177,6 +185,27 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(status)
+	_, _ = w.Write(payload)
+}
+
+func (g *Gateway) compute(w http.ResponseWriter, r *http.Request, route Route, call Caller, req *Request, started time.Time) {
+	ctx, cancel := context.WithTimeout(r.Context(), computeTimeout)
+	defer cancel()
+	result, err := route.Compute(ctx, call, req)
+	if err != nil {
+		g.fail(w, route, err)
+		return
+	}
+	payload, err := json.Marshal(map[string]any{"data": result})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "encode_failed", "Response could not be encoded")
+		return
+	}
+	g.opts.Log.Info("Customer request computed", "action", route.Action, "agent_code", req.Grant.AgentCode,
+		"duration_ms", g.opts.Now().Sub(started).Milliseconds())
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(payload)
 }
 

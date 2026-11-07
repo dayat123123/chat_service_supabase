@@ -56,9 +56,13 @@ func with(base query, extra query) query {
 
 var readers = []string{View, Manage, Demo, Approve, ApproveOwn, Status}
 
+var duplicates = &DuplicateScanner{}
+
 var Online = []gateway.Route{
 	{Method: http.MethodGet, Path: "/online/get-list-online-user", Action: "online_user.list", Permissions: readers,
 		Query: with(paging, query{"loginId": idRe, "email": emailRe})},
+	{Method: http.MethodGet, Path: "/online/duplicates", Action: "online_user.duplicates", Permissions: readers,
+		Query: query{}, Compute: duplicates.Compute},
 	{Method: http.MethodGet, Path: "/online/get-online-user", Action: "online_user.profile", Permissions: readers,
 		Query: query{"loginId": idRe}, SubjectFields: []string{"loginId"}, Audit: true},
 	{Method: http.MethodGet, Path: "/online/get-linked-account-online-user", Action: "online_user.linked_accounts",

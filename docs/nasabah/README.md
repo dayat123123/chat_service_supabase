@@ -167,6 +167,7 @@ Menu ada di bar atas sebelum **Pengaturan**.
 - **Ringkasan** di atas tab: jumlah Online ID terdaftar dan pengajuan yang menunggu approval, sesuai izin akun.
 - **Online ID**:
   - daftar dan pencarian, serta detail dengan rekening tertaut. Kotak cari mencocokkan awal LoginId **atau** awal email sekaligus (dua permintaan ke csAdmin, hasil digabung tanpa duplikat, lalu dipaginasi di web). Baris yang terbawa karena bug filter email csAdmin (lihat catatan keamanan no. 6) disaring. Paling banyak 5 halaman × 100 baris per jenis pencarian dibaca; bila lebih, web meminta kata kunci yang lebih lengkap;
+  - **data duplikat**: Online ID yang email atau nomor HP-nya juga dipakai Online ID lain diberi penanda merah, dan panel detail menyebut Online ID pasangannya. Sakelar **Hanya data duplikat** menampilkan semuanya dari seluruh data, bukan hanya halaman yang tampil, dan bisa disaring dengan kotak cari. Email dibandingkan tanpa beda huruf besar/kecil; nomor HP hanya angkanya, dengan `62`/`+62`/`8…` disamakan menjadi `0…` dan nomor kurang dari 8 digit diabaikan. Gateway membaca seluruh daftar csAdmin (100 baris per halaman, 4 permintaan paralel, paling banyak 300 halaman) dan menyimpan hasilnya 5 menit;
   - pengajuan buat/ubah/hapus, reset password/PIN, dan **ubah status** cepat;
   - form pengajuan buat/ubah mengikuti aturan form Online ID di aplikasi csAdmin lama (`legacy/user-management-flutter/csAdmin_New`, `add_edit_online_id_dialog.dart`):
     - **Rekening tertaut langsung di form** untuk tipe Nasabah (akun dengan izin manage), jadi buat Online ID dan tautkan rekening cukup satu pengajuan. csAdmin menerimanya lewat `ArrayAccountLink`/`ArrayAccountUnLink` di `create-approval-login`, dan rekening ditautkan saat pengajuan disetujui.
@@ -204,6 +205,7 @@ Parameter lain dibuang, dan nilai yang tidak lolos dijawab `400 invalid_query` t
 | Rute csAdmin | Aksi audit | Izin | Guard di gateway |
 |---|---|---|---|
 | `GET /online/get-list-online-user` | – | view/manage/demo/approve/approve_own/status | – |
+| `GET /online/duplicates` | – | view/manage/demo/approve/approve_own/status | Dihitung di gateway, tidak diteruskan ke csAdmin: membaca seluruh `get-list-online-user`, lalu mengembalikan kelompok email/HP yang dipakai lebih dari satu Online ID beserta barisnya. Cache 5 menit untuk semua staf |
 | `GET /online/get-online-user` | `nasabah.online_user.profile` | view/manage/demo/approve/approve_own/status | Endpoint baru csAdmin; `loginId` divalidasi; satu user persis + rekening tertaut |
 | `GET /online/get-linked-account-online-user` | `nasabah.online_user.linked_accounts` | idem | – |
 | `GET /online/get-list-link-account` | – | manage | – |
