@@ -397,3 +397,41 @@ func TestReportsAnOutdatedUpstreamWhenARouteIsMissing(t *testing.T) {
 		t.Fatalf("a JSON 404 from csAdmin must pass through, got %d %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestComputedRoutesAnswerFromLookupsWithoutProxyingTheirPath(t *testing.T) {
+	g, store, up := setup(t, 200, `{"message":"ok","data":[{"LoginId":"budi"}]}`)
+	g.routes["GET /online/duplicates"] = Route{Method: http.MethodGet, Path: "/online/duplicates", Action: "duplicates",
+		Permissions: []string{"online_user.view"}, Query: map[string]*regexp.Regexp{},
+		Compute: func(ctx context.Context, call Caller, req *Request) (any, error) {
+			status, _, err := call.Get(ctx, "/online/get-list-online-user", url.Values{"page": {"1"}})
+			return map[string]any{"status": status, "actor": req.Actor}, err
+		}}
+
+	rec := do(g, http.MethodGet, "/api-nasabah/online/duplicates?page=9", session(t, "bima", nil), "")
+	if rec.Code != http.StatusOK || rec.Header().Get("Cache-Control") != "no-store" {
+		t.Fatalf("status %d headers %v", rec.Code, rec.Header())
+	}
+	var body struct {
+		Data map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil || body.Data["actor"] != "CS-0046" || body.Data["status"] != float64(200) {
+		t.Fatalf("body %s", rec.Body.String())
+	}
+	if len(up.calls) != 1 || up.calls[0].path != "/csAdmin/online/get-list-online-user" || len(store.audits) != 0 {
+		t.Fatalf("calls %+v audits %d", up.calls, len(store.audits))
+	}
+	if rec := do(g, http.MethodGet, "/api-nasabah/online/duplicates", session(t, "sinta", nil), ""); rec.Code != http.StatusForbidden {
+		t.Fatalf("no access: status %d", rec.Code)
+	}
+}
+
+func TestComputedRouteErrorsUseTheUsualMapping(t *testing.T) {
+	g, _, _ := setup(t, 200, `{}`)
+	g.routes["GET /online/duplicates"] = Route{Method: http.MethodGet, Path: "/online/duplicates", Action: "duplicates",
+		Permissions: []string{"online_user.view"}, Query: map[string]*regexp.Regexp{},
+		Compute: func(context.Context, Caller, *Request) (any, error) { return nil, io.ErrUnexpectedEOF }}
+	rec := do(g, http.MethodGet, "/api-nasabah/online/duplicates", session(t, "bima", nil), "")
+	if rec.Code != http.StatusBadGateway || errorCode(t, rec) != "upstream_unavailable" {
+		t.Fatalf("status %d code %q", rec.Code, errorCode(t, rec))
+	}
+}
