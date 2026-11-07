@@ -166,7 +166,7 @@ Menu ada di bar atas sebelum **Pengaturan**.
 
 - **Ringkasan** di atas tab: jumlah Online ID terdaftar dan pengajuan yang menunggu approval, sesuai izin akun.
 - **Online ID**:
-  - daftar dan pencarian, serta detail dengan rekening tertaut;
+  - daftar dan pencarian, serta detail dengan rekening tertaut. Kotak cari mencocokkan awal LoginId **atau** awal email sekaligus (dua permintaan ke csAdmin, hasil digabung tanpa duplikat, lalu dipaginasi di web). Baris yang terbawa karena bug filter email csAdmin (lihat catatan keamanan no. 6) disaring. Paling banyak 5 halaman × 100 baris per jenis pencarian dibaca; bila lebih, web meminta kata kunci yang lebih lengkap;
   - pengajuan buat/ubah/hapus, reset password/PIN, dan **ubah status** cepat;
   - form pengajuan buat/ubah mengikuti aturan form Online ID di aplikasi csAdmin lama (`legacy/user-management-flutter/csAdmin_New`, `add_edit_online_id_dialog.dart`):
     - **Rekening tertaut langsung di form** untuk tipe Nasabah (akun dengan izin manage), jadi buat Online ID dan tautkan rekening cukup satu pengajuan. csAdmin menerimanya lewat `ArrayAccountLink`/`ArrayAccountUnLink` di `create-approval-login`, dan rekening ditautkan saat pengajuan disetujui.
@@ -242,6 +242,7 @@ Ditemukan saat membaca `legacy/user-management/cdAdminEL.cc`; gateway tidak bisa
 3. Server tidak memeriksa izin dan mengambil pelaku dari body. Untuk web CS ini ditangani gateway, tetapi pemegang token mana pun bisa melakukan apa saja.
 4. Lalu lintas ke csAdmin memakai HTTP biasa, sehingga token yang diterbitkan bisa terbaca di jaringan. Batasi csAdmin ke jaringan internal/VPN, dan pertimbangkan TLS.
 5. `cdAdminEL.cc` berisi nilai default kredensial di kode. Jangan dibagikan ke luar tim.
+6. Filter email di `get-list-online-user` tanpa kurung: `AND Email LIKE '<nilai>%' OR Email IS NULL`, sehingga semua Online ID tanpa email ikut terbawa dan hasil yang benar bisa terdorong ke halaman lain. Web CS menyaring baris ini; perbaikan di csAdmin cukup menghapus `OR Email IS NULL` (atau memberi kurung).
 
 ## Pengujian
 
