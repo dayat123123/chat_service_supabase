@@ -482,8 +482,10 @@ Kepatuhan **mengawasi**, tidak menangani tiket. Akun Kepatuhan langsung membuka 
 
 Register pengaduan dan penipuan dari chat CS. Angka merah di menu **Kasus** = pengaduan lewat tenggat atau jatuh tempo ≤ 1 hari kerja.
 
+Untuk memeriksa tiket biasa (bukan pengaduan atau penipuan), pilih **Semua tiket** di jenis kasus lalu cari nomor tiket atau nama nasabah, atau klik nomor tiket di **Jejak Audit**.
+
 1. Saring dengan **Jenis kasus**, **Keadaan**, **Periode tiket dibuat**, atau cari nomor tiket/nasabah. **Ekspor CSV** untuk laporan berkala.
-2. Klik kasus untuk membuka detail dengan tab **Transkrip**, **Riwayat**, dan **Tinjauan**.
+2. Klik kasus untuk membuka detail dengan tab **Transkrip**, **Riwayat**, dan **Tinjauan**. Tiket biasa terbuka hanya-baca dengan tab **Transkrip** dan **Riwayat** (tanpa **Tinjauan** dan **Perpanjang tenggat**). Chat, catatan, dan lampirannya bisa dibaca selama 12 jam sejak dibuka, dan setiap pembukaan tercatat di Jejak Audit sebagai **Buka tiket biasa**.
 3. **Unduh transkrip**: sidik SHA-256 file dicatat di Jejak Audit, sehingga keaslian transkrip bisa diperiksa.
 4. **Perpanjang tenggat**: hanya untuk pengaduan aktif, **satu kali**, sebelum tenggat lewat. Isi **Alasan perpanjangan** (10–500 karakter, internal). Nasabah langsung menerima pesan berisi tenggat baru.
 5. **Tinjauan baru**: pilih **Putusan** (**Sesuai**, **Perlu tindak lanjut**, **Pelanggaran**), isi **Catatan tinjauan**, lalu **Simpan tinjauan**. Tinjauan tidak bisa diubah; tinjauan terbaru menjadi status kasus.
@@ -495,6 +497,7 @@ Status tenggat: **Berjalan**, **Segera jatuh tempo**, **Lewat tenggat**, **Tepat
 Catatan semua aksi CS, Super Admin, Kepatuhan, nasabah, dan sistem. **Catatan tidak bisa diubah atau dihapus.**
 
 - Pilih periode (**Hari ini**, **7 hari**, **30 hari**), saring **Aksi**, atau cari pelaku/tiket/nasabah.
+- Klik nomor tiket untuk membuka detailnya: kasus terbuka di panel kasus, tiket biasa terbuka hanya-baca.
 - **Ekspor CSV** untuk pemeriksaan.
 - Dipakai juga saat gangguan: melihat siapa mengubah pengaturan apa dan kapan.
 
