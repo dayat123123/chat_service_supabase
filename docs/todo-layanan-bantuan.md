@@ -1,8 +1,40 @@
 # Todo: Topik fleksibel, FAQ, dan fitur bantuan lanjutan
 
-Status: rencana, belum dikerjakan (dibuat 8 Nov 2026). Fokus utama dan urutan kerja: 0 → 1 → 5 → 3 → 6 → 2 → 4.11, perkiraan 25–35 jam kerja. Prinsipnya: semua isi yang dilihat nasabah diatur dari Rendezvous Hub dan dikirim server. Aplikasi Flutter dan library tidak menyimpan teks, ikon, atau daftar topik secara tetap; nilai bawaan di library hanya cadangan untuk server lama.
+Status: rencana, belum dikerjakan (dibuat 8 Nov 2026). Prinsipnya: semua isi yang dilihat nasabah diatur dari Rendezvous Hub dan dikirim server. Aplikasi Flutter dan library tidak menyimpan teks, ikon, atau daftar topik secara tetap; nilai bawaan di library hanya cadangan untuk server lama.
 
 Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library masih di bagian CHANGELOG "Belum dirilis" (setelah v1.8.0).
+
+## Ringkasan fase
+
+**Fase 1 — fokus sekarang** (permintaan user, urutan kerja, perkiraan total 25–35 jam kerja):
+
+| Urutan | Bagian | Perkiraan |
+|---|---|---|
+| 1 | 0. Peran Konten Layanan | 1–1,5 jam |
+| 2 | 1. Topik chat CS sepenuhnya dari server | 3–4 jam |
+| 3 | 5. Tanggal mengambang saat menggulir chat | 2–3 jam |
+| 4 | 3. Geser pesan untuk membalas (library sudah, sisa Hub sentuh dan uji di HP) | 1–2 jam |
+| 5 | 6. Lampiran dokumen lain dan video di chat CS | 8–12 jam |
+| 6 | 2. FAQ / Pusat Bantuan | 8–10 jam |
+| 7 | 4.11 Rilis library | 0,5–1 jam |
+
+**Fase 2 — berikutnya** (rekomendasi, dikerjakan setelah Fase 1 selesai; perkiraan 20–27 jam kerja):
+
+| Bagian | Isi | Perkiraan |
+|---|---|---|
+| 4.1 | Tombol "Tandai pengaduan/penipuan" untuk CS | ±1 jam |
+| 4.2 | Bantuan tanpa login (FAQ publik, chat tamu OTP) — **DITUNDA**, belum dipakai | (6–8 jam, tidak dihitung) |
+| 4.3 | Pertanyaan awal per topik | 3–4 jam |
+| 4.4 | Status layanan / pengumuman gangguan | 2–3 jam |
+| 4.5 | Pesan di luar jam layanan dengan saran FAQ | ±1 jam |
+| 4.6 | Survei kepuasan yang bisa diatur | ±3 jam |
+| 4.7 | Saran balasan untuk nasabah | ±2 jam |
+| 4.8 | Laporan bantuan | 3–4 jam |
+| 4.9 | SOP singkat per topik untuk CS | 1–1,5 jam |
+| 4.10 | Rekomendasi tambahan: artikel FAQ di balasan CS, perkiraan waktu tunggu antrean, riwayat tiket lintas perangkat, unduh transkrip oleh nasabah, CS menandai artikel FAQ yang perlu diperbarui, pengingat tiket menunggu nasabah | 6–8 jam |
+| 3 (opsional) | Pengaturan geser balas oleh host: ambang, arah, getar | ±1 jam |
+
+# Fase 1 — fokus sekarang
 
 ## 0. Peran pengelola konten
 
@@ -33,6 +65,75 @@ Library:
 Aplikasi Flutter (`windows_online_trading`):
 - [ ] Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
 
+## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp)
+
+Saat daftar pesan digulir, label tanggal pesan teratas yang terlihat ("Hari ini", "Kemarin", "Jumat", "6 Nov 2026") menempel di tengah atas daftar. Setelah guliran berhenti sekitar 1,5 detik, label memudar (fade out) sendiri, lalu muncul lagi dengan fade in begitu digulir.
+
+Library (`message_list.dart`, sudah punya pemisah tanggal di antara pesan):
+- [ ] Pil tanggal mengambang di atas daftar: teksnya mengikuti hari dari pesan teratas yang terlihat, memakai label yang sama dengan pemisah tanggal (`dayLabel`), berganti tanpa berkedip saat melewati batas hari.
+- [ ] Muncul (fade in sekitar 150 ms) saat mulai menggulir; memudar (fade out sekitar 300 ms) setelah 1,5 detik tanpa guliran; tidak muncul saat posisi di pesan terbaru dan tidak menutupi pemisah tanggal yang sedang tepat di atas.
+- [ ] Gaya pil sama dengan pemisah tanggal (tema terang dan gelap), tidak bisa diketuk, tidak menghalangi gulir atau ketukan pesan di bawahnya; dibacakan pembaca layar hanya saat tanggal berganti.
+- [ ] Slot builder `chat.floatingDate` (details: tanggal, label, terlihat) supaya host bisa mengganti tampilannya; durasi tampil bisa diatur.
+- [ ] Tes widget: muncul saat digulir, label mengikuti pesan teratas, hilang setelah jeda (pakai `pump` waktu), tidak muncul di posisi terbawah; screenshot terang/gelap.
+
+Hub (`message-list.tsx`, baris `day` dari virtualizer):
+- [ ] Pil tanggal yang sama di atas daftar pesan, label dari baris `day` terdekat di atas item teratas yang terlihat.
+- [ ] Fade in/out dengan transisi CSS, menghormati `prefers-reduced-motion` (langsung muncul/hilang tanpa animasi).
+- [ ] Tes komponen dengan timer palsu: muncul saat scroll, hilang setelah jeda.
+
+## 3. Geser pesan untuk membalas (ala WhatsApp)
+
+Contoh: nasabah atau CS menggeser pesan "aku sayang dia" ke kanan untuk membalasnya.
+
+Library (sudah dibuat, commit `9f33202`, masih di "Belum dirilis"):
+- [x] Di layar sentuh, gelembung pesan (milik sendiri maupun orang lain) bisa digeser ke kanan; ikon balas muncul perlahan.
+- [x] Getar halus (`HapticFeedback.lightImpact`) sekali saat melewati ambang 56 px; dilepas setelah ambang = membalas pesan itu dan kolom ketik langsung fokus.
+- [x] Geser pendek, geser ke kiri, dan drag mouse tidak memicu balasan (pilih teks dengan mouse di desktop tetap jalan). Berlaku juga untuk gelembung dari builder `chat.message`.
+- [ ] Coba di aplikasi Flutter di HP sungguhan (Android dan iOS): rasa geser, getar, dan tidak bentrok dengan gulir daftar pesan atau geser kembali (back gesture) iOS.
+- [ ] (Fase 2) Opsional: ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat konfigurasi atau builder.
+- [ ] Masuk rilis library berikutnya (lihat bagian 4.11).
+
+Hub (web CS):
+- [ ] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
+- [ ] Tes komponen untuk geser sentuh, geser pendek, dan mouse.
+
+## 6. Lampiran dokumen lain dan video di chat CS
+
+Sekarang: chat CS menerima gambar dan PDF (maks. 10 MB, bucket `cs-documents`, migrasi 0053/0054); chat sosial hanya gambar. Bagian ini memperluas **chat CS saja** (nasabah dan CS, dari library maupun Hub). Chat sosial tetap gambar saja, karena isinya dilihat banyak orang dan sulit dimoderasi.
+
+Keputusan format (disetujui user 8 Nov 2026, termasuk pemindai antivirus):
+
+| Jenis | Format diizinkan | Batas | Alasan |
+|---|---|---|---|
+| Dokumen | PDF (sudah), Word `.docx`, Excel `.xlsx`, PowerPoint `.pptx`, teks `.txt`, `.csv` | 10 MB per file | Format kantor modern tanpa makro; yang paling sering dikirim nasabah (laporan, rekening koran, bukti) |
+| Gambar | JPEG, PNG, WebP (sudah); HEIC dari iPhone diubah ke JPEG di perangkat sebelum dikirim | 10 MB | Tetap seperti sekarang, ditambah HEIC agar foto iPhone tidak gagal |
+| Video | MP4 (H.264/AAC), MOV dari iPhone, WebM | 25 MB dan maks. 2 menit | Rekaman layar sangat membantu CS melihat error aplikasi; dibatasi agar penyimpanan dan kuota nasabah tetap wajar |
+
+Ditolak, meski diganti ekstensinya: dokumen bermakro (`.docm`, `.xlsm`, `.pptm`) dan file Office lama (`.doc`, `.xls`, `.ppt`) yang tidak bisa diperiksa makronya; arsip (`.zip`, `.rar`, `.7z`) yang bisa menyembunyikan isi; program dan skrip (`.exe`, `.apk`, `.bat`, `.js`, dan sejenisnya); HTML dan SVG (bisa berisi skrip). Audio dan pesan suara tidak termasuk di bagian ini.
+
+Server (migrasi baru dan layanan `media`):
+- [ ] Daftar format dan batas ukuran disimpan di pengaturan server dan diatur Super Admin dari Hub (bisa mematikan per jenis, misalnya video), bukan ditulis tetap di aplikasi. Aplikasi dan Hub membaca daftar ini dari server.
+- [ ] Bucket `cs-documents` menerima MIME baru; bucket video terpisah atau prefix khusus dengan batas 25 MB.
+- [ ] Pemeriksaan isi file di layanan `media` (sudah ada paket `sniff`): tipe ditentukan dari isi file (magic bytes), bukan ekstensi; file Office dibuka sebagai ZIP dan ditolak bila berisi makro (`vbaProject.bin`), objek tertanam yang dapat dieksekusi, atau terlalu banyak file di dalamnya (zip bomb); CSV/TXT harus UTF-8 dan ukurannya wajar.
+- [ ] Video diperiksa dengan `ffprobe` (format, codec, durasi ≤ 2 menit), metadata lokasi dihapus, dan dibuatkan thumbnail.
+- [ ] Pemindai antivirus (ClamAV, container terpisah) untuk dokumen dan video; file berstatus "sedang diperiksa" sampai lolos, dan ditolak bila terdeteksi. Ikut dipantau di Kesehatan sistem.
+- [ ] File diberi nama acak di storage, nama asli disimpan terpisah; diunduh dengan `Content-Disposition: attachment` (tidak dibuka langsung di browser kecuali gambar, PDF, dan video).
+- [ ] Ikut aturan yang sudah ada: hapus akun dan janitor ikut menghapus lampiran baru ini, transkrip Kepatuhan mencantumkan lampiran, batas laju unggah.
+- [ ] Tes pgTAP (MIME dan ukuran per jenis, chat sosial menolak) dan tes Go `media` (makro, zip bomb, ekstensi palsu, video kepanjangan).
+
+Hub (composer dan gelembung pesan):
+- [ ] Pilih, tempel, dan seret file dengan daftar format dari server; pesan galat jelas bila format atau ukuran ditolak.
+- [ ] Kartu dokumen dengan ikon per jenis (Word, Excel, PowerPoint, CSV, teks), nama, ukuran, dan tombol unduh.
+- [ ] Video: thumbnail, pemutar bawaan browser (`<video controls preload="metadata">`), durasi, unduh.
+- [ ] Tes komponen dan panduan Hub.
+
+Library dan aplikasi Flutter:
+- [ ] Pemilih file (`file_selector`, sudah dipakai) memakai daftar format dari server; foto HEIC diubah ke JPEG sebelum dikirim.
+- [ ] Kartu dokumen per jenis (sama dengan Hub) yang membuka file dengan aplikasi bawaan perangkat setelah diunduh.
+- [ ] Video: thumbnail dan durasi di gelembung. Putar di dalam aplikasi di Android/iOS/web (`video_player`); di Windows, `video_player` resmi belum mendukung, jadi video dibuka di pemutar bawaan Windows setelah diunduh (tidak menambah paket berat seperti `media_kit`).
+- [ ] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
+- [ ] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
+
 ## 2. FAQ / Pusat Bantuan
 
 Server (migrasi 0127):
@@ -57,26 +158,12 @@ Library:
 Aplikasi Flutter:
 - [ ] Pintu masuk Pusat Bantuan di menu aplikasi.
 
-## 3. Geser pesan untuk membalas (ala WhatsApp)
+## 4.11 Rilis library
+- [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
 
-Contoh: nasabah atau CS menggeser pesan "aku sayang dia" ke kanan untuk membalasnya.
+# Fase 2 — berikutnya
 
-Library (sudah dibuat, commit `9f33202`, masih di "Belum dirilis"):
-- [x] Di layar sentuh, gelembung pesan (milik sendiri maupun orang lain) bisa digeser ke kanan; ikon balas muncul perlahan.
-- [x] Getar halus (`HapticFeedback.lightImpact`) sekali saat melewati ambang 56 px; dilepas setelah ambang = membalas pesan itu dan kolom ketik langsung fokus.
-- [x] Geser pendek, geser ke kiri, dan drag mouse tidak memicu balasan (pilih teks dengan mouse di desktop tetap jalan). Berlaku juga untuk gelembung dari builder `chat.message`.
-- [ ] Coba di aplikasi Flutter di HP sungguhan (Android dan iOS): rasa geser, getar, dan tidak bentrok dengan gulir daftar pesan atau geser kembali (back gesture) iOS.
-- [ ] Opsional: ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat konfigurasi atau builder.
-- [ ] Masuk rilis library berikutnya (lihat bagian 4.11).
-
-Hub (web CS):
-- [ ] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
-- [ ] Tes komponen untuk geser sentuh, geser pendek, dan mouse.
-
-## 4. Fitur bantuan lanjutan (NANTI)
-
-> Fokus utama dulu (8 Nov 2026): bagian 0, 1, 2, 3, 5, dan 6. Bagian 4 dikerjakan setelah semuanya selesai, kecuali 4.11 (rilis library) yang ikut di akhir fokus utama.
-
+## 4. Fitur bantuan lanjutan
 
 Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak Audit.
 
@@ -130,62 +217,6 @@ Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak 
 - [ ] **Unduh transkrip oleh nasabah** (PDF/TXT) untuk tiket yang sudah selesai.
 - [ ] **Penilaian artikel oleh CS**: CS menandai artikel FAQ yang perlu diperbarui langsung dari Hub.
 - [ ] **Pengingat tiket menunggu nasabah**: pesan otomatis bila nasabah belum membalas dalam N jam, sebelum tiket ditutup otomatis (penutupan otomatis sudah ada).
-
-### 4.11 Rilis library
-- [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
-
-## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp)
-
-Saat daftar pesan digulir, label tanggal pesan teratas yang terlihat ("Hari ini", "Kemarin", "Jumat", "6 Nov 2026") menempel di tengah atas daftar. Setelah guliran berhenti sekitar 1,5 detik, label memudar (fade out) sendiri, lalu muncul lagi dengan fade in begitu digulir.
-
-Library (`message_list.dart`, sudah punya pemisah tanggal di antara pesan):
-- [ ] Pil tanggal mengambang di atas daftar: teksnya mengikuti hari dari pesan teratas yang terlihat, memakai label yang sama dengan pemisah tanggal (`dayLabel`), berganti tanpa berkedip saat melewati batas hari.
-- [ ] Muncul (fade in sekitar 150 ms) saat mulai menggulir; memudar (fade out sekitar 300 ms) setelah 1,5 detik tanpa guliran; tidak muncul saat posisi di pesan terbaru dan tidak menutupi pemisah tanggal yang sedang tepat di atas.
-- [ ] Gaya pil sama dengan pemisah tanggal (tema terang dan gelap), tidak bisa diketuk, tidak menghalangi gulir atau ketukan pesan di bawahnya; dibacakan pembaca layar hanya saat tanggal berganti.
-- [ ] Slot builder `chat.floatingDate` (details: tanggal, label, terlihat) supaya host bisa mengganti tampilannya; durasi tampil bisa diatur.
-- [ ] Tes widget: muncul saat digulir, label mengikuti pesan teratas, hilang setelah jeda (pakai `pump` waktu), tidak muncul di posisi terbawah; screenshot terang/gelap.
-
-Hub (`message-list.tsx`, baris `day` dari virtualizer):
-- [ ] Pil tanggal yang sama di atas daftar pesan, label dari baris `day` terdekat di atas item teratas yang terlihat.
-- [ ] Fade in/out dengan transisi CSS, menghormati `prefers-reduced-motion` (langsung muncul/hilang tanpa animasi).
-- [ ] Tes komponen dengan timer palsu: muncul saat scroll, hilang setelah jeda.
-
-## 6. Lampiran dokumen lain dan video di chat CS
-
-Sekarang: chat CS menerima gambar dan PDF (maks. 10 MB, bucket `cs-documents`, migrasi 0053/0054); chat sosial hanya gambar. Bagian ini memperluas **chat CS saja** (nasabah dan CS, dari library maupun Hub). Chat sosial tetap gambar saja, karena isinya dilihat banyak orang dan sulit dimoderasi.
-
-Keputusan format (disetujui user 8 Nov 2026, termasuk pemindai antivirus):
-
-| Jenis | Format diizinkan | Batas | Alasan |
-|---|---|---|---|
-| Dokumen | PDF (sudah), Word `.docx`, Excel `.xlsx`, PowerPoint `.pptx`, teks `.txt`, `.csv` | 10 MB per file | Format kantor modern tanpa makro; yang paling sering dikirim nasabah (laporan, rekening koran, bukti) |
-| Gambar | JPEG, PNG, WebP (sudah); HEIC dari iPhone diubah ke JPEG di perangkat sebelum dikirim | 10 MB | Tetap seperti sekarang, ditambah HEIC agar foto iPhone tidak gagal |
-| Video | MP4 (H.264/AAC), MOV dari iPhone, WebM | 25 MB dan maks. 2 menit | Rekaman layar sangat membantu CS melihat error aplikasi; dibatasi agar penyimpanan dan kuota nasabah tetap wajar |
-
-Ditolak, meski diganti ekstensinya: dokumen bermakro (`.docm`, `.xlsm`, `.pptm`) dan file Office lama (`.doc`, `.xls`, `.ppt`) yang tidak bisa diperiksa makronya; arsip (`.zip`, `.rar`, `.7z`) yang bisa menyembunyikan isi; program dan skrip (`.exe`, `.apk`, `.bat`, `.js`, dan sejenisnya); HTML dan SVG (bisa berisi skrip). Audio dan pesan suara tidak termasuk di bagian ini.
-
-Server (migrasi baru dan layanan `media`):
-- [ ] Daftar format dan batas ukuran disimpan di pengaturan server dan diatur Super Admin dari Hub (bisa mematikan per jenis, misalnya video), bukan ditulis tetap di aplikasi. Aplikasi dan Hub membaca daftar ini dari server.
-- [ ] Bucket `cs-documents` menerima MIME baru; bucket video terpisah atau prefix khusus dengan batas 25 MB.
-- [ ] Pemeriksaan isi file di layanan `media` (sudah ada paket `sniff`): tipe ditentukan dari isi file (magic bytes), bukan ekstensi; file Office dibuka sebagai ZIP dan ditolak bila berisi makro (`vbaProject.bin`), objek tertanam yang dapat dieksekusi, atau terlalu banyak file di dalamnya (zip bomb); CSV/TXT harus UTF-8 dan ukurannya wajar.
-- [ ] Video diperiksa dengan `ffprobe` (format, codec, durasi ≤ 2 menit), metadata lokasi dihapus, dan dibuatkan thumbnail.
-- [ ] Pemindai antivirus (ClamAV, container terpisah) untuk dokumen dan video; file berstatus "sedang diperiksa" sampai lolos, dan ditolak bila terdeteksi. Ikut dipantau di Kesehatan sistem.
-- [ ] File diberi nama acak di storage, nama asli disimpan terpisah; diunduh dengan `Content-Disposition: attachment` (tidak dibuka langsung di browser kecuali gambar, PDF, dan video).
-- [ ] Ikut aturan yang sudah ada: hapus akun dan janitor ikut menghapus lampiran baru ini, transkrip Kepatuhan mencantumkan lampiran, batas laju unggah.
-- [ ] Tes pgTAP (MIME dan ukuran per jenis, chat sosial menolak) dan tes Go `media` (makro, zip bomb, ekstensi palsu, video kepanjangan).
-
-Hub (composer dan gelembung pesan):
-- [ ] Pilih, tempel, dan seret file dengan daftar format dari server; pesan galat jelas bila format atau ukuran ditolak.
-- [ ] Kartu dokumen dengan ikon per jenis (Word, Excel, PowerPoint, CSV, teks), nama, ukuran, dan tombol unduh.
-- [ ] Video: thumbnail, pemutar bawaan browser (`<video controls preload="metadata">`), durasi, unduh.
-- [ ] Tes komponen dan panduan Hub.
-
-Library dan aplikasi Flutter:
-- [ ] Pemilih file (`file_selector`, sudah dipakai) memakai daftar format dari server; foto HEIC diubah ke JPEG sebelum dikirim.
-- [ ] Kartu dokumen per jenis (sama dengan Hub) yang membuka file dengan aplikasi bawaan perangkat setelah diunduh.
-- [ ] Video: thumbnail dan durasi di gelembung. Putar di dalam aplikasi di Android/iOS/web (`video_player`); di Windows, `video_player` resmi belum mendukung, jadi video dibuka di pemutar bawaan Windows setelah diunduh (tidak menambah paket berat seperti `media_kit`).
-- [ ] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
-- [ ] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
 
 ## Cara kerja per bagian
 
