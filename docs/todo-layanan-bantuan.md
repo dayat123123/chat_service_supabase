@@ -82,7 +82,10 @@ Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak 
 - [ ] Server: alasan disimpan di riwayat tiket; Kepatuhan menerima notifikasi kasus baru.
 - [ ] Tes pgTAP dan Hub.
 
-### 4.2 Bantuan tanpa login
+### 4.2 Bantuan tanpa login (DITUNDA)
+
+> Ditunda atas permintaan user (8 Nov 2026): belum dipakai. Jangan dikerjakan sampai diminta lagi.
+
 - [ ] FAQ terbuka tanpa login (endpoint publik hanya baca, dengan batas laju).
 - [ ] Chat tamu khusus topik Akun & Login: verifikasi nomor HP atau email terdaftar dengan OTP, sesi pendek, tanpa akses fitur sosial; tiket ditandai "tamu" di Hub.
 - [ ] Library: pintu masuk "Tidak bisa masuk? Hubungi CS" yang bisa dipasang di halaman login aplikasi.
