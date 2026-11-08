@@ -128,6 +128,22 @@ Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak 
 ### 4.11 Rilis library
 - [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
 
+## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp)
+
+Saat daftar pesan digulir, label tanggal pesan teratas yang terlihat ("Hari ini", "Kemarin", "Jumat", "6 Nov 2026") menempel di tengah atas daftar. Setelah guliran berhenti sekitar 1,5 detik, label memudar (fade out) sendiri, lalu muncul lagi dengan fade in begitu digulir.
+
+Library (`message_list.dart`, sudah punya pemisah tanggal di antara pesan):
+- [ ] Pil tanggal mengambang di atas daftar: teksnya mengikuti hari dari pesan teratas yang terlihat, memakai label yang sama dengan pemisah tanggal (`dayLabel`), berganti tanpa berkedip saat melewati batas hari.
+- [ ] Muncul (fade in sekitar 150 ms) saat mulai menggulir; memudar (fade out sekitar 300 ms) setelah 1,5 detik tanpa guliran; tidak muncul saat posisi di pesan terbaru dan tidak menutupi pemisah tanggal yang sedang tepat di atas.
+- [ ] Gaya pil sama dengan pemisah tanggal (tema terang dan gelap), tidak bisa diketuk, tidak menghalangi gulir atau ketukan pesan di bawahnya; dibacakan pembaca layar hanya saat tanggal berganti.
+- [ ] Slot builder `chat.floatingDate` (details: tanggal, label, terlihat) supaya host bisa mengganti tampilannya; durasi tampil bisa diatur.
+- [ ] Tes widget: muncul saat digulir, label mengikuti pesan teratas, hilang setelah jeda (pakai `pump` waktu), tidak muncul di posisi terbawah; screenshot terang/gelap.
+
+Hub (`message-list.tsx`, baris `day` dari virtualizer):
+- [ ] Pil tanggal yang sama di atas daftar pesan, label dari baris `day` terdekat di atas item teratas yang terlihat.
+- [ ] Fade in/out dengan transisi CSS, menghormati `prefers-reduced-motion` (langsung muncul/hilang tanpa animasi).
+- [ ] Tes komponen dengan timer palsu: muncul saat scroll, hilang setelah jeda.
+
 ## Cara kerja per bagian
 
 Setiap bagian dikerjakan dengan pola yang sudah dipakai: tes ditulis lebih dulu, migrasi baru (migrasi lama tidak diubah), pgTAP lengkap + tes keamanan + smoke, CI Hub dan library hijau, panduan Hub dan PDF diperbarui, lalu perintah update untuk server LAN.
