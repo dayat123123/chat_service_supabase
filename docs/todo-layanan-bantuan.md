@@ -148,7 +148,7 @@ Hub (`message-list.tsx`, baris `day` dari virtualizer):
 
 Sekarang: chat CS menerima gambar dan PDF (maks. 10 MB, bucket `cs-documents`, migrasi 0053/0054); chat sosial hanya gambar. Bagian ini memperluas **chat CS saja** (nasabah dan CS, dari library maupun Hub). Chat sosial tetap gambar saja, karena isinya dilihat banyak orang dan sulit dimoderasi.
 
-Keputusan format (rekomendasi):
+Keputusan format (disetujui user 8 Nov 2026, termasuk pemindai antivirus):
 
 | Jenis | Format diizinkan | Batas | Alasan |
 |---|---|---|---|
@@ -163,7 +163,7 @@ Server (migrasi baru dan layanan `media`):
 - [ ] Bucket `cs-documents` menerima MIME baru; bucket video terpisah atau prefix khusus dengan batas 25 MB.
 - [ ] Pemeriksaan isi file di layanan `media` (sudah ada paket `sniff`): tipe ditentukan dari isi file (magic bytes), bukan ekstensi; file Office dibuka sebagai ZIP dan ditolak bila berisi makro (`vbaProject.bin`), objek tertanam yang dapat dieksekusi, atau terlalu banyak file di dalamnya (zip bomb); CSV/TXT harus UTF-8 dan ukurannya wajar.
 - [ ] Video diperiksa dengan `ffprobe` (format, codec, durasi ≤ 2 menit), metadata lokasi dihapus, dan dibuatkan thumbnail.
-- [ ] Opsional yang direkomendasikan: pemindai antivirus (ClamAV, container terpisah) untuk dokumen; file berstatus "sedang diperiksa" sampai lolos.
+- [ ] Pemindai antivirus (ClamAV, container terpisah) untuk dokumen dan video; file berstatus "sedang diperiksa" sampai lolos, dan ditolak bila terdeteksi. Ikut dipantau di Kesehatan sistem.
 - [ ] File diberi nama acak di storage, nama asli disimpan terpisah; diunduh dengan `Content-Disposition: attachment` (tidak dibuka langsung di browser kecuali gambar, PDF, dan video).
 - [ ] Ikut aturan yang sudah ada: hapus akun dan janitor ikut menghapus lampiran baru ini, transkrip Kepatuhan mencantumkan lampiran, batas laju unggah.
 - [ ] Tes pgTAP (MIME dan ukuran per jenis, chat sosial menolak) dan tes Go `media` (makro, zip bomb, ekstensi palsu, video kepanjangan).
