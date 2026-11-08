@@ -144,6 +144,43 @@ Hub (`message-list.tsx`, baris `day` dari virtualizer):
 - [ ] Fade in/out dengan transisi CSS, menghormati `prefers-reduced-motion` (langsung muncul/hilang tanpa animasi).
 - [ ] Tes komponen dengan timer palsu: muncul saat scroll, hilang setelah jeda.
 
+## 6. Lampiran dokumen lain dan video di chat CS
+
+Sekarang: chat CS menerima gambar dan PDF (maks. 10 MB, bucket `cs-documents`, migrasi 0053/0054); chat sosial hanya gambar. Bagian ini memperluas **chat CS saja** (nasabah dan CS, dari library maupun Hub). Chat sosial tetap gambar saja, karena isinya dilihat banyak orang dan sulit dimoderasi.
+
+Keputusan format (rekomendasi):
+
+| Jenis | Format diizinkan | Batas | Alasan |
+|---|---|---|---|
+| Dokumen | PDF (sudah), Word `.docx`, Excel `.xlsx`, PowerPoint `.pptx`, teks `.txt`, `.csv` | 10 MB per file | Format kantor modern tanpa makro; yang paling sering dikirim nasabah (laporan, rekening koran, bukti) |
+| Gambar | JPEG, PNG, WebP (sudah); HEIC dari iPhone diubah ke JPEG di perangkat sebelum dikirim | 10 MB | Tetap seperti sekarang, ditambah HEIC agar foto iPhone tidak gagal |
+| Video | MP4 (H.264/AAC), MOV dari iPhone, WebM | 25 MB dan maks. 2 menit | Rekaman layar sangat membantu CS melihat error aplikasi; dibatasi agar penyimpanan dan kuota nasabah tetap wajar |
+
+Ditolak, meski diganti ekstensinya: dokumen bermakro (`.docm`, `.xlsm`, `.pptm`) dan file Office lama (`.doc`, `.xls`, `.ppt`) yang tidak bisa diperiksa makronya; arsip (`.zip`, `.rar`, `.7z`) yang bisa menyembunyikan isi; program dan skrip (`.exe`, `.apk`, `.bat`, `.js`, dan sejenisnya); HTML dan SVG (bisa berisi skrip). Audio dan pesan suara tidak termasuk di bagian ini.
+
+Server (migrasi baru dan layanan `media`):
+- [ ] Daftar format dan batas ukuran disimpan di pengaturan server dan diatur Super Admin dari Hub (bisa mematikan per jenis, misalnya video), bukan ditulis tetap di aplikasi. Aplikasi dan Hub membaca daftar ini dari server.
+- [ ] Bucket `cs-documents` menerima MIME baru; bucket video terpisah atau prefix khusus dengan batas 25 MB.
+- [ ] Pemeriksaan isi file di layanan `media` (sudah ada paket `sniff`): tipe ditentukan dari isi file (magic bytes), bukan ekstensi; file Office dibuka sebagai ZIP dan ditolak bila berisi makro (`vbaProject.bin`), objek tertanam yang dapat dieksekusi, atau terlalu banyak file di dalamnya (zip bomb); CSV/TXT harus UTF-8 dan ukurannya wajar.
+- [ ] Video diperiksa dengan `ffprobe` (format, codec, durasi ≤ 2 menit), metadata lokasi dihapus, dan dibuatkan thumbnail.
+- [ ] Opsional yang direkomendasikan: pemindai antivirus (ClamAV, container terpisah) untuk dokumen; file berstatus "sedang diperiksa" sampai lolos.
+- [ ] File diberi nama acak di storage, nama asli disimpan terpisah; diunduh dengan `Content-Disposition: attachment` (tidak dibuka langsung di browser kecuali gambar, PDF, dan video).
+- [ ] Ikut aturan yang sudah ada: hapus akun dan janitor ikut menghapus lampiran baru ini, transkrip Kepatuhan mencantumkan lampiran, batas laju unggah.
+- [ ] Tes pgTAP (MIME dan ukuran per jenis, chat sosial menolak) dan tes Go `media` (makro, zip bomb, ekstensi palsu, video kepanjangan).
+
+Hub (composer dan gelembung pesan):
+- [ ] Pilih, tempel, dan seret file dengan daftar format dari server; pesan galat jelas bila format atau ukuran ditolak.
+- [ ] Kartu dokumen dengan ikon per jenis (Word, Excel, PowerPoint, CSV, teks), nama, ukuran, dan tombol unduh.
+- [ ] Video: thumbnail, pemutar bawaan browser (`<video controls preload="metadata">`), durasi, unduh.
+- [ ] Tes komponen dan panduan Hub.
+
+Library dan aplikasi Flutter:
+- [ ] Pemilih file (`file_selector`, sudah dipakai) memakai daftar format dari server; foto HEIC diubah ke JPEG sebelum dikirim.
+- [ ] Kartu dokumen per jenis (sama dengan Hub) yang membuka file dengan aplikasi bawaan perangkat setelah diunduh.
+- [ ] Video: thumbnail dan durasi di gelembung. Putar di dalam aplikasi di Android/iOS/web (`video_player`); di Windows, `video_player` resmi belum mendukung, jadi video dibuka di pemutar bawaan Windows setelah diunduh (tidak menambah paket berat seperti `media_kit`).
+- [ ] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
+- [ ] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
+
 ## Cara kerja per bagian
 
 Setiap bagian dikerjakan dengan pola yang sudah dipakai: tes ditulis lebih dulu, migrasi baru (migrasi lama tidak diubah), pgTAP lengkap + tes keamanan + smoke, CI Hub dan library hijau, panduan Hub dan PDF diperbarui, lalu perintah update untuk server LAN.
