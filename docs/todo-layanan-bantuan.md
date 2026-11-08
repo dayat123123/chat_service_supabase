@@ -57,20 +57,76 @@ Library:
 Aplikasi Flutter:
 - [ ] Pintu masuk Pusat Bantuan di menu aplikasi.
 
-## 3. Ide lain yang bisa disediakan
+## 3. Geser pesan untuk membalas (ala WhatsApp)
 
-Diurutkan dari dampak terbesar.
+Contoh: nasabah atau CS menggeser pesan "aku sayang dia" ke kanan untuk membalasnya.
 
-- [ ] **Tombol "Tandai pengaduan/penipuan" untuk CS di Hub.** Fungsi server `flag_ticket` sudah ada, tombolnya belum, sehingga keluhan yang tidak diajukan lewat menu nasabah tidak masuk register Kasus.
-- [ ] **Bantuan tanpa login** untuk nasabah yang tidak bisa masuk aplikasi: FAQ terbuka tanpa login, dan chat tamu terbatas (nomor HP atau email + OTP) khusus topik Akun & Login.
-- [ ] **Pertanyaan awal per topik**: isian singkat sebelum chat (misalnya nomor order, tanggal transaksi, jenis perangkat), diatur dari Hub, ditampilkan ke CS di kepala tiket. Mempercepat penanganan.
-- [ ] **Status layanan / gangguan**: Super Admin memasang pengumuman gangguan (misalnya "Order sedang lambat") yang tampil di chat CS dan Pusat Bantuan, dengan tautan artikel FAQ. Mengurangi tiket berulang saat gangguan.
-- [ ] **Pesan di luar jam layanan** yang menyarankan artikel FAQ sesuai topik.
-- [ ] **Survei kepuasan yang bisa diatur**: pertanyaan dan pilihan alasan rating diatur dari Hub.
-- [ ] **Saran balasan untuk nasabah** per topik (tombol jawaban cepat di chat), diatur dari Hub.
-- [ ] **Laporan bantuan** di menu Laporan: topik terbanyak, artikel paling membantu, tiket yang tercegah oleh FAQ, dan pencarian tanpa hasil.
-- [ ] **Deskripsi topik untuk CS**: catatan internal per topik (SOP singkat) yang tampil di Hub saat menangani tiket.
-- [ ] **Rilis library** setelah fitur di atas: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo.
+Library (sudah dibuat, commit `9f33202`, masih di "Belum dirilis"):
+- [x] Di layar sentuh, gelembung pesan (milik sendiri maupun orang lain) bisa digeser ke kanan; ikon balas muncul perlahan.
+- [x] Getar halus (`HapticFeedback.lightImpact`) sekali saat melewati ambang 56 px; dilepas setelah ambang = membalas pesan itu dan kolom ketik langsung fokus.
+- [x] Geser pendek, geser ke kiri, dan drag mouse tidak memicu balasan (pilih teks dengan mouse di desktop tetap jalan). Berlaku juga untuk gelembung dari builder `chat.message`.
+- [ ] Coba di aplikasi Flutter di HP sungguhan (Android dan iOS): rasa geser, getar, dan tidak bentrok dengan gulir daftar pesan atau geser kembali (back gesture) iOS.
+- [ ] Opsional: ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat konfigurasi atau builder.
+- [ ] Masuk rilis library berikutnya (lihat bagian 4.11).
+
+Hub (web CS):
+- [ ] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
+- [ ] Tes komponen untuk geser sentuh, geser pendek, dan mouse.
+
+## 4. Fitur bantuan lanjutan
+
+Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak Audit.
+
+### 4.1 Tombol "Tandai pengaduan/penipuan" untuk CS
+- [ ] Hub: aksi di kepala tiket untuk CS pemilik tiket dan Super Admin, memanggil `cs_api.flag_ticket` yang sudah ada; wajib alasan singkat.
+- [ ] Server: alasan disimpan di riwayat tiket; Kepatuhan menerima notifikasi kasus baru.
+- [ ] Tes pgTAP dan Hub.
+
+### 4.2 Bantuan tanpa login
+- [ ] FAQ terbuka tanpa login (endpoint publik hanya baca, dengan batas laju).
+- [ ] Chat tamu khusus topik Akun & Login: verifikasi nomor HP atau email terdaftar dengan OTP, sesi pendek, tanpa akses fitur sosial; tiket ditandai "tamu" di Hub.
+- [ ] Library: pintu masuk "Tidak bisa masuk? Hubungi CS" yang bisa dipasang di halaman login aplikasi.
+- [ ] Tinjauan keamanan: OTP tidak bisa ditebak, batas percobaan, tidak membocorkan apakah akun ada.
+
+### 4.3 Pertanyaan awal per topik
+- [ ] Server: daftar isian per topik (teks, angka, tanggal, pilihan; wajib/opsional), ID/EN.
+- [ ] Library: form singkat setelah memilih topik, sebelum chat dimulai.
+- [ ] Hub: pengaturan isian per topik; jawaban tampil di kepala tiket untuk CS.
+
+### 4.4 Status layanan / gangguan
+- [ ] Hub: Super Admin memasang pengumuman gangguan (judul, isi ID/EN, tingkat, mulai/selesai, artikel FAQ terkait).
+- [ ] Library: banner di chat CS, halaman pilih topik, dan Pusat Bantuan; ikut hilang otomatis saat selesai.
+- [ ] Laporan: jumlah tiket selama gangguan.
+
+### 4.5 Pesan di luar jam layanan
+- [ ] Pesan di luar jam (sudah ada) ditambah saran artikel FAQ sesuai topik yang dipilih, dan tombol "Tinggalkan pesan".
+
+### 4.6 Survei kepuasan yang bisa diatur
+- [ ] Hub: pertanyaan, skala, dan pilihan alasan rating rendah (ID/EN).
+- [ ] Library: dialog rating mengikuti pengaturan server.
+- [ ] Laporan: alasan rating rendah terbanyak per topik dan per CS.
+
+### 4.7 Saran balasan untuk nasabah
+- [ ] Hub: daftar tombol jawaban cepat per topik (misalnya "Sudah saya coba", "Belum bisa").
+- [ ] Library: tombol muncul di atas kolom ketik di chat CS.
+
+### 4.8 Laporan bantuan
+- [ ] Menu Laporan: topik terbanyak, artikel FAQ paling membantu, tiket yang tercegah oleh FAQ, pencarian tanpa hasil, waktu tanggapan per topik.
+- [ ] Ekspor CSV.
+
+### 4.9 SOP singkat per topik untuk CS
+- [ ] Hub: catatan internal per topik (langkah penanganan, dokumen yang diminta), tampil di panel tiket saat CS menangani.
+
+### 4.10 Rekomendasi tambahan
+- [ ] **Template jawaban berbasis artikel FAQ**: CS bisa menyisipkan tautan atau ringkasan artikel FAQ ke chat dari Hub.
+- [ ] **Antrean dan perkiraan waktu tunggu** yang lebih jelas di aplikasi (posisi antrean sudah ada; tambah perkiraan menit dari rata-rata waktu klaim).
+- [ ] **Lanjutkan di perangkat lain**: notifikasi push saat CS membalas sudah ada; pastikan riwayat tiket dan transkrip bisa dibuka nasabah dari menu riwayat.
+- [ ] **Unduh transkrip oleh nasabah** (PDF/TXT) untuk tiket yang sudah selesai.
+- [ ] **Penilaian artikel oleh CS**: CS menandai artikel FAQ yang perlu diperbarui langsung dari Hub.
+- [ ] **Pengingat tiket menunggu nasabah**: pesan otomatis bila nasabah belum membalas dalam N jam, sebelum tiket ditutup otomatis (penutupan otomatis sudah ada).
+
+### 4.11 Rilis library
+- [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
 
 ## Cara kerja per bagian
 
