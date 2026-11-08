@@ -1,6 +1,6 @@
 # Todo: Topik fleksibel, FAQ, dan fitur bantuan lanjutan
 
-Status: rencana, belum dikerjakan (dibuat 8 Nov 2026). Prinsipnya: semua isi yang dilihat nasabah diatur dari Rendezvous Hub dan dikirim server. Aplikasi Flutter dan library tidak menyimpan teks, ikon, atau daftar topik secara tetap; nilai bawaan di library hanya cadangan untuk server lama.
+Status: rencana, belum dikerjakan (dibuat 8 Nov 2026). Fokus utama dan urutan kerja: 0 → 1 → 5 → 3 → 6 → 2 → 4.11, perkiraan 25–35 jam kerja. Prinsipnya: semua isi yang dilihat nasabah diatur dari Rendezvous Hub dan dikirim server. Aplikasi Flutter dan library tidak menyimpan teks, ikon, atau daftar topik secara tetap; nilai bawaan di library hanya cadangan untuk server lama.
 
 Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library masih di bagian CHANGELOG "Belum dirilis" (setelah v1.8.0).
 
@@ -73,7 +73,10 @@ Hub (web CS):
 - [ ] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
 - [ ] Tes komponen untuk geser sentuh, geser pendek, dan mouse.
 
-## 4. Fitur bantuan lanjutan
+## 4. Fitur bantuan lanjutan (NANTI)
+
+> Fokus utama dulu (8 Nov 2026): bagian 0, 1, 2, 3, 5, dan 6. Bagian 4 dikerjakan setelah semuanya selesai, kecuali 4.11 (rilis library) yang ikut di akhir fokus utama.
+
 
 Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak Audit.
 
