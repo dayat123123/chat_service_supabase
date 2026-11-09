@@ -107,29 +107,29 @@ Sekarang: maksimal 50 rekening per nasabah di klaim `accounts` token sosial, dit
 - [x] Tes: Go (200 diterima, ke-201 diabaikan dan dihitung, token 16 KB diterima, di atasnya ditolak), pgTAP (fungsi mengikuti pengaturan), `smoke-dummy`.
 - [x] Dokumen: `docs/olt-integration.md`, `docs/integration/README.md`, README auth-bridge, dan panduan Hub (batas 200) dan prompt penerbit token C++ untuk tim OLT (batas akun di `CSocialTokenIssuer` menjadi 200).
 
-## 2. FAQ / Pusat Bantuan
+## 2. FAQ / Pusat Bantuan (SELESAI 9 Nov 2026, migrasi 0129 dan 0130, tes 109 dan 110; Hub Konten Layanan → Pusat Bantuan; library 8d448f9 dan 770e610)
 
-Server (migrasi 0127):
-- [ ] Tabel `cs.faq_categories` (kode, nama ID/EN, ikon, urutan, aktif) dan `cs.faq_articles` (kategori, pertanyaan ID/EN, jawaban ID/EN dalam Markdown terbatas, kata kunci, topik chat terkait, urutan, status draf/terbit, versi, diubah oleh).
-- [ ] `cs.faq_feedback`: "Apakah ini membantu?" ya/tidak, satu suara per nasabah per artikel, dengan komentar opsional.
-- [ ] API nasabah: `cs_api.faq(p_language)` (kategori dan artikel terbit), `cs_api.faq_search(p_query, p_language)`, `cs_api.faq_feedback(p_article_id, p_helpful, p_comment)`. Pencarian tanpa hasil dicatat (teks dipangkas, tanpa data pribadi) untuk bahan artikel baru.
-- [ ] Gambar jawaban disimpan lewat layanan media yang sudah ada; tautan hanya `https`.
-- [ ] Batas laju untuk pencarian dan umpan balik.
+Server (migrasi 0129, gambar 0130):
+- [x] Tabel `cs.faq_categories` (kode, nama ID/EN, ikon, urutan, aktif) dan `cs.faq_articles` (kategori, pertanyaan ID/EN, jawaban ID/EN dalam Markdown terbatas, kata kunci, topik chat terkait, urutan, status draf/terbit, versi, diubah oleh).
+- [x] `cs.faq_feedback`: "Apakah ini membantu?" ya/tidak, satu suara per nasabah per artikel, dengan komentar opsional.
+- [x] API nasabah: `cs_api.faq(p_language)` (kategori dan artikel terbit), `cs_api.faq_search(p_query, p_language)`, `cs_api.faq_feedback(p_article_id, p_helpful, p_comment)`. Pencarian tanpa hasil dicatat (teks dipangkas, tanpa data pribadi) untuk bahan artikel baru.
+- [x] Gambar jawaban diunggah dari Hub ke bucket publik `faq-images` (JPEG/PNG/WebP, 2 MB, hanya Super Admin dan Konten Layanan), seperti gambar banner; server menolak gambar dari situs lain. Tautan biasa hanya `https`.
+- [x] Batas laju: pencarian 30/menit, umpan balik 20/jam per nasabah. Tambahan: `cs_api.faq_article` (mencatat baca) dan `cs_api.faq_for_topic`; kelima RPC masuk allowlist domain publik Traefik.
 
-Hub (menu **Bantuan / FAQ**, peran Konten Layanan dan Super Admin):
-- [ ] Daftar kategori dan artikel, cari, saring status, urutkan.
-- [ ] Editor dua bahasa dengan pratinjau tampilan aplikasi, draf, terbitkan, arsipkan, dan riwayat versi (bisa kembali ke versi lama).
-- [ ] Statistik per artikel: dilihat, membantu (%), dan tiket yang tetap dibuat setelah membaca.
-- [ ] Daftar "pencarian tanpa hasil" untuk menentukan artikel baru.
+Hub (tab **Pusat Bantuan** di menu Konten Layanan, peran Konten Layanan dan Super Admin):
+- [x] Daftar kategori dan artikel, cari, saring status, urutkan.
+- [x] Editor dua bahasa dengan pratinjau tampilan aplikasi, draf, terbitkan, arsipkan, dan riwayat versi (bisa kembali ke versi lama).
+- [x] Statistik per artikel: dilihat, membantu (%), dan tiket yang tetap dibuat setelah membaca.
+- [x] Daftar "pencarian tanpa hasil" untuk menentukan artikel baru.
 
 Library:
-- [ ] Widget `CommunityHelpCenter`: kategori, pencarian, detail artikel, dan tombol "Masih butuh bantuan? Chat CS" yang langsung membuka chat dengan topik terkait. Fungsi buka `openCommunityHelpCenter(context)`.
-- [ ] Di halaman pilih topik chat CS, tampilkan 3 artikel teratas untuk topik yang dipilih sebelum tiket dibuat ("Mungkin ini membantu"), dengan pilihan tetap lanjut chat.
-- [ ] Semua bagian punya builder (`CommunityHelpBuilders`), teks ID/EN, mode gelap, dan cache agar FAQ tetap terbuka saat offline.
-- [ ] Tes unit, widget, dan screenshot; dokumentasi `doc/features.md` dan `doc/customization.md`.
+- [x] Widget `CommunityHelpCenter`: kategori, pencarian, detail artikel, dan tombol "Masih butuh bantuan? Chat CS" yang langsung membuka chat dengan topik terkait. Fungsi buka `openCommunityHelpCenter(context)`.
+- [x] Di halaman pilih topik chat CS, tampilkan 3 artikel teratas untuk topik yang dipilih sebelum tiket dibuat ("Mungkin ini membantu"), dengan pilihan tetap lanjut chat.
+- [x] Semua bagian punya builder (`CommunityHelpBuilders`), teks ID/EN, mode gelap, dan cache agar FAQ tetap terbuka saat offline.
+- [x] Tes unit, widget, dan screenshot; dokumentasi `doc/features.md` dan `doc/customization.md`.
 
 Aplikasi Flutter:
-- [ ] Pintu masuk Pusat Bantuan di menu aplikasi.
+- [x] Pintu masuk Pusat Bantuan di app bar aplikasi contoh (`openCommunityHelpCenter`). Aplikasi OLT memasang hal yang sama di menunya.
 
 ## 4.11 Rilis library
 - [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).

@@ -45,7 +45,7 @@ Super Admin memberi setiap akun **peran** dan, bila perlu, **izin tambahan**:
 | **Kepatuhan** | Tim kepatuhan: pengaduan, penipuan, audit, kebijakan, dokumen hukum, bukti |
 | **Komunitas** | Tim riset/marketing/moderasi yang tidak menangani tiket. Menunya ditentukan **Izin Komunitas** |
 | **Fitur & Kampanye** | Tim produk/marketing yang mengelola fitur sosial, kill switch, versi minimum aplikasi, serta banner dan popup. Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
-| **Konten Layanan** | Tim yang mengelola isi bantuan untuk nasabah di aplikasi: topik chat CS (dan pusat bantuan). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
+| **Konten Layanan** | Tim yang mengelola isi bantuan untuk nasabah di aplikasi: topik chat CS dan Pusat Bantuan (FAQ). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
 
 Izin tambahan:
 
@@ -356,6 +356,14 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
   - **Tanda tiket** (**Pengaduan**/**Penipuan**) hanya bisa diubah Super Admin, karena tiket dari topik bertanda otomatis masuk register Kasus Kepatuhan. Perubahannya tercatat terpisah di Jejak Audit (aksi `topic.flags`).
   - **Teks halaman pilih topik**: judul dan petunjuk di atas daftar topik (Indonesia/Inggris). Kosongkan untuk memakai teks bawaan aplikasi.
   - Setiap simpan tercatat di Jejak Audit dengan nilai sebelum dan sesudah.
+- **Pusat Bantuan (FAQ)** ada di **Konten Layanan → Pusat Bantuan** (Super Admin dan peran Konten Layanan). Nasabah membacanya di aplikasi sebelum menghubungi CS:
+  - **Tambah artikel**: pilih **Kategori**, **Topik chat terkait** (opsional; artikel tampil sebagai saran "Mungkin ini membantu" saat nasabah memilih topik itu sebelum chat CS), isi **Pertanyaan** dan **Jawaban** dalam dua bahasa, **Kata kunci** (dipisah koma), dan urutan. Jawaban boleh memakai **tebal**, *miring*, daftar, dan tautan `https://`; tag HTML dan tautan selain `https://` ditolak. **Sisipkan gambar (ID/EN)** mengunggah gambar JPEG, PNG, atau WebP (maks. 2 MB, diperkecil otomatis bila lebih besar) dan menaruhnya di posisi kursor; gambar dari situs lain ditolak. **Pratinjau di aplikasi** menunjukkan tampilan artikel, bisa diganti ID/EN.
+  - Artikel baru tersimpan sebagai **Draf** dan belum tampil di aplikasi. Pilih **Terbitkan** dari menu baris (ikon titik tiga) agar tampil, **Jadikan draf** untuk menyembunyikannya lagi, atau **Arsipkan** bila tidak dipakai. Artikel arsip disembunyikan dari daftar kecuali disaring status **Arsip**.
+  - Setiap simpan membuat versi baru. **Riwayat versi** menampilkan semua versi; **Pulihkan** (dengan konfirmasi) menyalin isi versi lama sebagai versi baru tanpa mengubah status. Bila dua staf menyimpan artikel yang sama, simpanan kedua ditolak dan diminta memuat ulang.
+  - Kolom **Dilihat**, **Membantu** (persen jawaban "Ya" pada "Apakah ini membantu?"), dan **Tetap buat tiket** (nasabah yang membuat tiket CS dalam 24 jam setelah membaca) membantu menemukan artikel yang perlu diperbaiki; urutkan **Paling kurang membantu** untuk melihatnya lebih dulu. **Komentar nasabah** menampilkan komentar tanpa identitas nasabah.
+  - **Kategori**: kode, nama dua bahasa, ikon, urutan, dan aktif. Kategori nonaktif beserta artikelnya tidak tampil di aplikasi.
+  - **Pencarian tanpa hasil (30 hari)**: kata yang dicari nasabah tanpa menemukan artikel, bahan untuk artikel baru. Angka panjang (mis. nomor rekening) dan email disamarkan sebelum disimpan, dan data lebih dari 90 hari dihapus otomatis.
+  - Semua perubahan artikel, status, pemulihan, dan kategori tercatat di Jejak Audit (aksi `faq.*`).
 - **Quick reply**: atur **Pintasan**, **Judul**, **Isi balasan**, dan **Bahasa**. Quick reply yang meminta OTP/PIN/password ditolak. Balasan pribadi CS tidak tampil di sini; tiap CS mengelolanya sendiri dari kotak balas.
 
 #### Label tiket
