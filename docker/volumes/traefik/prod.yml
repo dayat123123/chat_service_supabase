@@ -82,7 +82,7 @@ http:
 
     api-cs-customer:
       entryPoints: [websecure]
-      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathRegexp(`^/rest/v1/rpc/(support_home|topics|open_ticket|my_tickets|ticket_messages|close_ticket|rate_ticket|request_complaint|report_fake_cs|check_sensitive|get_messages|send_message|mark_read|room_members|faq|faq_search|faq_article|faq_feedback|faq_for_topic|attachment_policy|service_status|ticket_transcript)$`)
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathRegexp(`^/rest/v1/rpc/(support_home|topics|open_ticket|my_tickets|ticket_messages|close_ticket|rate_ticket|request_complaint|report_fake_cs|check_sensitive|get_messages|send_message|mark_read|room_members|faq|faq_search|faq_article|faq_feedback|faq_for_topic|attachment_policy|service_status|ticket_transcript|guest_config|guest_start|guest_poll|guest_send|guest_end)$`)
       service: kong
       middlewares: [rate-limit, public-edge, body-api, hsts, security-headers]
       tls:

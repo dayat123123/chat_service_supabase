@@ -388,7 +388,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://
 4. **Pengaturan → Push notification**: unggah kunci Firebase (project Firebase aplikasi OLT), bila push dipakai.
 5. **Pengaturan → Akun CS**: buat akun staf lain.
 6. **Simpan di luar server** (password manager / brankas): `docker/.env`, folder `docker/secrets/`, password backup, salinan `pgsodium_root.key` ([backup](backup/README.md#pemulihan)).
-7. **Data untuk tim aplikasi OLT**: `supabaseUrl` = `https://<domain API>`, `anonKey` = hasil `make anon-key`, versi library `v1.11.0` ([panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md)).
+7. **Data untuk tim aplikasi OLT**: `supabaseUrl` = `https://<domain API>`, `anonKey` = hasil `make anon-key`, versi library `v1.12.0` ([panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md)).
 8. Uji dari aplikasi: login, buka feed, kirim chat antar dua akun.
 
 ## 6. Bila ada masalah saat instalasi

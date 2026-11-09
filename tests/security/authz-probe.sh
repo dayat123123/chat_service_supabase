@@ -201,8 +201,19 @@ STAFF_ONLY='^(admin_|app_integration_|agent_(heartbeat|me|my_profile|my_stats|pa
 PERM_GATED='^(admin_|alert_|app_integration_|backup_|community_|compliance_|evidence_|health_acknowledge|integration_|legal_(draft_approve|draft_reject|set_required|cancel_scheduled)|nasabah_(save|clear)_integration|push_|service_create_|supervisor_|report_summary|report_customers|report_customer_trail|report_ticket_labels)'
 mapfile -t CS_FNS < <(sql "select p.proname || '|' || coalesce((select jsonb_object_agg(a, null)::text from unnest(p.proargnames[1:p.pronargs]) a), '{}')
   from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'cs_api' order by 1")
+GUEST_PUBLIC='^guest_(config|start|poll|send|end)$'
 for row in "${CS_FNS[@]}"; do
   fn=${row%%|*}; args=${row#*|}
+  if [[ "$fn" =~ $GUEST_PUBLIC ]]; then
+    if [ "$fn" != guest_config ] && [ "$fn" != guest_start ]; then
+      body='{"p_token":"probe-token-that-does-not-exist-000000"}'
+      [ "$fn" = guest_send ] && body='{"p_token":"probe-token-that-does-not-exist-000000","p_body":"probe"}'
+      call anon POST "/rest/v1/rpc/$fn" "$body" -H 'Content-Profile: cs_api'
+      if [ "$code" = 401 ]; then record ok anon "cs_api.$fn (guest RPC, unknown session token)" "$code"
+      else record FAIL anon "cs_api.$fn (guest RPC must refuse an unknown session token)" "$code"; fi
+    fi
+    continue
+  fi
   expect_denied_sweep anon "cs_api.$fn" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'
   if [[ "$fn" =~ $STAFF_ONLY ]]; then
     expect_denied_sweep customer "cs_api.$fn (staff only)" POST "/rest/v1/rpc/$fn" "$args" -H 'Content-Profile: cs_api'

@@ -70,7 +70,7 @@ check high "api-cs-customer allows only an explicit RPC allowlist ^/rest/v1/rpc/
 staffish=$(grep -E '^(agent_|admin_|supervisor_|community_|integration_|compliance_|nasabah_|report_)' <<< "$allow" | grep -v '^report_fake_cs$' || true)
 check high "public cs_api allowlist has no staff RPCs (agent_*/admin_*/community_*/integration_*/...)" '[ -z "$staffish" ]' "$staffish"
 if [ -d /olt/client-lib ]; then
-  used=$(grep -rhoE "_cs\.rpc[A-Za-z]*\('[a-z_]+'" /olt/client-lib | sed -E "s/.*\('([a-z_]+)'/\1/" | sort -u)
+  used=$(grep -rhoE "(_cs\.rpc[A-Za-z]*\('[a-z_]+'|_rpc\('guest_[a-z_]+')" /olt/client-lib | sed -E "s/.*\('([a-z_]+)'/\1/" | sort -u)
   missing=$(comm -23 <(printf '%s\n' "$used") <(printf '%s\n' "$allow"))
   extra=$(comm -13 <(printf '%s\n' "$used") <(printf '%s\n' "$allow"))
   check high "every cs_api RPC called by rendezvous_community is in the public allowlist ($(wc -l <<< "$used") functions)" '[ -z "$missing" ]' "$(tr '\n' ' ' <<< "$missing")"

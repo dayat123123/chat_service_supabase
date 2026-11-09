@@ -24,7 +24,7 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 |---|---|---|
 | 6 | Lampiran dokumen lain dan video di chat CS (format sudah disetujui, termasuk ClamAV) — dipindah ke Fase 2 atas permintaan user, 9 Nov 2026 | 2–3 jam |
 | 4.1 | Tombol "Tandai pengaduan/penipuan" untuk CS | 20–30 menit |
-| 4.2 | Bantuan tanpa login (FAQ publik, chat tamu OTP) — **DITUNDA**, belum dipakai | (1,5–2 jam, tidak dihitung) |
+| 4.2 | Pengaduan tamu sebelum login (tanpa OTP, keputusan di CS, reset hanya ke email terdaftar) — dikerjakan 9 Nov malam | ±2–3 jam agen |
 | 4.3 | Pertanyaan awal per topik | ±1 jam |
 | 4.4 | Status layanan / pengumuman gangguan | 45–60 menit |
 | 4.5 | Pesan di luar jam layanan dengan saran FAQ | 20–30 menit |
@@ -173,7 +173,7 @@ Library dan aplikasi Flutter:
 - [x] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
 - [x] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
 
-## 4. Fitur bantuan lanjutan (SELESAI 9 Nov 2026 kecuali 4.2 yang ditunda; migrasi 0133–0136, tes 113–116; Hub b5df01e..b724373; library 6c641f2..18b1a74, rilis v1.10.0)
+## 4. Fitur bantuan lanjutan (SELESAI 9 Nov 2026; 4.2 menyusul 9 Nov malam; migrasi 0133–0136, tes 113–116; Hub b5df01e..b724373; library 6c641f2..18b1a74, rilis v1.10.0)
 
 Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak Audit.
 
@@ -182,14 +182,28 @@ Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak 
 - [x] Server: alasan disimpan di riwayat tiket; Kepatuhan menerima notifikasi kasus baru.
 - [x] Tes pgTAP dan Hub.
 
-### 4.2 Bantuan tanpa login (DITUNDA)
+### 4.2 Pengaduan tamu sebelum login (SELESAI 9 Nov 2026, migrasi 0140, tes 120; Hub 7c49712; library v1.12.0)
 
-> Ditunda atas permintaan user (8 Nov 2026): belum dipakai. Jangan dikerjakan sampai diminta lagi.
+Diminta user (9 Nov 2026 malam): cukup **pengaduan** untuk menjembatani nasabah yang tidak bisa login dengan CS; keputusan ada di CS (misalnya kirim reset password/PIN dari menu Akun Nasabah). **Tanpa OTP** dan **tanpa bergantung pada csAdmin** (dari csAdmin hanya reset password/PIN yang dipakai). FAQ tanpa login tidak termasuk.
 
-- [ ] FAQ terbuka tanpa login (endpoint publik hanya baca, dengan batas laju).
-- [ ] Chat tamu khusus topik Akun & Login: verifikasi nomor HP atau email terdaftar dengan OTP, sesi pendek, tanpa akses fitur sosial; tiket ditandai "tamu" di Hub.
-- [ ] Library: pintu masuk "Tidak bisa masuk? Hubungi CS" yang bisa dipasang di halaman login aplikasi.
-- [ ] Tinjauan keamanan: OTP tidak bisa ditebak, batas percobaan, tidak membocorkan apakah akun ada.
+Logika anti-penipuan:
+- **Pengaman utama ada di aksi CS, bukan di verifikasi pengadu.** Satu-satunya bantuan akun untuk pengaduan tamu adalah **Reset password/PIN**, dan kredensial baru selalu dikirim csAdmin ke **email yang terdaftar** di akun, bukan ke kontak yang disebut pengadu. Penipu yang mengaku pemilik akun hanya membuat pemilik asli menerima email reset, tanpa mendapat akses.
+- **Tiket ditandai "belum terverifikasi"** dan Hub menampilkan SOP: jangan menyebut data akun (email, HP, rekening, saldo), jangan mengubah email/HP/data akun dari chat ini (arahkan ke kantor cabang dengan identitas), jangan meminta atau menerima password/PIN/OTP.
+- **Tamu tidak bisa mengakses data apa pun**: tidak ada sesi login, tidak ada fitur sosial, hanya chat teks di tiketnya sendiri. Riwayat tiket lain milik Login ID yang diklaim tidak pernah ditampilkan ke tamu.
+- **Batas laju**: 3 pengaduan per perangkat per jam, 10 per hari (hash IP ber-pepper, IP tidak disimpan apa adanya), 5 per Login ID per hari, dan 20 pesan per menit. Hub menampilkan jumlah pengaduan tamu untuk Login ID yang sama dalam 24 jam sebagai sinyal penyalahgunaan.
+- **Token sesi** acak 256 bit, disimpan hanya sebagai hash, berlaku 24 jam, bisa diakhiri tamu.
+- **Sakelar darurat** `guest.enabled` untuk Super Admin.
+
+Server (migrasi 0140):
+- [x] Profil tamu (`profiles.is_guest`) dan tiket CS biasa dengan `context.guest` (Login ID klaim, jenis masalah, belum terverifikasi). Profil tamu tidak muncul di pencarian pengguna dan pencarian staf.
+- [x] RPC tanpa login: `cs_api.guest_config`, `guest_start`, `guest_poll`, `guest_send`, `guest_end` (allowlist Traefik, uji keamanan menolak token palsu).
+- [x] Tampilan agen memuat `guest` (Login ID, jenis, jumlah 24 jam); panel Akun Nasabah memakai Login ID klaim.
+
+Hub:
+- [x] Banner "belum terverifikasi" + SOP di tiket tamu, lencana **Tamu** (daftar tiket, transfer, dashboard, kepala percakapan), panel nasabah "Tamu (belum login)" dengan Login ID klaim, dan sakelar di **Pengaturan → Penugasan, tiket & alert** (Hub 7c49712).
+
+Library:
+- [x] `openCommunityGuestSupport` untuk tombol "Tidak bisa masuk? Hubungi CS" di halaman login: form, catatan keamanan, chat dengan polling 4 detik, tanpa sesi dan tanpa menukar token OLT (library v1.12.0, 0aaf06f). Token sesi tamu disimpan di memori; host bisa memasang penyimpanan aman sendiri.
 
 ### 4.3 Pertanyaan awal per topik
 - [x] Server: daftar isian per topik (teks, angka, tanggal, pilihan; wajib/opsional), ID/EN.
@@ -239,7 +253,7 @@ Yang sebelumnya berbeda dari rencana kini disesuaikan:
 - [x] Library v1.11.0: tombol **Unduh video** di gelembung video, selain tombol putar.
 - [x] Urutan topik bisa diatur dengan seret atau tombol naik/turun (migrasi 0137).
 
-Tetap: uji di HP sungguhan oleh user, dan bagian 4.2 ditunda.
+Tetap: uji di HP sungguhan oleh user.
 
 ## Cara kerja per bagian
 

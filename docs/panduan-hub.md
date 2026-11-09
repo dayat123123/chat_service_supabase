@@ -270,6 +270,14 @@ Tombol di atas percakapan (hanya untuk pemilik tiket):
 
 **Menandai sendiri.** Bila nasabah mengeluh atau ada indikasi penipuan tetapi tiketnya belum bertanda, CS pemilik tiket (atau Super Admin) membuka **Aksi lainnya** (⋯) di kepala percakapan lalu memilih **Tandai pengaduan** atau **Tandai penipuan**. Isi **Alasan** (5–300 karakter). Alasan tersimpan di riwayat tiket dan Jejak Audit, dan Kepatuhan langsung menerima notifikasi kasus baru. Tanda yang sudah terpasang tidak muncul lagi di menu.
 
+**Pengaduan tamu (belum login).** Nasabah yang tidak bisa masuk (lupa password/PIN, akun terkunci) bisa mengirim pengaduan dari halaman login aplikasi tanpa login. Tiketnya masuk antrean biasa dengan lencana **Tamu** dan banner kuning **belum terverifikasi**: siapa pun bisa mengaku sebagai pemilik Login ID yang ditulis. Karena itu:
+
+- Bantuan akun **hanya** lewat **Reset password/PIN** di panel **Akun Nasabah** (Login ID diambil dari isian pengadu). Kredensial baru selalu dikirim ke **email yang terdaftar** di akun, jadi aman walau pengadunya bukan pemilik akun.
+- **Jangan** menyebutkan data akun (email, nomor HP, rekening, saldo, alamat), dan **jangan** mengubah email, nomor HP, atau data lain berdasarkan chat ini. Bila nasabah sudah tidak memakai email terdaftarnya, arahkan ke kantor cabang dengan identitas.
+- Jangan meminta atau menerima password, PIN, atau OTP.
+- Banner menampilkan jumlah pengaduan tamu untuk Login ID yang sama dalam 24 jam. Jumlah yang tinggi bisa berarti ada yang mencoba-coba; catat di **Catatan internal** dan laporkan ke Super Admin.
+- Pengadu hanya bisa chat teks di tiketnya sendiri selama 24 jam. Super Admin bisa mematikan fitur ini di **Pengaturan → Penugasan, tiket & alert → Pengaduan tanpa login**.
+
 ### 2.11 Pintasan keyboard
 
 | Tombol | Fungsi |
