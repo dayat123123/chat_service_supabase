@@ -6,7 +6,7 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 
 ## Ringkasan fase
 
-**Fase 1 — fokus sekarang** (permintaan user, urutan kerja, perkiraan total 25–35 jam kerja):
+**Fase 1 — fokus sekarang** (permintaan user, urutan kerja, perkiraan total 16–22 jam kerja):
 
 | Urutan | Bagian | Perkiraan |
 |---|---|---|
@@ -14,14 +14,14 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 | 2 | 1. Topik chat CS sepenuhnya dari server | 3–4 jam |
 | 3 | 5. Tanggal mengambang saat menggulir chat | 2–3 jam |
 | 4 | 3. Geser pesan untuk membalas (library sudah, sisa Hub sentuh dan uji di HP) | 1–2 jam |
-| 5 | 6. Lampiran dokumen lain dan video di chat CS | 8–12 jam |
-| 6 | 2. FAQ / Pusat Bantuan | 8–10 jam |
-| 7 | 4.11 Rilis library | 0,5–1 jam |
+| 5 | 2. FAQ / Pusat Bantuan | 8–10 jam |
+| 6 | 4.11 Rilis library | 0,5–1 jam |
 
-**Fase 2 — berikutnya** (rekomendasi, dikerjakan setelah Fase 1 selesai; perkiraan 20–27 jam kerja):
+**Fase 2 — berikutnya** (dikerjakan setelah Fase 1 selesai; perkiraan 28–39 jam kerja):
 
 | Bagian | Isi | Perkiraan |
 |---|---|---|
+| 6 | Lampiran dokumen lain dan video di chat CS (format sudah disetujui, termasuk ClamAV) — dipindah ke Fase 2 atas permintaan user, 9 Nov 2026 | 8–12 jam |
 | 4.1 | Tombol "Tandai pengaduan/penipuan" untuk CS | ±1 jam |
 | 4.2 | Bantuan tanpa login (FAQ publik, chat tamu OTP) — **DITUNDA**, belum dipakai | (6–8 jam, tidak dihitung) |
 | 4.3 | Pertanyaan awal per topik | 3–4 jam |
@@ -97,6 +97,35 @@ Hub (web CS):
 - [ ] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
 - [ ] Tes komponen untuk geser sentuh, geser pendek, dan mouse.
 
+## 2. FAQ / Pusat Bantuan
+
+Server (migrasi 0127):
+- [ ] Tabel `cs.faq_categories` (kode, nama ID/EN, ikon, urutan, aktif) dan `cs.faq_articles` (kategori, pertanyaan ID/EN, jawaban ID/EN dalam Markdown terbatas, kata kunci, topik chat terkait, urutan, status draf/terbit, versi, diubah oleh).
+- [ ] `cs.faq_feedback`: "Apakah ini membantu?" ya/tidak, satu suara per nasabah per artikel, dengan komentar opsional.
+- [ ] API nasabah: `cs_api.faq(p_language)` (kategori dan artikel terbit), `cs_api.faq_search(p_query, p_language)`, `cs_api.faq_feedback(p_article_id, p_helpful, p_comment)`. Pencarian tanpa hasil dicatat (teks dipangkas, tanpa data pribadi) untuk bahan artikel baru.
+- [ ] Gambar jawaban disimpan lewat layanan media yang sudah ada; tautan hanya `https`.
+- [ ] Batas laju untuk pencarian dan umpan balik.
+
+Hub (menu **Bantuan / FAQ**, peran Konten Layanan dan Super Admin):
+- [ ] Daftar kategori dan artikel, cari, saring status, urutkan.
+- [ ] Editor dua bahasa dengan pratinjau tampilan aplikasi, draf, terbitkan, arsipkan, dan riwayat versi (bisa kembali ke versi lama).
+- [ ] Statistik per artikel: dilihat, membantu (%), dan tiket yang tetap dibuat setelah membaca.
+- [ ] Daftar "pencarian tanpa hasil" untuk menentukan artikel baru.
+
+Library:
+- [ ] Widget `CommunityHelpCenter`: kategori, pencarian, detail artikel, dan tombol "Masih butuh bantuan? Chat CS" yang langsung membuka chat dengan topik terkait. Fungsi buka `openCommunityHelpCenter(context)`.
+- [ ] Di halaman pilih topik chat CS, tampilkan 3 artikel teratas untuk topik yang dipilih sebelum tiket dibuat ("Mungkin ini membantu"), dengan pilihan tetap lanjut chat.
+- [ ] Semua bagian punya builder (`CommunityHelpBuilders`), teks ID/EN, mode gelap, dan cache agar FAQ tetap terbuka saat offline.
+- [ ] Tes unit, widget, dan screenshot; dokumentasi `doc/features.md` dan `doc/customization.md`.
+
+Aplikasi Flutter:
+- [ ] Pintu masuk Pusat Bantuan di menu aplikasi.
+
+## 4.11 Rilis library
+- [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
+
+# Fase 2 — berikutnya
+
 ## 6. Lampiran dokumen lain dan video di chat CS
 
 Sekarang: chat CS menerima gambar dan PDF (maks. 10 MB, bucket `cs-documents`, migrasi 0053/0054); chat sosial hanya gambar. Bagian ini memperluas **chat CS saja** (nasabah dan CS, dari library maupun Hub). Chat sosial tetap gambar saja, karena isinya dilihat banyak orang dan sulit dimoderasi.
@@ -133,35 +162,6 @@ Library dan aplikasi Flutter:
 - [ ] Video: thumbnail dan durasi di gelembung. Putar di dalam aplikasi di Android/iOS/web (`video_player`); di Windows, `video_player` resmi belum mendukung, jadi video dibuka di pemutar bawaan Windows setelah diunduh (tidak menambah paket berat seperti `media_kit`).
 - [ ] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
 - [ ] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
-
-## 2. FAQ / Pusat Bantuan
-
-Server (migrasi 0127):
-- [ ] Tabel `cs.faq_categories` (kode, nama ID/EN, ikon, urutan, aktif) dan `cs.faq_articles` (kategori, pertanyaan ID/EN, jawaban ID/EN dalam Markdown terbatas, kata kunci, topik chat terkait, urutan, status draf/terbit, versi, diubah oleh).
-- [ ] `cs.faq_feedback`: "Apakah ini membantu?" ya/tidak, satu suara per nasabah per artikel, dengan komentar opsional.
-- [ ] API nasabah: `cs_api.faq(p_language)` (kategori dan artikel terbit), `cs_api.faq_search(p_query, p_language)`, `cs_api.faq_feedback(p_article_id, p_helpful, p_comment)`. Pencarian tanpa hasil dicatat (teks dipangkas, tanpa data pribadi) untuk bahan artikel baru.
-- [ ] Gambar jawaban disimpan lewat layanan media yang sudah ada; tautan hanya `https`.
-- [ ] Batas laju untuk pencarian dan umpan balik.
-
-Hub (menu **Bantuan / FAQ**, peran Konten Layanan dan Super Admin):
-- [ ] Daftar kategori dan artikel, cari, saring status, urutkan.
-- [ ] Editor dua bahasa dengan pratinjau tampilan aplikasi, draf, terbitkan, arsipkan, dan riwayat versi (bisa kembali ke versi lama).
-- [ ] Statistik per artikel: dilihat, membantu (%), dan tiket yang tetap dibuat setelah membaca.
-- [ ] Daftar "pencarian tanpa hasil" untuk menentukan artikel baru.
-
-Library:
-- [ ] Widget `CommunityHelpCenter`: kategori, pencarian, detail artikel, dan tombol "Masih butuh bantuan? Chat CS" yang langsung membuka chat dengan topik terkait. Fungsi buka `openCommunityHelpCenter(context)`.
-- [ ] Di halaman pilih topik chat CS, tampilkan 3 artikel teratas untuk topik yang dipilih sebelum tiket dibuat ("Mungkin ini membantu"), dengan pilihan tetap lanjut chat.
-- [ ] Semua bagian punya builder (`CommunityHelpBuilders`), teks ID/EN, mode gelap, dan cache agar FAQ tetap terbuka saat offline.
-- [ ] Tes unit, widget, dan screenshot; dokumentasi `doc/features.md` dan `doc/customization.md`.
-
-Aplikasi Flutter:
-- [ ] Pintu masuk Pusat Bantuan di menu aplikasi.
-
-## 4.11 Rilis library
-- [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
-
-# Fase 2 — berikutnya
 
 ## 4. Fitur bantuan lanjutan
 
