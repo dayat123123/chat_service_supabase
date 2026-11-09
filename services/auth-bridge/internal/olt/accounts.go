@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	MaxAccounts      = 50
+	MaxAccounts      = 200
 	maxAccountLength = 32
 )
 

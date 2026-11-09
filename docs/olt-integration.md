@@ -52,9 +52,12 @@ JWT tiga bagian (`header.payload.tanda-tangan`, base64url tanpa padding).
   "email": "budi@example.com",        // opsional
   "iat": 1793440000,                  // wajib, detik Unix
   "exp": 1793440600,                  // wajib, maksimal 15 menit setelah iat (OLT_JWT_MAX_TTL)
-  "jti": "a1b2c3"                     // opsional
+  "jti": "a1b2c3",                    // opsional
+  "accounts": ["W137", "C1626"]       // opsional, cust id milik login ini, maksimal 200 (lihat docs/integration)
 }
 ```
+
+Panjang token maksimal **16 KB**; token yang lebih panjang ditolak `invalid_request`.
 
 Aturan verifikasi di auth-bridge:
 - **Algoritma:** hanya `EdDSA` dan `ES256`, dan harus cocok dengan jenis kunci dari `kid`. `none`, `HS256`, dan lainnya ditolak.

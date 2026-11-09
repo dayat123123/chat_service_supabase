@@ -121,13 +121,14 @@ func TestReplaceAccountLinks(t *testing.T) {
 	defer srv.Close()
 
 	c := NewClient(srv.URL, staticToken("svc"))
-	if err := c.ReplaceAccountLinks(context.Background(), "u-1", []string{"W137", "C1626"}); err != nil {
-		t.Fatal(err)
+	linked, err := c.ReplaceAccountLinks(context.Background(), "u-1", []string{"W137", "C1626"})
+	if err != nil || linked != 2 {
+		t.Fatalf("linked = %d, err = %v", linked, err)
 	}
 	if got["p_profile_id"] != "u-1" || len(got["p_accounts"].([]any)) != 2 {
 		t.Fatalf("body = %v", got)
 	}
-	if err := c.ReplaceAccountLinks(context.Background(), "u-1", nil); err != nil {
+	if _, err := c.ReplaceAccountLinks(context.Background(), "u-1", nil); err != nil {
 		t.Fatal(err)
 	}
 	if accounts, ok := got["p_accounts"].([]any); !ok || len(accounts) != 0 {

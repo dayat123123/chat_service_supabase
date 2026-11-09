@@ -21,13 +21,33 @@ type linkingStore struct {
 	calls   int
 	profile string
 	ids     []string
+	limit   int
 	err     error
 }
 
-func (s *linkingStore) ReplaceAccountLinks(_ context.Context, profileID string, accounts []string) error {
+func (s *linkingStore) ReplaceAccountLinks(_ context.Context, profileID string, accounts []string) (int, error) {
 	s.calls++
 	s.profile, s.ids = profileID, accounts
-	return s.err
+	if s.err != nil {
+		return 0, s.err
+	}
+	if s.limit > 0 {
+		return min(len(accounts), s.limit), nil
+	}
+	return len(accounts), nil
+}
+
+func TestResolveCountsAccountsBeyondTheServerLimitAsIgnored(t *testing.T) {
+	store := &linkingStore{limit: 2}
+	claim := &olt.AccountClaim{IDs: []string{"W137", "C1626", "S2001"}, Ignored: 1}
+	id, _, err := NewService(accountVerifier{claim}, store, nil, 0).Resolve(context.Background(), "t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := AccountLinks{Present: true, Linked: 2, Ignored: 2}
+	if id.Accounts != want {
+		t.Fatalf("accounts = %+v, want %+v", id.Accounts, want)
+	}
 }
 
 func TestResolveReplacesAccountLinksWhenClaimPresent(t *testing.T) {

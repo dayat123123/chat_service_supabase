@@ -97,15 +97,15 @@ Hub (web CS):
 - [x] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
 - [x] Tes komponen untuk geser sentuh, geser pendek, gulir vertikal, dan mouse.
 
-## 7. Batas rekening per nasabah jadi 200
+## 7. Batas rekening per nasabah jadi 200 (SELESAI 9 Nov 2026, migrasi 0128, tes 108; Hub Pengaturan → Integrasi aplikasi)
 
 Sekarang: maksimal 50 rekening per nasabah di klaim `accounts` token sosial, ditulis tetap di auth-bridge (`MaxAccounts = 50` di `services/auth-bridge/internal/olt/accounts.go`) dan di fungsi penyimpan tautan rekening (`limit 50` di migrasi 0068). Kelebihannya diabaikan dan dicatat di log. Diminta user (9 Nov 2026): naikkan menjadi 200.
 
-- [ ] Batas jadi pengaturan server `accounts.max_per_customer` (bawaan 200, rentang 1–200), dibaca auth-bridge dan fungsi database; bukan angka tetap di kode. Mengubahnya dari Hub hanya Super Admin dan tercatat di Jejak Audit.
-- [ ] Migrasi baru mendefinisikan ulang fungsi penyimpan tautan rekening (migrasi 0068 tidak diubah) supaya memakai pengaturan itu.
-- [ ] Auth-bridge: batas ukuran token (`maxTokenBytes`, sekarang 8 KB) dinaikkan ke 16 KB, karena 200 kode × 32 karakter bisa sekitar 7 KB ditambah klaim lain.
-- [ ] Tes: Go (200 diterima, ke-201 diabaikan dan dihitung, token 16 KB diterima, di atasnya ditolak), pgTAP (fungsi mengikuti pengaturan), `smoke-dummy`.
-- [ ] Dokumen: `docs/olt-integration.md` (batas 200) dan prompt penerbit token C++ untuk tim OLT (batas akun di `CSocialTokenIssuer` menjadi 200).
+- [x] Batas jadi pengaturan server `accounts.max_per_customer` (bawaan 200, rentang 1–200). Auth-bridge memegang batas atas 200 (`olt.MaxAccounts`) dan fungsi database menerapkan pengaturan; jumlah yang benar-benar ditautkan diambil dari balasan database, sisanya dihitung `accounts_ignored`. Mengubahnya dari Hub hanya Super Admin dan tercatat di Jejak Audit (`setting.update`).
+- [x] Migrasi baru mendefinisikan ulang fungsi penyimpan tautan rekening (migrasi 0068 tidak diubah) supaya memakai pengaturan itu.
+- [x] Auth-bridge: batas ukuran token dinaikkan ke 16 KB (`olt.MaxTokenBytes`), karena 200 kode × 32 karakter bisa sekitar 7 KB ditambah klaim lain. Ditemukan juga batas tersembunyi di handler exchange (token maks 4.096 karakter, body 8 KB); keduanya kini mengikuti `MaxTokenBytes` (body 17 KB).
+- [x] Tes: Go (200 diterima, ke-201 diabaikan dan dihitung, token 16 KB diterima, di atasnya ditolak), pgTAP (fungsi mengikuti pengaturan), `smoke-dummy`.
+- [x] Dokumen: `docs/olt-integration.md`, `docs/integration/README.md`, README auth-bridge, dan panduan Hub (batas 200) dan prompt penerbit token C++ untuk tim OLT (batas akun di `CSocialTokenIssuer` menjadi 200).
 
 ## 2. FAQ / Pusat Bantuan
 

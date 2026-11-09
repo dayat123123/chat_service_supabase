@@ -37,7 +37,7 @@ type ProfileStore interface {
 }
 
 type AccountLinker interface {
-	ReplaceAccountLinks(ctx context.Context, profileID string, accounts []string) error
+	ReplaceAccountLinks(ctx context.Context, profileID string, accounts []string) (int, error)
 }
 
 type AccountLinks struct {
@@ -118,10 +118,12 @@ func (s *Service) linkAccounts(ctx context.Context, profileID string, claim *olt
 		result.Err = errors.New("account link store unavailable")
 		return result
 	}
-	if err := linker.ReplaceAccountLinks(ctx, profileID, claim.IDs); err != nil {
+	linked, err := linker.ReplaceAccountLinks(ctx, profileID, claim.IDs)
+	if err != nil {
 		result.Err = fmt.Errorf("account links: %w", err)
 		return result
 	}
-	result.Linked = len(claim.IDs)
+	result.Linked = linked
+	result.Ignored += max(len(claim.IDs)-linked, 0)
 	return result
 }

@@ -394,6 +394,8 @@ Data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Sta
 
 **Skema deep link aplikasi** (terkunci, **Ubah** → **Simpan** → konfirmasi): awalan tautan yang membuka halaman di dalam aplikasi OLT dari banner atau popup, mis. `olt://promo/akhir-tahun` membuka halaman promo di aplikasi, bukan di browser. Isi sesuai skema yang didaftarkan aplikasi OLT (bawaan `olt`, maksimal 5); biasanya cukup diatur sekali oleh tim IT. Dikosongkan berarti tautan banner hanya boleh `https://`. Skema web dan skema berbahaya (javascript, data, file, intent, content, dan sejenisnya) selalu ditolak. Banner aktif yang memakai skema yang dicabut tetap tampil, tetapi tanpa tautan dan tombol. Hanya Super Admin yang bisa mengubahnya; peran Fitur & Kampanye hanya melihat daftarnya saat mengisi tautan banner.
 
+**Batas rekening per nasabah** (terkunci, **Ubah** → **Simpan** → konfirmasi): jumlah maksimal rekening (cust id) dari token login OLT yang ditautkan ke satu nasabah untuk notifikasi transaksi. Bawaan dan nilai tertinggi 200, paling kecil 1. Rekening di atas batas diabaikan mulai login berikutnya dan tidak menerima notifikasi transaksi. Hanya Super Admin yang bisa mengubahnya, dan perubahannya tercatat di Jejak Audit.
+
 #### API Notifikasi
 
 API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman) atau memposting sebagai bot resmi.
