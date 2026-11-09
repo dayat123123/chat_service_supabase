@@ -206,7 +206,7 @@ func TestJWTVerifierRejectsInvalidTokens(t *testing.T) {
 		"alg tidak cocok kunci":   sign(t, map[string]any{"alg": "ES256", "kid": k.edKID}, validClaims(), func(in []byte) []byte { return ed25519.Sign(k.ed, in) }),
 		"kid tidak dikenal":       sign(t, map[string]any{"alg": "EdDSA", "kid": "nope"}, validClaims(), func(in []byte) []byte { return ed25519.Sign(k.ed, in) }),
 		"tanpa kid, banyak kunci": sign(t, map[string]any{"alg": "EdDSA"}, validClaims(), func(in []byte) []byte { return ed25519.Sign(k.ed, in) }),
-		"terlalu panjang":         strings.Repeat("a", 9000),
+		"terlalu panjang":         strings.Repeat("a", 17000),
 	}
 	for name, token := range cases {
 		t.Run(name, func(t *testing.T) {

@@ -132,7 +132,8 @@ Daftar cust id (rekening efek) yang **dimiliki** login OLT itu. Dipakai layanan 
 | Array | Tautan profil **diganti** dengan isi array lewat RPC `set_olt_account_links` (`service_role`, migrasi `0068`). `[]` melepas semua rekening |
 | Bukan array (string, objek, angka) | Diabaikan, tautan tidak diubah, token tetap diterima. Log `warn` + metrik `result="malformed"` |
 
-- Tiap item harus string `^[A-Za-z0-9._-]{1,32}$`. Item lain (angka, kosong, karakter lain, duplikat tanpa memandang huruf besar/kecil) **diabaikan**. Maksimal 50 item; sisanya diabaikan. Token tidak pernah ditolak karena klaim ini.
+- Tiap item harus string `^[A-Za-z0-9._-]{1,32}$`. Item lain (angka, kosong, karakter lain, duplikat tanpa memandang huruf besar/kecil) **diabaikan**. Maksimal 200 item (`olt.MaxAccounts`); sisanya diabaikan. Database lalu menerapkan pengaturan `accounts.max_per_customer` (bawaan 200, bisa diturunkan Super Admin dari Hub, migrasi 0128), dan item di atas batas itu ikut dihitung sebagai `accounts_ignored`. Token tidak pernah ditolak karena klaim ini.
+- Panjang token sosial maksimal 16 KB (`olt.MaxTokenBytes`); body `POST /bridge/v1/exchange` maksimal 17 KB.
 - Database menyimpan cust id dalam huruf besar (`private.account_links`) dengan `seen_at`. Tautan yang tidak diperbarui selama `integration.account_link_days` (30 hari) tidak dipakai lagi dan dibersihkan.
 - Penyimpanan dijalankan **setelah** upsert profil di setiap exchange yang tidak berasal dari cache, termasuk untuk user yang di-ban (notifikasi transaksi bukan fitur sosial). Bila RPC gagal (setelah retry), exchange **tetap berhasil**, error dicatat (`failed to store account links`), dan hasil exchange tidak di-cache supaya exchange berikutnya mencoba lagi.
 - Log dan metrik hanya memuat **jumlah** rekening (`accounts`, `accounts_ignored`), tidak pernah cust id-nya.

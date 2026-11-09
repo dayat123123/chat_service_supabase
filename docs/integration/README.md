@@ -43,7 +43,8 @@ Tambahkan satu klaim opsional di payload token sosial (format token lengkap: [do
 | 2 (sales), 3 (cabang), 4 (pusat) | `[]`. Login staf **tidak boleh** menerima notifikasi transaksi rekening nasabah lewat jalur ini |
 
 **Format:**
-- Array string, maksimal **50** item. Tiap item `^[A-Za-z0-9._-]{1,32}$`.
+- Array string, maksimal **200** item. Tiap item `^[A-Za-z0-9._-]{1,32}$`. Super Admin bisa menurunkan batas ini di Hub (**Pengaturan → Integrasi aplikasi → Batas rekening per nasabah**, 1–200, pengaturan `accounts.max_per_customer`, migrasi 0128); item di atas batas diabaikan.
+- Token sosial maksimal **16 KB**. 200 item × 32 karakter sekitar 7 KB, jadi masih muat bersama klaim lain.
 - Huruf besar/kecil tidak dibedakan (disimpan huruf besar), sama seperti collation SQL Server OLT. `w137` dan `W137` dianggap sama.
 - Item yang salah format diabaikan (token tetap diterima). Klaim yang bukan array diabaikan seluruhnya.
 

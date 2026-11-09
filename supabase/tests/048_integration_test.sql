@@ -39,8 +39,8 @@ select throws_ok(format($$select public.set_olt_account_links(%L, '{"a": 1}')$$,
   'Klaim yang bukan array ditolak');
 select throws_ok($$select public.set_olt_account_links(gen_random_uuid(), '["W137"]')$$, 'PT404', 'profile_not_found',
   'Profil yang tidak ada ditolak');
-select is(public.set_olt_account_links(:'joko', (select jsonb_agg('A' || g) from generate_series(1, 60) g)),
-  '{"linked": 50, "ignored": 10}'::jsonb, 'Maksimal 50 rekening per profil');
+select is(public.set_olt_account_links(:'joko', (select jsonb_agg('A' || g) from generate_series(1, 210) g)),
+  '{"linked": 200, "ignored": 10}'::jsonb, 'Maksimal 200 rekening per profil secara bawaan');
 reset role;
 
 select tests.authenticate_as(:'budi');

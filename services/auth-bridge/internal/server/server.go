@@ -153,14 +153,14 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+	r.Body = http.MaxBytesReader(w, r.Body, olt.MaxTokenBytes+1<<10)
 	var req exchangeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_request", `Body harus JSON {"token":"..."}`)
 		return
 	}
 	req.Token = strings.TrimSpace(req.Token)
-	if req.Token == "" || len(req.Token) > 4096 {
+	if req.Token == "" || len(req.Token) > olt.MaxTokenBytes {
 		writeError(w, http.StatusBadRequest, "invalid_request", "token wajib diisi")
 		return
 	}

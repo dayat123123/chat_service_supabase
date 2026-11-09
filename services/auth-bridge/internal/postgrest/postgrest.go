@@ -55,18 +55,21 @@ func (c *Client) UpsertProfile(ctx context.Context, in exchange.ProfileInput) (e
 	return profile, nil
 }
 
-func (c *Client) ReplaceAccountLinks(ctx context.Context, profileID string, accounts []string) error {
+func (c *Client) ReplaceAccountLinks(ctx context.Context, profileID string, accounts []string) (int, error) {
 	if accounts == nil {
 		accounts = []string{}
 	}
 	body, err := json.Marshal(map[string]any{"p_profile_id": profileID, "p_accounts": accounts})
 	if err != nil {
-		return err
+		return 0, err
 	}
 	var out struct {
 		Linked int `json:"linked"`
 	}
-	return c.rpc(ctx, "set_olt_account_links", body, &out)
+	if err := c.rpc(ctx, "set_olt_account_links", body, &out); err != nil {
+		return 0, err
+	}
+	return out.Linked, nil
 }
 
 func (c *Client) Heartbeat(ctx context.Context, beat heartbeat.Beat) error {

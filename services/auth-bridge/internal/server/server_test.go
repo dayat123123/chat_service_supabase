@@ -109,6 +109,8 @@ func TestExchangeErrors(t *testing.T) {
 		{"body bukan JSON", fakeResolver{}, `token=abc`, 400, "invalid_request"},
 		{"token kosong", fakeResolver{}, `{"token":"  "}`, 400, "invalid_request"},
 		{"token ditolak OLT", fakeResolver{}, `{"token":"salah"}`, 401, "invalid_token"},
+		{"token 12 KB sampai ke verifikasi", fakeResolver{}, `{"token":"` + strings.Repeat("a", 12<<10) + `"}`, 401, "invalid_token"},
+		{"token di atas 16 KB", fakeResolver{}, `{"token":"` + strings.Repeat("a", olt.MaxTokenBytes+1) + `"}`, 400, "invalid_request"},
 		{"OLT down", fakeResolver{err: fmt.Errorf("%w: timeout", olt.ErrUnavailable)}, `{"token":"t"}`, 503, "olt_unavailable"},
 		{"user di-ban", fakeResolver{err: exchange.ErrBanned}, `{"token":"t"}`, 403, "user_banned"},
 		{"DB gagal", fakeResolver{err: fmt.Errorf("upsert profil: boom")}, `{"token":"t"}`, 502, "exchange_failed"},

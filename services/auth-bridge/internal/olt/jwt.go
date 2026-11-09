@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	maxTokenBytes = 8 << 10
+	MaxTokenBytes = 16 << 10
 	devKeyPrefix  = "dev-"
 )
 
@@ -159,7 +159,7 @@ func invalid(reason string) error {
 }
 
 func (v *JWTVerifier) Verify(_ context.Context, token string) (User, error) {
-	if token == "" || len(token) > maxTokenBytes {
+	if token == "" || len(token) > MaxTokenBytes {
 		return User{}, invalid("unreasonable token size")
 	}
 	parts := strings.Split(token, ".")
