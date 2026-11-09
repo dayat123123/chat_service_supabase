@@ -169,10 +169,14 @@ Kotak balas punya dua mode: **Balas** (terkirim ke nasabah) dan **Catatan intern
 
 **Lampiran:**
 
-1. Klik ikon klip (**Lampirkan gambar atau PDF**), seret file ke kotak balas, atau tempel gambar dengan **Ctrl+V** (misalnya setelah tangkapan layar).
+1. Klik ikon klip (**Lampirkan file**), seret file ke kotak balas, atau tempel file dengan **Ctrl+V** (misalnya setelah tangkapan layar).
 2. Klik thumbnail untuk **Pratinjau lampiran** sebelum mengirim.
-3. Yang diterima: gambar (JPEG, PNG, WebP, GIF) dan **PDF maksimal 10 MB**. Maksimal 4 lampiran per pesan. Gambar besar dikecilkan otomatis.
-4. Video, voice note, dan file Office **tidak diterima**. Minta nasabah mengirim tangkapan layar atau PDF.
+3. Yang diterima (bawaan, bisa diubah Super Admin di **Pengaturan → Lampiran chat CS**): gambar JPEG, PNG, WebP, GIF (maks. 5 MB, gambar besar dikecilkan otomatis); dokumen PDF, Word `.docx`, Excel `.xlsx`, PowerPoint `.pptx`, teks `.txt`, dan `.csv` (maks. 10 MB); video MP4, MOV, dan WebM (maks. 25 MB dan 2 menit). Maksimal 4 lampiran per pesan.
+4. Dokumen dan video diperiksa dulu: jenisnya dilihat dari isi file (bukan nama), file Office bermakro atau berisi objek berbahaya ditolak, lalu dipindai antivirus. Selama itu lampiran berstatus **Memeriksa file…**. Bila pemindai sedang mati, unggahan ditolak dan bisa dicoba lagi nanti. Lokasi dan metadata lain di video dihapus.
+5. Tetap ditolak: file Office lama (`.doc`, `.xls`, `.ppt`) dan bermakro (`.docm`, `.xlsm`, `.pptm`), arsip (`.zip`, `.rar`), program dan skrip, HTML/SVG, serta voice note.
+6. Di percakapan, dokumen tampil sebagai kartu dengan ikon per jenis dan tombol unduh (nama file asli); video tampil dengan thumbnail dan durasi, klik untuk memutar.
+
+**Lampiran chat CS (Super Admin):** di **Pengaturan → Lampiran chat CS**, nyalakan atau matikan tiap jenis (gambar, dokumen, video), atur batas ukuran (maks. 5/10/25 MB), durasi video (5–120 detik), dan format yang diterima. Form terkunci (**Ubah** → **Simpan** → konfirmasi), dan perubahan tercatat di Jejak Audit (aksi `attachments.policy`). Aplikasi nasabah membaca pengaturan ini dari server. Chat global tetap hanya gambar.
 
 **Balasan cepat:** ketik **/** di kotak balas, atau klik **Sisipkan balasan cepat**, lalu pilih (panah atas/bawah, **Enter** atau **Tab**). Daftar dibagi dua grup: **Pribadi** (milik Anda) dan **Bersama** (disiapkan Super Admin di menu **Quick reply**). Pencarian mencakup keduanya.
 

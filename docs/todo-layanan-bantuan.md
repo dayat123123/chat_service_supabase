@@ -136,7 +136,7 @@ Aplikasi Flutter:
 
 # Fase 2 — berikutnya
 
-## 6. Lampiran dokumen lain dan video di chat CS
+## 6. Lampiran dokumen lain dan video di chat CS (SELESAI 9 Nov 2026, migrasi 0131 dan 0132, tes 111 dan 112; media 0.3.0 + ClamAV; Hub 63bad43; library ca05f60; HEIC iOS dan video di HP sungguhan diuji user)
 
 Sekarang: chat CS menerima gambar dan PDF (maks. 10 MB, bucket `cs-documents`, migrasi 0053/0054); chat sosial hanya gambar. Bagian ini memperluas **chat CS saja** (nasabah dan CS, dari library maupun Hub). Chat sosial tetap gambar saja, karena isinya dilihat banyak orang dan sulit dimoderasi.
 
@@ -151,27 +151,27 @@ Keputusan format (disetujui user 8 Nov 2026, termasuk pemindai antivirus):
 Ditolak, meski diganti ekstensinya: dokumen bermakro (`.docm`, `.xlsm`, `.pptm`) dan file Office lama (`.doc`, `.xls`, `.ppt`) yang tidak bisa diperiksa makronya; arsip (`.zip`, `.rar`, `.7z`) yang bisa menyembunyikan isi; program dan skrip (`.exe`, `.apk`, `.bat`, `.js`, dan sejenisnya); HTML dan SVG (bisa berisi skrip). Audio dan pesan suara tidak termasuk di bagian ini.
 
 Server (migrasi baru dan layanan `media`):
-- [ ] Daftar format dan batas ukuran disimpan di pengaturan server dan diatur Super Admin dari Hub (bisa mematikan per jenis, misalnya video), bukan ditulis tetap di aplikasi. Aplikasi dan Hub membaca daftar ini dari server.
-- [ ] Bucket `cs-documents` menerima MIME baru; bucket video terpisah atau prefix khusus dengan batas 25 MB.
-- [ ] Pemeriksaan isi file di layanan `media` (sudah ada paket `sniff`): tipe ditentukan dari isi file (magic bytes), bukan ekstensi; file Office dibuka sebagai ZIP dan ditolak bila berisi makro (`vbaProject.bin`), objek tertanam yang dapat dieksekusi, atau terlalu banyak file di dalamnya (zip bomb); CSV/TXT harus UTF-8 dan ukurannya wajar.
-- [ ] Video diperiksa dengan `ffprobe` (format, codec, durasi ≤ 2 menit), metadata lokasi dihapus, dan dibuatkan thumbnail.
-- [ ] Pemindai antivirus (ClamAV, container terpisah) untuk dokumen dan video; file berstatus "sedang diperiksa" sampai lolos, dan ditolak bila terdeteksi. Ikut dipantau di Kesehatan sistem.
-- [ ] File diberi nama acak di storage, nama asli disimpan terpisah; diunduh dengan `Content-Disposition: attachment` (tidak dibuka langsung di browser kecuali gambar, PDF, dan video).
-- [ ] Ikut aturan yang sudah ada: hapus akun dan janitor ikut menghapus lampiran baru ini, transkrip Kepatuhan mencantumkan lampiran, batas laju unggah.
-- [ ] Tes pgTAP (MIME dan ukuran per jenis, chat sosial menolak) dan tes Go `media` (makro, zip bomb, ekstensi palsu, video kepanjangan).
+- [x] Daftar format dan batas ukuran disimpan di pengaturan server dan diatur Super Admin dari Hub (bisa mematikan per jenis, misalnya video), bukan ditulis tetap di aplikasi. Aplikasi dan Hub membaca daftar ini dari server.
+- [x] Bucket `cs-documents` menerima MIME baru; bucket video terpisah atau prefix khusus dengan batas 25 MB.
+- [x] Pemeriksaan isi file di layanan `media` (sudah ada paket `sniff`): tipe ditentukan dari isi file (magic bytes), bukan ekstensi; file Office dibuka sebagai ZIP dan ditolak bila berisi makro (`vbaProject.bin`), objek tertanam yang dapat dieksekusi, atau terlalu banyak file di dalamnya (zip bomb); CSV/TXT harus UTF-8 dan ukurannya wajar.
+- [x] Video diperiksa dengan `ffprobe` (format, codec, durasi ≤ 2 menit), metadata lokasi dihapus, dan dibuatkan thumbnail.
+- [x] Pemindai antivirus (ClamAV, container terpisah) untuk dokumen dan video; file berstatus "sedang diperiksa" sampai lolos, dan ditolak bila terdeteksi. Ikut dipantau di Kesehatan sistem.
+- [x] File diberi nama acak di storage, nama asli disimpan terpisah; diunduh dengan `Content-Disposition: attachment` (tidak dibuka langsung di browser kecuali gambar, PDF, dan video).
+- [x] Ikut aturan yang sudah ada: hapus akun dan janitor ikut menghapus lampiran baru ini, transkrip Kepatuhan mencantumkan lampiran, batas laju unggah.
+- [x] Tes pgTAP (MIME dan ukuran per jenis, chat sosial menolak) dan tes Go `media` (makro, zip bomb, ekstensi palsu, video kepanjangan).
 
 Hub (composer dan gelembung pesan):
-- [ ] Pilih, tempel, dan seret file dengan daftar format dari server; pesan galat jelas bila format atau ukuran ditolak.
-- [ ] Kartu dokumen dengan ikon per jenis (Word, Excel, PowerPoint, CSV, teks), nama, ukuran, dan tombol unduh.
-- [ ] Video: thumbnail, pemutar bawaan browser (`<video controls preload="metadata">`), durasi, unduh.
-- [ ] Tes komponen dan panduan Hub.
+- [x] Pilih, tempel, dan seret file dengan daftar format dari server; pesan galat jelas bila format atau ukuran ditolak.
+- [x] Kartu dokumen dengan ikon per jenis (Word, Excel, PowerPoint, CSV, teks), nama, ukuran, dan tombol unduh.
+- [x] Video: thumbnail, pemutar bawaan browser (`<video controls preload="metadata">`), durasi, unduh.
+- [x] Tes komponen dan panduan Hub.
 
 Library dan aplikasi Flutter:
-- [ ] Pemilih file (`file_selector`, sudah dipakai) memakai daftar format dari server; foto HEIC diubah ke JPEG sebelum dikirim.
-- [ ] Kartu dokumen per jenis (sama dengan Hub) yang membuka file dengan aplikasi bawaan perangkat setelah diunduh.
-- [ ] Video: thumbnail dan durasi di gelembung. Putar di dalam aplikasi di Android/iOS/web (`video_player`); di Windows, `video_player` resmi belum mendukung, jadi video dibuka di pemutar bawaan Windows setelah diunduh (tidak menambah paket berat seperti `media_kit`).
-- [ ] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
-- [ ] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
+- [x] Pemilih file (`file_selector`, sudah dipakai) memakai daftar format dari server; foto HEIC diubah ke JPEG sebelum dikirim.
+- [x] Kartu dokumen per jenis (sama dengan Hub) yang membuka file dengan aplikasi bawaan perangkat setelah diunduh.
+- [x] Video: thumbnail dan durasi di gelembung. Putar di dalam aplikasi di Android/iOS/web (`video_player`); di Windows, `video_player` resmi belum mendukung, jadi video dibuka di pemutar bawaan Windows setelah diunduh (tidak menambah paket berat seperti `media_kit`).
+- [x] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
+- [x] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
 
 ## 4. Fitur bantuan lanjutan
 
