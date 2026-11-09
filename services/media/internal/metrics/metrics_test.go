@@ -60,3 +60,13 @@ func TestHandlerServesTheSnapshot(t *testing.T) {
 		t.Fatalf("%d %s", rec.Code, rec.Body.String())
 	}
 }
+
+func TestRenderIncludesTheVirusScanner(t *testing.T) {
+	out := Render(Snapshot{Scanned: 7, Infected: 2, ScannerFails: 3})
+	for _, line := range []string{`media_scans_total{result="clean"} 5`, `media_scans_total{result="infected"} 2`,
+		"media_scanner_consecutive_failures 3", "# TYPE media_scans_total counter"} {
+		if !strings.Contains(out, line+"\n") {
+			t.Fatalf("missing %q in\n%s", line, out)
+		}
+	}
+}

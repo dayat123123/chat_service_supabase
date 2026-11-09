@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"olt-social/media/internal/attachments"
 	"olt-social/media/internal/heartbeat"
 	"olt-social/media/internal/jwt"
 	"olt-social/media/internal/moderation"
@@ -83,6 +84,22 @@ func (p *PostgREST) ModerationConfig(ctx context.Context, known int64) (moderati
 		return moderation.Config{}, errors.New("rpc media_moderation_config: reply without thresholds")
 	}
 	return moderation.Config{Revision: reply.Revision, Unchanged: reply.Unchanged, Limits: reply.Thresholds}, nil
+}
+
+func (p *PostgREST) AttachmentPolicy(ctx context.Context) (attachments.Policy, error) {
+	var reply attachments.Policy
+	if err := p.rpc(ctx, "media_attachment_policy", map[string]any{}, &reply); err != nil {
+		return nil, err
+	}
+	if len(reply) == 0 {
+		return nil, errors.New("rpc media_attachment_policy: empty reply")
+	}
+	for kind, rule := range reply {
+		if rule.Bucket == "" || rule.MaxBytes < 0 {
+			return nil, fmt.Errorf("rpc media_attachment_policy: invalid rule for %s", kind)
+		}
+	}
+	return reply, nil
 }
 
 func (p *PostgREST) RecordHold(ctx context.Context, h moderation.HoldRequest) (int64, error) {

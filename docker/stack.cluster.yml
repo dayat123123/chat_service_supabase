@@ -106,7 +106,7 @@ services:
       <<: *deploy
       replicas: 1
   media:
-    image: ${REGISTRY}/olt-social/media:0.2.1
+    image: ${REGISTRY}/olt-social/media:0.3.0
     deploy:
       <<: *deploy
       replicas: 2
@@ -115,6 +115,14 @@ services:
     deploy:
       <<: *deploy
       replicas: 2
+  # stop-first: two clamd copies side by side would need twice the signature RAM.
+  clamav:
+    deploy:
+      <<: *deploy
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
   integration:
     image: ${REGISTRY}/olt-social/integration:0.2.0
     deploy:

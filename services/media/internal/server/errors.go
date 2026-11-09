@@ -28,6 +28,17 @@ const (
 	codeInternal         = "internal_error"
 	codeCanceled         = "canceled"
 
+	codeKindDisabled       = "kind_disabled"
+	codePolicyUnavailable  = "policy_unavailable"
+	codeOfficeMacro        = "office_macro"
+	codeOfficeUnsafe       = "office_unsafe"
+	codeArchiveBomb        = "archive_bomb"
+	codeInvalidText        = "invalid_text"
+	codeInvalidVideo       = "invalid_video"
+	codeVideoTooLong       = "video_too_long"
+	codeMalwareDetected    = "malware_detected"
+	codeScannerUnavailable = "scanner_unavailable"
+
 	codeImageBlocked          = "image_blocked"
 	codeClassifierUnavailable = "classifier_unavailable"
 	codeModerationUnavailable = "moderation_unavailable"
@@ -61,6 +72,16 @@ var messages = map[string]string{
 	codeImageBlocked:          "This image cannot be uploaded because it violates the community guidelines.",
 	codeClassifierUnavailable: "Image check is unavailable. Try again shortly.",
 	codeModerationUnavailable: "Image check is unavailable. Try again shortly.",
+	codeKindDisabled:          "This attachment type is turned off for customer service chat.",
+	codePolicyUnavailable:     "Attachment settings are not available yet. Try again shortly.",
+	codeOfficeMacro:           "Documents with macros are not accepted. Save it as .docx, .xlsx, or .pptx without macros.",
+	codeOfficeUnsafe:          "Document contains embedded objects, ActiveX controls, or links that are not accepted.",
+	codeArchiveBomb:           "Document is too large when unpacked and is not accepted.",
+	codeInvalidText:           "Text files must be UTF-8 text.",
+	codeInvalidVideo:          "Video is corrupt or uses an unsupported format (MP4/MOV with H.264/HEVC, or WebM).",
+	codeVideoTooLong:          "Video is too long.",
+	codeMalwareDetected:       "File contains a virus or malware and is not accepted.",
+	codeScannerUnavailable:    "Virus check is unavailable. Try again shortly.",
 }
 
 type apiError struct {
@@ -100,6 +121,14 @@ func sanitizeError(err error) *apiError {
 		return fail(status, codePDFActiveContent, err.Error())
 	case errors.Is(err, sanitize.ErrInvalidPDF):
 		return fail(status, codeInvalidPDF, err.Error())
+	case errors.Is(err, sanitize.ErrOfficeMacro):
+		return fail(status, codeOfficeMacro, err.Error())
+	case errors.Is(err, sanitize.ErrArchiveBomb):
+		return fail(status, codeArchiveBomb, err.Error())
+	case errors.Is(err, sanitize.ErrOfficeUnsafe):
+		return fail(status, codeOfficeUnsafe, err.Error())
+	case errors.Is(err, sanitize.ErrInvalidText):
+		return fail(status, codeInvalidText, err.Error())
 	}
 	return fail(status, codeInvalidImage, err.Error())
 }

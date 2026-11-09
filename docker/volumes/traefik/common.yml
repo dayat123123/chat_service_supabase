@@ -27,7 +27,7 @@ http:
         memRequestBodyBytes: 262144
     body-upload:
       buffering:
-        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_UPLOAD" | default "10485760" }}
+        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_UPLOAD" | default "27262976" }}
         memRequestBodyBytes: 1048576
     body-integration:
       buffering:

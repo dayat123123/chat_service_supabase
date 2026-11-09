@@ -96,6 +96,9 @@ type harness struct {
 	classifier *fakeClassifier
 	policy     *fakePolicy
 	holds      *fakeHolds
+	rules      *fakeAttachments
+	scanner    *fakeScanner
+	video      *fakeVideo
 }
 
 type syncBuffer struct {
@@ -118,7 +121,9 @@ func (b *syncBuffer) String() string {
 func newHarness(t *testing.T, tweak func(*Options)) *harness {
 	t.Helper()
 	h := &harness{storage: newFakeStorage(t), logs: &syncBuffer{}, notify: &atomic.Int32{},
-		classifier: &fakeClassifier{}, policy: &fakePolicy{loaded: true, t: defaultThresholds()}, holds: &fakeHolds{}}
+		classifier: &fakeClassifier{}, policy: &fakePolicy{loaded: true, t: defaultThresholds()}, holds: &fakeHolds{},
+		rules: &fakeAttachments{loaded: true, policy: defaultAttachments()}, scanner: &fakeScanner{version: freshVersion},
+		video: &fakeVideo{}}
 	opts := Options{
 		Log:            slog.New(slog.NewJSONHandler(h.logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
 		Secret:         secret,
@@ -126,6 +131,9 @@ func newHarness(t *testing.T, tweak func(*Options)) *harness {
 		Classifier:     h.classifier,
 		Policy:         h.policy,
 		Holds:          h.holds,
+		Attachments:    h.rules,
+		Scanner:        h.scanner,
+		Video:          h.video,
 		MaxConcurrent:  4,
 		RequestTimeout: 5 * time.Second,
 		Notify:         func() { h.notify.Add(1) },

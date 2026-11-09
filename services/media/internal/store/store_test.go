@@ -153,3 +153,26 @@ func TestRecordAndCancelHold(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestAttachmentPolicy(t *testing.T) {
+	var args map[string]any
+	var path string
+	srv := rpcServer(t, 200, `{"documents":{"enabled":true,"bucket":"cs-documents","max_bytes":10485760,"formats":[{"code":"pdf","mime":"application/pdf","ext":"pdf"},{"code":"csv","mime":"text/csv","ext":"csv"}]},`+
+		`"images":{"enabled":true,"bucket":"attachments","max_bytes":5242880,"formats":[{"code":"jpeg","mime":"image/jpeg","ext":"jpg"}]},`+
+		`"videos":{"enabled":false,"bucket":"cs-videos","max_bytes":26214400,"max_seconds":120,"formats":[]}}`, &args, &path)
+	policy, err := NewPostgREST(srv.URL, []byte("k"), "supabase").AttachmentPolicy(context.Background())
+	if err != nil || path != "/rpc/media_attachment_policy" || len(args) != 0 {
+		t.Fatalf("err = %v path = %s args = %v", err, path, args)
+	}
+	docs, videos := policy["documents"], policy["videos"]
+	if !docs.Enabled || docs.MaxBytes != 10<<20 || !docs.Allows("csv") || docs.Formats[0].MIME != "application/pdf" ||
+		videos.Enabled || videos.MaxSeconds != 120 || len(videos.Formats) != 0 {
+		t.Fatalf("policy = %+v", policy)
+	}
+	for _, reply := range []string{`{}`, `null`, `{"documents":{"enabled":true}}`} {
+		srv := rpcServer(t, 200, reply, &args, &path)
+		if _, err := NewPostgREST(srv.URL, []byte("k"), "supabase").AttachmentPolicy(context.Background()); err == nil {
+			t.Fatalf("reply %s must fail", reply)
+		}
+	}
+}
