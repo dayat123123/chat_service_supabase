@@ -42,28 +42,28 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 - [x] Hub: peran bisa dipilih di form akun CS, menu yang tampil mengikuti peran, dan semua perubahan tercatat di Jejak Audit dengan nilai sebelum dan sesudah.
 - [x] Tes: pgTAP (peran lain ditolak), Hub (menu dan guard rute), panduan Hub dan PDF.
 
-## 1. Topik chat CS sepenuhnya dari server
+## 1. Topik chat CS sepenuhnya dari server (SELESAI 9 Nov 2026, migrasi 0127, tes 107; library di "Belum dirilis")
 
 Sekarang: nama ID/EN, skill, prioritas, tautan bantuan, aktif, dan urutan sudah diatur dari Hub (Pengaturan → Topik). Ikon dipetakan tetap di library per kode topik; deskripsi di bawah judul ditulis tetap di aplikasi (builder `topicTile`); tanda penipuan hanya lewat database.
 
 Server (migrasi 0126):
-- [ ] Kolom baru `cs.support_topics`: `description_id`, `description_en` (maks. 120 karakter), `icon` (kunci dari daftar ikon yang diizinkan, misalnya `account`, `wallet`, `receipt`, `chart`, `tools`, `shield`, `help`, `document`, `phone`), `style` (`normal` atau `danger`, untuk tampilan merah seperti Laporkan Penipuan).
-- [ ] Tanda `fraud` dan `complaint` per topik bisa diatur dari Hub. Mengubahnya memberi notifikasi ke Kepatuhan dan tercatat di Jejak Audit, karena tanda ini menentukan masuk tidaknya tiket ke register Kasus.
-- [ ] `cs_api.topics(p_language)` mengembalikan `code`, `name`, `description`, `icon`, `style`, `urgent`, `help_url`, dan urutan, sesuai bahasa.
-- [ ] Teks judul dan petunjuk halaman pilih topik ("Apa yang bisa kami bantu?") ikut disimpan di pengaturan, ID/EN.
+- [x] Kolom baru `cs.support_topics`: `description_id`, `description_en` (maks. 120 karakter), `icon` (kunci dari daftar ikon yang diizinkan, misalnya `account`, `wallet`, `receipt`, `chart`, `tools`, `shield`, `help`, `document`, `phone`), `style` (`normal` atau `danger`, untuk tampilan merah seperti Laporkan Penipuan).
+- [x] Tanda `fraud` dan `complaint` per topik bisa diatur dari Hub. Mengubahnya hanya oleh Super Admin dan tercatat terpisah di Jejak Audit (aksi topic.flags) yang dipantau Kepatuhan; belum ada sistem notifikasi staf, karena tanda ini menentukan masuk tidaknya tiket ke register Kasus.
+- [x] `cs_api.topics(p_language)` mengembalikan `code`, `name`, `description`, `icon`, `style`, `urgent`, `help_url`, dan urutan, sesuai bahasa.
+- [x] Teks judul dan petunjuk halaman pilih topik ("Apa yang bisa kami bantu?") ikut disimpan di pengaturan, ID/EN.
 
 Hub:
-- [ ] Form topik: deskripsi ID/EN, pilihan ikon (grid ikon), gaya, tanda penipuan/pengaduan, dan pratinjau kartu topik persis seperti di aplikasi (terang dan gelap).
-- [ ] Urutkan dengan drag atau tombol naik/turun.
+- [x] Form topik: deskripsi ID/EN, pilihan ikon (grid ikon), gaya, tanda penipuan/pengaduan, dan pratinjau kartu topik persis seperti di aplikasi (terang dan gelap).
+- [ ] Urutkan dengan drag atau tombol naik/turun (belum; urutan masih lewat kolom angka **Urutan**).
 
 Library:
-- [ ] `SupportTopic` mendapat `description`, `icon`, dan `style` dari server. `CommunitySupportTopicDetails` meneruskannya ke builder.
-- [ ] Tampilan bawaan menampilkan deskripsi dan ikon dari server. Pemetaan ikon tetap per kode hanya dipakai bila server belum mengirim `icon`.
-- [ ] Kunci ikon dipetakan ke `IconData` di satu tempat, dengan builder `support.topicIcon` agar host bisa memakai ikon sendiri.
-- [ ] Tes widget dan screenshot untuk kartu dengan deskripsi, ikon, dan gaya `danger`.
+- [x] `SupportTopic` mendapat `description`, `icon`, dan `style` dari server. `CommunitySupportTopicDetails` meneruskannya ke builder.
+- [x] Tampilan bawaan menampilkan deskripsi dan ikon dari server. Pemetaan ikon tetap per kode hanya dipakai bila server belum mengirim `icon`.
+- [x] Kunci ikon dipetakan ke `IconData` di satu tempat, host bisa memakai ikon sendiri lewat builder `topicTile` (kunci ikon ada di `details.topic.icon`).
+- [x] Tes widget dan screenshot untuk kartu dengan deskripsi, ikon, dan gaya `danger`.
 
 Aplikasi Flutter (`windows_online_trading`):
-- [ ] Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
+- [ ] (Tim aplikasi, belum) Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
 
 ## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp)
 
