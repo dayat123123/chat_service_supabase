@@ -351,7 +351,11 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 
 #### Quick reply
 
-- **Topik** chat CS kini ada di menu **Konten Layanan → Topik chat CS** (Super Admin dan peran Konten Layanan). **Kode** tidak bisa diubah setelah dibuat. Atur **Nama (Indonesia)**, **Nama (Inggris)**, **Skill CS**, **Prioritas default**, **Tautan bantuan (opsional)** (https ke situs bantuan resmi), urutan, dan **Tampilkan ke nasabah**. Setiap perubahan tercatat di Jejak Audit.
+- **Topik** chat CS kini ada di menu **Konten Layanan → Topik chat CS** (Super Admin dan peran Konten Layanan). Semua isi halaman pilih topik di aplikasi diambil dari sini, tidak ditulis tetap di aplikasi:
+  - **Kode** (tidak bisa diubah setelah dibuat), **Nama** dan **Deskripsi** (Indonesia/Inggris, deskripsi maks. 120 karakter, tampil di bawah nama), **Ikon** (16 pilihan), **Tampilan** (**Biasa** atau **Merah**, misalnya untuk Laporkan Penipuan), **Skill CS**, **Prioritas default**, **Tautan bantuan (opsional)**, urutan, dan **Tampilkan ke nasabah**. **Pratinjau di aplikasi** menunjukkan kartu topik seperti yang dilihat nasabah.
+  - **Tanda tiket** (**Pengaduan**/**Penipuan**) hanya bisa diubah Super Admin, karena tiket dari topik bertanda otomatis masuk register Kasus Kepatuhan. Perubahannya tercatat terpisah di Jejak Audit (aksi `topic.flags`).
+  - **Teks halaman pilih topik**: judul dan petunjuk di atas daftar topik (Indonesia/Inggris). Kosongkan untuk memakai teks bawaan aplikasi.
+  - Setiap simpan tercatat di Jejak Audit dengan nilai sebelum dan sesudah.
 - **Quick reply**: atur **Pintasan**, **Judul**, **Isi balasan**, dan **Bahasa**. Quick reply yang meminta OTP/PIN/password ditolak. Balasan pribadi CS tidak tampil di sini; tiap CS mengelolanya sendiri dari kotak balas.
 
 #### Label tiket
