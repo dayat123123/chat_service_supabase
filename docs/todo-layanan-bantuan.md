@@ -6,32 +6,32 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 
 ## Ringkasan fase
 
-**Fase 1 — fokus sekarang** (permintaan user, urutan kerja, perkiraan total 17–23 jam kerja):
+**Fase 1 — fokus sekarang** (permintaan user, urutan kerja, perkiraan 5–7,5 jam kerja agen berurutan, atau 2,5–3,5 jam dengan 3 agen paralel; direvisi 9 Nov 2026 dari waktu nyata di Agent map):
 
 | Urutan | Bagian | Perkiraan |
 |---|---|---|
-| 1 | 0. Peran Konten Layanan | 1–1,5 jam |
-| 2 | 1. Topik chat CS sepenuhnya dari server | 3–4 jam |
-| 3 | 5. Tanggal mengambang saat menggulir chat | 2–3 jam |
-| 4 | 3. Geser pesan untuk membalas (library sudah, sisa Hub sentuh, uji di HP, dan pengaturan ambang/arah/getar oleh host) | 2–3 jam |
-| 5 | 2. FAQ / Pusat Bantuan | 8–10 jam |
-| 6 | 4.11 Rilis library | 0,5–1 jam |
+| 1 | 0. Peran Konten Layanan | 30–45 menit |
+| 2 | 1. Topik chat CS sepenuhnya dari server | 1–1,5 jam |
+| 3 | 5. Tanggal mengambang saat menggulir chat | 30–60 menit |
+| 4 | 3. Geser pesan untuk membalas (library sudah, sisa Hub sentuh, uji di HP, dan pengaturan ambang/arah/getar oleh host) | 45–60 menit |
+| 5 | 2. FAQ / Pusat Bantuan | 2–3 jam |
+| 6 | 4.11 Rilis library | 15–20 menit |
 
-**Fase 2 — berikutnya** (dikerjakan setelah Fase 1 selesai; perkiraan 27–38 jam kerja):
+**Fase 2 — berikutnya** (dikerjakan setelah Fase 1 selesai; perkiraan 10–13 jam kerja agen berurutan):
 
 | Bagian | Isi | Perkiraan |
 |---|---|---|
-| 6 | Lampiran dokumen lain dan video di chat CS (format sudah disetujui, termasuk ClamAV) — dipindah ke Fase 2 atas permintaan user, 9 Nov 2026 | 8–12 jam |
-| 4.1 | Tombol "Tandai pengaduan/penipuan" untuk CS | ±1 jam |
-| 4.2 | Bantuan tanpa login (FAQ publik, chat tamu OTP) — **DITUNDA**, belum dipakai | (6–8 jam, tidak dihitung) |
-| 4.3 | Pertanyaan awal per topik | 3–4 jam |
-| 4.4 | Status layanan / pengumuman gangguan | 2–3 jam |
-| 4.5 | Pesan di luar jam layanan dengan saran FAQ | ±1 jam |
-| 4.6 | Survei kepuasan yang bisa diatur | ±3 jam |
-| 4.7 | Saran balasan untuk nasabah | ±2 jam |
-| 4.8 | Laporan bantuan | 3–4 jam |
-| 4.9 | SOP singkat per topik untuk CS | 1–1,5 jam |
-| 4.10 | Rekomendasi tambahan: artikel FAQ di balasan CS, perkiraan waktu tunggu antrean, riwayat tiket lintas perangkat, unduh transkrip oleh nasabah, CS menandai artikel FAQ yang perlu diperbarui, pengingat tiket menunggu nasabah | 6–8 jam |
+| 6 | Lampiran dokumen lain dan video di chat CS (format sudah disetujui, termasuk ClamAV) — dipindah ke Fase 2 atas permintaan user, 9 Nov 2026 | 2–3 jam |
+| 4.1 | Tombol "Tandai pengaduan/penipuan" untuk CS | 20–30 menit |
+| 4.2 | Bantuan tanpa login (FAQ publik, chat tamu OTP) — **DITUNDA**, belum dipakai | (1,5–2 jam, tidak dihitung) |
+| 4.3 | Pertanyaan awal per topik | ±1 jam |
+| 4.4 | Status layanan / pengumuman gangguan | 45–60 menit |
+| 4.5 | Pesan di luar jam layanan dengan saran FAQ | 20–30 menit |
+| 4.6 | Survei kepuasan yang bisa diatur | ±1 jam |
+| 4.7 | Saran balasan untuk nasabah | 45 menit |
+| 4.8 | Laporan bantuan | 1–1,5 jam |
+| 4.9 | SOP singkat per topik untuk CS | ±30 menit |
+| 4.10 | Rekomendasi tambahan: artikel FAQ di balasan CS, perkiraan waktu tunggu antrean, riwayat tiket lintas perangkat, unduh transkrip oleh nasabah, CS menandai artikel FAQ yang perlu diperbarui, pengingat tiket menunggu nasabah | 2–3 jam |
 
 # Fase 1 — fokus sekarang
 
