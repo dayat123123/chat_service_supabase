@@ -33,6 +33,15 @@ http:
         certResolver: le
       priority: 95
 
+    cs-media-upload:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/media/v1`) && Method(`POST`)
+      service: kong
+      middlewares: [vpn-only, cs-edge, rate-limit, body-upload, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 95
+
     cs-api:
       entryPoints: [websecure]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/storage/v1`))

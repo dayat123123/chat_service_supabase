@@ -30,6 +30,9 @@ type Snapshot struct {
 	ClassifySeconds float64
 	Classifications uint64
 	Revision        int64
+	ScannerFails    int
+	Scanned         uint64
+	Infected        uint64
 }
 
 func Handler(snapshot func() Snapshot) http.Handler {
@@ -81,6 +84,11 @@ func Render(s Snapshot) string {
 	fmt.Fprintf(&b, "media_classifier_duration_seconds_count %d\n", s.Classifications)
 	header(&b, "media_classifier_consecutive_failures", "Consecutive failed attempts to use the classifier (3 or more = degraded).", "gauge")
 	fmt.Fprintf(&b, "media_classifier_consecutive_failures %d\n", s.ClassifierFails)
+	header(&b, "media_scans_total", "Files checked by the virus scanner, by result.", "counter")
+	fmt.Fprintf(&b, "media_scans_total{result=\"clean\"} %d\n", s.Scanned-min(s.Infected, s.Scanned))
+	fmt.Fprintf(&b, "media_scans_total{result=\"infected\"} %d\n", s.Infected)
+	header(&b, "media_scanner_consecutive_failures", "Consecutive failed attempts to use the virus scanner (3 or more = degraded).", "gauge")
+	fmt.Fprintf(&b, "media_scanner_consecutive_failures %d\n", s.ScannerFails)
 	header(&b, "media_thresholds_revision", "Revision of the image thresholds in use, -1 before they are loaded.", "gauge")
 	fmt.Fprintf(&b, "media_thresholds_revision %d\n", s.Revision)
 	header(&b, "media_last_heartbeat_timestamp_seconds", "Unix time of the last successful heartbeat, 0 before the first one.", "gauge")

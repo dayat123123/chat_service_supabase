@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -30,6 +31,13 @@ type Config struct {
 	ClassifierTimeout time.Duration
 	ModerationRefresh time.Duration
 	AllowUnclassified bool
+	ClamdAddr         string
+	ScanTimeout       time.Duration
+	AttachmentRefresh time.Duration
+	FFmpegPath        string
+	FFprobePath       string
+	VideoConcurrent   int
+	VideoStepTimeout  time.Duration
 }
 
 func Load() (Config, error) {
@@ -49,6 +57,13 @@ func Load() (Config, error) {
 		ClassifierURL:     urlEnv("CLASSIFIER_URL", "http://classifier:8080", &errs),
 		ClassifierTimeout: durationEnv("CLASSIFIER_TIMEOUT", 10*time.Second, &errs),
 		ModerationRefresh: durationEnv("MODERATION_REFRESH", 30*time.Second, &errs),
+		ClamdAddr:         stringEnv("CLAMD_ADDR", "clamav:3310"),
+		ScanTimeout:       durationEnv("SCAN_TIMEOUT", 60*time.Second, &errs),
+		AttachmentRefresh: durationEnv("ATTACHMENT_REFRESH", 30*time.Second, &errs),
+		FFmpegPath:        stringEnv("FFMPEG_PATH", "ffmpeg"),
+		FFprobePath:       stringEnv("FFPROBE_PATH", "ffprobe"),
+		VideoConcurrent:   intEnv("VIDEO_CONCURRENT", 2, &errs),
+		VideoStepTimeout:  durationEnv("VIDEO_STEP_TIMEOUT", 20*time.Second, &errs),
 	}
 	switch policy := stringEnv("MODEL_MISSING_POLICY", "reject"); policy {
 	case "reject":
@@ -75,6 +90,11 @@ func Load() (Config, error) {
 		{within(cfg.ShutdownTimeout, time.Second, 5*time.Minute), "SHUTDOWN_TIMEOUT must be between 1s and 5m"},
 		{within(cfg.ClassifierTimeout, time.Second, time.Minute), "CLASSIFIER_TIMEOUT must be between 1s and 60s"},
 		{within(cfg.ModerationRefresh, 5*time.Second, 10*time.Minute), "MODERATION_REFRESH must be between 5s and 10m"},
+		{hostPort(cfg.ClamdAddr), "CLAMD_ADDR must be host:port"},
+		{within(cfg.ScanTimeout, time.Second, 5*time.Minute), "SCAN_TIMEOUT must be between 1s and 5m"},
+		{within(cfg.AttachmentRefresh, 5*time.Second, 10*time.Minute), "ATTACHMENT_REFRESH must be between 5s and 10m"},
+		{cfg.VideoConcurrent >= 1 && cfg.VideoConcurrent <= 32, "VIDEO_CONCURRENT must be between 1 and 32"},
+		{within(cfg.VideoStepTimeout, time.Second, 2*time.Minute), "VIDEO_STEP_TIMEOUT must be between 1s and 2m"},
 	}
 	for _, rule := range rules {
 		if !rule.ok {
@@ -82,6 +102,15 @@ func Load() (Config, error) {
 		}
 	}
 	return cfg, errors.Join(errs...)
+}
+
+func hostPort(addr string) bool {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil || host == "" {
+		return false
+	}
+	n, err := strconv.Atoi(port)
+	return err == nil && n >= 1 && n <= 65535
 }
 
 func within(v, lo, hi time.Duration) bool {

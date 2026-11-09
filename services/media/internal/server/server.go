@@ -14,11 +14,12 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"olt-social/media/internal/attachments"
+	"olt-social/media/internal/clamd"
 	"olt-social/media/internal/heartbeat"
 	"olt-social/media/internal/jwt"
 	"olt-social/media/internal/metrics"
@@ -27,6 +28,7 @@ import (
 	"olt-social/media/internal/sniff"
 	"olt-social/media/internal/storage"
 	"olt-social/media/internal/store"
+	"olt-social/media/internal/video"
 )
 
 const (
@@ -46,12 +48,16 @@ type bucket struct {
 	kinds    []sniff.Kind
 	upsert   bool
 	holdable bool
+	policy   string
+	scan     bool
 }
 
 var buckets = map[string]bucket{
-	"avatars":      {limit: 2 << 20, kinds: []sniff.Kind{sniff.JPEG, sniff.PNG, sniff.WebP}, upsert: true},
-	"attachments":  {limit: 5 << 20, kinds: []sniff.Kind{sniff.JPEG, sniff.PNG, sniff.WebP, sniff.GIF}, holdable: true},
-	"cs-documents": {limit: 10 << 20, kinds: []sniff.Kind{sniff.PDF}},
+	"avatars":     {limit: 2 << 20, kinds: []sniff.Kind{sniff.JPEG, sniff.PNG, sniff.WebP}, upsert: true},
+	"attachments": {limit: 5 << 20, kinds: []sniff.Kind{sniff.JPEG, sniff.PNG, sniff.WebP, sniff.GIF}, holdable: true},
+	"cs-documents": {limit: 10 << 20, policy: "documents", scan: true,
+		kinds: []sniff.Kind{sniff.PDF, sniff.DOCX, sniff.XLSX, sniff.PPTX, sniff.TXT, sniff.CSV}},
+	"cs-videos": {limit: 25 << 20, policy: "videos", scan: true, kinds: []sniff.Kind{sniff.MP4, sniff.MOV, sniff.WebM}},
 }
 
 var sanitizers = map[sniff.Kind]func([]byte) ([]byte, sanitize.Info, error){
@@ -60,6 +66,11 @@ var sanitizers = map[sniff.Kind]func([]byte) ([]byte, sanitize.Info, error){
 	sniff.WebP: sanitize.WebP,
 	sniff.GIF:  sanitize.GIF,
 	sniff.PDF:  sanitize.PDF,
+	sniff.DOCX: sanitize.Office,
+	sniff.XLSX: sanitize.Office,
+	sniff.PPTX: sanitize.Office,
+	sniff.TXT:  sanitize.Text,
+	sniff.CSV:  sanitize.Text,
 }
 
 type Storage interface {
@@ -81,6 +92,19 @@ type Holds interface {
 	CancelHold(ctx context.Context, id int64) error
 }
 
+type Attachments interface {
+	Current() (attachments.Policy, bool)
+}
+
+type Scanner interface {
+	Scan(ctx context.Context, body []byte) (clamd.Result, error)
+	Version(ctx context.Context) (string, error)
+}
+
+type Video interface {
+	Process(ctx context.Context, body []byte, kind sniff.Kind, maxSeconds float64) (video.Result, error)
+}
+
 type Options struct {
 	Log               *slog.Logger
 	Secret            []byte
@@ -88,6 +112,9 @@ type Options struct {
 	Classifier        Classifier
 	Policy            Policy
 	Holds             Holds
+	Attachments       Attachments
+	Scanner           Scanner
+	Video             Video
 	AllowUnclassified bool
 	MaxConcurrent     int
 	RequestTimeout    time.Duration
@@ -115,6 +142,10 @@ type Server struct {
 	classifierProblem string
 	classifierSeconds float64
 	classifications   uint64
+	scannerFails      int
+	scannerVersion    string
+	scanned           uint64
+	infected          uint64
 }
 
 type outcome struct {
@@ -126,17 +157,21 @@ type outcome struct {
 	info     sanitize.Info
 	verdict  string
 	decision moderation.Decision
+	video    *video.Result
+	thumb    string
 	err      *apiError
 }
 
 type uploaded struct {
-	Bucket string `json:"bucket"`
-	Path   string `json:"path"`
-	MIME   string `json:"mime"`
-	Size   int    `json:"size"`
-	Width  *int   `json:"width,omitempty"`
-	Height *int   `json:"height,omitempty"`
-	Held   bool   `json:"held,omitempty"`
+	Bucket    string   `json:"bucket"`
+	Path      string   `json:"path"`
+	MIME      string   `json:"mime"`
+	Size      int      `json:"size"`
+	Width     *int     `json:"width,omitempty"`
+	Height    *int     `json:"height,omitempty"`
+	Duration  *float64 `json:"duration,omitempty"`
+	Thumbnail string   `json:"thumbnail,omitempty"`
+	Held      bool     `json:"held,omitempty"`
 }
 
 func New(opts Options) *Server {
@@ -195,6 +230,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if o.kind.Image() {
 		reply.Width, reply.Height = &o.info.Width, &o.info.Height
 	}
+	if o.video != nil {
+		reply.Width, reply.Height, reply.Duration, reply.Thumbnail = &o.video.Width, &o.video.Height, &o.video.Duration, o.thumb
+		attrs = append(attrs, "duration", o.video.Duration)
+	}
 	writeJSON(w, http.StatusOK, reply)
 	s.opts.Log.Info("Upload stored", append(attrs, "code", "ok", "mime", reply.MIME, "size_out", o.stored,
 		"metadata_removed", o.info.Removed)...)
@@ -220,8 +259,13 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 		o.err = fail(http.StatusBadRequest, codeInvalidPath, "")
 		return o
 	}
-	if r.ContentLength > b.limit {
-		o.err = tooLarge(b.limit, fmt.Sprintf("content-length %d", r.ContentLength))
+	limit, rule, apiErr := s.rule(b)
+	if apiErr != nil {
+		o.err = apiErr
+		return o
+	}
+	if r.ContentLength > limit {
+		o.err = tooLarge(limit, fmt.Sprintf("content-length %d", r.ContentLength))
 		return o
 	}
 	deadline := began.Add(s.opts.RequestTimeout)
@@ -236,7 +280,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 	}
 	defer s.release()
 
-	body, err := readBody(w, r, b.limit, deadline)
+	body, err := readBody(w, r, limit, deadline)
 	o.received = len(body)
 	switch {
 	case err != nil && timeout(err):
@@ -251,22 +295,37 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 	case len(body) == 0:
 		o.err = fail(http.StatusBadRequest, codeEmptyFile, "")
 		return o
-	case int64(len(body)) > b.limit:
-		o.err = tooLarge(b.limit, "body exceeds the bucket limit")
+	case int64(len(body)) > limit:
+		o.err = tooLarge(limit, "body exceeds the bucket limit")
 		return o
 	}
 
-	o.kind = sniff.Detect(body)
-	if !slices.Contains(b.kinds, o.kind) {
-		o.err = fail(http.StatusUnsupportedMediaType, codeUnsupportedType, "detected "+o.kind.String())
+	last := segments[len(segments)-1]
+	o.kind = sniff.DetectName(body, last)
+	if o.err = typeError(b, rule, o.kind, body, last); o.err != nil {
 		return o
 	}
-	clean, info, err := sanitizers[o.kind](body)
-	if err != nil {
-		o.err = sanitizeError(err)
-		return o
+	clean := body
+	if !o.kind.Video() {
+		clean, o.info, err = sanitizers[o.kind](body)
+		if err != nil {
+			o.err = sanitizeError(err)
+			return o
+		}
 	}
-	o.info = info
+	if b.scan {
+		if o.err = s.scan(ctx, r, body); o.err != nil {
+			return o
+		}
+	}
+	if o.kind.Video() {
+		result, apiErr := s.process(ctx, r, body, o.kind, rule.MaxSeconds)
+		if apiErr != nil {
+			o.err = apiErr
+			return o
+		}
+		o.video, clean = &result, result.Body
+	}
 	o.path = finalPath(segments, o.kind.Ext())
 
 	var holdID int64
@@ -283,36 +342,51 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 		o.err = fail(http.StatusInternalServerError, codeInternal, "mint token: "+err.Error())
 		return o
 	}
-	err = s.opts.Storage.Upload(ctx, storage.Upload{
+	edge := r.Header.Get(storage.EdgeHeader)
+	if o.video != nil {
+		thumb := finalPath(segments, sniff.JPEG.Ext())
+		o.err = s.store(ctx, r, limit, storage.Upload{Bucket: name, Path: thumb, ContentType: sniff.JPEG.MIME(),
+			Body: o.video.Thumbnail, Token: token, Edge: edge})
+		if o.err != nil {
+			return o
+		}
+		o.thumb = thumb
+	}
+	o.err = s.store(ctx, r, limit, storage.Upload{
 		Bucket:      name,
 		Path:        o.path,
 		ContentType: o.kind.MIME(),
 		Body:        clean,
 		Upsert:      b.upsert && strings.EqualFold(strings.TrimSpace(r.Header.Get("x-upsert")), "true"),
 		Token:       token,
-		Edge:        r.Header.Get(storage.EdgeHeader),
+		Edge:        edge,
 	})
+	if o.err != nil {
+		s.cancelHold(holdID, requestID)
+		return o
+	}
+	o.stored = len(clean)
+	return o
+}
+
+func (s *Server) store(ctx context.Context, r *http.Request, limit int64, u storage.Upload) *apiError {
+	err := s.opts.Storage.Upload(ctx, u)
 	if err == nil {
 		s.noteStorage(true)
-		o.stored = len(clean)
-		return o
+		return nil
 	}
-	s.cancelHold(holdID, requestID)
 	var f *storage.Failure
 	if !errors.As(err, &f) {
-		o.err = fail(http.StatusBadGateway, storage.CodeError, err.Error())
-		return o
+		return fail(http.StatusBadGateway, storage.CodeError, err.Error())
 	}
 	if f.Unreachable && r.Context().Err() != nil {
-		o.err = fail(499, codeCanceled, "client went away while storing")
-		return o
+		return fail(499, codeCanceled, "client went away while storing")
 	}
 	s.noteStorage(!f.Unreachable)
-	o.err = fail(f.Status, f.Code, f.Reason)
 	if f.Code == storage.CodeTooLarge {
-		o.err = tooLarge(b.limit, f.Reason)
+		return tooLarge(limit, f.Reason)
 	}
-	return o
+	return fail(f.Status, f.Code, f.Reason)
 }
 
 func (s *Server) moderate(ctx context.Context, r *http.Request, o *outcome, name string, b bucket, user jwt.User,
@@ -411,6 +485,7 @@ func (s *Server) noteClassifier(err error, took time.Duration) {
 
 func (s *Server) Probe(ctx context.Context) {
 	s.ProbeStorage(ctx)
+	s.ProbeScanner(ctx)
 	probe, cancel := context.WithTimeout(ctx, probeTimeout)
 	err := s.opts.Classifier.Ping(probe)
 	cancel()
@@ -544,7 +619,15 @@ func (s *Server) Report() heartbeat.Report {
 			"allowed": s.verdicts[string(moderation.Allow)], "held": s.verdicts[string(moderation.Hold)],
 			"blocked": s.verdicts[string(moderation.Block)], "unclassified": s.verdicts[verdictUnclassified],
 			"classifier_failures": s.classifierFails, "thresholds_revision": nil,
+			"scanned": s.scanned, "malware_detected": s.infected, "scanner_failures": s.scannerFails,
+			"scanner_version": nil, "attachment_policy_loaded": false,
 		},
+	}
+	if s.scannerVersion != "" {
+		r.Detail["scanner_version"] = s.scannerVersion
+	}
+	if s.opts.Attachments != nil {
+		_, r.Detail["attachment_policy_loaded"] = s.opts.Attachments.Current()
 	}
 	if loaded {
 		r.Detail["thresholds_revision"] = thresholds.Revision
@@ -563,6 +646,7 @@ func (s *Server) Report() heartbeat.Report {
 	if !loaded {
 		problems = append(problems, "Ambang moderasi gambar belum termuat; upload gambar ditolak")
 	}
+	problems = append(problems, s.scannerProblems()...)
 	if len(problems) > 0 {
 		r.Status = heartbeat.StatusDegraded
 		r.Error = strings.Join(problems, "; ")
@@ -588,6 +672,9 @@ func (s *Server) Metrics() metrics.Snapshot {
 		ClassifySeconds: s.classifierSeconds,
 		Classifications: s.classifications,
 		Revision:        s.revision(),
+		ScannerFails:    s.scannerFails,
+		Scanned:         s.scanned,
+		Infected:        s.infected,
 	}
 }
 

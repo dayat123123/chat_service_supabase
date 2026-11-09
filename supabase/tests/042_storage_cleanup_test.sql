@@ -30,13 +30,14 @@ select results_eq(
   format($$select bucket_id, prefix from private.storage_cleanup_queue where prefix like '%%' || %L || '%%'
            order by bucket_id, prefix$$, :'budi'),
   format($$values ('attachments'::text, %L::text), ('attachments', %L), ('attachments', %L),
-                  ('avatars', %L), ('cs-documents', %L)$$,
+                  ('avatars', %L), ('cs-documents', %L), ('cs-videos', %L)$$,
          'posts/' || :'budi' || '/',
          'rooms/' || least(:'dm', :'support') || '/' || :'budi' || '/',
          'rooms/' || greatest(:'dm', :'support') || '/' || :'budi' || '/',
          :'budi' || '/',
+         'rooms/' || :'support' || '/' || :'budi' || '/',
          'rooms/' || :'support' || '/' || :'budi' || '/'),
-  'Foto, lampiran postingan, lampiran chat, dan dokumen CS milik akun masuk antrean');
+  'Foto, lampiran postingan, lampiran chat, dokumen, dan video CS milik akun masuk antrean');
 
 insert into storage.objects (bucket_id, name, created_at)
 values ('avatars', :'budi' || '/baru.jpg', now() + interval '1 minute');
@@ -56,7 +57,7 @@ select throws_ok($$select public.storage_cleanup_claim('janitor-a', 0)$$, 'PT400
 select public.storage_cleanup_claim('janitor-a', 20, 1000, 300) as claim \gset
 reset role;
 
-select is(jsonb_array_length(:'claim'), 5, 'Semua folder yang menunggu diambil janitor');
+select is(jsonb_array_length(:'claim'), 6, 'Semua folder yang menunggu diambil janitor');
 select is((select e -> 'objects' from jsonb_array_elements(:'claim') e where e ->> 'bucket' = 'avatars'),
   jsonb_build_array(:'budi' || '/foto.jpg'), 'File baru setelah akun dihapus tidak ikut dihapus');
 select is((select e -> 'objects' from jsonb_array_elements(:'claim') e

@@ -19,6 +19,7 @@ Rujukan lain: [operations.md](operations.md) (operasional), [runbook-gangguan.md
 | A record domain API ke IP itu | Vendor IT / pengelola DNS | `social-api.perusahaan.co.id` |
 | A record domain Hub ke IP yang sama (opsional) | Vendor IT / pengelola DNS | `hub.perusahaan.co.id` |
 | Firewall penyedia: 80 dan 443 dari internet, 22 hanya dari IP admin | Vendor IT | — |
+| Akses HTTPS keluar dari server ke `database.clamav.net` (signature antivirus, ±300 MB saat start pertama lalu update harian) | Vendor IT | — |
 | User SSH dengan `sudo`, login dengan SSH key | Vendor IT | — |
 | JWKS (kunci **publik**) penanda tangan token sosial | Tim backend OLT ([olt-integration.md](olt-integration.md)) | `{"keys":[{"kty":"OKP",...}]}` |
 | Email tim IT (notifikasi sertifikat) | Anda | `it@perusahaan.co.id` |
@@ -387,7 +388,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://
 4. **Pengaturan → Push notification**: unggah kunci Firebase (project Firebase aplikasi OLT), bila push dipakai.
 5. **Pengaturan → Akun CS**: buat akun staf lain.
 6. **Simpan di luar server** (password manager / brankas): `docker/.env`, folder `docker/secrets/`, password backup, salinan `pgsodium_root.key` ([backup](backup/README.md#pemulihan)).
-7. **Data untuk tim aplikasi OLT**: `supabaseUrl` = `https://<domain API>`, `anonKey` = hasil `make anon-key`, versi library `v1.9.0` ([panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md)).
+7. **Data untuk tim aplikasi OLT**: `supabaseUrl` = `https://<domain API>`, `anonKey` = hasil `make anon-key`, versi library `v1.10.0` ([panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md)).
 8. Uji dari aplikasi: login, buka feed, kirim chat antar dua akun.
 
 ## 6. Bila ada masalah saat instalasi
@@ -402,6 +403,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://
 | `Rendezvous Hub checkout not found at ...` | Domain Hub diisi tetapi `~/rendezvous_hub` belum ada | Jalankan ulang script (langkah 7), atau isi `HUB_DIR` di `docker/.env` |
 | Hub 403 dari kantor | IP kantor tidak ada di `VPN_SOURCE_RANGES` | Cek IP publik kantor, perbaiki `docker/.env`, `make up` |
 | `olt_mode` bukan `jwt` | Konfigurasi auth-bridge | `make logs s=auth-bridge` |
+| `make up` habis waktu menunggu `clamav`, atau Hub menolak dokumen/video chat CS dengan "Virus check is unavailable" | Start pertama clamav masih mengunduh signature (±300 MB) atau server tidak bisa mengakses `database.clamav.net` | `make logs s=clamav`; tunggu sampai "socket found, clamd started", lalu `make up` lagi. clamd butuh ±1,1–1,6 GB RAM (lihat [PRODUCTION.md](PRODUCTION.md)) |
 | Login dari aplikasi selalu "Sesi berakhir" | `iss`/`aud`/jam server OLT tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (field `reason`) |
 
 ## 7. Belum ada JWKS OLT: mode dev sementara

@@ -81,7 +81,7 @@ services:
       EDGE_RATE_BURST: ${EDGE_RATE_BURST:-1200}
       EDGE_WS_PER_IP: ${EDGE_WS_PER_IP:-1500}
       EDGE_BODY_MAX_API: ${EDGE_BODY_MAX_API:-262144}
-      EDGE_BODY_MAX_UPLOAD: ${EDGE_BODY_MAX_UPLOAD:-10485760}
+      EDGE_BODY_MAX_UPLOAD: ${EDGE_BODY_MAX_UPLOAD:-27262976}
     healthcheck:
       test: ["CMD", "traefik", "healthcheck"]
       interval: 10s
@@ -884,16 +884,54 @@ services:
       resources:
         limits: {cpus: "1", memory: 512M, pids: 64}
 
+  # Virus scanner for CS chat documents and videos (ClamAV clamd + freshclam, GPL-2.0, official image).
+  # media streams every file to clamd with INSTREAM on the app network before storing it; when clamd is
+  # down those uploads are refused (fail closed) and Kesehatan sistem shows it (media heartbeat and the
+  # sentinel probe). Signatures live in the clamav-db volume: the first start downloads ~300 MB from
+  # database.clamav.net (egress, outbound HTTPS only, no published port), then freshclam checks
+  # CLAMAV_FRESHCLAM_CHECKS times a day. clamd keeps the signatures in RAM (~1.1 GB in Nov 2026, growing);
+  # ConcurrentDatabaseReload is off so a reload does not double that.
+  clamav:
+    <<: *base
+    labels: ["olt.autoheal=true"]
+    image: clamav/clamav:1.5.4_base@sha256:64ca916618842ba469ef38a501e6c2f42a68281c064c03749b0126c0fb085ce5
+    user: "100:101"
+    networks: [app, egress]
+    stop_grace_period: 30s
+    configs:
+      - source: clamav-clamd
+        target: /etc/clamav/clamd.conf
+      - source: clamav-freshclam
+        target: /etc/clamav/freshclam.conf
+    volumes:
+      - clamav-db:/var/lib/clamav
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+      - /run:size=1m,mode=1777
+    environment:
+      FRESHCLAM_CHECKS: ${CLAMAV_FRESHCLAM_CHECKS:-4}
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10m
+    deploy:
+      resources:
+        limits: {cpus: "1", memory: "${CLAMAV_MEMORY:-2G}", pids: 64}
+
   # Customer upload gateway (services/media): checks content by magic bytes, strips metadata
   # (EXIF/GPS, XMP, IPTC) without re-encoding, checks PDFs, then forwards to Storage with the
-  # media_verified claim (required for customer uploads since migration 0063). Kong routes
-  # /media/v1/* to media:8080; the ops port 9100 (/livez, /readyz, /metrics) is not routed.
+  # media_verified claim (required for customer uploads since migration 0063). CS chat documents
+  # (PDF, Office without macros, TXT/CSV) and videos (MP4/MOV/WebM, remuxed without metadata, with a
+  # thumbnail) follow the attachment policy set from the Hub and are scanned by clamav first. Kong
+  # routes /media/v1/* to media:8080; the ops port 9100 (/livez, /readyz, /metrics) is not routed.
   media:
     <<: *base
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/media
-    image: olt-social/media:0.2.1
+    image: olt-social/media:0.3.0
     networks: [app]
     depends_on:
       migrate:
@@ -918,6 +956,14 @@ services:
       CLASSIFIER_TIMEOUT: ${MEDIA_CLASSIFIER_TIMEOUT:-10s}
       MODERATION_REFRESH: 30s
       MODEL_MISSING_POLICY: ${MEDIA_MODEL_MISSING_POLICY:-reject}
+      REQUEST_TIMEOUT: ${MEDIA_REQUEST_TIMEOUT:-50s}
+      CLAMD_ADDR: clamav:3310
+      SCAN_TIMEOUT: ${MEDIA_SCAN_TIMEOUT:-40s}
+      ATTACHMENT_REFRESH: 30s
+      VIDEO_CONCURRENT: ${MEDIA_VIDEO_CONCURRENT:-2}
+    # Temporary video files for ffprobe/ffmpeg (counted in the memory limit).
+    tmpfs:
+      - /tmp:size=192m,mode=1777
     healthcheck:
       test: ["CMD", "/media", "healthcheck"]
       interval: 10s
@@ -926,7 +972,7 @@ services:
       start_period: 5s
     deploy:
       resources:
-        limits: {cpus: "1", memory: 384M, pids: 64}
+        limits: {cpus: "1", memory: 768M, pids: 128}
 
   # PostgreSQL (PITR) and Storage file backups to a restic repository (services/backup, docs/backup):
   # pg_receivewal on slot olt_backup, a daily pg_basebackup, and a weekly restore test. Destination
@@ -1087,7 +1133,7 @@ services:
       LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
-      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
+      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,clamav=tcp://clamav:3310,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
       DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup,backup-repo=/mnt/disks/backup-repo
       # Metrics for the PostgREST pool, Realtime event rate (JWT from jwt_secret = METRICS_JWT_SECRET),
       # and PgBouncer queue (SHOW POOLS as olt_stats) alerts. See services/sentinel/README.md.
@@ -1270,6 +1316,7 @@ volumes:
   storage-data:
   backup-data:
   healer-state:
+  clamav-db:
   deno-cache:
   traefik-acme:
 
@@ -1294,6 +1341,10 @@ configs:
     file: ./volumes/db/pg_hba.conf
   rest-pg-service:
     file: ./volumes/rest/pg_service.conf
+  clamav-clamd:
+    file: ./volumes/clamav/clamd.conf
+  clamav-freshclam:
+    file: ./volumes/clamav/freshclam.conf
 
 # Created by `make gen-secrets`; docker/secrets/ is never committed.
 secrets:

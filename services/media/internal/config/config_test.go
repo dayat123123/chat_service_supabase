@@ -14,6 +14,8 @@ var keys = []string{
 	"PORT", "OPS_PORT", "LOG_LEVEL", "JWT_SECRET", "JWT_SECRET_FILE", "JWT_ISSUER", "POSTGREST_URL", "STORAGE_URL",
 	"INSTANCE_ID", "MAX_CONCURRENT", "REQUEST_TIMEOUT", "HEARTBEAT_INTERVAL", "SHUTDOWN_TIMEOUT",
 	"CLASSIFIER_URL", "CLASSIFIER_TIMEOUT", "MODERATION_REFRESH", "MODEL_MISSING_POLICY",
+	"CLAMD_ADDR", "SCAN_TIMEOUT", "ATTACHMENT_REFRESH", "FFMPEG_PATH", "FFPROBE_PATH", "VIDEO_CONCURRENT",
+	"VIDEO_STEP_TIMEOUT",
 }
 
 func clearEnv(t *testing.T) {
@@ -97,6 +99,12 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		"classifier timeout":  {map[string]string{"CLASSIFIER_TIMEOUT": "2m"}, "CLASSIFIER_TIMEOUT must be between 1s and 60s"},
 		"refresh":             {map[string]string{"MODERATION_REFRESH": "1s"}, "MODERATION_REFRESH must be between 5s and 10m"},
 		"missing policy":      {map[string]string{"MODEL_MISSING_POLICY": "maybe"}, "MODEL_MISSING_POLICY must be reject or allow"},
+		"clamd addr":          {map[string]string{"CLAMD_ADDR": "clamav"}, "CLAMD_ADDR must be host:port"},
+		"clamd port":          {map[string]string{"CLAMD_ADDR": "clamav:99999"}, "CLAMD_ADDR must be host:port"},
+		"scan timeout":        {map[string]string{"SCAN_TIMEOUT": "10m"}, "SCAN_TIMEOUT must be between 1s and 5m"},
+		"attachment refresh":  {map[string]string{"ATTACHMENT_REFRESH": "1s"}, "ATTACHMENT_REFRESH must be between 5s and 10m"},
+		"video concurrency":   {map[string]string{"VIDEO_CONCURRENT": "0"}, "VIDEO_CONCURRENT must be between 1 and 32"},
+		"video step timeout":  {map[string]string{"VIDEO_STEP_TIMEOUT": "5m"}, "VIDEO_STEP_TIMEOUT must be between 1s and 2m"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -134,6 +142,32 @@ func TestLoadModerationSettings(t *testing.T) {
 	}
 	if cfg.ClassifierURL != "http://nsfw.local:8081" || cfg.ClassifierTimeout != 3*time.Second ||
 		cfg.ModerationRefresh != 10*time.Minute || !cfg.AllowUnclassified {
+		t.Fatalf("cfg = %+v", cfg)
+	}
+}
+
+func TestLoadAttachmentSettings(t *testing.T) {
+	clearEnv(t)
+	t.Setenv("JWT_SECRET", strings.Repeat("s", 40))
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ClamdAddr != "clamav:3310" || cfg.ScanTimeout != time.Minute || cfg.AttachmentRefresh != 30*time.Second ||
+		cfg.FFmpegPath != "ffmpeg" || cfg.FFprobePath != "ffprobe" || cfg.VideoConcurrent != 2 ||
+		cfg.VideoStepTimeout != 20*time.Second {
+		t.Fatalf("cfg = %+v", cfg)
+	}
+	t.Setenv("CLAMD_ADDR", "10.0.0.5:3311")
+	t.Setenv("SCAN_TIMEOUT", "5s")
+	t.Setenv("VIDEO_CONCURRENT", "4")
+	t.Setenv("FFMPEG_PATH", "/opt/ffmpeg")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ClamdAddr != "10.0.0.5:3311" || cfg.ScanTimeout != 5*time.Second || cfg.VideoConcurrent != 4 ||
+		cfg.FFmpegPath != "/opt/ffmpeg" {
 		t.Fatalf("cfg = %+v", cfg)
 	}
 }
