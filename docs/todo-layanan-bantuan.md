@@ -91,7 +91,7 @@ Library (sudah dibuat, commit `9f33202`, masih di "Belum dirilis"):
 - [x] Geser pendek, geser ke kiri, dan drag mouse tidak memicu balasan (pilih teks dengan mouse di desktop tetap jalan). Berlaku juga untuk gelembung dari builder `chat.message`.
 - [ ] Coba di aplikasi Flutter di HP sungguhan (Android dan iOS): rasa geser, getar, dan tidak bentrok dengan gulir daftar pesan atau geser kembali (back gesture) iOS.
 - [x] Pengaturan oleh host (Fase 1): ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat `CommunitySwipeToReplyScope` dengan `CommunitySwipeToReplySettings`; bawaan tidak berubah.
-- [ ] Masuk rilis library berikutnya (lihat bagian 4.11).
+- [x] Masuk rilis library v1.9.0 (bagian 4.11).
 
 Hub (web CS):
 - [x] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
@@ -173,14 +173,14 @@ Library dan aplikasi Flutter:
 - [x] Builder untuk kartu dokumen dan video; teks ID/EN; tes widget dan screenshot.
 - [x] Android: izin baca media hanya bila perlu (pemilih sistem tidak butuh izin penyimpanan).
 
-## 4. Fitur bantuan lanjutan
+## 4. Fitur bantuan lanjutan (SELESAI 9 Nov 2026 kecuali 4.2 yang ditunda; migrasi 0133–0136, tes 113–116; Hub b5df01e..b724373; library 6c641f2..18b1a74, rilis v1.10.0)
 
 Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak Audit.
 
 ### 4.1 Tombol "Tandai pengaduan/penipuan" untuk CS
-- [ ] Hub: aksi di kepala tiket untuk CS pemilik tiket dan Super Admin, memanggil `cs_api.flag_ticket` yang sudah ada; wajib alasan singkat.
-- [ ] Server: alasan disimpan di riwayat tiket; Kepatuhan menerima notifikasi kasus baru.
-- [ ] Tes pgTAP dan Hub.
+- [x] Hub: aksi di kepala tiket untuk CS pemilik tiket dan Super Admin, memanggil `cs_api.flag_ticket` yang sudah ada; wajib alasan singkat.
+- [x] Server: alasan disimpan di riwayat tiket; Kepatuhan menerima notifikasi kasus baru.
+- [x] Tes pgTAP dan Hub.
 
 ### 4.2 Bantuan tanpa login (DITUNDA)
 
@@ -192,41 +192,41 @@ Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak 
 - [ ] Tinjauan keamanan: OTP tidak bisa ditebak, batas percobaan, tidak membocorkan apakah akun ada.
 
 ### 4.3 Pertanyaan awal per topik
-- [ ] Server: daftar isian per topik (teks, angka, tanggal, pilihan; wajib/opsional), ID/EN.
-- [ ] Library: form singkat setelah memilih topik, sebelum chat dimulai.
-- [ ] Hub: pengaturan isian per topik; jawaban tampil di kepala tiket untuk CS.
+- [x] Server: daftar isian per topik (teks, angka, tanggal, pilihan; wajib/opsional), ID/EN.
+- [x] Library: form singkat setelah memilih topik, sebelum chat dimulai.
+- [x] Hub: pengaturan isian per topik; jawaban tampil di kepala tiket untuk CS.
 
 ### 4.4 Status layanan / gangguan
-- [ ] Hub: Super Admin memasang pengumuman gangguan (judul, isi ID/EN, tingkat, mulai/selesai, artikel FAQ terkait).
-- [ ] Library: banner di chat CS, halaman pilih topik, dan Pusat Bantuan; ikut hilang otomatis saat selesai.
-- [ ] Laporan: jumlah tiket selama gangguan.
+- [x] Hub: Super Admin memasang pengumuman gangguan (judul, isi ID/EN, tingkat, mulai/selesai, artikel FAQ terkait).
+- [x] Library: banner di chat CS, halaman pilih topik, dan Pusat Bantuan; ikut hilang otomatis saat selesai.
+- [x] Laporan: jumlah tiket selama gangguan.
 
 ### 4.5 Pesan di luar jam layanan
-- [ ] Pesan di luar jam (sudah ada) ditambah saran artikel FAQ sesuai topik yang dipilih, dan tombol "Tinggalkan pesan".
+- [x] Pesan di luar jam (sudah ada) ditambah saran artikel FAQ sesuai topik yang dipilih, dan tombol "Tinggalkan pesan".
 
 ### 4.6 Survei kepuasan yang bisa diatur
-- [ ] Hub: pertanyaan, skala, dan pilihan alasan rating rendah (ID/EN).
-- [ ] Library: dialog rating mengikuti pengaturan server.
-- [ ] Laporan: alasan rating rendah terbanyak per topik dan per CS.
+- [x] Hub: pertanyaan, skala, dan pilihan alasan rating rendah (ID/EN).
+- [x] Library: dialog rating mengikuti pengaturan server.
+- [x] Laporan: alasan rating rendah terbanyak per topik dan per CS.
 
 ### 4.7 Saran balasan untuk nasabah
-- [ ] Hub: daftar tombol jawaban cepat per topik (misalnya "Sudah saya coba", "Belum bisa").
-- [ ] Library: tombol muncul di atas kolom ketik di chat CS.
+- [x] Hub: daftar tombol jawaban cepat per topik (misalnya "Sudah saya coba", "Belum bisa").
+- [x] Library: tombol muncul di atas kolom ketik di chat CS.
 
 ### 4.8 Laporan bantuan
-- [ ] Menu Laporan: topik terbanyak, artikel FAQ paling membantu, tiket yang tercegah oleh FAQ, pencarian tanpa hasil, waktu tanggapan per topik.
-- [ ] Ekspor CSV.
+- [x] Menu Laporan: topik terbanyak, artikel FAQ paling membantu, tiket yang tercegah oleh FAQ, pencarian tanpa hasil, waktu tanggapan per topik.
+- [x] Ekspor CSV.
 
 ### 4.9 SOP singkat per topik untuk CS
-- [ ] Hub: catatan internal per topik (langkah penanganan, dokumen yang diminta), tampil di panel tiket saat CS menangani.
+- [x] Hub: catatan internal per topik (langkah penanganan, dokumen yang diminta), tampil di panel tiket saat CS menangani.
 
 ### 4.10 Rekomendasi tambahan
-- [ ] **Template jawaban berbasis artikel FAQ**: CS bisa menyisipkan tautan atau ringkasan artikel FAQ ke chat dari Hub.
-- [ ] **Antrean dan perkiraan waktu tunggu** yang lebih jelas di aplikasi (posisi antrean sudah ada; tambah perkiraan menit dari rata-rata waktu klaim).
-- [ ] **Lanjutkan di perangkat lain**: notifikasi push saat CS membalas sudah ada; pastikan riwayat tiket dan transkrip bisa dibuka nasabah dari menu riwayat.
-- [ ] **Unduh transkrip oleh nasabah** (PDF/TXT) untuk tiket yang sudah selesai.
-- [ ] **Penilaian artikel oleh CS**: CS menandai artikel FAQ yang perlu diperbarui langsung dari Hub.
-- [ ] **Pengingat tiket menunggu nasabah**: pesan otomatis bila nasabah belum membalas dalam N jam, sebelum tiket ditutup otomatis (penutupan otomatis sudah ada).
+- [x] **Template jawaban berbasis artikel FAQ**: CS bisa menyisipkan tautan atau ringkasan artikel FAQ ke chat dari Hub.
+- [x] **Antrean dan perkiraan waktu tunggu** yang lebih jelas di aplikasi (posisi antrean sudah ada; tambah perkiraan menit dari rata-rata waktu klaim).
+- [x] **Lanjutkan di perangkat lain**: notifikasi push saat CS membalas sudah ada; pastikan riwayat tiket dan transkrip bisa dibuka nasabah dari menu riwayat.
+- [x] **Unduh transkrip oleh nasabah** (PDF/TXT) untuk tiket yang sudah selesai.
+- [x] **Penilaian artikel oleh CS**: CS menandai artikel FAQ yang perlu diperbarui langsung dari Hub.
+- [x] **Pengingat tiket menunggu nasabah**: pesan otomatis bila nasabah belum membalas dalam N jam, sebelum tiket ditutup otomatis (penutupan otomatis sudah ada).
 
 ## Cara kerja per bagian
 

@@ -160,6 +160,10 @@ Bila status bukan Online, muncul pesan **Status Anda … Ubah ke Online dulu unt
 
 ### 2.5 Membalas nasabah
 
+**Sebelum membalas, lihat panel kanan tiket:** **Jawaban awal nasabah** (jawaban isian yang diatur per topik, misalnya ID login atau tanggal kejadian) dan **SOP topik** (langkah penanganan internal; klik untuk membuka). Keduanya diatur tim Konten Layanan.
+
+**Sisipkan artikel FAQ:** di menu ⋯ kotak balas, pilih **Sisipkan artikel FAQ**, cari, lalu pilih artikel; pertanyaan dan jawabannya masuk ke kotak balas sebagai teks biasa (tautan ditulis lengkap) dan bisa diedit sebelum dikirim. Bila artikel sudah tidak sesuai, klik **Tandai perlu diperbarui** dan tulis catatan; tim Konten Layanan melihatnya di Pusat Bantuan.
+
 Kotak balas punya dua mode: **Balas** (terkirim ke nasabah) dan **Catatan internal** (**Tidak terlihat nasabah**).
 
 - **Enter** kirim, **Shift+Enter** baris baru. Tekan **R** untuk ke kotak balas, **N** untuk catatan internal.
@@ -264,6 +268,8 @@ Tombol di atas percakapan (hanya untuk pemilik tiket):
 - Super Admin langsung mendapat notifikasi **Laporan CS palsu**, dan kasusnya masuk register Kepatuhan.
 - Tegaskan bahwa CS resmi hanya ada di room CS di aplikasi dan tidak pernah meminta OTP, PIN, atau password. Catat kronologi di **Catatan internal**.
 
+**Menandai sendiri.** Bila nasabah mengeluh atau ada indikasi penipuan tetapi tiketnya belum bertanda, CS pemilik tiket (atau Super Admin) membuka **Aksi lainnya** (⋯) di kepala percakapan lalu memilih **Tandai pengaduan** atau **Tandai penipuan**. Isi **Alasan** (5–300 karakter). Alasan tersimpan di riwayat tiket dan Jejak Audit, dan Kepatuhan langsung menerima notifikasi kasus baru. Tanda yang sudah terpasang tidak muncul lagi di menu.
+
 ### 2.11 Pintasan keyboard
 
 | Tombol | Fungsi |
@@ -319,6 +325,8 @@ Diperbarui otomatis. Angka di menu **Dashboard** adalah jumlah tiket yang perlu 
 3. Tabel: **Tiket per hari**, **Per CS**, **Topik terbanyak**, **Tiket per label** (jumlah tiket masuk per label dan tiket tanpa label), dan **Per nasabah**.
 4. **Per nasabah**: klik nama nasabah untuk membuka **Jejak layanan nasabah**. **Akses ke jejak layanan ini tercatat di audit log.** Buka hanya bila ada keperluan kerja.
 5. **Ekspor CSV** per bagian. File berisi data nasabah: simpan di folder kerja yang aman, jangan dikirim ke luar.
+6. **Alasan nilai rendah**: alasan yang dipilih nasabah saat memberi nilai rendah, per topik dan per CS, untuk rentang yang sama.
+7. **Laporan bantuan**: per topik (jumlah tiket, median respons pertama, median sampai selesai), per artikel FAQ (pembaca, membantu %, tetap buat tiket dalam 24 jam, **tercegah** = pembaca yang tidak membuat tiket), dan **pencarian tanpa hasil**. Tiap tabel punya **Ekspor CSV**.
 
 ### 3.4 Pengaturan
 
@@ -360,6 +368,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
   - **Tanda tiket** (**Pengaduan**/**Penipuan**) hanya bisa diubah Super Admin, karena tiket dari topik bertanda otomatis masuk register Kasus Kepatuhan. Perubahannya tercatat terpisah di Jejak Audit (aksi `topic.flags`).
   - **Teks halaman pilih topik**: judul dan petunjuk di atas daftar topik (Indonesia/Inggris). Kosongkan untuk memakai teks bawaan aplikasi.
   - Setiap simpan tercatat di Jejak Audit dengan nilai sebelum dan sesudah.
+  - **Isian & SOP** per topik: sampai 8 **pertanyaan awal** yang diisi nasabah sebelum chat dimulai (teks, angka, tanggal, atau pilihan; wajib/opsional; label dua bahasa), sampai 6 **saran balasan nasabah** (tombol cepat seperti "Sudah saya coba", maks. 40 karakter), dan **SOP untuk CS** (maks. 4.000 karakter, hanya terlihat CS). Tercatat di Jejak Audit (aksi `topic.extras`).
 - **Pusat Bantuan (FAQ)** ada di **Konten Layanan → Pusat Bantuan** (Super Admin dan peran Konten Layanan). Nasabah membacanya di aplikasi sebelum menghubungi CS:
   - **Tambah artikel**: pilih **Kategori**, **Topik chat terkait** (opsional; artikel tampil sebagai saran "Mungkin ini membantu" saat nasabah memilih topik itu sebelum chat CS), isi **Pertanyaan** dan **Jawaban** dalam dua bahasa, **Kata kunci** (dipisah koma), dan urutan. Jawaban boleh memakai **tebal**, *miring*, daftar, dan tautan `https://`; tag HTML dan tautan selain `https://` ditolak. **Sisipkan gambar (ID/EN)** mengunggah gambar JPEG, PNG, atau WebP (maks. 2 MB, diperkecil otomatis bila lebih besar) dan menaruhnya di posisi kursor; gambar dari situs lain ditolak. **Pratinjau di aplikasi** menunjukkan tampilan artikel, bisa diganti ID/EN.
   - Artikel baru tersimpan sebagai **Draf** dan belum tampil di aplikasi. Pilih **Terbitkan** dari menu baris (ikon titik tiga) agar tampil, **Jadikan draf** untuk menyembunyikannya lagi, atau **Arsipkan** bila tidak dipakai. Artikel arsip disembunyikan dari daftar kecuali disaring status **Arsip**.
@@ -368,6 +377,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
   - **Kategori**: kode, nama dua bahasa, ikon, urutan, dan aktif. Kategori nonaktif beserta artikelnya tidak tampil di aplikasi.
   - **Pencarian tanpa hasil (30 hari)**: kata yang dicari nasabah tanpa menemukan artikel, bahan untuk artikel baru. Angka panjang (mis. nomor rekening) dan email disamarkan sebelum disimpan, dan data lebih dari 90 hari dihapus otomatis.
   - Semua perubahan artikel, status, pemulihan, dan kategori tercatat di Jejak Audit (aksi `faq.*`).
+  - **Catatan dari CS**: artikel yang ditandai CS "perlu diperbarui" diberi lencana kuning berisi jumlah catatan. Buka dari menu baris, perbaiki artikelnya, lalu klik **Tandai selesai**.
 - **Quick reply**: atur **Pintasan**, **Judul**, **Isi balasan**, dan **Bahasa**. Quick reply yang meminta OTP/PIN/password ditolak. Balasan pribadi CS tidak tampil di sini; tiap CS mengelolanya sendiri dari kotak balas.
 
 #### Label tiket
@@ -389,6 +399,15 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 - **Lepas otomatis bila pemilik offline**: default mati. Bila aktif, tiket milik CS yang offline lebih lama dari batas kembali ke antrean.
 - **Tutup tiket selesai**: **Batas tanpa rating (hari, 1–30)**. Tiket yang sudah dinilai selalu langsung ditutup.
 - **Alert Super Admin**: batas menit tiket belum diambil, dan batas khusus tiket P1.
+- **Pengingat tiket menunggu nasabah**: bila aktif (1–72 jam, default 24), nasabah menerima pesan pengingat saat tiket berstatus menunggu nasabah dan belum dibalas lebih lama dari batas ini, sebelum tutup otomatis. Teksnya diubah di **Pesan otomatis**.
+
+#### Status layanan / gangguan
+
+**Pengaturan → Status layanan / gangguan** (Super Admin). Saat ada gangguan (misalnya login lambat), klik **Tambah**, isi judul dan isi (Indonesia/Inggris), **Tingkat** (info, peringatan, kritis), waktu mulai dan selesai (WIB, selesai boleh kosong), dan bila ada artikel FAQ terkait yang sudah terbit. Banner tampil di chat CS, halaman pilih topik, dan Pusat Bantuan aplikasi selama berlaku, lalu hilang sendiri. **Akhiri sekarang** (dengan konfirmasi) menghentikannya lebih awal. Daftar menampilkan jumlah tiket yang masuk selama gangguan. Semua perubahan tercatat di Jejak Audit.
+
+#### Survei kepuasan
+
+**Pengaturan → Survei kepuasan** (Super Admin, form terkunci dengan konfirmasi): pertanyaan (Indonesia/Inggris), **Skala** 3 (wajah) atau 5 (bintang), **Batas nilai rendah** (1–4), dan sampai 8 **Alasan** (kode dan label dua bahasa) yang ditawarkan ke nasabah bila nilainya rendah. Hasilnya di **Laporan → Alasan nilai rendah**.
 
 #### Aturan persetujuan (empat mata)
 
@@ -496,6 +515,7 @@ Kepatuhan **mengawasi**, tidak menangani tiket. Akun Kepatuhan langsung membuka 
 - Daftar: **Tenggat pengaduan terdekat**, **Kasus penipuan aktif**, **Selesai, belum ditinjau**.
 - **Sinyal keamanan (30 hari)**: **Laporan CS palsu** dan **Permintaan data rahasia diblokir**, dengan tabel CS yang mencoba meminta PIN, OTP, atau password. Klik **Buka di Jejak Audit** untuk detail.
 - Bila ada spanduk kebijakan belum dikonfirmasi, klik **Buka Kebijakan** (bagian 4.4).
+- **Notifikasi kasus baru**: ikon perisai di bilah atas (Kepatuhan dan Super Admin) menunjukkan jumlah kasus pengaduan atau penipuan baru yang belum dilihat, termasuk yang ditandai CS beserta alasannya. Klik untuk melihat daftar dan membuka kasusnya.
 
 ### 4.2 Kasus
 
