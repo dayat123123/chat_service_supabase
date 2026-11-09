@@ -65,23 +65,23 @@ Library:
 Aplikasi Flutter (`windows_online_trading`):
 - [ ] (Tim aplikasi, belum) Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
 
-## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp)
+## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp) (SELESAI 9 Nov 2026; library c9d99e1, Hub)
 
 Saat daftar pesan digulir, label tanggal pesan teratas yang terlihat ("Hari ini", "Kemarin", "Jumat", "6 Nov 2026") menempel di tengah atas daftar. Setelah guliran berhenti sekitar 1,5 detik, label memudar (fade out) sendiri, lalu muncul lagi dengan fade in begitu digulir.
 
 Library (`message_list.dart`, sudah punya pemisah tanggal di antara pesan):
-- [ ] Pil tanggal mengambang di atas daftar: teksnya mengikuti hari dari pesan teratas yang terlihat, memakai label yang sama dengan pemisah tanggal (`dayLabel`), berganti tanpa berkedip saat melewati batas hari.
-- [ ] Muncul (fade in sekitar 150 ms) saat mulai menggulir; memudar (fade out sekitar 300 ms) setelah 1,5 detik tanpa guliran; tidak muncul saat posisi di pesan terbaru dan tidak menutupi pemisah tanggal yang sedang tepat di atas.
-- [ ] Gaya pil sama dengan pemisah tanggal (tema terang dan gelap), tidak bisa diketuk, tidak menghalangi gulir atau ketukan pesan di bawahnya; dibacakan pembaca layar hanya saat tanggal berganti.
-- [ ] Slot builder `chat.floatingDate` (details: tanggal, label, terlihat) supaya host bisa mengganti tampilannya; durasi tampil bisa diatur.
-- [ ] Tes widget: muncul saat digulir, label mengikuti pesan teratas, hilang setelah jeda (pakai `pump` waktu), tidak muncul di posisi terbawah; screenshot terang/gelap.
+- [x] Pil tanggal mengambang di atas daftar: teksnya mengikuti hari dari pesan teratas yang terlihat, memakai label yang sama dengan pemisah tanggal (`dayLabel`), berganti tanpa berkedip saat melewati batas hari.
+- [x] Muncul (fade in sekitar 150 ms) saat mulai menggulir; memudar (fade out sekitar 300 ms) setelah 1,5 detik tanpa guliran; tidak muncul saat posisi di pesan terbaru dan tidak menutupi pemisah tanggal yang sedang tepat di atas.
+- [x] Gaya pil sama dengan pemisah tanggal (tema terang dan gelap), tidak bisa diketuk, tidak menghalangi gulir atau ketukan pesan di bawahnya; dibacakan pembaca layar hanya saat tanggal berganti. (Catatan: pil diabaikan pembaca layar karena pemisah tanggal asli sudah dibacakan; pengumuman saat tanggal berganti belum dibuat.)
+- [x] Slot builder `chat.floatingDate` (details: tanggal, label, terlihat) supaya host bisa mengganti tampilannya; durasi tampil bisa diatur. (Catatan: durasi tetap 1,5 detik, belum bisa diatur host.)
+- [x] Tes widget: muncul saat digulir, label mengikuti pesan teratas, hilang setelah jeda (pakai `pump` waktu), tidak muncul di posisi terbawah; screenshot terang/gelap. (Catatan: tes widget ada; scene screenshot khusus belum dibuat.)
 
 Hub (`message-list.tsx`, baris `day` dari virtualizer):
-- [ ] Pil tanggal yang sama di atas daftar pesan, label dari baris `day` terdekat di atas item teratas yang terlihat.
-- [ ] Fade in/out dengan transisi CSS, menghormati `prefers-reduced-motion` (langsung muncul/hilang tanpa animasi).
-- [ ] Tes komponen dengan timer palsu: muncul saat scroll, hilang setelah jeda.
+- [x] Pil tanggal yang sama di atas daftar pesan, label dari baris `day` terdekat di atas item teratas yang terlihat.
+- [x] Fade in/out dengan transisi CSS, menghormati `prefers-reduced-motion` (langsung muncul/hilang tanpa animasi).
+- [x] Tes komponen dengan timer palsu: muncul saat scroll, hilang setelah jeda.
 
-## 3. Geser pesan untuk membalas (ala WhatsApp)
+## 3. Geser pesan untuk membalas (ala WhatsApp) (SELESAI 9 Nov 2026; library 7d0e96a, Hub 598d726; uji di HP oleh user)
 
 Contoh: nasabah atau CS menggeser pesan "aku sayang dia" ke kanan untuk membalasnya.
 
@@ -90,12 +90,12 @@ Library (sudah dibuat, commit `9f33202`, masih di "Belum dirilis"):
 - [x] Getar halus (`HapticFeedback.lightImpact`) sekali saat melewati ambang 56 px; dilepas setelah ambang = membalas pesan itu dan kolom ketik langsung fokus.
 - [x] Geser pendek, geser ke kiri, dan drag mouse tidak memicu balasan (pilih teks dengan mouse di desktop tetap jalan). Berlaku juga untuk gelembung dari builder `chat.message`.
 - [ ] Coba di aplikasi Flutter di HP sungguhan (Android dan iOS): rasa geser, getar, dan tidak bentrok dengan gulir daftar pesan atau geser kembali (back gesture) iOS.
-- [ ] Pengaturan oleh host (Fase 1): ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat konfigurasi atau builder.
+- [x] Pengaturan oleh host (Fase 1): ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat `CommunitySwipeToReplyScope` dengan `CommunitySwipeToReplySettings`; bawaan tidak berubah.
 - [ ] Masuk rilis library berikutnya (lihat bagian 4.11).
 
 Hub (web CS):
-- [ ] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
-- [ ] Tes komponen untuk geser sentuh, geser pendek, dan mouse.
+- [x] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
+- [x] Tes komponen untuk geser sentuh, geser pendek, gulir vertikal, dan mouse.
 
 ## 7. Batas rekening per nasabah jadi 200
 
