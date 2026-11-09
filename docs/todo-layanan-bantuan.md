@@ -36,11 +36,11 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 
 # Fase 1 — fokus sekarang
 
-## 0. Peran pengelola konten
+## 0. Peran pengelola konten (SELESAI 9 Nov 2026, migrasi 0126, tes 106; menu Hub Konten Layanan, Topik pindah dari Pengaturan)
 
-- [ ] Peran baru **Konten Layanan** (`cs_content`), pola sama dengan peran `product` di migrasi 0121: boleh mengelola topik dan FAQ, tidak boleh menangani tiket. Super Admin tetap boleh.
-- [ ] Hub: peran bisa dipilih di form akun CS, menu yang tampil mengikuti peran, dan semua perubahan tercatat di Jejak Audit dengan nilai sebelum dan sesudah.
-- [ ] Tes: pgTAP (peran lain ditolak), Hub (menu dan guard rute), panduan Hub dan PDF.
+- [x] Peran baru **Konten Layanan** (`cs_content`), pola sama dengan peran `product` di migrasi 0121: boleh mengelola topik dan FAQ, tidak boleh menangani tiket. Super Admin tetap boleh.
+- [x] Hub: peran bisa dipilih di form akun CS, menu yang tampil mengikuti peran, dan semua perubahan tercatat di Jejak Audit dengan nilai sebelum dan sesudah.
+- [x] Tes: pgTAP (peran lain ditolak), Hub (menu dan guard rute), panduan Hub dan PDF.
 
 ## 1. Topik chat CS sepenuhnya dari server
 
