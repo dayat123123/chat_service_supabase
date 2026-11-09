@@ -45,6 +45,7 @@ Super Admin memberi setiap akun **peran** dan, bila perlu, **izin tambahan**:
 | **Kepatuhan** | Tim kepatuhan: pengaduan, penipuan, audit, kebijakan, dokumen hukum, bukti |
 | **Komunitas** | Tim riset/marketing/moderasi yang tidak menangani tiket. Menunya ditentukan **Izin Komunitas** |
 | **Fitur & Kampanye** | Tim produk/marketing yang mengelola fitur sosial, kill switch, versi minimum aplikasi, serta banner dan popup. Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
+| **Konten Layanan** | Tim yang mengelola isi bantuan untuk nasabah di aplikasi: topik chat CS (dan pusat bantuan). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
 
 Izin tambahan:
 
@@ -53,17 +54,18 @@ Izin tambahan:
 
 Menu di bar atas mengikuti peran dan izin. Satu akun bisa punya lebih dari satu peran; menunya digabung.
 
-| Menu | CS | Super Admin | Kepatuhan | Komunitas | Fitur & Kampanye |
-|---|---|---|---|---|---|
-| **Layanan Nasabah** (tiket) | Ya | Ya, hanya pantau | – | – | – |
-| **Dashboard** | – | Ya | – | – | – |
-| **Laporan** | – | Ya | – | – | – |
-| **Akun Nasabah** | Bila punya Akses Akun Nasabah | – | – | – | – |
-| **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas | – |
-| **Fitur & Kampanye** | – | Ya | – | – | Ya |
-| **Pengaturan** | – | Ya | – | – | – |
-| **Ringkasan**, **Kasus**, **Jejak Audit**, **Kebijakan**, **Kata terlarang**, **Kebijakan konten**, **Dokumen hukum** | – | – | Ya | – | – |
-| **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – | – |
+| Menu | CS | Super Admin | Kepatuhan | Komunitas | Fitur & Kampanye | Konten Layanan |
+|---|---|---|---|---|---|---|
+| **Layanan Nasabah** (tiket) | Ya | Ya, hanya pantau | – | – | – | – |
+| **Dashboard** | – | Ya | – | – | – | – |
+| **Laporan** | – | Ya | – | – | – | – |
+| **Akun Nasabah** | Bila punya Akses Akun Nasabah | – | – | – | – | – |
+| **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas | – | – |
+| **Konten Layanan** | – | Ya | – | – | – | Ya |
+| **Fitur & Kampanye** | – | Ya | – | – | Ya | – |
+| **Pengaturan** | – | Ya | – | – | – | – |
+| **Ringkasan**, **Kasus**, **Jejak Audit**, **Kebijakan**, **Kata terlarang**, **Kebijakan konten**, **Dokumen hukum** | – | – | Ya | – | – | – |
+| **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – | – | – |
 
 Bila akun tidak punya menu sama sekali, Hub menampilkan **Peran akun ini belum punya menu di web CS. Hubungi Super Admin.**
 
@@ -325,7 +327,6 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | Kelompok | Bagian | Fungsi | Kapan dipakai |
 |---|---|---|---|
 | **Layanan CS** | **Akun CS** | Tambah akun staf, peran, tim, batas tiket, izin, reset password, nonaktifkan | Staf baru, pindah tugas, lupa password, staf keluar |
-| | **Topik** | Topik yang dipilih nasabah, prioritas default, skill, tautan bantuan | Ada jenis masalah baru |
 | | **Quick reply** | Balasan cepat untuk semua CS | Jawaban baku baru atau berubah |
 | | **Label tiket** | Daftar label yang dipasang CS pada tiket (nama, warna, aktif, urutan) | Pengelompokan kasus baru untuk laporan |
 | | **Jam layanan & libur** | Jam buka CS (WIB) dan hari libur | Awal tahun, perubahan jam kerja |
@@ -348,9 +349,9 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 5. Menonaktifkan akun (matikan **Akun aktif**): akun langsung tidak bisa login, tiket aktifnya kembali ke antrean dengan tanda "Akun CS dinonaktifkan", dan transfer yang menunggunya dibatalkan. Lakukan di hari terakhir staf bekerja.
 6. Anda tidak bisa menonaktifkan akun sendiri atau melepas peran Super Admin Anda sendiri.
 
-#### Topik dan Quick reply
+#### Quick reply
 
-- **Topik**: **Kode** tidak bisa diubah setelah dibuat. Atur **Nama (Indonesia)**, **Nama (Inggris)**, **Skill CS**, **Prioritas default**, **Tautan bantuan (opsional)** (https ke situs bantuan resmi), urutan, dan **Tampilkan ke nasabah**.
+- **Topik** chat CS kini ada di menu **Konten Layanan → Topik chat CS** (Super Admin dan peran Konten Layanan). **Kode** tidak bisa diubah setelah dibuat. Atur **Nama (Indonesia)**, **Nama (Inggris)**, **Skill CS**, **Prioritas default**, **Tautan bantuan (opsional)** (https ke situs bantuan resmi), urutan, dan **Tampilkan ke nasabah**. Setiap perubahan tercatat di Jejak Audit.
 - **Quick reply**: atur **Pintasan**, **Judul**, **Isi balasan**, dan **Bahasa**. Quick reply yang meminta OTP/PIN/password ditolak. Balasan pribadi CS tidak tampil di sini; tiap CS mengelolanya sendiri dari kotak balas.
 
 #### Label tiket
