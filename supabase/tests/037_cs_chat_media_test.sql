@@ -11,8 +11,11 @@ select tests.create_agent('Laras', '{cs_agent}', '{"general": 2, "account": 2}')
 
 select results_eq(
   $$select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'cs-documents'$$,
-  $$values (false, 10485760::bigint, array['application/pdf'])$$,
-  'Bucket dokumen chat CS: privat, PDF saja, maksimal 10 MB');
+  $$values (false, 10485760::bigint, array['application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'text/plain', 'text/csv'])$$,
+  'Bucket dokumen chat CS: privat, PDF dan Office modern serta teks, maksimal 10 MB');
 
 select tests.authenticate_as(:'budi');
 select cs_api.open_ticket('account') ->> 'id' as ticket \gset
@@ -53,9 +56,9 @@ select throws_ok(format($$select cs_api.send_message(%L, '', gen_random_uuid(), 
   :'room', :'room', :'budi'),
   'PT400', 'attachment_not_allowed', 'Video tidak diterima di chat CS');
 select throws_ok(format($$select cs_api.send_message(%L, '', gen_random_uuid(), null,
-  '[{"bucket": "cs-documents", "path": "rooms/%s/%s/data.xlsx", "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}]')$$,
+  '[{"bucket": "cs-documents", "path": "rooms/%s/%s/data.xls", "mime": "application/vnd.ms-excel"}]')$$,
   :'room', :'room', :'budi'),
-  'PT400', 'attachment_not_allowed', 'File Office tidak diterima');
+  'PT400', 'attachment_not_allowed', 'File Office lama (xls) tidak diterima');
 select throws_ok(format($$select cs_api.send_message(%L, '', gen_random_uuid(), null,
   '[{"bucket": "cs-documents", "path": "rooms/%s/%s/bukti.pdf", "mime": "application/pdf", "size": 20971520}]')$$,
   :'room', :'room', :'budi'),
