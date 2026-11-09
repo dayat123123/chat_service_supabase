@@ -6,18 +6,18 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 
 ## Ringkasan fase
 
-**Fase 1 — fokus sekarang** (permintaan user, urutan kerja, perkiraan total 16–22 jam kerja):
+**Fase 1 — fokus sekarang** (permintaan user, urutan kerja, perkiraan total 17–23 jam kerja):
 
 | Urutan | Bagian | Perkiraan |
 |---|---|---|
 | 1 | 0. Peran Konten Layanan | 1–1,5 jam |
 | 2 | 1. Topik chat CS sepenuhnya dari server | 3–4 jam |
 | 3 | 5. Tanggal mengambang saat menggulir chat | 2–3 jam |
-| 4 | 3. Geser pesan untuk membalas (library sudah, sisa Hub sentuh dan uji di HP) | 1–2 jam |
+| 4 | 3. Geser pesan untuk membalas (library sudah, sisa Hub sentuh, uji di HP, dan pengaturan ambang/arah/getar oleh host) | 2–3 jam |
 | 5 | 2. FAQ / Pusat Bantuan | 8–10 jam |
 | 6 | 4.11 Rilis library | 0,5–1 jam |
 
-**Fase 2 — berikutnya** (dikerjakan setelah Fase 1 selesai; perkiraan 28–39 jam kerja):
+**Fase 2 — berikutnya** (dikerjakan setelah Fase 1 selesai; perkiraan 27–38 jam kerja):
 
 | Bagian | Isi | Perkiraan |
 |---|---|---|
@@ -32,7 +32,6 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 | 4.8 | Laporan bantuan | 3–4 jam |
 | 4.9 | SOP singkat per topik untuk CS | 1–1,5 jam |
 | 4.10 | Rekomendasi tambahan: artikel FAQ di balasan CS, perkiraan waktu tunggu antrean, riwayat tiket lintas perangkat, unduh transkrip oleh nasabah, CS menandai artikel FAQ yang perlu diperbarui, pengingat tiket menunggu nasabah | 6–8 jam |
-| 3 (opsional) | Pengaturan geser balas oleh host: ambang, arah, getar | ±1 jam |
 
 # Fase 1 — fokus sekarang
 
@@ -90,7 +89,7 @@ Library (sudah dibuat, commit `9f33202`, masih di "Belum dirilis"):
 - [x] Getar halus (`HapticFeedback.lightImpact`) sekali saat melewati ambang 56 px; dilepas setelah ambang = membalas pesan itu dan kolom ketik langsung fokus.
 - [x] Geser pendek, geser ke kiri, dan drag mouse tidak memicu balasan (pilih teks dengan mouse di desktop tetap jalan). Berlaku juga untuk gelembung dari builder `chat.message`.
 - [ ] Coba di aplikasi Flutter di HP sungguhan (Android dan iOS): rasa geser, getar, dan tidak bentrok dengan gulir daftar pesan atau geser kembali (back gesture) iOS.
-- [ ] (Fase 2) Opsional: ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat konfigurasi atau builder.
+- [ ] Pengaturan oleh host (Fase 1): ambang, arah (kanan untuk pesan orang lain, kiri untuk pesan sendiri seperti WhatsApp iOS), dan getar bisa diatur host lewat konfigurasi atau builder.
 - [ ] Masuk rilis library berikutnya (lihat bagian 4.11).
 
 Hub (web CS):
