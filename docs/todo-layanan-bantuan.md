@@ -14,8 +14,9 @@ Nomor berikutnya saat todo ini dibuat: migrasi `0126`, tes pgTAP `106`. Library 
 | 2 | 1. Topik chat CS sepenuhnya dari server | 1–1,5 jam |
 | 3 | 5. Tanggal mengambang saat menggulir chat | 30–60 menit |
 | 4 | 3. Geser pesan untuk membalas (library sudah, sisa Hub sentuh, uji di HP, dan pengaturan ambang/arah/getar oleh host) | 45–60 menit |
-| 5 | 2. FAQ / Pusat Bantuan | 2–3 jam |
-| 6 | 4.11 Rilis library | 15–20 menit |
+| 5 | 7. Batas rekening per nasabah jadi 200 | 20–30 menit |
+| 6 | 2. FAQ / Pusat Bantuan | 2–3 jam |
+| 7 | 4.11 Rilis library | 15–20 menit |
 
 **Fase 2 — berikutnya** (dikerjakan setelah Fase 1 selesai; perkiraan 10–13 jam kerja agen berurutan):
 
@@ -95,6 +96,16 @@ Library (sudah dibuat, commit `9f33202`, masih di "Belum dirilis"):
 Hub (web CS):
 - [ ] Geser untuk membalas di perangkat sentuh (tablet/HP yang membuka Hub), dengan getar lewat `navigator.vibrate` bila didukung. Di desktop tetap tombol Balas yang sudah ada (klik Balas langsung fokus ke kolom ketik sudah dibuat).
 - [ ] Tes komponen untuk geser sentuh, geser pendek, dan mouse.
+
+## 7. Batas rekening per nasabah jadi 200
+
+Sekarang: maksimal 50 rekening per nasabah di klaim  token sosial, ditulis tetap di auth-bridge ( di ) dan di fungsi penyimpan tautan rekening ( di migrasi 0068). Kelebihannya diabaikan dan dicatat di log. Diminta user (9 Nov 2026): naikkan menjadi 200.
+
+- [ ] Batas jadi pengaturan server  (bawaan 200, rentang 1–200), dibaca auth-bridge dan fungsi database; bukan angka tetap di kode. Mengubahnya dari Hub hanya Super Admin dan tercatat di Jejak Audit.
+- [ ] Migrasi baru mendefinisikan ulang fungsi penyimpan tautan rekening (migrasi 0068 tidak diubah) supaya memakai pengaturan itu.
+- [ ] Auth-bridge: batas ukuran token (, sekarang 8 KB) dinaikkan ke 16 KB, karena 200 kode × 32 karakter bisa sekitar 7 KB ditambah klaim lain.
+- [ ] Tes: Go (200 diterima, ke-201 diabaikan dan dihitung, token 16 KB diterima, di atasnya ditolak), pgTAP (fungsi mengikuti pengaturan), .
+- [ ] Dokumen:  (batas 200) dan prompt penerbit token C++ untuk tim OLT (batas akun di  menjadi 200).
 
 ## 2. FAQ / Pusat Bantuan
 
