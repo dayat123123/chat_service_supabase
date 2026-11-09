@@ -131,8 +131,8 @@ Library:
 Aplikasi Flutter:
 - [x] Pintu masuk Pusat Bantuan di app bar aplikasi contoh (`openCommunityHelpCenter`). Aplikasi OLT memasang hal yang sama di menunya.
 
-## 4.11 Rilis library
-- [ ] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
+## 4.11 Rilis library (SELESAI 9 Nov 2026: v1.9.0, commit d5c931b)
+- [x] Setelah bagian yang menyentuh library selesai: naikkan versi, rapikan CHANGELOG, buat tag, perbarui rujukan versi di dokumen monorepo, dan beri tahu cara update di aplikasi (termasuk `<queries>` Android untuk `tel`/`mailto`).
 
 # Fase 2 — berikutnya
 
