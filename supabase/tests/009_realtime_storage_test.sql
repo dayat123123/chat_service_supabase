@@ -9,8 +9,8 @@ select results_eq(
 
 select results_eq(
   $$select id, public, file_size_limit from storage.buckets where id in ('avatars', 'attachments') order by id$$,
-  $$values ('attachments'::text, false, 5242880::bigint), ('avatars'::text, true, 2097152::bigint)$$,
-  'Bucket avatars (publik, 2 MB) & attachments (privat, 5 MB)');
+  $$values ('attachments'::text, false, 10485760::bigint), ('avatars'::text, true, 2097152::bigint)$$,
+  'Bucket avatars (publik, 2 MB) & attachments (privat, 10 MB; chat sosial tetap 5 MB per gambar)');
 select ok(
   (select bool_and(m like 'image/%') from storage.buckets, unnest(allowed_mime_types) m
    where id in ('avatars', 'attachments')),

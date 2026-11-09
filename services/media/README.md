@@ -42,9 +42,11 @@ Port 8080 hanya melayani `POST /object/...`. Metode atau path lain → 404 `not_
 | Bucket | Maks | Jenis | `x-upsert` |
 |---|---|---|---|
 | `avatars` | 2 MiB | JPEG, PNG, WebP | diteruskan |
-| `attachments` | 5 MiB | JPEG, PNG, WebP, GIF | diabaikan |
+| `attachments` | 5 MiB; room chat CS sampai 10 MiB (sesuai kebijakan gambar) | JPEG, PNG, WebP, GIF | diabaikan |
 | `cs-documents` | 10 MiB (atau lebih kecil dari kebijakan) | PDF, DOCX, XLSX, PPTX, TXT, CSV (sesuai kebijakan) | diabaikan |
 | `cs-videos` | 25 MiB (atau lebih kecil dari kebijakan) | MP4, MOV, WebM (sesuai kebijakan), maks. 120 detik | diabaikan |
+
+Batas `attachments` dibedakan per room: media menanyakan jenis room lewat `media_room_kind` (migrasi 0138, hasilnya disimpan di memori karena jenis room tidak berubah). Room chat CS memakai batas gambar dari kebijakan lampiran (bawaan 10 MiB); postingan dan chat lain tetap 5 MiB, juga bila pencarian gagal. Thumbnail video diperiksa classifier NSFW seperti gambar; bila ditahan atau diblokir, video ditolak `image_blocked`. Bila video gagal disimpan setelah thumbnail-nya tersimpan, media langsung menghapus thumbnail itu dengan token service role.
 
 Path `cs-documents`/`cs-videos`: `rooms/<room uuid>/<uid pengunggah>/<file>`. Siapa boleh menulis ke folder mana tetap diatur kebijakan RLS storage (folder milik sendiri, anggota room, tiket CS yang masih terbuka, tidak dibanned, batas upload harian).
 

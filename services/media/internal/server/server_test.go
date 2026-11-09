@@ -35,6 +35,7 @@ const sub = "6f1d2c3b-4a59-4e7f-8a1b-2c3d4e5f6a7b"
 var secret = []byte(strings.Repeat("s", 40))
 
 type received struct {
+	method  string
 	path    string
 	headers http.Header
 	body    []byte
@@ -53,7 +54,7 @@ func newFakeStorage(t *testing.T) *fakeStorage {
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		f.mu.Lock()
-		f.requests = append(f.requests, received{path: r.URL.Path, headers: r.Header.Clone(), body: body})
+		f.requests = append(f.requests, received{method: r.Method, path: r.URL.Path, headers: r.Header.Clone(), body: body})
 		reply := f.reply
 		f.mu.Unlock()
 		if reply != nil {
@@ -591,6 +592,10 @@ func (f *flakyStorage) Upload(context.Context, storage.Upload) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.uploadErr
+}
+
+func (f *flakyStorage) Delete(context.Context, string, string, string) error {
+	return nil
 }
 
 func (f *flakyStorage) Ping(context.Context) error {

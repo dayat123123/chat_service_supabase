@@ -121,6 +121,17 @@ func (p *PostgREST) CancelHold(ctx context.Context, id int64) error {
 	return p.rpc(ctx, "media_hold_cancel", map[string]any{"p_id": id}, nil)
 }
 
+func (p *PostgREST) RoomKind(ctx context.Context, room string) (string, error) {
+	var kind *string
+	if err := p.rpc(ctx, "media_room_kind", map[string]any{"p_room": room}, &kind); err != nil {
+		return "", err
+	}
+	if kind == nil {
+		return "", nil
+	}
+	return *kind, nil
+}
+
 func (p *PostgREST) rpc(ctx context.Context, fn string, args map[string]any, out any) error {
 	body, err := json.Marshal(args)
 	if err != nil {

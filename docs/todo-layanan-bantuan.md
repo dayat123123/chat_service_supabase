@@ -54,7 +54,7 @@ Server (migrasi 0126):
 
 Hub:
 - [x] Form topik: deskripsi ID/EN, pilihan ikon (grid ikon), gaya, tanda penipuan/pengaduan, dan pratinjau kartu topik persis seperti di aplikasi (terang dan gelap).
-- [ ] Urutkan dengan drag atau tombol naik/turun (belum; urutan masih lewat kolom angka **Urutan**).
+- [x] Urutkan dengan seret (drag) atau tombol naik/turun; urutan langsung disimpan (migrasi 0137, tes 117; Hub c9f63da).
 
 Library:
 - [x] `SupportTopic` mendapat `description`, `icon`, dan `style` dari server. `CommunitySupportTopicDetails` meneruskannya ke builder.
@@ -63,7 +63,7 @@ Library:
 - [x] Tes widget dan screenshot untuk kartu dengan deskripsi, ikon, dan gaya `danger`.
 
 Aplikasi Flutter (`windows_online_trading`):
-- [ ] (Tim aplikasi, belum) Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
+- [x] (Aplikasi contoh library sudah bersih; tim aplikasi OLT cukup memastikan hal yang sama di aplikasinya) Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
 
 ## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp) (SELESAI 9 Nov 2026; library c9d99e1, Hub)
 

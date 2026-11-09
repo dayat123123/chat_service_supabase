@@ -41,6 +41,11 @@ const (
 
 	holdCancelTimeout   = 5 * time.Second
 	verdictUnclassified = "unclassified"
+
+	imageBucket      = "attachments"
+	socialImageLimit = 5 << 20
+	roomLookupTime   = 3 * time.Second
+	cleanupTimeout   = 5 * time.Second
 )
 
 type bucket struct {
@@ -54,7 +59,7 @@ type bucket struct {
 
 var buckets = map[string]bucket{
 	"avatars":     {limit: 2 << 20, kinds: []sniff.Kind{sniff.JPEG, sniff.PNG, sniff.WebP}, upsert: true},
-	"attachments": {limit: 5 << 20, kinds: []sniff.Kind{sniff.JPEG, sniff.PNG, sniff.WebP, sniff.GIF}, holdable: true},
+	"attachments": {limit: 10 << 20, kinds: []sniff.Kind{sniff.JPEG, sniff.PNG, sniff.WebP, sniff.GIF}, holdable: true},
 	"cs-documents": {limit: 10 << 20, policy: "documents", scan: true,
 		kinds: []sniff.Kind{sniff.PDF, sniff.DOCX, sniff.XLSX, sniff.PPTX, sniff.TXT, sniff.CSV}},
 	"cs-videos": {limit: 25 << 20, policy: "videos", scan: true, kinds: []sniff.Kind{sniff.MP4, sniff.MOV, sniff.WebM}},
@@ -75,6 +80,7 @@ var sanitizers = map[sniff.Kind]func([]byte) ([]byte, sanitize.Info, error){
 
 type Storage interface {
 	Upload(ctx context.Context, u storage.Upload) error
+	Delete(ctx context.Context, bucket, path, token string) error
 	Ping(ctx context.Context) error
 }
 
@@ -105,6 +111,10 @@ type Video interface {
 	Process(ctx context.Context, body []byte, kind sniff.Kind, maxSeconds float64) (video.Result, error)
 }
 
+type Rooms interface {
+	RoomKind(ctx context.Context, room string) (string, error)
+}
+
 type Options struct {
 	Log               *slog.Logger
 	Secret            []byte
@@ -115,6 +125,7 @@ type Options struct {
 	Attachments       Attachments
 	Scanner           Scanner
 	Video             Video
+	Rooms             Rooms
 	AllowUnclassified bool
 	MaxConcurrent     int
 	RequestTimeout    time.Duration
@@ -126,6 +137,9 @@ type Options struct {
 type Server struct {
 	opts  Options
 	slots chan struct{}
+
+	roomsMu   sync.Mutex
+	roomKinds map[string]string
 
 	mu                sync.Mutex
 	uploads           map[metrics.Upload]uint64
@@ -182,10 +196,11 @@ func New(opts Options) *Server {
 		opts.Now = time.Now
 	}
 	return &Server{
-		opts:     opts,
-		slots:    make(chan struct{}, opts.MaxConcurrent),
-		uploads:  map[metrics.Upload]uint64{},
-		verdicts: map[string]uint64{},
+		opts:      opts,
+		slots:     make(chan struct{}, opts.MaxConcurrent),
+		uploads:   map[metrics.Upload]uint64{},
+		verdicts:  map[string]uint64{},
+		roomKinds: map[string]string{},
 	}
 }
 
@@ -264,6 +279,9 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 		o.err = apiErr
 		return o
 	}
+	if name == imageBucket {
+		limit = s.imageLimit(r.Context(), segments)
+	}
 	if r.ContentLength > limit {
 		o.err = tooLarge(limit, fmt.Sprintf("content-length %d", r.ContentLength))
 		return o
@@ -325,6 +343,9 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 			return o
 		}
 		o.video, clean = &result, result.Body
+		if o.err = s.moderateThumbnail(ctx, r, &o, result.Thumbnail, requestID); o.err != nil {
+			return o
+		}
 	}
 	o.path = finalPath(segments, o.kind.Ext())
 
@@ -363,6 +384,7 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request, began time.Time,
 	})
 	if o.err != nil {
 		s.cancelHold(holdID, requestID)
+		s.forget(name, o.thumb, requestID)
 		return o
 	}
 	o.stored = len(clean)

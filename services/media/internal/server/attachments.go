@@ -10,6 +10,8 @@ import (
 
 	"olt-social/media/internal/attachments"
 	"olt-social/media/internal/clamd"
+	"olt-social/media/internal/jwt"
+	"olt-social/media/internal/moderation"
 	"olt-social/media/internal/sniff"
 	"olt-social/media/internal/video"
 )
@@ -171,4 +173,90 @@ func (s *Server) scannerProblems() []string {
 		}
 	}
 	return problems
+}
+
+func (s *Server) imageLimit(ctx context.Context, segments []string) int64 {
+	if len(segments) < 2 || segments[0] != "rooms" || !s.supportRoom(ctx, segments[1]) || s.opts.Attachments == nil {
+		return socialImageLimit
+	}
+	policy, loaded := s.opts.Attachments.Current()
+	if !loaded {
+		return socialImageLimit
+	}
+	rule, ok := policy.ForBucket(imageBucket)
+	if !ok || !rule.Enabled || rule.MaxBytes <= 0 {
+		return socialImageLimit
+	}
+	return min(buckets[imageBucket].limit, rule.MaxBytes)
+}
+
+func (s *Server) supportRoom(ctx context.Context, room string) bool {
+	if s.opts.Rooms == nil {
+		return false
+	}
+	s.roomsMu.Lock()
+	kind, known := s.roomKinds[room]
+	s.roomsMu.Unlock()
+	if !known {
+		lookup, cancel := context.WithTimeout(ctx, roomLookupTime)
+		found, err := s.opts.Rooms.RoomKind(lookup, room)
+		cancel()
+		if err != nil {
+			s.opts.Log.Warn("Room kind lookup failed; using the social image limit", "room", room, "error", err)
+			return false
+		}
+		kind = found
+		s.roomsMu.Lock()
+		if len(s.roomKinds) > 10000 {
+			clear(s.roomKinds)
+		}
+		s.roomKinds[room] = kind
+		s.roomsMu.Unlock()
+	}
+	return kind == "support"
+}
+
+func (s *Server) moderateThumbnail(ctx context.Context, r *http.Request, o *outcome, thumb []byte, requestID string) *apiError {
+	thresholds, loaded := s.opts.Policy.Current()
+	if !loaded {
+		return fail(http.StatusServiceUnavailable, codeModerationUnavailable, "image thresholds are not loaded")
+	}
+	started := time.Now()
+	result, err := s.opts.Classifier.Classify(ctx, sniff.JPEG.MIME(), thumb, requestID)
+	s.noteClassifier(err, time.Since(started))
+	switch {
+	case err == nil:
+	case errors.Is(err, moderation.ErrModelMissing) && s.opts.AllowUnclassified:
+		o.verdict = verdictUnclassified
+		return nil
+	case errors.Is(err, moderation.ErrUnreadable):
+		return fail(http.StatusUnprocessableEntity, codeInvalidVideo, "thumbnail: "+err.Error())
+	case r.Context().Err() != nil:
+		return fail(499, codeCanceled, "client went away while classifying the thumbnail")
+	default:
+		return fail(http.StatusServiceUnavailable, codeClassifierUnavailable, err.Error())
+	}
+	o.decision = moderation.Decide(result.Scores, thresholds)
+	o.verdict = string(o.decision.Verdict)
+	if o.decision.Verdict == moderation.Allow {
+		return nil
+	}
+	o.verdict = string(moderation.Block)
+	return fail(http.StatusUnprocessableEntity, codeImageBlocked, "video thumbnail did not pass the image check")
+}
+
+func (s *Server) forget(bucket, path, requestID string) {
+	if path == "" {
+		return
+	}
+	token, err := jwt.ServiceRole(s.opts.Secret, "olt-media", s.opts.Now())
+	if err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), cleanupTimeout)
+		err = s.opts.Storage.Delete(ctx, bucket, path, token)
+		cancel()
+	}
+	if err != nil {
+		s.opts.Log.Warn("Could not delete the thumbnail of a video that was not stored", "request_id", requestID,
+			"bucket", bucket, "path", path, "error", err)
+	}
 }

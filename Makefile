@@ -104,12 +104,12 @@ else
 ifneq ($(HUB_SKIP),)
 ifeq ($(PROFILE),dev)
 	@echo "$(HUB_MISSING); starting the dev stack without cs-console" >&2
-	$(COMPOSE) up -d --build --wait --wait-timeout 300 --remove-orphans $$($(COMPOSE) config --services | grep -vx cs-console)
+	$(COMPOSE) up -d --build --wait --wait-timeout 900 --remove-orphans $$($(COMPOSE) config --services | grep -vx cs-console)
 else
 	@echo "$(HUB_MISSING) (needed for CS=1)" >&2; exit 1
 endif
 else
-	$(COMPOSE) up -d --build --wait --wait-timeout 300 --remove-orphans
+	$(COMPOSE) up -d --build --wait --wait-timeout 900 --remove-orphans
 endif
 	@$(COMPOSE) ps
 	@echo "API: $$(grep '^SUPABASE_PUBLIC_URL=' $(ENV) | cut -d= -f2)  (profile $(PROFILE))"

@@ -403,7 +403,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://
 | `Rendezvous Hub checkout not found at ...` | Domain Hub diisi tetapi `~/rendezvous_hub` belum ada | Jalankan ulang script (langkah 7), atau isi `HUB_DIR` di `docker/.env` |
 | Hub 403 dari kantor | IP kantor tidak ada di `VPN_SOURCE_RANGES` | Cek IP publik kantor, perbaiki `docker/.env`, `make up` |
 | `olt_mode` bukan `jwt` | Konfigurasi auth-bridge | `make logs s=auth-bridge` |
-| `make up` habis waktu menunggu `clamav`, atau Hub menolak dokumen/video chat CS dengan "Virus check is unavailable" | Start pertama clamav masih mengunduh signature (±300 MB) atau server tidak bisa mengakses `database.clamav.net` | `make logs s=clamav`; tunggu sampai "socket found, clamd started", lalu `make up` lagi. clamd butuh ±1,1–1,6 GB RAM (lihat [PRODUCTION.md](PRODUCTION.md)) |
+| `make up` habis waktu menunggu `clamav`, atau Hub menolak dokumen/video chat CS dengan "Virus check is unavailable" | Start pertama clamav masih mengunduh signature (±300 MB) atau server tidak bisa mengakses `database.clamav.net` | `make logs s=clamav`; `make up` sudah menunggu sampai 15 menit; bila tetap habis waktu, tunggu sampai "socket found, clamd started", lalu `make up` lagi. clamd butuh ±1,1–1,6 GB RAM (lihat [PRODUCTION.md](PRODUCTION.md)) |
 | Login dari aplikasi selalu "Sesi berakhir" | `iss`/`aud`/jam server OLT tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (field `reason`) |
 
 ## 7. Belum ada JWKS OLT: mode dev sementara
