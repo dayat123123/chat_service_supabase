@@ -228,6 +228,19 @@ Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak 
 - [x] **Penilaian artikel oleh CS**: CS menandai artikel FAQ yang perlu diperbarui langsung dari Hub.
 - [x] **Pengingat tiket menunggu nasabah**: pesan otomatis bila nasabah belum membalas dalam N jam, sebelum tiket ditutup otomatis (penutupan otomatis sudah ada).
 
+## Penyesuaian setelah selesai (9 Nov 2026 malam)
+
+Yang sebelumnya berbeda dari rencana kini disesuaikan:
+- [x] Gambar chat CS maksimal **10 MB** sesuai tabel bagian 6 (migrasi 0138). Chat global dan postingan tetap 5 MB.
+- [x] Thumbnail video ikut pemeriksaan gambar tidak pantas (classifier NSFW); bila ditahan atau diblokir, video ditolak.
+- [x] Thumbnail yang tertinggal saat unggah video gagal langsung dihapus layanan media.
+- [x] `make up` menunggu sampai 15 menit, cukup untuk unduhan signature ClamAV pertama.
+- [x] Video di Hub kini bisa diputar (CSP `media-src` mengizinkan origin API; sebelumnya tampil "Video tidak bisa dimuat").
+- [x] Library v1.11.0: tombol **Unduh video** di gelembung video, selain tombol putar.
+- [x] Urutan topik bisa diatur dengan seret atau tombol naik/turun (migrasi 0137).
+
+Tetap: uji di HP sungguhan oleh user, dan bagian 4.2 ditunda.
+
 ## Cara kerja per bagian
 
 Setiap bagian dikerjakan dengan pola yang sudah dipakai: tes ditulis lebih dulu, migrasi baru (migrasi lama tidak diubah), pgTAP lengkap + tes keamanan + smoke, CI Hub dan library hijau, panduan Hub dan PDF diperbarui, lalu perintah update untuk server LAN.
