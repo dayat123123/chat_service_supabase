@@ -292,7 +292,7 @@ switch ($Target) {
         if ($DeployProfile -eq 'cluster') {
             throw 'The cluster profile runs on a Swarm manager (Linux): make up PROFILE=cluster. See docs/scaling.md.'
         }
-        $upArgs = @('up', '-d', '--build', '--wait', '--wait-timeout', '300', '--remove-orphans')
+        $upArgs = @('up', '-d', '--build', '--wait', '--wait-timeout', '900', '--remove-orphans')
         if (-not $HubFound -and ($DeployProfile -eq 'dev' -or $Cs)) {
             if ($DeployProfile -ne 'dev') { throw "$HubMissing (needed for -Cs)" }
             Write-Warning "$HubMissing; starting the dev stack without cs-console"

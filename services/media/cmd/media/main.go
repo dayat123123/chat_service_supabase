@@ -71,6 +71,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 			Concurrent:  cfg.VideoConcurrent,
 			StepTimeout: cfg.VideoStepTimeout,
 		}),
+		Rooms:             db,
 		AllowUnclassified: cfg.AllowUnclassified,
 		MaxConcurrent:     cfg.MaxConcurrent,
 		RequestTimeout:    cfg.RequestTimeout,

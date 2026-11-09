@@ -87,6 +87,24 @@ func (c *Client) Upload(ctx context.Context, u Upload) error {
 	return Classify(resp.StatusCode, data)
 }
 
+func (c *Client) Delete(ctx context.Context, bucket, path, token string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/object/"+bucket+"/"+path, nil)
+	if err != nil {
+		return &Failure{Code: CodeError, Status: http.StatusBadGateway, Reason: err.Error()}
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return &Failure{Code: CodeUnavailable, Status: http.StatusBadGateway, Reason: transportError(err), Unreachable: true}
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, maxReply))
+	if (resp.StatusCode >= 200 && resp.StatusCode < 300) || resp.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	return Classify(resp.StatusCode, data)
+}
+
 func (c *Client) Ping(ctx context.Context) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/status", nil)
 	if err != nil {

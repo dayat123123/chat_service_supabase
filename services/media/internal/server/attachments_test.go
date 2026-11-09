@@ -65,7 +65,7 @@ func defaultAttachments() attachments.Policy {
 	return attachments.Policy{
 		"documents": {Enabled: true, Bucket: "cs-documents", MaxBytes: 10 << 20,
 			Formats: formats("pdf", "docx", "xlsx", "pptx", "txt", "csv")},
-		"images": {Enabled: true, Bucket: "attachments", MaxBytes: 5 << 20, Formats: formats("jpeg", "png", "webp", "gif")},
+		"images": {Enabled: true, Bucket: "attachments", MaxBytes: 10 << 20, Formats: formats("jpeg", "png", "webp", "gif")},
 		"videos": {Enabled: true, Bucket: "cs-videos", MaxBytes: 25 << 20, MaxSeconds: 120, Formats: formats("mp4", "mov", "webm")},
 	}
 }
@@ -423,8 +423,8 @@ func TestVideoIsRemuxedWithAThumbnail(t *testing.T) {
 			t.Fatal("thumbnail and video use the verified token and the edge marker")
 		}
 	}
-	if h.scanner.count() != 1 || h.classifier.count() != 0 {
-		t.Fatal("videos are scanned once and not classified")
+	if h.scanner.count() != 1 || h.classifier.count() != 1 {
+		t.Fatal("videos are scanned once and only the thumbnail is classified")
 	}
 }
 
@@ -491,4 +491,67 @@ func heicHeader() []byte {
 
 func webmHeader() []byte {
 	return []byte("\x1a\x45\xdf\xa3\x9f\x42\x86\x81\x01\x42\xf7\x81\x01\x42\xf2\x81\x04\x42\xf3\x81\x08\x42\x82\x84webm\x42\x87\x81\x04\x42\x85\x81\x02")
+}
+
+type fakeRooms map[string]string
+
+func (f fakeRooms) RoomKind(_ context.Context, room string) (string, error) {
+	kind, ok := f[room]
+	if !ok {
+		return "", errors.New("room lookup failed")
+	}
+	return kind, nil
+}
+
+func TestCSRoomImagesMayBeLargerThanSocialImages(t *testing.T) {
+	const social = "1c2d3e4f-5a6b-4c7d-8e9f-0a1b2c3d4e5f"
+	h := newHarness(t, func(o *Options) { o.Rooms = fakeRooms{room: "support", social: "direct"} })
+	big := make([]byte, 6<<20)
+	imagePath := func(r string) string { return "/object/attachments/rooms/" + r + "/" + sub + "/foto.jpg" }
+	expectError(t, h.post(t, imagePath(social), token(t, nil, secret), big, nil), http.StatusRequestEntityTooLarge, codeFileTooLarge)
+	expectError(t, h.post(t, imagePath(room), token(t, nil, secret), big, nil), http.StatusUnsupportedMediaType, codeUnsupportedType)
+	expectError(t, h.post(t, "/object/attachments/posts/"+sub+"/foto.jpg", token(t, nil, secret), big, nil),
+		http.StatusRequestEntityTooLarge, codeFileTooLarge)
+	h.rules.change("images", func(r *attachments.Rule) { r.MaxBytes = 5 << 20 })
+	expectError(t, h.post(t, imagePath(room), token(t, nil, secret), big, nil), http.StatusRequestEntityTooLarge, codeFileTooLarge)
+	unknown := newHarness(t, func(o *Options) { o.Rooms = fakeRooms{} })
+	expectError(t, unknown.post(t, imagePath(room), token(t, nil, secret), big, nil), http.StatusRequestEntityTooLarge, codeFileTooLarge)
+}
+
+func TestVideoWithAnUnsafeThumbnailIsRejected(t *testing.T) {
+	h := newHarness(t, nil)
+	h.classifier.set(map[string]float64{"porn": 0.95, "neutral": 0.05}, nil)
+	expectError(t, h.post(t, videoPath("a.mp4"), token(t, nil, secret), mp4Header(), nil), http.StatusUnprocessableEntity, codeImageBlocked)
+	if h.storage.count() != 0 {
+		t.Fatal("nothing is stored when the thumbnail is blocked")
+	}
+}
+
+func TestThumbnailIsDeletedWhenTheVideoIsNotStored(t *testing.T) {
+	h := newHarness(t, nil)
+	calls := 0
+	h.storage.setReply(func(w http.ResponseWriter, r *http.Request) {
+		calls++
+		switch {
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"message":"Successfully deleted"}`))
+		case calls == 1:
+			_, _ = w.Write([]byte(`{"Key":"ok"}`))
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"statusCode":"409","error":"Duplicate","message":"The resource already exists"}`))
+		}
+	})
+	expectError(t, h.post(t, videoPath("a.mp4"), token(t, nil, secret), mp4Header(), nil), http.StatusConflict, "already_exists")
+	h.storage.mu.Lock()
+	reqs := append([]received(nil), h.storage.requests...)
+	h.storage.mu.Unlock()
+	thumb := "/object/cs-videos/rooms/" + room + "/" + sub + "/a.jpg"
+	if len(reqs) != 3 || reqs[2].method != http.MethodDelete || reqs[2].path != thumb {
+		t.Fatalf("storage requests = %+v", reqs)
+	}
+	if verifyMinted(t, reqs[2].headers)["role"] != "service_role" {
+		t.Fatal("the orphan thumbnail is deleted with a service role token")
+	}
 }

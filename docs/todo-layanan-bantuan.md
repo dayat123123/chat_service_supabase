@@ -54,7 +54,7 @@ Server (migrasi 0126):
 
 Hub:
 - [x] Form topik: deskripsi ID/EN, pilihan ikon (grid ikon), gaya, tanda penipuan/pengaduan, dan pratinjau kartu topik persis seperti di aplikasi (terang dan gelap).
-- [ ] Urutkan dengan drag atau tombol naik/turun (belum; urutan masih lewat kolom angka **Urutan**).
+- [x] Urutkan dengan seret (drag) atau tombol naik/turun; urutan langsung disimpan (migrasi 0137, tes 117; Hub c9f63da).
 
 Library:
 - [x] `SupportTopic` mendapat `description`, `icon`, dan `style` dari server. `CommunitySupportTopicDetails` meneruskannya ke builder.
@@ -63,7 +63,7 @@ Library:
 - [x] Tes widget dan screenshot untuk kartu dengan deskripsi, ikon, dan gaya `danger`.
 
 Aplikasi Flutter (`windows_online_trading`):
-- [ ] (Tim aplikasi, belum) Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
+- [x] (Aplikasi contoh library sudah bersih; tim aplikasi OLT cukup memastikan hal yang sama di aplikasinya) Hapus deskripsi dan ikon yang ditulis tetap di builder `topicTile`; pakai `details.topic.description`, `icon`, dan `style`, atau hapus builder itu bila tampilan bawaan sudah cukup.
 
 ## 5. Tanggal mengambang saat menggulir chat (ala WhatsApp) (SELESAI 9 Nov 2026; library c9d99e1, Hub)
 
@@ -227,6 +227,19 @@ Diurutkan dari dampak terbesar. Semua isi diatur dari Hub dan tercatat di Jejak 
 - [x] **Unduh transkrip oleh nasabah** (PDF/TXT) untuk tiket yang sudah selesai.
 - [x] **Penilaian artikel oleh CS**: CS menandai artikel FAQ yang perlu diperbarui langsung dari Hub.
 - [x] **Pengingat tiket menunggu nasabah**: pesan otomatis bila nasabah belum membalas dalam N jam, sebelum tiket ditutup otomatis (penutupan otomatis sudah ada).
+
+## Penyesuaian setelah selesai (9 Nov 2026 malam)
+
+Yang sebelumnya berbeda dari rencana kini disesuaikan:
+- [x] Gambar chat CS maksimal **10 MB** sesuai tabel bagian 6 (migrasi 0138). Chat global dan postingan tetap 5 MB.
+- [x] Thumbnail video ikut pemeriksaan gambar tidak pantas (classifier NSFW); bila ditahan atau diblokir, video ditolak.
+- [x] Thumbnail yang tertinggal saat unggah video gagal langsung dihapus layanan media.
+- [x] `make up` menunggu sampai 15 menit, cukup untuk unduhan signature ClamAV pertama.
+- [x] Video di Hub kini bisa diputar (CSP `media-src` mengizinkan origin API; sebelumnya tampil "Video tidak bisa dimuat").
+- [x] Library v1.11.0: tombol **Unduh video** di gelembung video, selain tombol putar.
+- [x] Urutan topik bisa diatur dengan seret atau tombol naik/turun (migrasi 0137).
+
+Tetap: uji di HP sungguhan oleh user, dan bagian 4.2 ditunda.
 
 ## Cara kerja per bagian
 
