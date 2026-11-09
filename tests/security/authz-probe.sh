@@ -206,7 +206,9 @@ for row in "${CS_FNS[@]}"; do
   fn=${row%%|*}; args=${row#*|}
   if [[ "$fn" =~ $GUEST_PUBLIC ]]; then
     if [ "$fn" != guest_config ] && [ "$fn" != guest_start ]; then
-      call anon POST "/rest/v1/rpc/$fn" '{"p_token":"probe-token-that-does-not-exist-000000"}' -H 'Content-Profile: cs_api'
+      body='{"p_token":"probe-token-that-does-not-exist-000000"}'
+      [ "$fn" = guest_send ] && body='{"p_token":"probe-token-that-does-not-exist-000000","p_body":"probe"}'
+      call anon POST "/rest/v1/rpc/$fn" "$body" -H 'Content-Profile: cs_api'
       if [ "$code" = 401 ]; then record ok anon "cs_api.$fn (guest RPC, unknown session token)" "$code"
       else record FAIL anon "cs_api.$fn (guest RPC must refuse an unknown session token)" "$code"; fi
     fi
