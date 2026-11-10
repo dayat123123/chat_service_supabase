@@ -272,7 +272,7 @@ Tombol di atas percakapan (hanya untuk pemilik tiket):
 
 **Pengaduan tamu (belum login).** Nasabah yang tidak bisa masuk (lupa password/PIN, akun terkunci) bisa mengirim pengaduan dari halaman login aplikasi tanpa login. Tiketnya masuk antrean biasa dengan lencana **Tamu** dan banner kuning **belum terverifikasi**: siapa pun bisa mengaku sebagai pemilik Login ID yang ditulis. Karena itu:
 
-- Panel kanan **tidak menampilkan data akun** untuk tiket tamu (email, HP, rekening, dan lainnya disembunyikan agar tidak terbaca atau tersebut ke pengadu). Bila perlu, cari sendiri Login ID yang disebutkan di menu **Akun Nasabah**.
+- Panel kanan tiket tamu hanya berisi bagian **Akun Nasabah** dengan keterangan bahwa **data akun tidak ditampilkan** (email, HP, rekening, dan lainnya disembunyikan agar tidak terbaca atau tersebut ke pengadu); **Riwayat tiket** dan **Catatan internal** nasabah juga tidak ditampilkan. Bila perlu, cari sendiri Login ID yang disebutkan di menu **Akun Nasabah**.
 - Bantuan akun **hanya** lewat **Reset password/PIN** dari menu **Akun Nasabah**. Kredensial baru selalu dikirim ke **email yang terdaftar** di akun, jadi aman walau pengadunya bukan pemilik akun.
 - **Jangan** menyebutkan data akun (email, nomor HP, rekening, saldo, alamat), dan **jangan** mengubah email, nomor HP, atau data lain berdasarkan chat ini. Bila nasabah sudah tidak memakai email terdaftarnya, arahkan ke kantor cabang dengan identitas.
 - Jangan meminta atau menerima password, PIN, atau OTP.
