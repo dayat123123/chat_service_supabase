@@ -204,6 +204,7 @@ Hub:
 
 Library:
 - [x] `openCommunityGuestSupport` untuk tombol "Tidak bisa masuk? Hubungi CS" di halaman login: form, catatan keamanan, chat dengan polling 4 detik, tanpa sesi dan tanpa menukar token OLT (library v1.12.0, 0aaf06f). Token sesi tamu disimpan di memori; host bisa memasang penyimpanan aman sendiri.
+- [x] Composer tamu memakai gaya dan builder `chat.composer` yang sama dengan chat CS (library v1.12.1): kolom pil, tombol kirim bulat, Enter mengirim di desktop, tanpa tombol lampiran dan tanpa saran `$saham`/`@user`.
 
 ### 4.3 Pertanyaan awal per topik
 - [x] Server: daftar isian per topik (teks, angka, tanggal, pilihan; wajib/opsional), ID/EN.
