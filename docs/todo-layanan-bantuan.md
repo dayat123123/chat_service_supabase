@@ -195,7 +195,7 @@ Logika anti-penipuan:
 - **Sakelar darurat** `guest.enabled` untuk Super Admin.
 
 Server (migrasi 0140):
-- [x] Profil tamu (`profiles.is_guest`) dan tiket CS biasa dengan `context.guest` (Login ID klaim, jenis masalah, belum terverifikasi). Profil tamu tidak muncul di pencarian pengguna dan pencarian staf.
+- [x] Profil tamu (`profiles.is_guest`) dan tiket CS biasa dengan `context.guest` (Login ID klaim, jenis masalah, belum terverifikasi). Profil tamu tidak muncul di pencarian pengguna (`search_profiles`, dan sejak `0145` juga halaman Cari aplikasi lewat `search`) dan pencarian staf.
 - [x] RPC tanpa login: `cs_api.guest_config`, `guest_start`, `guest_poll`, `guest_send`, `guest_end` (allowlist Traefik, uji keamanan menolak token palsu).
 - [x] Tampilan agen memuat `guest` (Login ID, jenis, jumlah 24 jam); panel Akun Nasabah tidak memuat data akun untuk tiket tamu (migrasi 0141, permintaan user 10 Nov); CS mencari sendiri Login ID di menu Akun Nasabah.
 
