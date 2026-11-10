@@ -197,10 +197,10 @@ Logika anti-penipuan:
 Server (migrasi 0140):
 - [x] Profil tamu (`profiles.is_guest`) dan tiket CS biasa dengan `context.guest` (Login ID klaim, jenis masalah, belum terverifikasi). Profil tamu tidak muncul di pencarian pengguna dan pencarian staf.
 - [x] RPC tanpa login: `cs_api.guest_config`, `guest_start`, `guest_poll`, `guest_send`, `guest_end` (allowlist Traefik, uji keamanan menolak token palsu).
-- [x] Tampilan agen memuat `guest` (Login ID, jenis, jumlah 24 jam); panel Akun Nasabah memakai Login ID klaim.
+- [x] Tampilan agen memuat `guest` (Login ID, jenis, jumlah 24 jam); panel Akun Nasabah tidak memuat data akun untuk tiket tamu (migrasi 0141, permintaan user 10 Nov); CS mencari sendiri Login ID di menu Akun Nasabah.
 
 Hub:
-- [x] Banner "belum terverifikasi" + SOP di tiket tamu, lencana **Tamu** (daftar tiket, transfer, dashboard, kepala percakapan), panel nasabah "Tamu (belum login)" dengan Login ID klaim, dan sakelar di **Pengaturan → Penugasan, tiket & alert** (Hub 7c49712).
+- [x] Banner "belum terverifikasi" + SOP di tiket tamu, lencana **Tamu** (daftar tiket, transfer, dashboard, kepala percakapan), panel nasabah "Tamu (belum login)" dengan Login ID klaim tanpa data akun, dan sakelar di **Pengaturan → Penugasan, tiket & alert** (Hub 7c49712).
 
 Library:
 - [x] `openCommunityGuestSupport` untuk tombol "Tidak bisa masuk? Hubungi CS" di halaman login: form, catatan keamanan, chat dengan polling 4 detik, tanpa sesi dan tanpa menukar token OLT (library v1.12.0, 0aaf06f). Token sesi tamu disimpan di memori; host bisa memasang penyimpanan aman sendiri.

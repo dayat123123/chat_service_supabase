@@ -46,8 +46,8 @@ select tests.agent_online(:'rina');
 select cs_api.claim_ticket(:'ticket') as claimed \gset
 select ok((:'claimed'::jsonb) -> 'guest' @> '{"login_id": "BUDI01", "problem": "password", "verified": false, "recent_24h": 1}',
   'CS melihat tiket tamu belum terverifikasi beserta Login ID klaim');
-select is(cs_api.ticket_customer_login(:'ticket'), '{"login_id": "BUDI01", "source": "guest"}'::jsonb,
-  'Panel Akun Nasabah memakai Login ID klaim');
+select is(cs_api.ticket_customer_login(:'ticket'), '{"login_id": null, "source": "guest"}'::jsonb,
+  'Panel Akun Nasabah tidak memuat data akun untuk tiket tamu');
 select lives_ok(format($$select cs_api.agent_send_message(%L, 'Reset password sudah dikirim ke email terdaftar', gen_random_uuid())$$, :'ticket'),
   'CS membalas tamu');
 reset role;
