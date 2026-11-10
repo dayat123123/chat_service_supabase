@@ -56,6 +56,8 @@ Bentuk: `{"query": "...", "type": "posts", "posts": [...], "next_cursor": "..." 
 
 Error: `401 not_authenticated`, `400 invalid_type`, `400 query_too_short` (< `search.min_query_length` = 2 karakter atau tanpa huruf/angka), `400 query_too_long` (> 100), `400 invalid_cursor`, `429 rate_limited` (`search`: 30/menit dan 600/jam per user, dikali faktor trust level).
 
+Hasil `users` tidak memuat staf, akun yang diblokir/dibanned, dan sejak `0145` profil tamu pengaduan (`profiles.is_guest`).
+
 ### `get_hashtag_feed(p_tag, p_cursor = null, p_limit = 20)` → `setof feed_post`
 
 Feed hashtag (tanpa `#`, tidak peka huruf besar). Keyset sama dengan `get_feed`; menghormati RLS, mute user, dan kata yang dibisukan. Error `400 invalid_hashtag`.
