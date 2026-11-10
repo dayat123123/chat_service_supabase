@@ -132,6 +132,20 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 
 `get_my_rooms` tidak menampilkan room DM yang masih berupa permintaan untuk **penerima**, memakai `private.dm_request_pending(room, user)` dari agen S (dicek saat runtime; bila belum ada, semua room tampil seperti sebelumnya). Pengirim tetap melihat room-nya. `get_my_room(p_room_id)` tidak disaring agar layar permintaan tetap bisa membuka room.
 
+### Akun resmi tidak menerima DM (`0144`)
+
+Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan `get_official_accounts`), dicek lewat `private.is_official_account(uuid)`. Akun yang hanya terverifikasi (`is_verified`) tidak terpengaruh dan tetap bisa di-DM. Pengecualian (`private.official_dm_exempt`): akun resmi itu sendiri, staf (`cs.is_staff`), dan `service_role`.
+
+| Jalur | Perilaku untuk user biasa |
+|---|---|
+| `get_or_create_direct_room(p_other_user_id)` | DM **baru** ke akun resmi ditolak `403 official_no_dm`, jadi tidak ada permintaan pesan ke akun resmi. Room DM lama tetap dikembalikan agar riwayatnya bisa dibuka |
+| `create_group_room`, `add_room_members` | Menyertakan akun resmi ditolak `403 official_no_dm` (seluruh panggilan, tidak ada anggota yang ditambahkan) |
+| Kirim pesan ke room DM dengan akun resmi (`send_message`, `share_post_to_chat`, kartu saham, lampiran) | Ditolak trigger `messages_26a_official_no_dm` dengan `403 official_no_dm`. Kirim ulang pesan lama dengan `client_id` yang sama tetap idempoten. Riwayat tetap bisa dibaca |
+| Akun resmi sendiri | Tetap boleh memulai DM, mengirim ke DM lama (pengumuman/balasan terakhir), dan membuat grup |
+| Chat CS | Tidak berubah (trigger hanya untuk pesan tanpa `session_id`) |
+
+`get_profile` dan `search_profiles` kini mengembalikan kolom `is_official boolean`, sehingga klien tidak perlu menebak dari daftar akun resmi. Akun resmi yang dinonaktifkan (`disabled_at`) tidak lagi dihitung resmi dan kembali bisa di-DM.
+
 ## Preferensi notifikasi (`0076`)
 
 - Jenis (urutan = urutan di `get_notification_prefs` dan `config.notification_types`): `reply`, `mention`, `like`, `follow`, `message`, `announcement`, `appeal` (keputusan banding, sejak `0083`), `followed_post`, `watchlist_digest`, `moderation` (sejak `0087`, lihat [Notifikasi baru](#notifikasi-baru-0087)), lalu lima jenis OLT (sejak `0086`): `olt.trade`, `olt.funds`, `olt.market`, `olt.info`, `olt.promo`. Masing-masing `in_app` dan `push` (bawaan **aktif**, kecuali push `olt.promo` dan push `followed_post` yang **mati** sampai pengguna mengaktifkannya; pengguna tanpa pengaturan berperilaku persis seperti sebelumnya). `in_app` jenis `moderation` selalu aktif (`in_app_locked: true`; nilai `false` diabaikan).
