@@ -19,6 +19,7 @@ Setiap postingan, komentar, dan pesan chat (kecuali chat CS) melewati trigger be
 | `_25` | integritas | mute/ban, persetujuan S&K, karakter kontrol, maks link/mention/kode saham, anti-duplikat |
 | `_26` | slow mode (pesan room saham) | jeda antarpesan, 429 `slow_mode` |
 | `_26a` | akun resmi (DM, `0144`) | user biasa tidak bisa mengirim ke DM dengan akun resmi, 403 `official_no_dm` |
+| `_26b` | grup hanya-admin (`0146`) | anggota biasa tidak bisa mengirim di grup dengan `only_admins_send`, 403 `group_admins_only` |
 | `_27` | permintaan pesan (DM) | kebijakan DM, batas 3 pesan sebelum diterima |
 | `_30` | kata terlarang | sensor (`mask`) atau tolak (`block`), teks asli **dan** ternormalisasi |
 | `_31` | keamanan konten | akun baru, tautan/domain, kontak, frasa promosi → `allow`/`censor`/`hold`/`block` |
@@ -37,6 +38,7 @@ memoderasi, job server, dan seed tidak terkena.
 | 403 | `dm_not_allowed` | penerima tidak menerima DM dari Anda | — |
 | 403 | `dm_request_limit` | sudah 3 pesan, tunggu permintaan diterima | — |
 | 403 | `official_no_dm` | akun resmi tidak menerima pesan langsung dari user biasa (`0144`) | "Akun resmi tidak menerima pesan langsung. Hubungi CS untuk bantuan." |
+| 403 | `group_admins_only` | grup diatur hanya admin yang bisa mengirim pesan (`0146`) | "Hanya admin yang bisa mengirim pesan di grup ini" |
 | 429 | `slow_mode` | slow mode room saham | `details` = detik tunggu, header `Retry-After` |
 
 Pesan error sengaja tidak menyebut kategori, kata, atau daftar yang cocok agar aturan tidak mudah diakali.

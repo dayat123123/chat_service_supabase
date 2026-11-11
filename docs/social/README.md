@@ -148,6 +148,37 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 
 `get_profile` dan `search_profiles` kini mengembalikan kolom `is_official boolean`, sehingga klien tidak perlu menebak dari daftar akun resmi. Akun resmi yang dinonaktifkan (`disabled_at`) tidak lagi dihitung resmi dan kembali bisa di-DM.
 
+### Kelola grup (`0146`)
+
+Peran anggota grup ada di `chat_members.role`: `owner` (pembuat), `admin`, `member`. Semua RPC di bawah `authenticated`, hanya untuk room `type = 'group'` (selain itu `404 room_not_found`), dan bukan anggota ditolak `403 not_member`.
+
+| RPC | Siapa | Catatan |
+|---|---|---|
+| `add_room_members(p_room_id, p_user_ids uuid[])` → `integer` | owner, admin | perilaku lama tetap (blokir, akun resmi `official_no_dm`, maks. 100 anggota); kini menulis pesan sistem `added` |
+| `remove_room_member(p_room_id, p_user_id)` | owner: siapa pun selain dirinya; admin: hanya `member` | diri sendiri `400 use_leave_room`; target bukan anggota `404 member_not_found`; selain itu `403 forbidden`. Anggota yang dikeluarkan langsung kehilangan akses `get_messages`/`send_message` |
+| `set_room_member_role(p_room_id, p_user_id, p_role)` | jadikan `admin`: owner, admin; jadikan `member`: owner | `p_role` hanya `admin`/`member` (`400 invalid_role`); peran owner tidak bisa diubah lewat RPC ini (`403 forbidden`); peran yang sama tidak menulis event |
+| `transfer_room_ownership(p_room_id, p_user_id)` | owner | owner lama menjadi admin |
+| `update_group_info(p_room_id, p_name = null, p_description = null, p_avatar_url = null)` | admin/owner, atau semua anggota bila `only_admins_edit = false` (`403 group_admins_only_edit`) | `null` = tidak diubah; `''` untuk deskripsi/foto = hapus. Nama 1–80 (`invalid_name`), deskripsi ≤ 500 (`invalid_description`), foto `http(s)://` ≤ 500 (`invalid_avatar`) |
+| `update_group_settings(p_room_id, p_only_admins_send = null, p_only_admins_edit = null)` | owner, admin | bawaan `only_admins_send = false`, `only_admins_edit = true` |
+| `leave_room(p_room_id)` | semua | perilaku lama tetap (owner digantikan admin paling lama, lalu anggota paling lama); kini menulis pesan sistem `left` dengan `new_owner_*` bila kepemilikan pindah |
+
+Mengubah nama lewat `update public.chat_rooms` langsung tidak lagi diizinkan (`grant update (name)` dicabut), supaya pengaturan dan pesan sistem selalu berlaku. Trigger `messages_26b_group_admins_only` menolak pesan anggota biasa di grup `only_admins_send` dengan `403 group_admins_only` (kirim ulang `client_id` lama tetap idempoten).
+
+`get_my_rooms`/`get_my_room` mengembalikan kolom tambahan `description`, `avatar_url`, `only_admins_send`, `only_admins_edit` (dua terakhir `null` untuk room selain grup).
+
+**Pesan sistem grup.** Setiap perubahan menulis baris `messages` dengan `kind = 'group_event'`, `sender_id = null`, `body` kalimat bahasa Indonesia (untuk pratinjau daftar chat), dan `payload`:
+
+| `event` | Kunci tambahan |
+|---|---|
+| `added` | `targets` (`[{id, name}]`, maks. 20), `count` |
+| `removed`, `promoted`, `demoted`, `owner_changed` | `target_id`, `target_name` |
+| `left` | `new_owner_id`, `new_owner_name` bila kepemilikan pindah |
+| `renamed` | `name` |
+| `description_changed`, `photo_changed` | `removed` (boolean) |
+| `settings_changed` | `setting` (`only_admins_send`/`only_admins_edit`), `value` (boolean) |
+
+Semua event membawa `actor_id` dan `actor_name`. Pesan sistem dibuat dengan klaim JWT dikosongkan sementara (pola `0040`), sehingga tidak terkena rate limit, persetujuan, dan filter pengirim; tetap disiarkan realtime dan dihitung sebagai belum dibaca, tetapi **tidak** membuat notifikasi/push (`messages_after_insert` melewati `kind = 'group_event'`). Klien yang belum mengenal `group_event` melihatnya sebagai teks biasa tanpa pengirim.
+
 ## Preferensi notifikasi (`0076`)
 
 - Jenis (urutan = urutan di `get_notification_prefs` dan `config.notification_types`): `reply`, `mention`, `like`, `follow`, `message`, `announcement`, `appeal` (keputusan banding, sejak `0083`), `followed_post`, `watchlist_digest`, `moderation` (sejak `0087`, lihat [Notifikasi baru](#notifikasi-baru-0087)), lalu lima jenis OLT (sejak `0086`): `olt.trade`, `olt.funds`, `olt.market`, `olt.info`, `olt.promo`. Masing-masing `in_app` dan `push` (bawaan **aktif**, kecuali push `olt.promo` dan push `followed_post` yang **mati** sampai pengguna mengaktifkannya; pengguna tanpa pengaturan berperilaku persis seperti sebelumnya). `in_app` jenis `moderation` selalu aktif (`in_app_locked: true`; nilai `false` diabaikan).
