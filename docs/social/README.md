@@ -148,6 +148,16 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 
 `get_profile` dan `search_profiles` kini mengembalikan kolom `is_official boolean`, sehingga klien tidak perlu menebak dari daftar akun resmi. Akun resmi yang dinonaktifkan (`disabled_at`) tidak lagi dihitung resmi dan kembali bisa di-DM.
 
+### Daftar pengikut dan yang diikuti (`0148`)
+
+`get_follow_list(p_user_id uuid, p_kind text, p_cursor text = null, p_limit integer = 30)` → `table(id, username, display_name, avatar_url, is_verified, is_official, is_me, is_following, follows_me, followed_at, cursor)` (authenticated).
+
+- `p_kind`: `followers` (yang mengikuti `p_user_id`) atau `following` (yang diikuti `p_user_id`). Urutan terbaru mengikuti dulu; `followed_at` = waktu mulai mengikuti.
+- Paginasi keyset: kirim `cursor` baris terakhir sebagai `p_cursor`. `p_limit` 1–50.
+- Penanda dari sudut pandang pembaca: `is_me` (baris diri sendiri), `is_following` (saya mengikuti orang ini, untuk tombol Ikuti/Mengikuti), `follows_me` (orang ini mengikuti saya, untuk "Ikuti balik").
+- Disembunyikan: akun terhapus, tamu, staf CS, akun yang di-ban, dan akun yang saling blokir dengan pembaca. Karena itu jumlah baris bisa lebih sedikit dari `follower_count`/`following_count`.
+- Error: `400 invalid_kind`, `400 invalid_cursor`, `404 user_not_found` (pengguna tidak ada, terhapus, tamu, atau saling blokir dengan pembaca), `401 not_authenticated`.
+
 ### Kelola grup (`0146`)
 
 Peran anggota grup ada di `chat_members.role`: `owner` (pembuat), `admin`, `member`. Semua RPC di bawah `authenticated`, hanya untuk room `type = 'group'` (selain itu `404 room_not_found`), dan bukan anggota ditolak `403 not_member`.
