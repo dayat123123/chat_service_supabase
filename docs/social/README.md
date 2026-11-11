@@ -193,7 +193,7 @@ Semua event membawa `actor_id` dan `actor_name`. Pesan sistem dibuat dengan klai
 
 ### RPC
 
-- `get_notification_prefs()` → `{"types": [{type, in_app, push, in_app_locked}], "quiet_hours": {enabled, start "HH:MM", end, timezone "Asia/Jakarta"}, "aggregate_minutes": 60}`.
+- `get_notification_prefs()` → `{"types": [{type, in_app, push, in_app_locked}], "quiet_hours": {enabled, start "HH:MM", end, timezone "Asia/Jakarta"}, "aggregate_minutes": 60, "watchlist_digest": {time "HH:MM", timezone "Asia/Jakarta"}}`. `watchlist_digest.time` = jam kirim ringkasan saham pantauan yang diatur Super Admin (`0147`); tampilkan di keterangan jenis `watchlist_digest`.
 - `set_notification_prefs(p_prefs jsonb)` → bentuk yang sama. Parsial: `{"types": {"like": {"push": false}}, "quiet_hours": {"enabled": true, "start": "22:00", "end": "06:00"}}` (atau `types` berupa array `[{type, in_app?, push?}]`). Error: `400 invalid_preferences`, `400 invalid_notification_type`, `400 invalid_quiet_hours`, `429 rate_limited` (`notification_prefs` 30/menit).
 - `get_notifications(p_cursor, p_limit)` bertambah `actor_count integer` dan `actors jsonb` (≤ 3 pelaku terbaru `{id, username, display_name, avatar_url}`). Contoh teks: "Budi dan {actor_count−1} lainnya menyukai postingan Anda". Notifikasi lama (sebelum 0076) memiliki `actor_count` 1.
 
@@ -395,7 +395,7 @@ Notifikasi masuk lewat `get_notifications` seperti biasa (tipe baru di kolom `ty
 
 ### Ringkasan saham pantauan (tipe `watchlist_digest`; bawaan in-app dan push aktif)
 
-- Job `social-watchlist-digest` setiap hari 17.05 WIB (10.05 UTC), sekali per hari (`private.watchlist_digest_runs`). Rentang = sejak ringkasan sebelumnya (pertama kali `notifications.digest_lookback_hours` = 24 jam; maksimal 7 hari).
+- Job `social-watchlist-digest` setiap hari pada jam `notifications.watchlist_digest_time` (bawaan 17.05 WIB = 10.05 UTC), sekali per hari menurut tanggal WIB (`private.watchlist_digest_runs`). Super Admin mengubah jamnya di Hub → Push notification (`admin_set_setting`, tercatat di riwayat pengaturan dan jejak audit); trigger di `cs.cs_settings` langsung menjadwalkan ulang job (`0147`). Bila jam diubah setelah ringkasan hari itu terkirim, ringkasan berikutnya baru besok. Rentang = sejak ringkasan sebelumnya (pertama kali `notifications.digest_lookback_hours` = 24 jam; maksimal 7 hari).
 - Satu notifikasi per pengguna yang punya postingan baru **terlihat** tentang saham pantauannya (`stock_watchers`), tidak termasuk postingan sendiri, penulis yang dibisukan/saling blokir, dan saham yang dibisukan (`muted_stocks`). Pengguna tanpa postingan baru tidak diberi notifikasi.
 - `payload`: `{"date": "2026-11-03", "post_count": 12, "stock_count": 4, "stocks": ["BBCA", "TLKM", "ASII"], "since", "until"}`; `stocks` = 3 kode dengan postingan terbanyak, `post_count` = postingan unik. Tanpa `actor_id`. Push: "Ringkasan saham pantauan" / "12 postingan baru tentang $BBCA, $TLKM, $ASII, dan 1 saham lainnya". Ketuk → feed saham/watchlist.
 
@@ -429,7 +429,7 @@ Tabel `public.post_drafts` (hanya bisa dibaca pemiliknya; tulis lewat RPC). Maks
 5. Draf: simpan lokal + `save_post_draft` (debounce), gunakan `client_draft_id` sebagai `p_client_id` saat menerbitkan.
 6. Kartu saham: render dari `attachments` bertipe `stock`; ambil harga dari aplikasi OLT.
 
-Job baru: `social-followed-posts` (30 detik), `social-watchlist-digest` (10.05 UTC).
+Job baru: `social-followed-posts` (30 detik), `social-watchlist-digest` (bawaan 10.05 UTC; jamnya diatur dari Hub sejak `0147`).
 
 ## Moderator room (`0093`)
 
