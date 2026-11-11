@@ -35,7 +35,7 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 
 ## E. Aplikasi OLT — Tim aplikasi
 
-- [ ] Library `rendezvous_community` v1.16.1; URL HTTPS produksi dan anon key dari `config/prod.json`
+- [ ] Library `rendezvous_community` v1.17.0; URL HTTPS produksi dan anon key dari `config/prod.json`
 - [ ] Build release Android tanpa cleartext; tidak ada `service_role` key di aplikasi
 - [ ] Uji manual Android dan Windows: login, feed, chat dua akun, chat CS, unggah gambar
 - [ ] **Fitur & Kampanye → Fitur & versi**: versi minimum aplikasi diset; versi lama mendapat "Perbarui aplikasi"
