@@ -176,13 +176,13 @@ Tab Stream (Terbaru, Teratas, Grafik & Media, Polling) disimpan di `public.feed_
 - RPC Hub (`cs_api`): `admin_feed_filters()`, `admin_save_feed_filter(p_key, p_label_en, p_label_id, p_sort, p_content, p_icon, p_position, p_enabled)`, `admin_reorder_feed_filters(p_keys text[])` (harus memuat setiap key tepat sekali), `admin_delete_feed_filter(p_key)`. Semua tercatat di audit (`feed_filter.save`, `feed_filter.reorder`, `feed_filter.delete`).
 - Analitik (`0152`): `feed_open` kini menyimpan properti `filter`.
 
-### Indeks dan kode berstrip (`0150`, `0151`)
+### Indeks dan kode berstrip (`0150`, `0151`, `0153`)
 
-Selain kode saham biasa (`^[A-Z][A-Z0-9]{1,11}$`), server mengenal **instrumen** terdaftar di `private.market_instruments`. Saat ini jenisnya `index`, dan 33 indeks IDX sudah diisi, mis. IHSG, LQ45, IDX30, KOMPAS100, JII, SRI-KEHATI, IDXSMC-LIQ, dan indeks sektor. Alias ada di `private.market_instrument_aliases`, mis. `COMPOSITE` dan `JCI` untuk IHSG.
+Selain kode saham biasa (`^[A-Z][A-Z0-9]{1,11}$`), server mengenal **instrumen** terdaftar di `private.market_instruments`. Saat ini jenisnya `index`. Daftar awalnya sama dengan 46 indeks IDX di OLT, dengan urutan yang sama (`0153`): COMPOSITE, LQ45, JII, MBX, DBX, KOMPAS100, BISNIS-27, SRI-KEHATI, ISSI, IDX30, …, IDXVESTA28, IDXCMDTY20. Alias ada di `private.market_instrument_aliases`, mis. `IHSG` dan `JCI` untuk COMPOSITE, `SRIKEHATI` untuk SRI-KEHATI, dan `IGRADE` untuk I-GRADE.
 
 - **Format kode:** 2–24 karakter `^[A-Z][A-Z0-9]{0,19}(-[A-Z0-9]{1,19})*$`, jadi boleh memakai tanda strip.
 - **Kode berstrip harus terdaftar.** Kode berstrip yang tidak terdaftar jatuh ke bagian sebelum strip, sehingga `$BBCA-nya` tetap ditandai `BBCA`, sedangkan `$SRI-KEHATI` dan `$sri-kehati-nya` ditandai `SRI-KEHATI`.
-- **Alias selalu diarahkan ke kode utama:** di tag postingan, feed (`get_feed('stock', 'COMPOSITE')`), pantau dan bisukan (trigger mengubah kode sebelum disimpan; kode tidak valid ditolak `23514 invalid_stock_code`), room diskusi, kartu saham di chat, sentimen, statistik, sematan postingan resmi, segmen kampanye, dan target push integrasi.
+- **Alias selalu diarahkan ke kode utama:** di tag postingan, feed (`get_feed('stock', 'IHSG')` sama dengan COMPOSITE), pantau dan bisukan (trigger mengubah kode sebelum disimpan; kode tidak valid ditolak `23514 invalid_stock_code`), room diskusi, kartu saham di chat, sentimen, statistik, sematan postingan resmi, segmen kampanye, dan target push integrasi.
 - **Pencarian:** pencarian saham juga menemukan indeks lewat kode, alias, atau nama. Item hasil kini punya `kind` dan `name` (null untuk saham biasa).
 - `get_market_instruments()` → `table(code, kind, name, description, aliases text[], position, room_enabled)` (authenticated): indeks aktif untuk klien, dipakai library untuk label "Indeks", saran `$`, dan alias.
 - **Room indeks** dibuat otomatis seperti room saham (`join_stock_room`). Bila `room_enabled = false`, `join_stock_room` menolak `403 room_disabled` dan `get_stock_room_state` mengembalikan `room_enabled: false`. Slow mode, sematan, dan moderator room dikelola dari halaman Room saham di Hub, yang kini menerima kode berstrip dan alias.
@@ -190,7 +190,7 @@ Selain kode saham biasa (`^[A-Z][A-Z0-9]{1,11}$`), server mengenal **instrumen**
   - `community_instruments()`: daftar beserta pemakaian: jumlah post, post 7 hari, pemantau, room, dan anggota room.
   - `community_instrument_check(p_code, p_aliases)`: cek bentrok sebelum simpan. Hasilnya menandai kode yang sudah punya post, pemantau, atau room, yang sudah jadi kode atau alias instrumen lain, dan yang berformat kode saham.
   - `community_save_instrument(p_code, p_name, p_aliases, p_description, p_position, p_enabled, p_room_enabled)`, `community_reorder_instruments(p_codes)`, dan `community_delete_instrument(p_code)`.
-- **Efek simpan dan hapus:** menyimpan menandai ulang postingan lama yang menyebut kode atau aliasnya, lalu memindahkan pemantau, bisuan, dan room alias ke kode utama. Menghapus mengembalikan tag ke aturan biasa. Semua tercatat di audit (`community.instrument_save`, `community.instrument_reorder`, `community.instrument_delete`).
+- **Efek simpan dan hapus:** menyimpan menandai ulang postingan lama yang menyebut kode atau aliasnya, lalu memindahkan pemantau, bisuan, room, statistik sebutan, sematan postingan resmi, dan segmen kampanye alias ke kode utama. Menghapus mengembalikan tag ke aturan biasa. Semua tercatat di audit (`community.instrument_save`, `community.instrument_reorder`, `community.instrument_delete`).
 - **Arti nonaktif:** instrumen nonaktif tidak muncul di `get_market_instruments` dan pencarian, tetapi kodenya tetap dikenali untuk tag.
 
 ### Kelola grup (`0146`)
