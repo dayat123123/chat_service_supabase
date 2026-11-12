@@ -193,6 +193,38 @@ Selain kode saham biasa (`^[A-Z][A-Z0-9]{1,11}$`), server mengenal **instrumen**
 - **Efek simpan dan hapus:** menyimpan menandai ulang postingan lama yang menyebut kode atau aliasnya, lalu memindahkan pemantau, bisuan, room, statistik sebutan, sematan postingan resmi, dan segmen kampanye alias ke kode utama. Menghapus mengembalikan tag ke aturan biasa. Semua tercatat di audit (`community.instrument_save`, `community.instrument_reorder`, `community.instrument_delete`).
 - **Arti nonaktif:** instrumen nonaktif tidak muncul di `get_market_instruments` dan pencarian, tetapi kodenya tetap dikenali untuk tag.
 
+### Hapus chat, hapus grup, dan edit pesan (`0154`)
+
+Room CS (`type = 'support'`, termasuk semua pesan yang punya `session_id`) tetap terkunci di server. Pengguna tidak bisa menghapus, menyembunyikan, mengosongkan, meninggalkan, maupun mengedit room atau pesannya.
+
+- **Hapus chat untuk saya:** `hide_room(p_room_id)` mengisi `chat_members.hidden_at` dan `cleared_at` milik pemanggil saja. Room `direct`, `group`, dan `stock` diizinkan. Room CS ditolak `400 cannot_hide_support`, dan bukan anggota ditolak `404 not_member`. Kedua kolom tidak bisa diubah langsung lewat tabel.
+  - Room tersembunyi tidak muncul di `get_my_rooms` dan `get_my_room` sampai ada pesan baru.
+  - Membuka lagi lewat `get_or_create_direct_room` atau `join_stock_room` memunculkan room, tetapi riwayatnya tetap kosong.
+  - Pesan dengan `created_at <= cleared_at` tidak dikirim ke pengguna itu: `get_messages`, `get_message_ids`, `get_messages_by_ids`, preview daftar chat, `get_room_previews`, kutipan balasan, `get_unread_counts`, dan `get_unread_chat_count`.
+  - Room saham hanya disembunyikan, keanggotaan tetap. Keluar tetap lewat `leave_room`.
+  - Notifikasi pesan room itu ditandai terbaca, dan event `room_removed` (`reason: hidden`) dikirim ke topik `user:<uid>` supaya perangkat lain ikut menghapus room dari daftar.
+- **Hapus grup:** `delete_group(p_room_id)` khusus `owner`. Room selain grup ditolak `400 not_group`, dan selain owner (termasuk admin dan bukan anggota) ditolak `403 forbidden`.
+  - Pesan diarsipkan ke `private.content_archive` seperti `delete_message`, lalu dicatat di audit `chat.group_delete` dengan nama, jumlah anggota, dan jumlah pesan yang diarsipkan.
+  - Event `room_deleted` dikirim ke `room:<id>`, dan `room_removed` (`reason: group_deleted`, `actor_id`, `actor_name`) dikirim ke setiap anggota. Setelah itu room dihapus.
+- **Edit pesan:** `edit_message(p_message_id, p_body)` mengembalikan baris `chat_message` terbaru.
+  - Hanya pengirim yang boleh (`403 forbidden`).
+  - Hanya pesan teks yang belum dihapus, bukan pesan sistem, event grup, atau pesan berlampiran (`400 not_editable`).
+  - Pesan CS ditolak `409 support_message_locked`.
+  - Batas waktu memakai `content.edit_minutes`, sama dengan edit komentar. Lewat batas ditolak `409 edit_window_closed`.
+  - Isi baru melewati validasi yang sama dengan kirim pesan: kosong (`empty_body`), maksimal 4000 karakter (`body_too_long`), kata terlarang, content safety, integritas, dan kill switch. Edit juga memakai rate limit `content_edit`. Mention baru dari edit tidak mengirim notifikasi.
+  - Isi lama disimpan di `private.content_edits` (`target_type = 'message'`), dan Hub bisa membacanya lewat `cs_api.community_edit_history('message', id)`.
+  - Aturan yang sama ditegakkan trigger untuk `UPDATE` langsung ke `messages.body`.
+  - Event realtime `message` membawa isi baru dan `edited_at`. Bila yang diedit pesan terakhir, preview room ikut berubah dan event `message_edited` (`message_id`, `preview`) dikirim ke `room:<id>`.
+- **Kunci yang dipertahankan:** `delete_message` menolak pesan CS (`409 support_message_locked`), dan `leave_room` menolak room CS (`400 cannot_leave_support`).
+- **Analitik:** event `hide_room`, `delete_group`, dan `edit_message` diterima.
+
+### Komentar dihapus tanpa jejak (`0155`)
+
+- Komentar yang dihapus, oleh penulis maupun moderator, tidak lagi dikirim ke klien. `get_comment_thread` (semua urutan `0142`) dan `private.thread_comments` tidak memuat placeholder. Membuka thread dari komentar terhapus ditolak `404 comment_not_found`.
+- Saat dihapus, balasan langsung naik ke induk terdekat yang masih ada. Bila tidak ada induk, balasan itu menjadi komentar tingkat atas. `parent_id`, `path`, dan `depth` seluruh turunannya disesuaikan. Komentar yang sudah terhapus sebelum migrasi ikut dirapikan.
+- `comment_count` post dan `reply_count` komentar induk tidak menghitung komentar terhapus.
+- Baris komentar, arsip moderasi (`private.content_archive`), dan audit tetap seperti sebelumnya. Komentar yang dipulihkan moderator kembali sebagai komentar tanpa balasan.
+
 ### Kelola grup (`0146`)
 
 Peran anggota grup ada di `chat_members.role`: `owner` (pembuat), `admin`, `member`. Semua RPC di bawah `authenticated`, hanya untuk room `type = 'group'` (selain itu `404 room_not_found`), dan bukan anggota ditolak `403 not_member`.

@@ -72,20 +72,18 @@ select throws_ok(
 
 select tests.authenticate_as(:'carol');
 select lives_ok(format('select delete_comment(%L)', :'c2'), 'Penulis bisa menghapus komentarnya');
-select results_eq(
-  format($$select is_deleted, body is null, author_id is null
-           from get_comment_thread('a2000000-0000-4000-8000-000000000001', %L, 0, null, 10, 0, true)
-           where id = %L$$, :'c1', :'c2'),
-  $$values (true, true, true)$$,
-  'Komentar terhapus tampil sebagai [dihapus] tanpa isi & penulis');
 select is(
-  (select count(*)::int from get_comment_thread('a2000000-0000-4000-8000-000000000001', null, 10, null, 10, 10)
+  (select count(*)::int from get_comment_thread('a2000000-0000-4000-8000-000000000001', :'c1', 0, null, 10, 0, true)
+   where id = :'c2'),
+  0, 'Komentar terhapus tidak dikirim ke klien');
+select is(
+  (select parent_id from get_comment_thread('a2000000-0000-4000-8000-000000000001', null, 10, null, 10, 10)
    where id = :'c3'),
-  1, 'Balasan di bawah komentar terhapus tetap ada');
+  :'c1'::uuid, 'Balasan di bawah komentar terhapus naik ke induk terdekat');
 select is((select comment_count from posts where id = 'a2000000-0000-4000-8000-000000000001'), 8,
   'comment_count berkurang setelah komentar dihapus');
 select is((select reply_count from comments where id = :'c1'), 3,
-  'reply_count tidak berubah (komentar terhapus tetap tampil)');
+  'reply_count menghitung balasan yang naik, bukan komentar terhapus');
 select throws_ok(
   format($$select create_comment('a2000000-0000-4000-8000-000000000001', %L, 'balas yang dihapus')$$, :'c2'),
   'PT409', 'parent_deleted', 'Tidak bisa membalas komentar yang sudah dihapus');
