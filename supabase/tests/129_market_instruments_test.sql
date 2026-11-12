@@ -14,7 +14,7 @@ select is(private.extract_cashtags('Lihat $BBCA-nya naik'), array['BBCA'],
   'Kode saham diikuti akhiran -nya tetap terbaca sebagai kode saham');
 select is(private.extract_cashtags('$SRI-KEHATI dan $sri-kehati-nya'), array['SRI-KEHATI'],
   'Indeks berstrip yang terdaftar terbaca utuh, termasuk dengan akhiran');
-select is(private.extract_cashtags('$composite, $JCI, dan $IHSG'), array['IHSG'],
+select is(private.extract_cashtags('$composite, $JCI, dan $IHSG'), array['COMPOSITE'],
   'Alias diarahkan ke kode utama tanpa duplikat');
 select is(private.extract_cashtags('$ABC-DEF $A $ABCDEFGHIJKLMNOPQRSTU'), array['ABC'],
   'Kode berstrip yang tidak terdaftar jatuh ke bagian sebelum strip');
@@ -40,8 +40,8 @@ select results_eq(
 select is((select stock_codes from public.get_feed('stock', 'SRI-KEHATI', null, 1)), array['SRI-KEHATI'],
   'Post menampilkan kode utama');
 
-insert into public.stock_watchers (user_id, stock_code) values (:'ani', 'composite');
-select is((select stock_code from public.stock_watchers where user_id = :'ani'), 'IHSG',
+insert into public.stock_watchers (user_id, stock_code) values (:'ani', 'ihsg');
+select is((select stock_code from public.stock_watchers where user_id = :'ani'), 'COMPOSITE',
   'Memantau lewat alias disimpan sebagai kode utama');
 select throws_ok(format($$insert into public.stock_watchers (user_id, stock_code) values (%L, 'NGASAL-KODE')$$, :'ani'),
   '23514', 'invalid_stock_code', 'Kode berstrip yang tidak terdaftar ditolak saat memantau');
@@ -53,11 +53,11 @@ select public.join_stock_room('srikehati') as sk_room \gset
 select is((select stock_code from public.chat_rooms where id = :'sk_room'), 'SRI-KEHATI',
   'Room indeks dibuat dengan kode utama');
 select is(public.get_stock_room_state('SRI-KEHATI') ->> 'room_enabled', 'true', 'State room memuat room_enabled');
-select is((select code from public.get_stock('$jci')), 'IHSG', 'get_stock menerima alias');
-select is((select code from public.get_stock_stats(array['composite', 'bukan-kode'])), 'IHSG',
+select is((select code from public.get_stock('$jci')), 'COMPOSITE', 'get_stock menerima alias');
+select is((select code from public.get_stock_stats(array['ihsg', 'bukan-kode'])), 'COMPOSITE',
   'Statistik menerima alias dan mengabaikan kode asing');
 select is(public.get_stock_sentiment('SRIKEHATI') ->> 'code', 'SRI-KEHATI', 'Sentimen memakai kode utama');
-select ok(exists (select 1 from public.get_market_instruments() where code = 'IHSG' and aliases = array['COMPOSITE', 'JCI']),
+select ok(exists (select 1 from public.get_market_instruments() where code = 'COMPOSITE' and aliases = array['IHSG', 'JCI']),
   'Daftar instrumen memuat alias');
 select throws_ok($$select * from private.market_instruments$$, '42501', null, 'Tabel instrumen tidak bisa dibaca langsung');
 reset role;
@@ -85,7 +85,7 @@ select is((select e ->> 'posts' from jsonb_array_elements(cs_api.community_instr
            where e ->> 'role' = 'alias'), '1', 'Cek bentrok menghitung post yang memakai kode');
 select is((select e ->> 'stock_format' from jsonb_array_elements(cs_api.community_instrument_check('MIX-TEST', array['MIXTEST'])) e
            where e ->> 'role' = 'alias'), 'true', 'Cek bentrok menandai kode berformat saham');
-select is((select e ->> 'alias_of' from jsonb_array_elements(cs_api.community_instrument_check('COMPOSITE')) e), 'IHSG',
+select is((select e ->> 'alias_of' from jsonb_array_elements(cs_api.community_instrument_check('IHSG')) e), 'COMPOSITE',
   'Cek bentrok menandai kode yang sudah jadi alias');
 select is(cs_api.community_save_instrument('mix-test', 'Indeks Uji', array['mixtest', 'MIX-TEST']) -> 'aliases',
   '["MIXTEST"]'::jsonb, 'Indeks baru tersimpan dengan alias tanpa kode utama');
