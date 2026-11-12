@@ -2,7 +2,7 @@ begin;
 select plan(12);
 
 select tables_are('public', array[
-  'appeals', 'banned_words', 'blocks', 'bookmarks', 'chat_members', 'chat_rooms', 'comments', 'follows',
+  'appeals', 'banned_words', 'blocks', 'bookmarks', 'chat_members', 'chat_rooms', 'comments', 'feed_filters', 'follows',
   'legal_documents', 'link_previews', 'message_reactions', 'messages', 'muted_keywords', 'muted_stocks',
   'mutes', 'notifications', 'post_drafts', 'post_hashtags', 'post_mentions', 'post_poll_options', 'post_poll_votes',
   'post_polls', 'post_stocks', 'posts', 'profiles', 'reactions', 'reports',
