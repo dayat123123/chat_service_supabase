@@ -216,6 +216,7 @@ Room CS (`type = 'support'`, termasuk semua pesan yang punya `session_id`) tetap
   - Aturan yang sama ditegakkan trigger untuk `UPDATE` langsung ke `messages.body`.
   - Event realtime `message` membawa isi baru dan `edited_at`. Bila yang diedit pesan terakhir, preview room ikut berubah dan event `message_edited` (`message_id`, `preview`) dikirim ke `room:<id>`.
 - **Kunci yang dipertahankan:** `delete_message` menolak pesan CS (`409 support_message_locked`), dan `leave_room` menolak room CS (`400 cannot_leave_support`).
+- **Keluar room (`0157`):** setelah `leave_room` berhasil, event `room_removed` (`reason: left`) dikirim ke topik `user:<uid>` supaya perangkat lain milik pengguna yang sama ikut membuang room dari daftar.
 - **Analitik:** event `hide_room`, `delete_group`, dan `edit_message` diterima.
 
 ### Komentar dihapus tanpa jejak (`0155`)
