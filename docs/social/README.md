@@ -158,6 +158,41 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 - Disembunyikan: akun terhapus, tamu, staf CS, akun yang di-ban, dan akun yang saling blokir dengan pembaca. Karena itu jumlah baris bisa lebih sedikit dari `follower_count`/`following_count`.
 - Error: `400 invalid_kind`, `400 invalid_cursor`, `404 user_not_found` (pengguna tidak ada, terhapus, tamu, atau saling blokir dengan pembaca), `401 not_authenticated`.
 
+### Tab filter Stream dari server (`0149`, `0152`)
+
+Tab Stream (Terbaru, Teratas, Grafik & Media, Polling) disimpan di `public.feed_filters`. Tab baru bisa ditambah, dimatikan, atau diurutkan dari Hub (**Fitur & Kampanye → Tab Stream**, peran `cs_super_admin`/`product`) tanpa rilis library atau aplikasi. Tabel tidak bisa dibaca langsung (RLS, tanpa grant).
+
+| Kolom | Isi |
+|---|---|
+| `key` | `^[a-z][a-z0-9_]{1,31}$`, tetap setelah dibuat |
+| `label_en`, `label_id` | label tab, 1–40 karakter |
+| `sort` | `latest` atau `top` |
+| `content` | `media` (lampiran dengan `path`), `poll` (punya polling), atau null (semua post) |
+| `icon` | nama ikon huruf kecil, mis. `schedule`, `trending_up`, `image`, `poll` |
+| `position`, `enabled` | urutan dan status |
+
+- `get_feed_filters()` → `table(key, label_en, label_id, sort, content, icon, position)` (authenticated): filter aktif urut `position`.
+- `get_feed(..., p_filter text = null)`: parameter ke-9 yang baru. Bila diisi, urutan dan isi diambil dari baris filter. `p_sort` dan `p_media_only` diabaikan; filter tidak dikenal atau nonaktif ditolak `400 invalid_filter`. Filter berurutan `top` memakai cursor `o:<offset>` seperti `p_sort = 'top'`. Panggilan lama tanpa `p_filter` (4, 7, atau 8 argumen) tetap jalan.
+- RPC Hub (`cs_api`): `admin_feed_filters()`, `admin_save_feed_filter(p_key, p_label_en, p_label_id, p_sort, p_content, p_icon, p_position, p_enabled)`, `admin_reorder_feed_filters(p_keys text[])` (harus memuat setiap key tepat sekali), `admin_delete_feed_filter(p_key)`. Semua tercatat di audit (`feed_filter.save`, `feed_filter.reorder`, `feed_filter.delete`).
+- Analitik (`0152`): `feed_open` kini menyimpan properti `filter`.
+
+### Indeks dan kode berstrip (`0150`, `0151`)
+
+Selain kode saham biasa (`^[A-Z][A-Z0-9]{1,11}$`), server mengenal **instrumen** terdaftar di `private.market_instruments`. Saat ini jenisnya `index`, dan 33 indeks IDX sudah diisi, mis. IHSG, LQ45, IDX30, KOMPAS100, JII, SRI-KEHATI, IDXSMC-LIQ, dan indeks sektor. Alias ada di `private.market_instrument_aliases`, mis. `COMPOSITE` dan `JCI` untuk IHSG.
+
+- **Format kode:** 2–24 karakter `^[A-Z][A-Z0-9]{0,19}(-[A-Z0-9]{1,19})*$`, jadi boleh memakai tanda strip.
+- **Kode berstrip harus terdaftar.** Kode berstrip yang tidak terdaftar jatuh ke bagian sebelum strip, sehingga `$BBCA-nya` tetap ditandai `BBCA`, sedangkan `$SRI-KEHATI` dan `$sri-kehati-nya` ditandai `SRI-KEHATI`.
+- **Alias selalu diarahkan ke kode utama:** di tag postingan, feed (`get_feed('stock', 'COMPOSITE')`), pantau dan bisukan (trigger mengubah kode sebelum disimpan; kode tidak valid ditolak `23514 invalid_stock_code`), room diskusi, kartu saham di chat, sentimen, statistik, sematan postingan resmi, segmen kampanye, dan target push integrasi.
+- **Pencarian:** pencarian saham juga menemukan indeks lewat kode, alias, atau nama. Item hasil kini punya `kind` dan `name` (null untuk saham biasa).
+- `get_market_instruments()` → `table(code, kind, name, description, aliases text[], position, room_enabled)` (authenticated): indeks aktif untuk klien, dipakai library untuk label "Indeks", saran `$`, dan alias.
+- **Room indeks** dibuat otomatis seperti room saham (`join_stock_room`). Bila `room_enabled = false`, `join_stock_room` menolak `403 room_disabled` dan `get_stock_room_state` mengembalikan `room_enabled: false`. Slow mode, sematan, dan moderator room dikelola dari halaman Room saham di Hub, yang kini menerima kode berstrip dan alias.
+- **RPC Hub** (`cs_api`, izin `community.moderate`):
+  - `community_instruments()`: daftar beserta pemakaian: jumlah post, post 7 hari, pemantau, room, dan anggota room.
+  - `community_instrument_check(p_code, p_aliases)`: cek bentrok sebelum simpan. Hasilnya menandai kode yang sudah punya post, pemantau, atau room, yang sudah jadi kode atau alias instrumen lain, dan yang berformat kode saham.
+  - `community_save_instrument(p_code, p_name, p_aliases, p_description, p_position, p_enabled, p_room_enabled)`, `community_reorder_instruments(p_codes)`, dan `community_delete_instrument(p_code)`.
+- **Efek simpan dan hapus:** menyimpan menandai ulang postingan lama yang menyebut kode atau aliasnya, lalu memindahkan pemantau, bisuan, dan room alias ke kode utama. Menghapus mengembalikan tag ke aturan biasa. Semua tercatat di audit (`community.instrument_save`, `community.instrument_reorder`, `community.instrument_delete`).
+- **Arti nonaktif:** instrumen nonaktif tidak muncul di `get_market_instruments` dan pencarian, tetapi kodenya tetap dikenali untuk tag.
+
 ### Kelola grup (`0146`)
 
 Peran anggota grup ada di `chat_members.role`: `owner` (pembuat), `admin`, `member`. Semua RPC di bawah `authenticated`, hanya untuk room `type = 'group'` (selain itu `404 room_not_found`), dan bukan anggota ditolak `403 not_member`.
