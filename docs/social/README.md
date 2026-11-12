@@ -212,7 +212,7 @@ Room CS (`type = 'support'`, termasuk semua pesan yang punya `session_id`) tetap
   - Pesan CS ditolak `409 support_message_locked`.
   - Batas waktu memakai `content.edit_minutes`, sama dengan edit komentar. Lewat batas ditolak `409 edit_window_closed`.
   - Isi baru melewati validasi yang sama dengan kirim pesan: kosong (`empty_body`), maksimal 4000 karakter (`body_too_long`), kata terlarang, content safety, integritas, dan kill switch. Edit juga memakai rate limit `content_edit`. Mention baru dari edit tidak mengirim notifikasi.
-  - Isi lama disimpan di `private.content_edits` (`target_type = 'message'`), dan Hub bisa membacanya lewat `cs_api.community_edit_history('message', id)`.
+  - Isi lama disimpan di `private.content_edits` (`target_type = 'message'`), dan Hub bisa membacanya lewat `cs_api.community_edit_history('message', id)`. Sejak `0156`, aturannya sama dengan membuka isi pesan: pesan CS ditolak `404 content_not_found`, DM atau grup yang tidak dilaporkan, ditandai, atau dimoderasi ditolak `403 private_message_forbidden`, dan setiap pembukaan riwayat pesan privat tercatat di audit `community.private_message_edits_view`.
   - Aturan yang sama ditegakkan trigger untuk `UPDATE` langsung ke `messages.body`.
   - Event realtime `message` membawa isi baru dan `edited_at`. Bila yang diedit pesan terakhir, preview room ikut berubah dan event `message_edited` (`message_id`, `preview`) dikirim ke `room:<id>`.
 - **Kunci yang dipertahankan:** `delete_message` menolak pesan CS (`409 support_message_locked`), dan `leave_room` menolak room CS (`400 cannot_leave_support`).
