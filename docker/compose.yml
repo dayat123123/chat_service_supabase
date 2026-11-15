@@ -850,7 +850,7 @@ services:
       resources:
         limits: {cpus: "0.25", memory: 64M, pids: 64}
 
-  # Trade sharing is paused: the relay only starts with TRADE_RELAY=1 (make) or -TradeRelay (make.ps1).
+  # Trade sharing is paused: the relay only starts with an explicit --profile trade-relay.
   trade-relay:
     <<: *base
     labels: ["olt.autoheal=true"]

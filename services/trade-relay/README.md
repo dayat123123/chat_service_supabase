@@ -75,8 +75,10 @@ Untuk mencoba di dev: jalankan stack dengan `-DummyOlt`, isi alamat `tcp://dummy
 
 ## Tes
 
+Selama fitur dijeda, `make` / `make.ps1` tidak punya target untuk relay. Jalankan tes langsung dari root repo:
+
 ```
-.\make.ps1 test-trade-relay
+docker run --rm -v "$PWD/services/trade-relay:/src" -w /src golang:1.27.3-alpine3.24 sh -euc 'apk add --no-cache build-base pkgconf zeromq-dev >/dev/null && CGO_ENABLED=1 go test -race -count=1 ./...'
 ```
 
 Tes berjalan di container Go dengan libzmq: frame golden yang dihasilkan kode C++ OLT asli (`internal/protocol/testdata/olt`, lihat README di sana), round-trip protokol (plain, Snappy, AES ECB/CBC, gabungan), paket terpotong dan bom dekompresi, fuzz `FuzzFrame`, hash dan validasi event, antrean, serta relay dengan socket dan store palsu (saring trader/pemilik, retry, batch ditolak, sambung ulang, restart, heartbeat, antrean penuh). Fuzz manual: `go test -run=XXX -fuzz=FuzzFrame -fuzztime=60s ./internal/protocol`.
