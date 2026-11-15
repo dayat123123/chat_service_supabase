@@ -41,6 +41,30 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 64M, pids: 64}
 
+  dummy-iproxy:
+    image: olt-social/trade-relay:0.1.0
+    pull_policy: never
+    entrypoint: ["/dummy-iproxy"]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks: [app]
+    environment:
+      BIND: tcp://*:9990
+      ACCOUNTS: ${DUMMY_IPROXY_ACCOUNTS:-DEMO1}
+      SCENARIO_INTERVAL: ${DUMMY_IPROXY_INTERVAL:-20s}
+      NOISE_RATE: ${DUMMY_IPROXY_NOISE_RATE:-50}
+      COMPRESS_RATIO: ${DUMMY_IPROXY_COMPRESS_RATIO:-0.5}
+    deploy:
+      resources:
+        limits: {cpus: "0.5", memory: 64M, pids: 64}
+
   # Verifies dummy social tokens with the public key in docker/secrets/olt_jwks, without calling dummy-olt.
   auth-bridge:
     environment:
