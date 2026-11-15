@@ -9,6 +9,7 @@
   .\make.ps1 logs -Service auth-bridge
   .\make.ps1 restore -File olt-20261029-020000.dump -Yes
   .\make.ps1 up -DummyOlt                  (dummy OLT social token issuer + auth-bridge jwt mode)
+  .\make.ps1 up -TradeRelay                (start the paused trade relay; with -DummyOlt also the dummy iProxy)
   .\make.ps1 dummy-token -User sari_invest -Ttl 5m
   .\make.ps1 up -Profile single -Cs        (production with chat customer service)
 #>
@@ -35,6 +36,7 @@ param(
     [switch]$Yes,
     [switch]$DummyOlt,
     [switch]$Cs,
+    [switch]$TradeRelay,
     [string]$User = 'budi_santoso',
     [string]$Email = '',
     [string]$Name = '',
@@ -86,6 +88,10 @@ if ($Cs -and $DeployProfile -ne 'dev') { $Compose += @('-f', 'docker/compose.cs.
 if ($DeployProfile -eq 'dev' -or $Cs) { $Compose += @('--profile', 'cs') }
 $DummyCompose = @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml', '-f', 'docker/compose.dummy-olt.yml',
                   '--profile', 'cs')
+if ($TradeRelay) {
+    $Compose += @('--profile', 'trade-relay')
+    $DummyCompose += @('--profile', 'trade-relay')
+}
 
 function Invoke-Native {
     param([string]$Exe, [string[]]$Arguments)
@@ -111,6 +117,13 @@ function Invoke-Docker {
 function Assert-Hub { if (-not $HubFound) { throw $HubMissing } }
 
 function Invoke-Compose { param([string[]]$Arguments) Invoke-Docker ($Compose + $Arguments) }
+
+function Stop-PausedRelay {
+    foreach ($service in @('trade-relay', 'dummy-iproxy')) {
+        $ids = @(& docker ps -q --filter 'label=com.docker.compose.project=olt-social' --filter "label=com.docker.compose.service=$service")
+        if ($ids.Count -gt 0 -and $ids[0]) { Invoke-Docker (@('stop') + $ids) }
+    }
+}
 
 function Invoke-Tools { param([string[]]$Arguments) Invoke-Compose (@('run', '--rm', 'tools') + $Arguments) }
 
@@ -301,10 +314,11 @@ switch ($Target) {
             if ($LASTEXITCODE -ne 0) { throw "docker compose config --services failed (exit $LASTEXITCODE)" }
         }
         Invoke-Compose $upArgs
+        if (-not $TradeRelay) { Stop-PausedRelay }
         Invoke-Compose @('ps')
         Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profile $DeployProfile)"
     }
-    'down' { Invoke-Compose @('--profile', 'admin', '--profile', 'cs', 'down') }
+    'down' { Invoke-Compose @('--profile', 'admin', '--profile', 'cs', '--profile', 'trade-relay', 'down') }
     'logs' {
         $logArgs = @('logs', '-f', '--tail=200')
         if ($Service) { $logArgs += $Service }

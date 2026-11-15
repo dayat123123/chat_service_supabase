@@ -2,13 +2,27 @@
 
 Panduan untuk Super Admin, Kepatuhan, dan tim IT. Desain lengkap ada di [rencana.md](rencana.md), detail teknis relay di [services/trade-relay/README.md](../../services/trade-relay/README.md).
 
+## Status saat ini: dijeda (sejak 15 November 2026)
+
+Fitur ini disimpan di repo tetapi tidak aktif:
+
+- **Hub:** menu Berbagi Trade, Pengaturan → Relay Trade, Sistem → Relay Trade, serta izin Berbagi Trade di akun staf disembunyikan lewat `SHOW_TRADE_SHARE = false` di `src/lib/nav-config.ts` (repo rendezvous_hub).
+- **Server:** container `trade-relay` dan `dummy-iproxy` ada di profil compose `trade-relay`, jadi `make up` tidak menjalankannya dan menghentikan container lama yang masih jalan. Di cluster, `trade-relay` berjalan dengan `replicas: 0`.
+- Migrasi, cron, dan RPC tetap terpasang. Tombol darurat `trade_share.enabled` dan `trade_notify.enabled` tetap mati, sehingga tidak ada alert relay dan aplikasi nasabah tidak menampilkan fitur ini.
+
+Cara mengaktifkan lagi:
+
+1. Hub: ubah `SHOW_TRADE_SHARE` menjadi `true`, lalu deploy Hub.
+2. Server: `make up TRADE_RELAY=1` (Windows: `.\make.ps1 up -TradeRelay`; untuk simulator iProxy tambahkan `DUMMY_OLT=1` / `-DummyOlt`). Di cluster, kembalikan `replicas: 1` untuk `trade-relay` di `docker/stack.cluster.yml`.
+3. Lanjutkan dari bagian 1 di bawah.
+
 ## 1. Pemasangan pertama
 
 1. **Deploy server** seperti biasa (`git pull`, lalu `make up`). Migrasi 0160–0164 berjalan otomatis dan container `trade-relay` ikut naik. Fitur bawaannya **mati**, jadi tidak ada yang berubah bagi nasabah.
 2. **Minta ke tim OLT:**
    - buka port iProxy (bawaan 9990) khusus untuk IP server kita; bila jalurnya lewat internet, pakai tunnel VPN;
    - arahkan realtime order dan trade ke identity relay (bawaan `social_trade_relay`), sama seperti ke identity `realtime` milik `clientOrdersRealtimeMME`.
-3. **Hub → Sistem → Relay Trade** (Super Admin):
+3. **Hub → Pengaturan → Integrasi → Relay Trade** (Super Admin, tekan **Ubah** dulu):
    - isi alamat `tcp://<ip-iproxy>:9990` dan identity;
    - bila OLT mengaktifkan enkripsi, isi kunci, IV, dan mode AES. Kunci tidak bisa dibaca kembali dari Hub;
    - pastikan status instance menjadi **terhubung** dan **paket realtime terakhir** bergerak di jam bursa.
