@@ -40,13 +40,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [auth-bridge, dummy-olt, nasabah-gateway, notifier, janitor, media, sentinel, healer, backup, integration, link-preview, classifier]
+        service: [auth-bridge, dummy-olt, nasabah-gateway, notifier, janitor, media, sentinel, healer, backup, integration, link-preview, classifier, trade-relay]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: gofmt, vet, test -race, no comments
         run: |
           docker run --rm -v "$PWD:/repo" -w "/repo/services/${{ matrix.service }}" "$GO_IMG" sh -euc '
-            apk add --no-cache gcc musl-dev >/dev/null
+            apk add --no-cache gcc g++ musl-dev pkgconf zeromq-dev >/dev/null
             unformatted="$(gofmt -l .)"
             if [ -n "$unformatted" ]; then echo "Not gofmt-formatted:"; echo "$unformatted"; exit 1; fi
             go vet ./...

@@ -20,7 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'perf-flutter', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
+                 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'test-trade-relay', 'check-go-comments', 'secrets-scan',
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
@@ -258,6 +258,7 @@ switch ($Target) {
   test-backup    Backup service unit tests (Go, in a container)
   test-integration  OLT integration gateway unit tests (Go, in a container)
   test-link-preview  Link preview unit tests (Go, in a container)
+  test-trade-relay  Trade relay + dummy iProxy unit tests (Go + libzmq, in a container)
   test-classifier  NSFW classifier unit tests (Go + cgo, in a container)
   check-go-comments  Ensure Go code has no comments (other than directives)
   secrets-scan   Scan git history with gitleaks (.gitleaks.toml)
@@ -330,6 +331,7 @@ switch ($Target) {
         & $PSCommandPath test-nasabah-gateway
         & $PSCommandPath test-notifier
         & $PSCommandPath test-janitor
+        & $PSCommandPath test-trade-relay
         & $PSCommandPath test-media
         & $PSCommandPath test-sentinel
         & $PSCommandPath test-healer
@@ -489,6 +491,11 @@ switch ($Target) {
     'test-janitor' {
         $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
+    }
+    'test-trade-relay' {
+        $src = Join-Path $PSScriptRoot 'services/trade-relay'
+        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'sh', '-euc',
+                        'apk add --no-cache build-base pkgconf zeromq-dev >/dev/null && CGO_ENABLED=1 go test -race -count=1 ./...')
     }
     { $_ -in 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview' } {
         $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))

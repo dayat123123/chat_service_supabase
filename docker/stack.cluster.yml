@@ -105,6 +105,16 @@ services:
     deploy:
       <<: *deploy
       replicas: 1
+  trade-relay:
+    image: ${REGISTRY}/olt-social/trade-relay:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 1
+      update_config:
+        parallelism: 1
+        order: stop-first
+        failure_action: rollback
+        monitor: 30s
   media:
     image: ${REGISTRY}/olt-social/media:0.3.0
     deploy:
