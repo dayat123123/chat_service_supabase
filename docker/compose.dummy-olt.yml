@@ -43,6 +43,7 @@ services:
 
   dummy-iproxy:
     image: olt-social/trade-relay:0.1.0
+    profiles: [trade-relay]
     pull_policy: never
     entrypoint: ["/dummy-iproxy"]
     restart: unless-stopped

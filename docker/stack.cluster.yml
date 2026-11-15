@@ -105,11 +105,12 @@ services:
     deploy:
       <<: *deploy
       replicas: 1
+  # Trade sharing is paused; set replicas back to 1 to start the relay again.
   trade-relay:
     image: ${REGISTRY}/olt-social/trade-relay:0.1.0
     deploy:
       <<: *deploy
-      replicas: 1
+      replicas: 0
       update_config:
         parallelism: 1
         order: stop-first

@@ -6,6 +6,7 @@
 #   cluster Docker Swarm (skeleton)
 # PROD=1 is a legacy alias for PROFILE=single.
 # DUMMY_OLT=1 adds the dummy OLT (social token issuer) + auth-bridge jwt mode (dev profile only).
+# TRADE_RELAY=1 starts the paused trade relay (and the dummy iProxy with DUMMY_OLT=1); without it, up stops them.
 # CS=1 enables chat customer service (Rendezvous Hub web CS, built from HUB) in the single profile.
 
 PROFILE ?= dev
@@ -24,8 +25,10 @@ FILES_single  := -f docker/compose.yml -f docker/compose.prod.yml $(if $(CS),-f 
 FILES_cluster := -f docker/compose.yml -f docker/compose.prod.yml
 CS_dev        := --profile cs
 CS_single     := $(if $(CS),--profile cs)
-COMPOSE       := docker compose $(FILES_$(PROFILE)) $(CS_$(PROFILE))
-DUMMY_COMPOSE := docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs
+RELAY         := $(if $(TRADE_RELAY),--profile trade-relay)
+COMPOSE       := docker compose $(FILES_$(PROFILE)) $(CS_$(PROFILE)) $(RELAY)
+DUMMY_COMPOSE := docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs $(RELAY)
+RELAY_OFF     := for s in trade-relay dummy-iproxy; do docker ps -q --filter label=com.docker.compose.project=olt-social --filter label=com.docker.compose.service=$$s | xargs -r docker stop >/dev/null; done
 STACK         := olt-social
 TOOLS         := $(COMPOSE) run --rm tools
 RACE_REST     := olt-cs-race-rest-1 olt-cs-race-rest-2 olt-cs-race-rest-3
@@ -111,6 +114,7 @@ endif
 else
 	$(COMPOSE) up -d --build --wait --wait-timeout 900 --remove-orphans
 endif
+	@$(if $(TRADE_RELAY),true,$(RELAY_OFF))
 	@$(COMPOSE) ps
 	@echo "API: $$(grep '^SUPABASE_PUBLIC_URL=' $(ENV) | cut -d= -f2)  (profile $(PROFILE))"
 endif
@@ -119,7 +123,7 @@ down: ## Stop all services (data is kept)
 ifeq ($(PROFILE),cluster)
 	docker stack rm $(STACK)
 else
-	$(COMPOSE) --profile admin --profile cs down
+	$(COMPOSE) --profile admin --profile cs --profile trade-relay down
 endif
 
 logs: ## Follow logs (filter by service: make logs s=auth-bridge)
