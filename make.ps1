@@ -9,7 +9,6 @@
   .\make.ps1 logs -Service auth-bridge
   .\make.ps1 restore -File olt-20261029-020000.dump -Yes
   .\make.ps1 up -DummyOlt                  (dummy OLT social token issuer + auth-bridge jwt mode)
-  .\make.ps1 up -TradeRelay                (start the paused trade relay; with -DummyOlt also the dummy iProxy)
   .\make.ps1 dummy-token -User sari_invest -Ttl 5m
   .\make.ps1 up -Profile single -Cs        (production with chat customer service)
 #>
@@ -21,7 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'perf-flutter', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'test-trade-relay', 'check-go-comments', 'secrets-scan',
+                 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
@@ -36,7 +35,6 @@ param(
     [switch]$Yes,
     [switch]$DummyOlt,
     [switch]$Cs,
-    [switch]$TradeRelay,
     [string]$User = 'budi_santoso',
     [string]$Email = '',
     [string]$Name = '',
@@ -88,10 +86,6 @@ if ($Cs -and $DeployProfile -ne 'dev') { $Compose += @('-f', 'docker/compose.cs.
 if ($DeployProfile -eq 'dev' -or $Cs) { $Compose += @('--profile', 'cs') }
 $DummyCompose = @('compose', '-f', 'docker/compose.yml', '-f', 'docker/compose.dev.yml', '-f', 'docker/compose.dummy-olt.yml',
                   '--profile', 'cs')
-if ($TradeRelay) {
-    $Compose += @('--profile', 'trade-relay')
-    $DummyCompose += @('--profile', 'trade-relay')
-}
 
 function Invoke-Native {
     param([string]$Exe, [string[]]$Arguments)
@@ -117,13 +111,6 @@ function Invoke-Docker {
 function Assert-Hub { if (-not $HubFound) { throw $HubMissing } }
 
 function Invoke-Compose { param([string[]]$Arguments) Invoke-Docker ($Compose + $Arguments) }
-
-function Stop-PausedRelay {
-    foreach ($service in @('trade-relay', 'dummy-iproxy')) {
-        $ids = @(& docker ps -q --filter 'label=com.docker.compose.project=olt-social' --filter "label=com.docker.compose.service=$service")
-        if ($ids.Count -gt 0 -and $ids[0]) { Invoke-Docker (@('stop') + $ids) }
-    }
-}
 
 function Invoke-Tools { param([string[]]$Arguments) Invoke-Compose (@('run', '--rm', 'tools') + $Arguments) }
 
@@ -271,7 +258,6 @@ switch ($Target) {
   test-backup    Backup service unit tests (Go, in a container)
   test-integration  OLT integration gateway unit tests (Go, in a container)
   test-link-preview  Link preview unit tests (Go, in a container)
-  test-trade-relay  Trade relay + dummy iProxy unit tests (Go + libzmq, in a container)
   test-classifier  NSFW classifier unit tests (Go + cgo, in a container)
   check-go-comments  Ensure Go code has no comments (other than directives)
   secrets-scan   Scan git history with gitleaks (.gitleaks.toml)
@@ -314,11 +300,10 @@ switch ($Target) {
             if ($LASTEXITCODE -ne 0) { throw "docker compose config --services failed (exit $LASTEXITCODE)" }
         }
         Invoke-Compose $upArgs
-        if (-not $TradeRelay) { Stop-PausedRelay }
         Invoke-Compose @('ps')
         Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profile $DeployProfile)"
     }
-    'down' { Invoke-Compose @('--profile', 'admin', '--profile', 'cs', '--profile', 'trade-relay', 'down') }
+    'down' { Invoke-Compose @('--profile', 'admin', '--profile', 'cs', 'down') }
     'logs' {
         $logArgs = @('logs', '-f', '--tail=200')
         if ($Service) { $logArgs += $Service }
@@ -345,7 +330,6 @@ switch ($Target) {
         & $PSCommandPath test-nasabah-gateway
         & $PSCommandPath test-notifier
         & $PSCommandPath test-janitor
-        & $PSCommandPath test-trade-relay
         & $PSCommandPath test-media
         & $PSCommandPath test-sentinel
         & $PSCommandPath test-healer
@@ -505,11 +489,6 @@ switch ($Target) {
     'test-janitor' {
         $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
-    }
-    'test-trade-relay' {
-        $src = Join-Path $PSScriptRoot 'services/trade-relay'
-        Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'sh', '-euc',
-                        'apk add --no-cache build-base pkgconf zeromq-dev >/dev/null && CGO_ENABLED=1 go test -race -count=1 ./...')
     }
     { $_ -in 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview' } {
         $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))

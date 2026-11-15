@@ -7,13 +7,13 @@ Panduan untuk Super Admin, Kepatuhan, dan tim IT. Desain lengkap ada di [rencana
 Fitur ini disimpan di repo tetapi tidak aktif:
 
 - **Hub:** menu Berbagi Trade, Pengaturan → Relay Trade, Sistem → Relay Trade, serta izin Berbagi Trade di akun staf disembunyikan lewat `SHOW_TRADE_SHARE = false` di `src/lib/nav-config.ts` (repo rendezvous_hub).
-- **Server:** container `trade-relay` dan `dummy-iproxy` ada di profil compose `trade-relay`, jadi `make up` tidak menjalankannya dan menghentikan container lama yang masih jalan. Di cluster, `trade-relay` berjalan dengan `replicas: 0`.
+- **Server:** container `trade-relay` dan `dummy-iproxy` ada di profil compose `trade-relay`, jadi `make up` tidak menjalankannya. `make` / `make.ps1` juga tidak punya perintah apa pun untuk relay (termasuk `test-trade-relay`). Di cluster, `trade-relay` berjalan dengan `replicas: 0`. Bila container relay lama masih jalan di server, matikan sekali dengan `docker stop olt-social-trade-relay-1`.
 - Migrasi, cron, dan RPC tetap terpasang. Tombol darurat `trade_share.enabled` dan `trade_notify.enabled` tetap mati, sehingga tidak ada alert relay dan aplikasi nasabah tidak menampilkan fitur ini.
 
 Cara mengaktifkan lagi:
 
 1. Hub: ubah `SHOW_TRADE_SHARE` menjadi `true`, lalu deploy Hub.
-2. Server: `make up TRADE_RELAY=1` (Windows: `.\make.ps1 up -TradeRelay`; untuk simulator iProxy tambahkan `DUMMY_OLT=1` / `-DummyOlt`). Di cluster, kembalikan `replicas: 1` untuk `trade-relay` di `docker/stack.cluster.yml`.
+2. Server: tambahkan kembali dukungan relay ke `Makefile` / `make.ps1` (profil `trade-relay` dan target `test-trade-relay`, lihat riwayat git commit 2b8de53), atau jalankan langsung `docker compose -f docker/compose.yml -f docker/compose.prod.yml --profile trade-relay up -d trade-relay`. Untuk simulator iProxy di dev, tambahkan `-f docker/compose.dummy-olt.yml` dan service `dummy-iproxy`. Di cluster, kembalikan `replicas: 1` untuk `trade-relay` di `docker/stack.cluster.yml`.
 3. Lanjutkan dari bagian 1 di bawah.
 
 ## 1. Pemasangan pertama
