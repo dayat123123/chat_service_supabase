@@ -39,6 +39,8 @@ type Config struct {
 	Lease           time.Duration
 	ShutdownTimeout time.Duration
 	HealerStateFile string
+	NodesFile       string
+	NodesInterval   time.Duration
 }
 
 func Load() (Config, error) {
@@ -60,6 +62,8 @@ func Load() (Config, error) {
 		ShutdownTimeout: durationEnv("SHUTDOWN_TIMEOUT", 20*time.Second, &errs),
 		JWTSecret:       []byte(secretEnv("JWT_SECRET", &errs)),
 		HealerStateFile: stringEnv("HEALER_STATE_FILE", ""),
+		NodesFile:       stringEnv("NODES_FILE", ""),
+		NodesInterval:   durationEnv("NODES_INTERVAL", 10*time.Second, &errs),
 	}
 	if err := cfg.LogLevel.UnmarshalText([]byte(stringEnv("LOG_LEVEL", "info"))); err != nil {
 		errs = append(errs, fmt.Errorf("LOG_LEVEL: %w", err))
@@ -100,6 +104,8 @@ func Load() (Config, error) {
 		{cfg.Lease >= max(cfg.SMTPTimeout, cfg.RequestTimeout)+10*time.Second, "LEASE must be at least SMTP_TIMEOUT and REQUEST_TIMEOUT + 10s"},
 		{within(cfg.ShutdownTimeout, time.Second, 5*time.Minute), "SHUTDOWN_TIMEOUT must be between 1s and 5m"},
 		{cfg.HealerStateFile == "" || (strings.HasPrefix(cfg.HealerStateFile, "/") && strings.HasSuffix(cfg.HealerStateFile, ".json")), "HEALER_STATE_FILE must be an absolute path ending in .json"},
+		{cfg.NodesFile == "" || (strings.HasPrefix(cfg.NodesFile, "/") && strings.HasSuffix(cfg.NodesFile, ".json")), "NODES_FILE must be an absolute path ending in .json"},
+		{within(cfg.NodesInterval, 5*time.Second, 5*time.Minute), "NODES_INTERVAL must be between 5s and 5m"},
 	}
 	for _, rule := range rules {
 		if !rule.ok {

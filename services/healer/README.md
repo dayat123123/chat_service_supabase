@@ -111,7 +111,11 @@ Akses ke socket memakai grup pemiliknya lewat `group_add`. Docker Desktop: socke
 | `HEALER_PROJECT` | kosong | Compose project; kosong = dari label container healer |
 | `HEALER_DOCKER_SOCKET` | `/var/run/docker.sock` | Path socket di dalam container |
 | `HEALER_STATE_FILE` | `/var/lib/olt-healer/state.json` | Harus absolut dan berakhiran `.json` |
+| `HEALER_NODES_FILE` | kosong (compose: `/var/lib/olt-healer/nodes.json`) | Daftar semua container proyek untuk Hub → Sistem → Peta layanan; kosong = mati |
+| `HEALER_NODES_SECONDS` | `10` | Jeda baca daftar container (5–300 dtk) |
 | `LOG_LEVEL` | `info` | Dari `HEALER_LOG_LEVEL` di `docker/.env` |
+
+Peta layanan (0.2.0) berjalan terpisah dari restart otomatis dan tetap jalan walau `HEALER_ENABLED=false`. Setiap `HEALER_NODES_SECONDS`, healer membaca semua container proyek termasuk yang sudah berhenti: status, health, waktu start/stop, kode keluar, jumlah restart Docker, image, CPU, dan RAM (`stats` one-shot, CPU dihitung dari selisih dua putaran). Env, label lain, dan isi log tidak ikut dibaca. Hasilnya ditulis ke `HEALER_NODES_FILE`, lalu sentinel meneruskannya ke database (migrasi `0168_system_nodes.sql`).
 
 Nilai di luar batas aman (interval 2–300 dtk, unhealthy/uptime 5–3600 dtk, restart 1–20/jam, jeda 0–3600 dtk, pecahan > 0 dan ≤ 1) ditolak saat start.
 

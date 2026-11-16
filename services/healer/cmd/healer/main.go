@@ -14,10 +14,11 @@ import (
 	"olt-social/healer/internal/config"
 	"olt-social/healer/internal/docker"
 	"olt-social/healer/internal/healer"
+	"olt-social/healer/internal/nodes"
 	"olt-social/healer/internal/state"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
@@ -42,8 +43,9 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) {
 		log.Warn("Could not read the previous state; starting with an empty history", "path", cfg.StateFile, "error", err)
 	}
 	hostname, _ := os.Hostname()
+	client := docker.New(docker.Options{Socket: cfg.Socket})
 	h := healer.New(healer.Options{
-		Docker:           docker.New(docker.Options{Socket: cfg.Socket}),
+		Docker:           client,
 		Log:              log,
 		Project:          cfg.Project,
 		Hostname:         hostname,
@@ -63,7 +65,26 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) {
 		"interval_seconds", int(cfg.Interval.Seconds()), "unhealthy_seconds", int(cfg.UnhealthyFor.Seconds()),
 		"min_uptime_seconds", int(cfg.MinUptime.Seconds()), "max_restarts_per_hour", cfg.MaxRestarts,
 		"global_cooldown_seconds", int(cfg.GlobalCooldown.Seconds()), "systemic_fraction", cfg.SystemicFraction)
+	done := make(chan struct{})
+	if cfg.NodesFile != "" {
+		observer := nodes.New(nodes.Options{
+			Docker:   client,
+			Log:      log,
+			Project:  cfg.Project,
+			Hostname: hostname,
+			Interval: cfg.NodesInterval,
+			File:     cfg.NodesFile,
+			Version:  version,
+		})
+		go func() {
+			observer.Run(ctx)
+			close(done)
+		}()
+	} else {
+		close(done)
+	}
 	h.Run(ctx)
+	<-done
 	log.Info("Healer stopped")
 }
 

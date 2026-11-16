@@ -11,7 +11,7 @@ import (
 var keys = []string{
 	"LOG_LEVEL", "HEALER_ENABLED", "HEALER_PROJECT", "HEALER_DOCKER_SOCKET", "HEALER_STATE_FILE", "HEALER_INTERVAL_SECONDS",
 	"HEALER_UNHEALTHY_SECONDS", "HEALER_MIN_UPTIME_SECONDS", "HEALER_MAX_RESTARTS_PER_HOUR", "HEALER_GLOBAL_COOLDOWN_SECONDS",
-	"HEALER_SYSTEMIC_FRACTION",
+	"HEALER_SYSTEMIC_FRACTION", "HEALER_NODES_FILE", "HEALER_NODES_SECONDS",
 }
 
 func clearEnv(t *testing.T) {
@@ -32,6 +32,7 @@ func TestLoadUsesSafeDefaults(t *testing.T) {
 		Enabled:          true,
 		Socket:           "/var/run/docker.sock",
 		StateFile:        "/var/lib/olt-healer/state.json",
+		NodesInterval:    10 * time.Second,
 		Interval:         10 * time.Second,
 		UnhealthyFor:     60 * time.Second,
 		MinUptime:        120 * time.Second,
@@ -56,13 +57,16 @@ func TestLoadReadsOverrides(t *testing.T) {
 	t.Setenv("HEALER_MAX_RESTARTS_PER_HOUR", "5")
 	t.Setenv("HEALER_GLOBAL_COOLDOWN_SECONDS", "0")
 	t.Setenv("HEALER_SYSTEMIC_FRACTION", "0.75")
+	t.Setenv("HEALER_NODES_FILE", "/tmp/h/nodes.json")
+	t.Setenv("HEALER_NODES_SECONDS", "15")
 	cfg, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if cfg.Enabled || cfg.LogLevel != slog.LevelDebug || cfg.Project != "olt-social" || cfg.StateFile != "/tmp/h/state.json" ||
 		cfg.Interval != 5*time.Second || cfg.UnhealthyFor != 20*time.Second || cfg.MinUptime != 30*time.Second ||
-		cfg.MaxRestarts != 5 || cfg.GlobalCooldown != 0 || cfg.SystemicFraction != 0.75 {
+		cfg.MaxRestarts != 5 || cfg.GlobalCooldown != 0 || cfg.SystemicFraction != 0.75 ||
+		cfg.NodesFile != "/tmp/h/nodes.json" || cfg.NodesInterval != 15*time.Second {
 		t.Fatalf("cfg = %+v", cfg)
 	}
 }
@@ -83,6 +87,9 @@ func TestLoadRejectsUnsafeValues(t *testing.T) {
 		"number":    {"HEALER_MAX_RESTARTS_PER_HOUR", "tiga"},
 		"float":     {"HEALER_SYSTEMIC_FRACTION", "setengah"},
 		"level":     {"LOG_LEVEL", "loud"},
+		"nodes":     {"HEALER_NODES_FILE", "nodes.json"},
+		"nodesSame": {"HEALER_NODES_FILE", "/var/lib/olt-healer/state.json"},
+		"nodesTick": {"HEALER_NODES_SECONDS", "2"},
 	}
 	for name, kv := range cases {
 		t.Run(name, func(t *testing.T) {

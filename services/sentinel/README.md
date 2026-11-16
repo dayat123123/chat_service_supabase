@@ -39,6 +39,8 @@ Pengiriman bersifat *at-least-once*. Sentinel tidak memulai kiriman baru setelah
 | `LEASE` | `60s` | Lama pesan dikunci per claim (10s–10m, minimal `SMTP_TIMEOUT` dan `REQUEST_TIMEOUT` + 10s) |
 | `SHUTDOWN_TIMEOUT` | `20s` | Waktu menyelesaikan kiriman yang sedang jalan saat SIGTERM (1s–5m) |
 | `HEALER_STATE_FILE` | kosong | Path absolut `.json` file status healer (compose: `/mnt/healer/state.json`, volume `healer-state` read-only). Kosong = status healer tidak dilaporkan (profil cluster) |
+| `NODES_FILE` | kosong | Path absolut `.json` daftar container dari healer (compose: `/mnt/healer/nodes.json`). Setiap `NODES_INTERVAL` snapshot baru dikirim ke RPC `nodes_report` untuk Hub → Sistem → Peta layanan (0.5.0, migrasi `0168`). Kosong = mati |
+| `NODES_INTERVAL` | `10s` | Jeda cek file daftar container (5s–5m) |
 
 ## Probe dan disk
 

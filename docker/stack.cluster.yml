@@ -146,12 +146,13 @@ services:
       replicas: 1
   # Sentinel measures the disk of the node it runs on, so it is pinned to the DB node.
   sentinel:
-    image: ${REGISTRY}/olt-social/sentinel:0.4.0
+    image: ${REGISTRY}/olt-social/sentinel:0.5.0
     environment:
       # tasks.<service> scrapes each replica directly because counters are per replica; the VIP would mix them.
       METRICS_SOURCES: ${SENTINEL_METRICS_SOURCES:-rest=http://tasks.rest:3001/metrics,realtime=jwt+http://tasks.realtime:4000/metrics,pgbouncer=pgbouncer://olt_stats@tasks.pgbouncer:6432}
       # Healer does not run in the cluster, so its state is not read (no false healer:stale alert).
       HEALER_STATE_FILE: ""
+      NODES_FILE: ""
     deploy:
       <<: *deploy
       replicas: 1
@@ -160,7 +161,7 @@ services:
   # Swarm already replaces unhealthy tasks; healer (auto-restart through the Docker socket) is for the
   # single/dev profiles only.
   healer:
-    image: ${REGISTRY}/olt-social/healer:0.1.0
+    image: ${REGISTRY}/olt-social/healer:0.2.0
     deploy:
       replicas: 0
   # Cluster file storage lives in SeaweedFS (S3), so restic here backs up the database only.
