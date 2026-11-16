@@ -9,7 +9,7 @@ select tests.create_user('np_dodi') as dodi \gset
 select tests.authenticate_as(:'ani');
 select ok(public.register_push_device('np-token-ani-00000000000000001', 'android') is not null, 'Perangkat push terdaftar');
 select public.get_notification_prefs() as prefs \gset
-select is(jsonb_array_length(:'prefs'::jsonb -> 'types'), 17, 'Preferensi memuat tujuh belas jenis notifikasi');
+select is(jsonb_array_length(:'prefs'::jsonb -> 'types'), 15, 'Preferensi memuat lima belas jenis notifikasi saat Berbagi Trade mati');
 select ok(not exists (select 1 from jsonb_array_elements(:'prefs'::jsonb -> 'types') e
                       where e ->> 'type' not in ('olt.promo', 'followed_post')
                         and ((e ->> 'push')::boolean is false or (e ->> 'in_app')::boolean is false)),
