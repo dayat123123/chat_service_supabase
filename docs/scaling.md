@@ -12,6 +12,17 @@ Ketiga profil memakai **image, nama service, dan nama environment variable yang 
 | `single` | `docker/compose.yml` + `compose.prod.yml` | `make up PROFILE=single` | HTTPS Let's Encrypt, hanya path API publik, Studio mati, `APP_ENV=production` |
 | `cluster` | `docker/compose.yml` + `stack.cluster.yml` | `make up PROFILE=cluster` | Swarm: replika, rolling update `start-first`, overlay terenkripsi, Realtime cluster, storage S3 |
 
+## Replika di profil dev dan single
+
+Tanpa Swarm pun, service tanpa state yang paling sibuk berjalan 2 replika di satu server: `rest`, `auth-bridge`, `media`, `classifier`, `imgproxy`, dan `integration`. Jumlahnya diatur lewat `*_REPLICAS` di `docker/.env` (lihat `.env.example`), dan setiap replika mendapat batas CPU/memori penuh service-nya. Kong membagi permintaan ke semua replika lewat DNS, sentinel membaca metrik tiap replika, dan healer me-restart replika yang tidak sehat satu per satu.
+
+Yang sengaja tetap 1:
+- **Realtime:** butuh clustering Erlang (`CLUSTER_STRATEGIES`), yang hanya diatur di profil cluster.
+- **storage:** backend `file` memakai satu volume.
+- **Penjadwal:** janitor, sentinel, backup, healer, dan migrate.
+- **Service ringan:** notifier dan link-preview. Profil cluster sudah menjalankan notifier 2 replika, jadi notifier aman digandakan bila antrean push menumpuk.
+- **Penyimpan data:** db, pgbouncer, dan valkey.
+
 ## Yang sudah siap multi-node sejak profil single
 
 - **Edge sama.** Traefik dan Kong dipakai di semua profil dengan konfigurasi dinamis yang sama (`docker/volumes/traefik/`).
@@ -35,7 +46,7 @@ replika PostgREST × (PGRST_DB_POOL + 1) ≤ PGBOUNCER_DEFAULT_POOL_SIZE
 
 Bila aturan ini dilanggar, permintaan saat lonjakan menunggu koneksi server lebih lama dari `query_wait_timeout` (30 detik), lalu PostgREST membalas `503 PGRST001`. Contoh nyata dari `make cs-race`: 3 replika tambahan dengan pool bawaan 10 menghasilkan 33 klien untuk pool 20+5, dan 11 dari 50 klaim gagal dengan 503. Karena itu tes tersebut menjalankan replikanya dengan `PGRST_DB_POOL=3`.
 
-Dengan nilai bawaan (`PGRST_DB_POOL=10`, `PGBOUNCER_DEFAULT_POOL_SIZE=20`), satu PgBouncer cukup untuk 1 replika PostgREST. Untuk lebih banyak replika per PgBouncer, ada dua pilihan:
+Dengan nilai bawaan (`REST_REPLICAS=2`, `PGRST_DB_POOL=10`, `PGBOUNCER_DEFAULT_POOL_SIZE=24`), satu PgBouncer cukup untuk 2 replika PostgREST (2 × 11 = 22 ≤ 24). Untuk lebih banyak replika per PgBouncer, ada dua pilihan:
 
 - Naikkan `PGBOUNCER_DEFAULT_POOL_SIZE`. Total koneksi server dari semua PgBouncer tetap harus di bawah batas role `authenticator` (60) dan `max_connections` Postgres (100).
 - Turunkan `PGRST_DB_POOL`.
