@@ -17,6 +17,7 @@ import (
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/healer"
 	"olt-social/sentinel/internal/jwt"
+	"olt-social/sentinel/internal/nodes"
 	"olt-social/sentinel/internal/probe"
 	"olt-social/sentinel/internal/scrape"
 )
@@ -132,6 +133,11 @@ func (p *PostgREST) HealthReport(ctx context.Context, h Health) (time.Time, erro
 		return time.Time{}, err
 	}
 	return reply.EvaluatedAt, nil
+}
+
+func (p *PostgREST) NodesReport(ctx context.Context, instance string, r nodes.Report) error {
+	var reply struct{}
+	return p.rpc(ctx, "nodes_report", map[string]any{"p_instance": instance, "p_report": r}, &reply)
 }
 
 type Telegram struct {

@@ -16,6 +16,7 @@ import (
 	"olt-social/sentinel/internal/jwt"
 	"olt-social/sentinel/internal/metrics"
 	"olt-social/sentinel/internal/monitor"
+	"olt-social/sentinel/internal/nodes"
 	"olt-social/sentinel/internal/outage"
 	"olt-social/sentinel/internal/probe"
 	"olt-social/sentinel/internal/scrape"
@@ -24,7 +25,7 @@ import (
 )
 
 const (
-	version     = "0.4.0"
+	version     = "0.5.0"
 	userAgent   = "olt-sentinel/" + version
 	pingTimeout = 5 * time.Second
 )
@@ -148,6 +149,22 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		mon.Run(ctx)
 		close(monitorDone)
 	}()
+	nodesDone := make(chan struct{})
+	if cfg.NodesFile != "" {
+		forwarder := nodes.NewForwarder(nodes.Options{
+			Store:    db,
+			Log:      log,
+			File:     cfg.NodesFile,
+			Instance: cfg.InstanceID,
+			Interval: cfg.NodesInterval,
+		})
+		go func() {
+			forwarder.Run(ctx)
+			close(nodesDone)
+		}()
+	} else {
+		close(nodesDone)
+	}
 	dispatchDone := make(chan struct{})
 	go func() {
 		d.Run(ctx)
@@ -162,6 +179,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		log.Info("Shutting down; finishing the alerts in flight")
 	}
 	<-monitorDone
+	<-nodesDone
 	<-dispatchDone
 	if serveErr != nil {
 		return serveErr

@@ -21,6 +21,7 @@ import (
 
 	"olt-social/sentinel/internal/disk"
 	"olt-social/sentinel/internal/healer"
+	"olt-social/sentinel/internal/nodes"
 	"olt-social/sentinel/internal/probe"
 	"olt-social/sentinel/internal/scrape"
 )
@@ -396,5 +397,25 @@ func TestHealthReportSendsTheHealerStateOnlyWhenConfigured(t *testing.T) {
 	}
 	if got, _ := fake.last().args["p_healer"].(map[string]any); got["read_error"] != "state file not found" {
 		t.Fatalf("p_healer = %#v", got)
+	}
+}
+
+func TestNodesReportSendsTheSnapshotWithTheServiceRole(t *testing.T) {
+	fake, server := newFake(t, func(string, map[string]any) (int, string) { return 200, `{"ok":true}` })
+	db := newStore(server.URL, nil)
+	checked := time.Date(2026, 11, 16, 3, 0, 0, 0, time.UTC)
+	cpu := 4.5
+	report := nodes.Report{Project: "olt-social", CheckedAt: &checked, Host: &nodes.Host{Name: "srv-1", CPUs: 8},
+		Containers: []nodes.Container{{Service: "rest", Name: "olt-social-rest-1", Replica: 1, State: "running", CPUPercent: &cpu}}}
+	if err := db.NodesReport(context.Background(), "sentinel-1", report); err != nil {
+		t.Fatal(err)
+	}
+	call := fake.last()
+	got, _ := call.args["p_report"].(map[string]any)
+	list, _ := got["containers"].([]any)
+	first, _ := list[0].(map[string]any)
+	if call.path != "/rpc/nodes_report" || call.claims["role"] != "service_role" || call.args["p_instance"] != "sentinel-1" ||
+		got["project"] != "olt-social" || len(list) != 1 || first["cpu_percent"] != 4.5 || first["memory_bytes"] != nil {
+		t.Fatalf("call = %+v", call)
 	}
 }

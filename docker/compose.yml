@@ -1155,7 +1155,7 @@ services:
     <<: *base
     build:
       context: ../services/sentinel
-    image: olt-social/sentinel:0.4.0
+    image: olt-social/sentinel:0.5.0
     networks: [app, data, egress]
     depends_on:
       migrate:
@@ -1183,6 +1183,7 @@ services:
       PGBOUNCER_STATS_PASSWORD_FILE: /run/secrets/pgbouncer_stats_password
       # Healer state feeds the health report (healer:* alerts). Empty disables it (cluster profile).
       HEALER_STATE_FILE: /mnt/healer/state.json
+      NODES_FILE: /mnt/healer/nodes.json
     healthcheck:
       test: ["CMD", "/sentinel", "healthcheck"]
       interval: 10s
@@ -1203,7 +1204,7 @@ services:
     <<: *base
     build:
       context: ../services/healer
-    image: olt-social/healer:0.1.0
+    image: olt-social/healer:0.2.0
     network_mode: none
     user: "65532:65532"
     # Group owning /var/run/docker.sock: 0 on Docker Desktop, the `docker` group on Linux
@@ -1224,6 +1225,9 @@ services:
       HEALER_GLOBAL_COOLDOWN_SECONDS: ${HEALER_GLOBAL_COOLDOWN_SECONDS:-30}
       HEALER_SYSTEMIC_FRACTION: ${HEALER_SYSTEMIC_FRACTION:-0.5}
       HEALER_STATE_FILE: /var/lib/olt-healer/state.json
+      # Read-only container list for the Hub node map (Sistem > Peta layanan); empty turns it off.
+      HEALER_NODES_FILE: ${HEALER_NODES_FILE-/var/lib/olt-healer/nodes.json}
+      HEALER_NODES_SECONDS: ${HEALER_NODES_SECONDS:-10}
     healthcheck:
       # No network: healthy when the state file was updated within the last 3 intervals.
       test: ["CMD", "/healer", "healthcheck"]
@@ -1233,7 +1237,7 @@ services:
       start_period: 15s
     deploy:
       resources:
-        limits: {cpus: "0.1", memory: 32M, pids: 32}
+        limits: {cpus: "0.25", memory: 48M, pids: 32}
 
   # Compose profile `cs` (docs/cs-chat): always on in dev; production enables it with
   # CS=1 (Windows: -Cs).

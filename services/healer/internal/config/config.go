@@ -19,6 +19,8 @@ type Config struct {
 	Project          string
 	Socket           string
 	StateFile        string
+	NodesFile        string
+	NodesInterval    time.Duration
 	Interval         time.Duration
 	UnhealthyFor     time.Duration
 	MinUptime        time.Duration
@@ -34,6 +36,8 @@ func Load() (Config, error) {
 		Project:          stringEnv("HEALER_PROJECT", ""),
 		Socket:           stringEnv("HEALER_DOCKER_SOCKET", "/var/run/docker.sock"),
 		StateFile:        stringEnv("HEALER_STATE_FILE", "/var/lib/olt-healer/state.json"),
+		NodesFile:        strings.TrimSpace(os.Getenv("HEALER_NODES_FILE")),
+		NodesInterval:    secondsEnv("HEALER_NODES_SECONDS", 10, &errs),
 		Interval:         secondsEnv("HEALER_INTERVAL_SECONDS", 10, &errs),
 		UnhealthyFor:     secondsEnv("HEALER_UNHEALTHY_SECONDS", 60, &errs),
 		MinUptime:        secondsEnv("HEALER_MIN_UPTIME_SECONDS", 120, &errs),
@@ -52,6 +56,8 @@ func Load() (Config, error) {
 		{strings.HasPrefix(cfg.Socket, "/"), "HEALER_DOCKER_SOCKET must be an absolute path"},
 		{strings.HasPrefix(cfg.StateFile, "/") && strings.HasSuffix(cfg.StateFile, ".json"), "HEALER_STATE_FILE must be an absolute path ending in .json"},
 		{within(cfg.Interval, 2*time.Second, 5*time.Minute), "HEALER_INTERVAL_SECONDS must be between 2 and 300"},
+		{cfg.NodesFile == "" || (strings.HasPrefix(cfg.NodesFile, "/") && strings.HasSuffix(cfg.NodesFile, ".json") && cfg.NodesFile != cfg.StateFile), "HEALER_NODES_FILE must be an absolute path ending in .json, different from HEALER_STATE_FILE"},
+		{within(cfg.NodesInterval, 5*time.Second, 5*time.Minute), "HEALER_NODES_SECONDS must be between 5 and 300"},
 		{within(cfg.UnhealthyFor, 5*time.Second, time.Hour), "HEALER_UNHEALTHY_SECONDS must be between 5 and 3600"},
 		{within(cfg.MinUptime, 5*time.Second, time.Hour), "HEALER_MIN_UPTIME_SECONDS must be between 5 and 3600"},
 		{cfg.MaxRestarts >= 1 && cfg.MaxRestarts <= 20, "HEALER_MAX_RESTARTS_PER_HOUR must be between 1 and 20"},
