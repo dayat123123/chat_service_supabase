@@ -251,6 +251,7 @@ services:
       # A fresh database has no cs_api schema until migrate (which waits for storage) has run.
       start_period: 300s
     deploy:
+      replicas: ${REST_REPLICAS:-2}
       resources:
         limits: {cpus: "1", memory: 512M, pids: 256}
 
@@ -403,6 +404,7 @@ services:
       interval: 5s
       retries: 3
     deploy:
+      replicas: ${IMGPROXY_REPLICAS:-2}
       resources:
         limits: {cpus: "1", memory: 512M, pids: 128}
 
@@ -615,7 +617,7 @@ services:
       PGBOUNCER_DB_WATCH_SECONDS: ${PGBOUNCER_DB_WATCH_SECONDS:-2}
       PGBOUNCER_POOL_MODE: ${PGBOUNCER_POOL_MODE:-session}
       PGBOUNCER_MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-500}
-      PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-20}
+      PGBOUNCER_DEFAULT_POOL_SIZE: ${PGBOUNCER_DEFAULT_POOL_SIZE:-24}
       PGBOUNCER_MAX_DB_CONNECTIONS: ${PGBOUNCER_MAX_DB_CONNECTIONS:-80}
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "6432"]
@@ -774,6 +776,7 @@ services:
       retries: 3
       start_period: 5s
     deploy:
+      replicas: ${AUTH_BRIDGE_REPLICAS:-2}
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
@@ -917,6 +920,7 @@ services:
       retries: 3
       start_period: 10s
     deploy:
+      replicas: ${CLASSIFIER_REPLICAS:-2}
       resources:
         limits: {cpus: "1", memory: 512M, pids: 64}
 
@@ -1007,6 +1011,7 @@ services:
       retries: 3
       start_period: 5s
     deploy:
+      replicas: ${MEDIA_REPLICAS:-2}
       resources:
         limits: {cpus: "1", memory: 768M, pids: 128}
 
@@ -1094,6 +1099,7 @@ services:
       retries: 3
       start_period: 5s
     deploy:
+      replicas: ${INTEGRATION_REPLICAS:-2}
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
