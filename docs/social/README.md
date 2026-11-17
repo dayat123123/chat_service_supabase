@@ -228,7 +228,7 @@ Room CS (`type = 'support'`, termasuk semua pesan yang punya `session_id`) tetap
 
 ### Kontrol komentar (`0169`)
 
-Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar, sebagai pengaturan akun maupun per post. Library: `rendezvous_community` 1.31.0.
+Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar, sebagai pengaturan akun maupun per post, dan bisa mematikan komentar di semua postingan sekaligus (`0170`). Library: `rendezvous_community` 1.31.0 (saklar semua komentar: 1.33.0).
 
 | Nilai `comment_audience` | Yang boleh berkomentar (selain pemilik) |
 |---|---|
@@ -251,6 +251,13 @@ Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar
   - `set_comment_audience(p_audience)` → `{"audience"}`; `400 invalid_comment_audience` untuk nilai tidak dikenal atau `off`;
   - `set_post_comment_audience(p_post_id, p_audience)` → `setof feed_post`; `404 post_not_found` (termasuk post terhapus), `403 forbidden` bila bukan pemilik, `400 invalid_comment_audience`.
 - **`create_post`** mendapat parameter keenam `p_comment_audience text default null` (fungsi 5 parameter diganti). Pemanggilan lama tetap jalan karena parameternya punya default. Kolom `comment_audience` boleh diisi saat insert REST, tetapi tidak bisa diubah lewat REST (`42501`).
+- **Matikan semua komentar (`0170`):** kolom `private.comment_preferences.all_off` (bawaan false) mematikan komentar di **semua** post pemilik, lama maupun baru, tanpa menyentuh `posts.comment_audience`.
+  - Audiens efektif = `off` bila `all_off`, selain itu nilai per post (`private.effective_comment_audience`). Trigger, policy `comments_hidden_when_off` (lewat `private.comments_off_post_ids`), `feed_post`, dan `shared_post_preview` memakai audiens efektif.
+  - Saat `all_off` dimatikan, setiap post kembali ke pengaturannya sendiri: `everyone` terbuka lagi, `off` per post tetap mati, audiens terbatas tetap terbatas. Komentar lama muncul kembali.
+  - Post baru selama `all_off` aktif tetap menyimpan audiens akun (`comment_preferences.audience`), jadi terbuka sesuai pilihan itu setelah saklar dimatikan. `set_post_comment_audience` tetap bisa dipanggil, tetapi baru berpengaruh setelah saklar dimatikan.
+  - `feed_post.comments_off_by_account` bernilai true/false hanya untuk pemilik (null untuk orang lain). Pembaca melihat `comment_restriction = off` seperti post yang dimatikan biasa.
+  - RPC: `get_comment_settings()` → `{"audience", "all_off"}`; `set_all_comments_off(p_off boolean)` → `{"audience", "all_off"}`, `400 invalid_comment_setting` bila `p_off` null. `export_my_data` menyertakan `comments_all_off`.
+  - Tes: `supabase/tests/147_comment_controls_account_off_test.sql`.
 - **Ekspor data:** `export_my_data` menyertakan `comment_audience` (pengaturan akun) dan `comment_audience` tiap post.
 - **Tes:** `supabase/tests/146_comment_controls_test.sql`.
 

@@ -17,7 +17,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 | **Stream (feed)** | Feed umum (Terbaru / Mengikuti), feed per saham, hashtag, dan tab filter per indeks |
 | **Postingan** | Tulis post dengan gambar, polling, sentimen bullish/bearish, dan `$KODE` saham. Bisa diedit 15 menit, draf tersimpan otomatis |
 | **Komentar** | Thread berantai, mention `@user`, dan urutan komentar yang bisa diganti |
-| **Kontrol komentar** | Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar (semua orang, yang diikuti, pengikut, atau keduanya), sebagai pengaturan akun maupun per post |
+| **Kontrol komentar** | Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar (semua orang, yang diikuti, pengikut, atau keduanya), sebagai pengaturan akun maupun per post. Di pengaturan juga ada saklar untuk mematikan komentar di semua postingan sekaligus |
 | **Trending & pencarian** | Saham, hashtag, dan post yang sedang ramai, serta pencarian user, post, dan saham |
 | **Bookmark** | Simpan post untuk dibaca nanti |
 | **Link preview** | Pratinjau tautan; tautan berbahaya atau NSFW disaring |

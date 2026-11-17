@@ -13,6 +13,12 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 - Pasang server lebih dulu, baru aplikasi dengan library 1.31.0. Aplikasi dengan library lama tetap jalan: pilihan komentar tidak tampil, dan komentar ke post yang dimatikan ditolak dengan pesan error umum.
 - Komentar yang disembunyikan tidak dihapus. Hub tetap bisa melihat dan memoderasinya.
 
+### Matikan komentar di semua postingan (migrasi `0170`, library 1.33.0)
+
+- Saklar baru di pengaturan komunitas: pengguna bisa mematikan komentar di semua postingannya sekaligus. Pengaturan per post tidak diubah, jadi saat saklar dimatikan setiap post kembali ke pengaturannya sendiri.
+- Migrasi berjalan otomatis lewat `make up`. Tidak ada pengaturan atau container baru. `0169` dan `0170` boleh terpasang dalam satu kali update.
+- Aplikasi dengan library 1.31.0–1.32.0 tetap jalan tanpa saklar ini. Post milik pengguna yang menyalakan saklar tetap tertutup untuk semua klien karena aturannya ditegakkan di server.
+
 ## 16 November 2026
 
 ### Kesehatan sistem pindah ke Pengaturan (Hub)
