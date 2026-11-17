@@ -1,6 +1,6 @@
 # Skalabilitas: single → cluster
 
-> Status: profil `dev` dan `single` sudah berjalan dan teruji. Profil `cluster` masih **kerangka** dan akan dilengkapi serta diuji di Tahap 7 (lihat [production-audit.md](production-audit.md)).
+> Status: profil `dev` dan `single` sudah berjalan dan teruji. Profil `cluster` masih **kerangka** dan akan dilengkapi serta diuji di Tahap 7 (lihat [production-audit.md](../archive/production-audit.md)).
 
 ## Profil deploy
 

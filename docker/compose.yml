@@ -304,7 +304,7 @@ services:
       RUN_JANITOR: "true"
       DISABLE_HEALTHCHECK_LOGGING: "true"
       # Tenant limits, re-seeded from env on every start (SEED_SELF_HOST). Chat messages use database
-      # broadcast (0098), so every event delivered to each client counts. See docs/PRODUCTION.md.
+      # broadcast (0098), so every event delivered to each client counts. See docs/panduan/produksi.md.
       TENANT_MAX_CONCURRENT_USERS: ${REALTIME_MAX_CONCURRENT_USERS:-10000}
       TENANT_MAX_EVENTS_PER_SECOND: ${REALTIME_MAX_EVENTS_PER_SECOND:-20000}
       TENANT_MAX_CHANNELS_PER_CLIENT: ${REALTIME_MAX_CHANNELS_PER_CLIENT:-100}
@@ -355,7 +355,7 @@ services:
       # Global limit; per-bucket limits (avatars/attachments) are set in migrations.
       FILE_SIZE_LIMIT: 52428800
       # `file` (volume) in dev/single. Switching to S3/SeaweedFS only needs env:
-      # STORAGE_BACKEND=s3 + GLOBAL_S3_* (see docs/scaling.md).
+      # STORAGE_BACKEND=s3 + GLOBAL_S3_* (see docs/panduan/skalabilitas.md).
       STORAGE_BACKEND: ${STORAGE_BACKEND:-file}
       GLOBAL_S3_BUCKET: ${GLOBAL_S3_BUCKET:-stub}
       GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT:-}

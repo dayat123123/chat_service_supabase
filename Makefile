@@ -1,6 +1,6 @@
 # OLT Social operations (Linux / macOS / WSL / VPS). On Windows without make use .\make.ps1 <target>.
 #
-# PROFILE (docs/PROMPT-PRODUCTION.md section 1):
+# PROFILE (docs/archive/PROMPT-PRODUCTION.md section 1):
 #   dev     (default) developer laptop: http://localhost:8000, Studio, mock OLT token
 #   single  single-server production: Traefik HTTPS, Studio off (make admin-up)
 #   cluster Docker Swarm (skeleton)
@@ -92,7 +92,7 @@ check-config:
 	  grep -qE "^$$k=.+" $(ENV) || { echo "Profile $(PROFILE): $$k is required in docker/.env"; exit 1; }; done; \
 	  for k in AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE EDGE_WS_PER_IP; do \
 	    v=$$(sed -n "s/^$$k=\([0-9]*\).*/\1/p" $(ENV) | tail -1); \
-	    [ -z "$$v" ] || [ "$$v" -ge 1000 ] || { echo "Profile $(PROFILE): $$k=$$v in docker/.env is too low (minimum 1000, see docs/PRODUCTION.md 'Batas & rate limit')"; exit 1; }; done; fi
+	    [ -z "$$v" ] || [ "$$v" -ge 1000 ] || { echo "Profile $(PROFILE): $$k=$$v in docker/.env is too low (minimum 1000, see docs/panduan/produksi.md 'Batas & rate limit')"; exit 1; }; done; fi
 
 check-hub:
 	$(HUB_REQUIRED)

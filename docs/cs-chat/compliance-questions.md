@@ -2,7 +2,7 @@
 
 > **Untuk:** tim kepatuhan (compliance) dan legal sekuritas.
 > **Dari:** tim pengembang OLT.
-> **Dasar:** [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) bagian 1, 2, 4, dan 6.
+> **Dasar:** [PROMPT-CS-CHAT.md](../archive/PROMPT-CS-CHAT.md) bagian 1, 2, 4, dan 6.
 
 Customer service OLT dibangun sebagai chat dua arah di dalam aplikasi, tanpa sistem tiket. Daftar ini lebih pendek dari versi ticketing yang dibatalkan, karena surat resmi, penomoran tiket, dan alur keberatan tidak lagi dibangun.
 

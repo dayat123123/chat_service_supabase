@@ -95,7 +95,7 @@ Setiap langkah dibatasi `VIDEO_STEP_TIMEOUT`; video yang diproses bersamaan diba
 
 **Pemindai antivirus.** Container `clamav` (image resmi `clamav/clamav`, clamd + freshclam) di jaringan `app` (untuk media) dan `egress` (unduh signature), tanpa port yang dipublikasikan. Media mengirim file dengan perintah clamd `zINSTREAM` lewat TCP (`CLAMD_ADDR`) dalam potongan 64 KiB, batas waktu `SCAN_TIMEOUT`. Jawaban `FOUND` → 422 `malware_detected` (nama signature dicatat di log, misalnya `Eicar-Test-Signature`). Koneksi gagal, timeout, atau jawaban error (termasuk batas `StreamMaxLength`) → 503 `scanner_unavailable` dan file tidak disimpan. Yang dipindai: semua upload `cs-documents` (termasuk PDF) dan `cs-videos`, sebelum ffmpeg menyentuh video. Gambar tidak dipindai (sudah disanitasi ulang dan diperiksa classifier).
 
-Konfigurasi clamd/freshclam ada di `docker/volumes/clamav/`: `StreamMaxLength 30M`, `ConcurrentDatabaseReload no` (signature hanya satu salinan di RAM; saat reload harian scan tertahan beberapa detik), signature di volume `clamav-db`. Lihat `docs/PRODUCTION.md` untuk kebutuhan RAM dan internet.
+Konfigurasi clamd/freshclam ada di `docker/volumes/clamav/`: `StreamMaxLength 30M`, `ConcurrentDatabaseReload no` (signature hanya satu salinan di RAM; saat reload harian scan tertahan beberapa detik), signature di volume `clamav-db`. Lihat `docs/panduan/produksi.md` untuk kebutuhan RAM dan internet.
 
 ## Batas
 

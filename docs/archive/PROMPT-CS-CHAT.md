@@ -1,7 +1,7 @@
 # Addendum 3 (Revisi): Customer Service via Chat + Matching Engine — Rendezvous OLT
 
 > **Dokumen ini MENGGANTIKAN `docs/PROMPT-CUSTOMER-CARE.md`.** Pendekatan ticketing/helpdesk di dokumen itu **dibatalkan**.
-> Simpan file ini sebagai `docs/PROMPT-CS-CHAT.md`. Dokumen lain (`PROMPT.md`, `PROMPT-PRODUCTION.md`, `PROMPT-FEATURES.md`) tetap berlaku.
+> Simpan file ini sebagai `docs/archive/PROMPT-CS-CHAT.md`. Dokumen lain (`PROMPT.md`, `PROMPT-PRODUCTION.md`, `PROMPT-FEATURES.md`) tetap berlaku.
 > Bagian bertanda `[...]` silakan disesuaikan.
 
 ---

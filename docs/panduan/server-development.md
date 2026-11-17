@@ -1,6 +1,6 @@
 # Server Development untuk Integrasi Aplikasi Client
 
-Panduan menyiapkan server development yang dipakai tim aplikasi OLT untuk mengintegrasikan fitur chat dan komunitas (library [`rendezvous_community`](https://github.com/dayat123123/rendezvous_community)). Isinya: spek, akses jaringan, domain, langkah pasang, dan data yang perlu diberikan ke tim aplikasi. Panduan produksi ada di [PRODUCTION.md](PRODUCTION.md).
+Panduan menyiapkan server development yang dipakai tim aplikasi OLT untuk mengintegrasikan fitur chat dan komunitas (library [`rendezvous_community`](https://github.com/dayat123123/rendezvous_community)). Isinya: spek, akses jaringan, domain, langkah pasang, dan data yang perlu diberikan ke tim aplikasi. Panduan produksi ada di [produksi.md](produksi.md).
 
 Rendezvous Hub (web CS) berjalan di jaringan internal dan tidak dibahas di sini.
 
@@ -32,7 +32,7 @@ Rendezvous Hub (web CS) berjalan di jaringan internal dan tidak dibahas di sini.
 
 ### Tahap A — profil `dev` + OLT dummy (sekarang)
 
-Dipakai selama backend OLT belum menerbitkan token sosial. [OLT dummy](../services/dummy-olt/README.md) berperan sebagai backend OLT tiruan: login dan menerbitkan token sosial dengan kunci dev. auth-bridge memverifikasinya lewat jalur yang sama dengan produksi (mode `jwt`), jadi kode aplikasi yang memanggil `tokenProvider` tidak perlu diubah saat pindah ke token OLT asli.
+Dipakai selama backend OLT belum menerbitkan token sosial. [OLT dummy](../../services/dummy-olt/README.md) berperan sebagai backend OLT tiruan: login dan menerbitkan token sosial dengan kunci dev. auth-bridge memverifikasinya lewat jalur yang sama dengan produksi (mode `jwt`), jadi kode aplikasi yang memanggil `tokenProvider` tidak perlu diubah saat pindah ke token OLT asli.
 
 - API diakses lewat HTTP di port 8000. OLT dummy (login dummy) di port 8090.
 - **Tidak ada domain dan HTTPS.** Kedua port **hanya boleh dibuka untuk IP tim**, atau diakses lewat VPN.
@@ -40,7 +40,7 @@ Dipakai selama backend OLT belum menerbitkan token sosial. [OLT dummy](../servic
 
 ### Tahap B — profil `single` + domain dev (setelah backend OLT dev siap)
 
-Dipakai saat backend OLT dev sudah menerbitkan token sosial bertanda tangan ([olt-integration.md](olt-integration.md)). Konfigurasinya sama dengan produksi: HTTPS Let's Encrypt, hanya path API yang publik, Studio hanya lewat SSH tunnel.
+Dipakai saat backend OLT dev sudah menerbitkan token sosial bertanda tangan ([olt-integration.md](../olt-integration.md)). Konfigurasinya sama dengan produksi: HTTPS Let's Encrypt, hanya path API yang publik, Studio hanya lewat SSH tunnel.
 
 - OLT dummy tidak tersedia di profil ini. Aplikasi memakai token dari backend OLT dev.
 - Kunci publik (JWKS) backend OLT dev disimpan di `docker/secrets/olt_jwks`.
@@ -173,7 +173,7 @@ Berikan ke tim aplikasi OLT. Detail kodenya ada di [panduan integrasi library](h
 | `supabaseUrl` | `http://<IP-server>:8000` | `https://social-api-dev.<domain>` |
 | `anonKey` | hasil `make anon-key` (aman disimpan di aplikasi) | sama |
 | Token sosial untuk `tokenProvider` | dari OLT dummy: `POST http://<IP-server>:8090/api/login` (username + password, balasan berisi `social_token`), perpanjang lewat `POST /api/social-token`, atau `make dummy-token U=<user>` di server | dari endpoint token sosial backend OLT dev |
-| Akun uji | user seed `budi_santoso`, `sari_invest`, `andi_trader`, `rina_saham`, `dewi_cuan`, password `olt12345` ([daftar lengkap](../services/dummy-olt/README.md)) | akun OLT dev |
+| Akun uji | user seed `budi_santoso`, `sari_invest`, `andi_trader`, `rina_saham`, `dewi_cuan`, password `olt12345` ([daftar lengkap](../../services/dummy-olt/README.md)) | akun OLT dev |
 | Versi library | `ref: v1.17.0` | sama |
 
 Catatan untuk aplikasi:

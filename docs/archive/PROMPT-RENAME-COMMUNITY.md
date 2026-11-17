@@ -1,6 +1,6 @@
 # Prompt: Rename `olt_social` → `rendezvous_community`, Hapus Komentar Kode, Log dalam Bahasa Inggris
 
-> Simpan sebagai `docs/PROMPT-RENAME-COMMUNITY.md`.
+> Simpan sebagai `docs/archive/PROMPT-RENAME-COMMUNITY.md`.
 > Tugas ini **refactor murni**. **Tidak boleh ada perubahan perilaku, fitur, tampilan, API backend, atau skema database.**
 > Semua tes yang ada harus tetap lulus.
 

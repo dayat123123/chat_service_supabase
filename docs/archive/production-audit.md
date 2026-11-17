@@ -33,9 +33,9 @@ Dasar audit:
 **Penyesuaian akibat urutan ini:**
 - Panel admin (`apps/admin`) menggantikan rencana "UI moderasi di package".
 - Dashboard analitik memakai Perses atau panel admin, bukan Grafana (AGPL).
-- Integrasi OLT memakai satu protokol: [olt-integration.md](olt-integration.md).
+- Integrasi OLT memakai satu protokol: [olt-integration.md](../olt-integration.md).
 
-**Penyesuaian 31 Okt 2026: satu dependensi keluar.** Server hanya memverifikasi token login dari OLT ([olt-integration.md](olt-integration.md)). Sejak 31 Okt sore verifikasinya lokal (token sosial bertanda tangan, auth-bridge mode `jwt`), jadi tidak ada panggilan keluar sama sekali. Akibatnya:
+**Penyesuaian 31 Okt 2026: satu dependensi keluar.** Server hanya memverifikasi token login dari OLT ([olt-integration.md](../olt-integration.md)). Sejak 31 Okt sore verifikasinya lokal (token sosial bertanda tangan, auth-bridge mode `jwt`), jadi tidak ada panggilan keluar sama sekali. Akibatnya:
 - Bagian data pasar dan portofolio di [PROMPT-FEATURES.md](PROMPT-FEATURES.md) dibatalkan: `market-adapter`, harga saat posting, sinkron daftar saham, dan badge holder.
 - `customer-adapter` (data nasabah dan aksi akun untuk CS) serta kartu order di chat CS dihapus (migrasi `0037_client_owned_business_data`).
 - Web CS Flutter (`apps/cs-console`) dihapus; web CS kini hanya versi React.
@@ -305,7 +305,7 @@ Setiap poin punya usulan default. Balas "setuju semua" atau sebutkan nomor yang 
    - Pertanyaan: apakah sudah ada VPS staging + domain?
    - Kalau belum, semua diverifikasi di Docker Desktop. Item yang butuh server asli ditandai "verifikasi di staging" (lihat [bagian di bawah](#yang-tidak-bisa-dibuktikan-di-laptop)).
 9. **Cara jalan.** **Default:** per tahap 1 → 7, berhenti di akhir tiap tahap untuk konfirmasi (sesuai prompt). Alternatif: dikerjakan berurutan tanpa jeda.
-10. **Housekeeping.** `prompt.md` dipindah ke `docs/PROMPT.md`, karena addendum merujuk path itu. `add-prompt.md` di root dihapus, karena isinya sudah ada di `docs/PROMPT-PRODUCTION.md`.
+10. **Housekeeping.** `prompt.md` dipindah ke `docs/archive/PROMPT.md`, karena addendum merujuk path itu. `add-prompt.md` di root dihapus, karena isinya sudah ada di `docs/archive/PROMPT-PRODUCTION.md`.
 
 ## Temuan per bagian addendum
 
@@ -319,7 +319,7 @@ Setiap poin punya usulan default. Balas "setuju semua" atau sebutkan nomor yang 
 | 1.4 | Valkey | ❌ | Belum ada. → Valkey 8 (BSD-3) dengan password. | S |
 | 1.5 | Storage backend `file`, S3-ready lewat env | 🟡 | `STORAGE_BACKEND=file` ✅, tetapi env S3 belum diteruskan. → env S3 + panduan pindah ke SeaweedFS. | S |
 | 1.6 | WAL archiving aktif | ❌ | `archive_mode=off` (`wal_level=logical` ✅). Image `supabase/postgres` tidak berisi WAL-G maupun pgBackRest, jadi perlu image turunan. | bagian 7 |
-| 1.7 | `docs/scaling.md` | ❌ | → panduan migrasi single → cluster. | M |
+| 1.7 | `docs/panduan/skalabilitas.md` | ❌ | → panduan migrasi single → cluster. | M |
 
 ### 2. Stateless & konsistensi
 
@@ -470,19 +470,19 @@ Batas per user di DB, sekarang vs addendum:
 | 6.1 | Log JSON + `request_id` lintas service | 🟡 | auth-bridge sudah JSON + `X-Request-Id` ✅. Log Kong berformat `combined` dan request id tidak diteruskan. Postgres `log_min_messages=fatal` menyembunyikan error. → log JSON di edge/Kong, plugin `correlation-id`, level log DB dinaikkan. | M |
 | 6.2 | Metrik Prometheus + dashboard | ❌ | → Prometheus, exporter (node, cAdvisor, postgres, redis), metrik Traefik/Kong/Realtime/auth-bridge, dashboard. | L (6.2–6.4) |
 | 6.3 | Log terpusat | ❌ | → Alloy + VictoriaLogs (atau Loki; lihat keputusan no. 2). | ↑ |
-| 6.4 | Alert | ✅ | 3 Nov 2026: aturan di DB (`0064`), layanan `sentinel` mengirim ke Telegram/email yang diatur dari web; layanan mati, disk, koneksi DB, slot replikasi, cron gagal, antrean, backup. Alertmanager tidak dipakai. Sertifikat dan lonjakan 429 belum. [docs/system-health](system-health/README.md) | ↑ |
+| 6.4 | Alert | ✅ | 3 Nov 2026: aturan di DB (`0064`), layanan `sentinel` mengirim ke Telegram/email yang diatur dari web; layanan mati, disk, koneksi DB, slot replikasi, cron gagal, antrean, backup. Alertmanager tidak dipakai. Sertifikat dan lonjakan 429 belum. [docs/system-health](../system-health/README.md) | ↑ |
 | 6.5 | Uptime monitoring dari luar | 🟡 | Didokumentasikan (Uptime Kuma di server lain). Sentinel juga mengirim alert saat API/DB mati, tetapi tidak saat seluruh server mati. | S |
 
 ### 7. Backup & disaster recovery
 
 | # | Syarat | Status | Sekarang → perubahan | Effort |
 |---|---|---|---|---|
-| 7.1 | Full backup harian + WAL kontinu (PITR) | ✅ | 3 Nov 2026: layanan `backup` (`pg_basebackup` harian + `pg_receivewal` lewat slot `olt_backup`). **Menyimpang dari WAL-G**: image DB tidak diubah dan WAL tertahan dibatasi `max_slot_wal_keep_size`. [docs/backup](backup/README.md) | L |
+| 7.1 | Full backup harian + WAL kontinu (PITR) | ✅ | 3 Nov 2026: layanan `backup` (`pg_basebackup` harian + `pg_receivewal` lewat slot `olt_backup`). **Menyimpang dari WAL-G**: image DB tidak diubah dan WAL tertahan dibatasi `max_slot_wal_keep_size`. [docs/backup](../backup/README.md) | L |
 | 7.2 | Backup object storage harian | ✅ | restic `--tag files` dari volume storage (profil single). | S |
 | 7.3 | Disimpan di luar server, terenkripsi | ✅ | Repositori restic di S3, password dari web (Vault). | 7.1–7.2 |
 | 7.4 | Retensi harian 7 / mingguan 4 / bulanan 6 | ✅ | Default 7/4/6 + WAL 7 hari, diubah dari web. | 7.1–7.2 |
 | 7.5 | `make restore` + uji restore otomatis berkala | ✅ | Uji restore mingguan otomatis + alert; `backup restore` untuk PITR. | M |
-| 7.6 | RPO ≤ 5 menit, RTO ≤ 1 jam, `docs/operations.md` | 🟡 | RPO = interval kirim WAL (default 5 menit). RTO diukur oleh uji restore mingguan. Dokumen: [docs/backup](backup/README.md). | M |
+| 7.6 | RPO ≤ 5 menit, RTO ≤ 1 jam, `docs/panduan/operasional.md` | 🟡 | RPO = interval kirim WAL (default 5 menit). RTO diukur oleh uji restore mingguan. Dokumen: [docs/backup](../backup/README.md). | M |
 
 ### 8. CI/CD & rilis
 

@@ -1,5 +1,5 @@
 # Web CS and agent API are served on one CS_CONSOLE_DOMAIN that only accepts IPs from
-# VPN_SOURCE_RANGES (Traefik ipAllowList). Single origin, so no CORS. See docs/PRODUCTION.md.
+# VPN_SOURCE_RANGES (Traefik ipAllowList). Single origin, so no CORS. See docs/panduan/produksi.md.
 
 services:
   traefik:

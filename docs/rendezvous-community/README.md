@@ -11,7 +11,7 @@ Catatan backend untuk library Flutter (kode dan dokumentasinya di repo [rendezvo
 | [features-1.3.md](features-1.3.md) | Fitur 1.3.0: konfigurasi klien & kill switch, keamanan konten, permintaan DM, banding, room saham, pencarian, link preview, trending, edit, bookmark, reaksi, bagikan, analitik, catatan backend |
 | [migration-1.0.md](https://github.com/dayat123123/rendezvous_community/blob/main/doc/migration-1.0.md) | Pindah dari `olt_social` 0.3.0: tabel simbol, nama yang dipertahankan, data perangkat |
 | [backlog.md](backlog.md) | Tempat `TODO`/`FIXME` (kode tanpa komentar) |
-| [PROMPT-RENAME-COMMUNITY.md](../PROMPT-RENAME-COMMUNITY.md) | Spesifikasi refactor 1.0.0 |
+| [PROMPT-RENAME-COMMUNITY.md](../archive/PROMPT-RENAME-COMMUNITY.md) | Spesifikasi refactor 1.0.0 |
 
 **Aturan kode:**
 - **Tanpa komentar:** CI menjalankan `tool/check_comments.dart`. Yang boleh hanya `// ignore:`, `// ignore_for_file:`, dan file hasil generate.

@@ -650,4 +650,4 @@ Room saham tidak mengirim `room_activity` per anggota (terlalu mahal). Daftar ch
 
 ### Batas tenant
 
-Event yang diterima setiap klien dihitung ke `REALTIME_MAX_EVENTS_PER_SECOND`, yang bawaannya sekarang 10.000. Lihat [PRODUCTION.md](../PRODUCTION.md#batas-realtime).
+Event yang diterima setiap klien dihitung ke `REALTIME_MAX_EVENTS_PER_SECOND`, yang bawaannya sekarang 10.000. Lihat [produksi.md](../panduan/produksi.md#batas-realtime).

@@ -7,7 +7,7 @@
 #                        (backup: docker/secrets/.env.backup-*).
 #   gen-secrets --force  Regenerates ALL secrets. WARNING: a new Postgres password does not
 #                        apply to an existing DB volume (needs `make reset` or a manual
-#                        rotation, see docs/operations.md).
+#                        rotation, see docs/panduan/operasional.md).
 set -euo pipefail
 
 DOCKER_DIR="${DOCKER_DIR:-/olt/docker}"

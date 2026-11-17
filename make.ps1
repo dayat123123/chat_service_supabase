@@ -209,7 +209,7 @@ function Assert-Config {
         foreach ($key in @('AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE', 'EDGE_WS_PER_IP')) {
             $limit = Get-EnvValue $key
             if ($limit -match '^\d+$' -and [int]$limit -lt 1000) {
-                throw "Profile ${DeployProfile}: $key=$limit in docker/.env is too low (minimum 1000, see docs/PRODUCTION.md 'Batas & rate limit')"
+                throw "Profile ${DeployProfile}: $key=$limit in docker/.env is too low (minimum 1000, see docs/panduan/produksi.md 'Batas & rate limit')"
             }
         }
     }
@@ -290,7 +290,7 @@ switch ($Target) {
     'up' {
         Assert-Config
         if ($DeployProfile -eq 'cluster') {
-            throw 'The cluster profile runs on a Swarm manager (Linux): make up PROFILE=cluster. See docs/scaling.md.'
+            throw 'The cluster profile runs on a Swarm manager (Linux): make up PROFILE=cluster. See docs/panduan/skalabilitas.md.'
         }
         $upArgs = @('up', '-d', '--build', '--wait', '--wait-timeout', '900', '--remove-orphans')
         if (-not $HubFound -and ($DeployProfile -eq 'dev' -or $Cs)) {

@@ -1,6 +1,6 @@
 # Single-server production. Only Traefik is reachable from the internet (80 redirects, 443 HTTPS
 # with automatic Let's Encrypt) and only API paths are published. The admin entrypoint (Studio and
-# all paths) listens on 127.0.0.1 only; reach it over WireGuard or an SSH tunnel. See docs/PRODUCTION.md.
+# all paths) listens on 127.0.0.1 only; reach it over WireGuard or an SSH tunnel. See docs/panduan/produksi.md.
 
 services:
   traefik:

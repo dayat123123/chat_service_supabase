@@ -2,7 +2,7 @@
 
 > **Catatan 31 Okt 2026:** dokumen historis. `customer-adapter`, kartu order, dan panel data nasabah sudah dihapus karena server hanya boleh memvalidasi token ke OLT ([olt-integration.md](../olt-integration.md)).
 
-> **Dasar:** [PROMPT-CS-REVISI-2.md](../PROMPT-CS-REVISI-2.md), yang berlaku bila bertentangan dengan [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md).
+> **Dasar:** [PROMPT-CS-REVISI-2.md](../archive/PROMPT-CS-REVISI-2.md), yang berlaku bila bertentangan dengan [PROMPT-CS-CHAT.md](../archive/PROMPT-CS-CHAT.md).
 > **Status (30 Okt 2026):** disetujui pemilik produk ("gak perlu nanya lagi, approve aja, sesuaikan yang recommended"). Dikerjakan berurutan R1 → R4.
 
 ## 1. Dipakai ulang tanpa perubahan berarti

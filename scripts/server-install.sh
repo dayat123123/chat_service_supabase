@@ -278,7 +278,7 @@ EOF
 [ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: $vpn_ranges)"
 cat <<EOF
 
-Next steps (docs/server-install.md section 5):
+Next steps (docs/panduan/instalasi-server.md section 5):
   1. Log in to the Hub as Super Admin and change the temporary password.
   2. Pengaturan -> Backup: choose a destination, create an encryption password, store it off the server.
   3. Pengaturan -> Alert: fill in Telegram/email, then Kirim uji.

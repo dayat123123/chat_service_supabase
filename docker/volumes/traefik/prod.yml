@@ -16,7 +16,7 @@
 # postgres_changes is rejected for CS accounts on every domain.
 #
 # The `admin` entrypoint (all paths, including Studio) is bound to the server's 127.0.0.1
-# only; reach it over WireGuard or an SSH tunnel. See docs/PRODUCTION.md.
+# only; reach it over WireGuard or an SSH tunnel. See docs/panduan/produksi.md.
 http:
   middlewares:
     public-edge:
