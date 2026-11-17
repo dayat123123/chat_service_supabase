@@ -226,6 +226,34 @@ Room CS (`type = 'support'`, termasuk semua pesan yang punya `session_id`) tetap
 - `comment_count` post dan `reply_count` komentar induk tidak menghitung komentar terhapus.
 - Baris komentar, arsip moderasi (`private.content_archive`), dan audit tetap seperti sebelumnya. Komentar yang dipulihkan moderator kembali sebagai komentar tanpa balasan.
 
+### Kontrol komentar (`0169`)
+
+Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar, sebagai pengaturan akun maupun per post. Library: `rendezvous_community` 1.31.0.
+
+| Nilai `comment_audience` | Yang boleh berkomentar (selain pemilik) |
+|---|---|
+| `everyone` (bawaan) | Semua orang yang tidak saling memblokir dengan pemilik |
+| `following` | Orang yang diikuti pemilik (`follows.follower_id = pemilik`) |
+| `followers` | Pengikut pemilik (`follows.following_id = pemilik`) |
+| `following_and_followers` | Salah satu dari dua di atas |
+| `off` | Tidak ada, termasuk pemilik. Hanya untuk post, tidak untuk pengaturan akun |
+
+- **Penyimpanan:** enum `public.comment_audience`, kolom `public.posts.comment_audience` (not null, bawaan `everyone`, sehingga semua post lama terbuka), dan tabel `private.comment_preferences` (satu baris per user, tidak boleh `off`, RLS aktif, hanya lewat RPC). Pengaturan akun dibaca oleh `create_post` saat `p_comment_audience` kosong. Mengubah pengaturan akun tidak menyentuh post yang sudah terbit.
+- **Penegakan:** trigger `comments_25_comment_audience` (BEFORE INSERT, setelah cek post dan blokir di `comments_20_before_insert`) menolak komentar dan balasan di semua tingkat, baik lewat `create_comment` maupun insert REST langsung: `403 comments_off` dan `403 comments_restricted`. Pengguna yang saling memblokir tetap ditolak `403 blocked` oleh trigger lama.
+- **Komentar disembunyikan, tidak dihapus:** policy RLS restrictive `comments_hidden_when_off` menyembunyikan semua komentar post yang `off` dari role `authenticated` (termasuk pemilik), sehingga `get_comment_thread` mengembalikan daftar kosong, komentar tidak terbaca lewat REST maupun Realtime, dan `top_comment` kosong. Saat dinyalakan lagi, komentar lama muncul kembali. Fungsi Hub (`cs_api`, security definer) tetap melihat semuanya.
+- **Field baru di `feed_post`** (semua RPC yang memakai `private.feed_posts`: `get_feed`, `get_post`, pencarian, bookmark, `create_post`, `edit_post`, dan lainnya):
+  - `comment_audience`: pengaturan post, hanya untuk pemilik (null untuk orang lain);
+  - `can_comment`: apakah pengguna yang sedang login boleh berkomentar;
+  - `comment_restriction`: null bila boleh, `off` saat komentar mati, nama audiens bila dibatasi, `blocked` bila saling memblokir.
+  - `comment_count` bernilai null untuk bukan pemilik saat komentar mati. Pratinjau post yang dibagikan ke chat (`private.shared_post_preview`) ikut menyembunyikannya.
+- **RPC baru:**
+  - `get_comment_settings()` → `{"audience"}`;
+  - `set_comment_audience(p_audience)` → `{"audience"}`; `400 invalid_comment_audience` untuk nilai tidak dikenal atau `off`;
+  - `set_post_comment_audience(p_post_id, p_audience)` → `setof feed_post`; `404 post_not_found` (termasuk post terhapus), `403 forbidden` bila bukan pemilik, `400 invalid_comment_audience`.
+- **`create_post`** mendapat parameter keenam `p_comment_audience text default null` (fungsi 5 parameter diganti). Pemanggilan lama tetap jalan karena parameternya punya default. Kolom `comment_audience` boleh diisi saat insert REST, tetapi tidak bisa diubah lewat REST (`42501`).
+- **Ekspor data:** `export_my_data` menyertakan `comment_audience` (pengaturan akun) dan `comment_audience` tiap post.
+- **Tes:** `supabase/tests/146_comment_controls_test.sql`.
+
 ### Kelola grup (`0146`)
 
 Peran anggota grup ada di `chat_members.role`: `owner` (pembuat), `admin`, `member`. Semua RPC di bawah `authenticated`, hanya untuk room `type = 'group'` (selain itu `404 room_not_found`), dan bukan anggota ditolak `403 not_member`.

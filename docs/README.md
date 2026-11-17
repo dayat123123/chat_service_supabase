@@ -25,6 +25,7 @@
 | [push/](push/README.md) | Push notification ke HP |
 | [backup/](backup/README.md) | Arsitektur backup dan pemulihan |
 | [system-health/](system-health/README.md) | Kesehatan sistem, peta layanan, dan alert |
+| [sdk-mobile/](sdk-mobile/rencana.md) | Rencana SDK native Android dan iOS untuk klien non-Flutter (masih diskusi) |
 | [berbagi-trade/](berbagi-trade/operasional.md) | Berbagi Trade dan relay trade (dijeda): [rencana](berbagi-trade/rencana.md), [operasional](berbagi-trade/operasional.md), [draf dokumen hukum](berbagi-trade/draf-dokumen-hukum.md) |
 
 ## Pengujian
