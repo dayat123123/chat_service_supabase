@@ -1,8 +1,8 @@
 # Kesehatan sistem dan alert
 
-Super Admin memantau semua layanan dari web CS, menu **Kesehatan sistem** (`/system`). Alert dikirim ke Telegram dan email. Semua pengaturan dilakukan dari web, tanpa mengubah file di server.
+Super Admin memantau semua layanan dari Hub, menu **Pengaturan → Sistem → Kesehatan sistem** (tab Peta layanan, Status, Restart otomatis; alamat lama `/system` dialihkan ke sini). Alert dikirim ke Telegram dan email, dan jumlah alert terbuka tampil sebagai angka di menu **Pengaturan**. Semua pengaturan dilakukan dari web, tanpa mengubah file di server.
 
-Migrasi: `0064_system_health` (restart otomatis: `0113_healer`). Layanan: [`services/sentinel`](../../services/sentinel/README.md), [`services/healer`](../../services/healer/README.md).
+Migrasi: `0064_system_health` (restart otomatis: `0113_healer`; peta layanan: `0168_system_nodes`). Layanan: [`services/sentinel`](../../services/sentinel/README.md), [`services/healer`](../../services/healer/README.md).
 
 ## Cara kerja
 
@@ -48,7 +48,7 @@ web CS ◀── cs_api.system_health (Super Admin)
 | `healer:systemic` | peringatan, setelah 120 dtk | Healer menahan restart: database tidak sehat, PgBouncer tidak sehat (hanya PgBouncer yang boleh di-restart), atau ≥ 50 % layanan berlabel unhealthy bersamaan |
 | `healer:stale` | peringatan, setelah 60 dtk | Healer aktif tetapi statusnya tidak diperbarui lebih dari `health.healer_stale_seconds` (120 dtk), file statusnya tidak terbaca, atau healer tidak bisa membaca Docker. Mode laporan saja (`HEALER_ENABLED=false`) tidak memicu alert ini |
 
-Ambang dapat diubah tanpa deploy di `private.settings`: `health.alert_after_seconds` (default 120), `health.resolve_after_seconds` (60), `health.disk_warn_ratio` (0,8), `health.disk_critical_ratio` (0,9), `health.expected_services`. Ambang metrik kapasitas (`0104`): `health.rest_pool_timeouts_warn` (1), `health.rest_pool_timeouts_critical` (20), `health.rest_pool_waiting_warn` (1), `health.realtime_events_warn_ratio` (0,7), `health.realtime_events_critical_ratio` (0,9), `health.realtime_events_limit` (10.000, cadangan bila `_realtime.tenants` tidak terbaca), `health.pgbouncer_waiting_warn` (1), `health.pgbouncer_maxwait_warn_seconds` (1), `health.pgbouncer_maxwait_critical_seconds` (5), `health.lock_waiters_warn` (5), `health.lock_waiters_critical` (20), `health.lock_wait_warn_seconds` (5), `health.lock_wait_critical_seconds` (30), `health.room_preview_lag_warn_seconds` (60), `health.room_preview_lag_critical_seconds` (300). Latensi dan sampel hilang (`0108`): `health.alert_after_seconds.<kunci>` atau `.<prefiks>:*` (25 untuk `rest:pool`, `realtime:events`, `pgbouncer:queue`, `db:lock_waits`, `metrics:*`; tidak melebihi nilai global), `health.realtime_events_window_seconds` (45), `health.metrics_missed_warn` (2), `health.metrics_missed_window_seconds` (300), `health.rest_blind_warn` (2). Sumber metrik dan alasannya: [PRODUCTION.md](../PRODUCTION.md#alert-kapasitas-sentinel-030-migrasi-0104-0108).
+Ambang dapat diubah tanpa deploy di `private.settings`: `health.alert_after_seconds` (default 120), `health.resolve_after_seconds` (60), `health.disk_warn_ratio` (0,8), `health.disk_critical_ratio` (0,9), `health.expected_services`. Ambang metrik kapasitas (`0104`): `health.rest_pool_timeouts_warn` (1), `health.rest_pool_timeouts_critical` (20), `health.rest_pool_waiting_warn` (1), `health.realtime_events_warn_ratio` (0,7), `health.realtime_events_critical_ratio` (0,9), `health.realtime_events_limit` (10.000, cadangan bila `_realtime.tenants` tidak terbaca), `health.pgbouncer_waiting_warn` (1), `health.pgbouncer_maxwait_warn_seconds` (1), `health.pgbouncer_maxwait_critical_seconds` (5), `health.lock_waiters_warn` (5), `health.lock_waiters_critical` (20), `health.lock_wait_warn_seconds` (5), `health.lock_wait_critical_seconds` (30), `health.room_preview_lag_warn_seconds` (60), `health.room_preview_lag_critical_seconds` (300). Latensi dan sampel hilang (`0108`): `health.alert_after_seconds.<kunci>` atau `.<prefiks>:*` (25 untuk `rest:pool`, `realtime:events`, `pgbouncer:queue`, `db:lock_waits`, `metrics:*`; tidak melebihi nilai global), `health.realtime_events_window_seconds` (45), `health.metrics_missed_warn` (2), `health.metrics_missed_window_seconds` (300), `health.rest_blind_warn` (2). Sumber metrik dan alasannya: [produksi.md](../panduan/produksi.md#alert-kapasitas-sentinel-030-migrasi-0104-0108).
 
 ## Siklus alert
 
@@ -78,7 +78,16 @@ Di profil `dev`/`single`, layanan [`services/healer`](../../services/healer/READ
 - **Ambang di `private.settings`:** `health.healer_stale_seconds` (120), `health.alert_after_seconds.healer:*` (0, alert menyerah dibuka langsung), `health.alert_after_seconds.healer:stale` (60), `health.alert_after_seconds.healer:systemic` (120).
 - **Mematikan:** `HEALER_ENABLED=false` (mode laporan saja) atau `docker compose ... stop healer`. Lihat README healer.
 
-## Mengatur kanal alert (web CS → Kesehatan sistem → Alert)
+## Peta layanan
+
+Tab **Peta layanan** menggambar semua container proyek per lajur (Gerbang, API & layanan, Data, Pekerja, Operasional), lengkap dengan replika, status, CPU, RAM, dan tren CPU. Hub memuat ulang setiap 5 detik.
+
+- **Alur data:** healer 0.2.0 membaca daftar container dari Docker (hanya baca: status, health, waktu start/stop, kode keluar, jumlah restart, image, CPU dan RAM dari `stats` one-shot) setiap `HEALER_NODES_SECONDS` (10) dan menulis `HEALER_NODES_FILE` (`nodes.json`). Sentinel 0.5.0 meneruskan snapshot baru ke RPC `nodes_report` (service role) setiap `NODES_INTERVAL` (10s). Database menyimpan snapshot terakhir di `private.system_nodes`; `cs_api.system_nodes()` (Super Admin) menggabungkannya dengan probe, restart 24 jam, dan versi layanan.
+- **Data terlambat:** bila laporan lebih tua dari `health.nodes_stale_seconds` (45), Hub menampilkan peringatan. Periksa container `healer` dan `sentinel`.
+- **Status container:** container yang tidak berjalan dinilai dari status hidupnya (dimatikan, selesai untuk `migrate`/`volume-init`, atau berhenti dengan kode error), bukan dari sisa health terakhirnya.
+- **Cluster:** belum didukung karena healer tidak berjalan di Swarm. Data sudah membawa nama host per container sehingga sumber Swarm bisa ditambahkan nanti.
+
+## Mengatur kanal alert (Hub → Pengaturan → Sistem → Alert)
 
 **Label dan alamat web CS.** Label muncul di subjek, mis. `[OLT Produksi]`. Alamat web CS dipakai untuk tautan "Buka" di setiap pesan.
 

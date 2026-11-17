@@ -1,6 +1,6 @@
 # Audit Web CS Flutter → React
 
-> **Catatan 31 Okt 2026:** dokumen historis. Cutover M5 selesai: `apps/cs-console` (Flutter) dihapus, dan panel data nasabah dari OLT ikut dihapus karena server hanya boleh memvalidasi token ke OLT ([olt-integration.md](olt-integration.md)).
+> **Catatan 31 Okt 2026:** dokumen historis. Cutover M5 selesai: `apps/cs-console` (Flutter) dihapus, dan panel data nasabah dari OLT ikut dihapus karena server hanya boleh memvalidasi token ke OLT ([olt-integration.md](../olt-integration.md)).
 
 Dasar migrasi [PROMPT-CS-CONSOLE-REACT.md](PROMPT-CS-CONSOLE-REACT.md). Checklist paritas ada di [cs-console-parity.md](cs-console-parity.md).
 

@@ -358,7 +358,8 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | | **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
 | | **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
 | | **Push notification** | Kunci Firebase dan push uji | Pemasangan awal, ganti kunci |
-| **Sistem** | **Backup** | Tujuan, password, jadwal backup, uji restore | Pemasangan awal, cek mingguan |
+| **Sistem** | **Kesehatan sistem** | Peta layanan, status layanan dan alert, restart otomatis | Saat ada alert atau diminta IT |
+| | **Backup** | Tujuan, password, jadwal backup, uji restore | Pemasangan awal, cek mingguan |
 | | **Alert** | Kanal alert gangguan (Telegram/email) | Pemasangan awal, ganti penerima |
 
 #### Akun CS
@@ -476,7 +477,15 @@ Ke mana alert gangguan sistem dikirim.
 4. Klik **Kirim uji Telegram** / **Kirim uji email** dan pastikan pesannya sampai. Status pengiriman tampil di bawahnya.
 5. Token bot dan password SMTP tersimpan terenkripsi dan tidak bisa ditampilkan lagi. Jangan menuliskannya di tempat lain.
 
-Halaman **Kesehatan sistem** (status layanan dan alert terbuka) tidak tampil di menu. Bila diminta IT saat gangguan, Super Admin bisa membukanya lewat alamat yang diberikan IT.
+#### Kesehatan sistem
+
+Kondisi server, diperbarui otomatis. Bila ada alert gangguan, angka merah muncul di menu **Pengaturan**.
+
+1. **Peta layanan**: semua bagian sistem digambar sebagai kartu. Hijau berarti sehat, kuning perlu dicek, merah bermasalah, abu-abu bergaris putus sengaja dimatikan. Klik kartu untuk melihat detailnya. Penanda **Live** di kanan atas menunjukkan kapan data terakhir diperbarui.
+2. **Status**: daftar alert terbuka dan yang sudah pulih. Alert **Peringatan** yang pulih sendiri dalam beberapa menit biasanya tidak perlu tindakan; alert **Kritis** segera laporkan ke IT.
+3. **Restart otomatis**: riwayat layanan yang dinyalakan ulang otomatis oleh sistem.
+
+Halaman ini hanya untuk melihat. Perbaikan dilakukan IT sesuai [panduan gangguan](gangguan.md).
 
 ### 3.5 Fitur & Kampanye
 
@@ -761,10 +770,10 @@ Jangan lupa menyalakan kembali; kill switch tidak mati sendiri.
 | Gejala | Yang dilakukan staf |
 |---|---|
 | Satu-dua nasabah tidak bisa kirim pesan | Biasanya aturan yang bekerja (slow mode, filter konten, dibisukan, versi aplikasi lama). Minta tangkapan layar pesan error, cek di menu terkait |
-| Banyak nasabah/semua staf terganggu (chat tidak terkirim, tidak muncul, tidak bisa login) | Segera lapor ke **IT/operasional**. IT mengikuti `docs/runbook-gangguan.md` |
+| Banyak nasabah/semua staf terganggu (chat tidak terkirim, tidak muncul, tidak bisa login) | Segera lapor ke **IT/operasional**. IT mengikuti `docs/panduan/gangguan.md` |
 | Indikator Hub **Menyambung ulang…** terus | Periksa jaringan Anda; bila staf lain juga, lapor ke IT |
 | Spam masif atau konten berbahaya | Moderator: tindak di **Moderasi**, slow mode di **Room saham**. Super Admin: pertimbangkan kill switch |
-| Alert backup gagal | Super Admin: cek **Pengaturan → Backup**, lapor ke IT |
+| Alert backup gagal | Super Admin: cek **Pengaturan → Sistem → Backup**, lapor ke IT |
 | Laporan CS palsu berulang | Super Admin dan Kepatuhan: pantau **Ringkasan**, koordinasi dengan legal |
 
 **Data untuk dilaporkan ke IT:** jam kejadian dan sejak kapan, satu contoh akun yang terkena, tangkapan layar pesan error, dan menu yang dipakai. Kirim lewat kanal resmi kantor; jangan sertakan data pribadi nasabah di grup umum.

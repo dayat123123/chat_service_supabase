@@ -3,7 +3,7 @@
 > **Catatan 31 Okt 2026:** dokumen historis. `customer-adapter`, kartu order, dan panel data nasabah sudah dihapus karena server hanya boleh memvalidasi token ke OLT ([olt-integration.md](../olt-integration.md)).
 
 > **Untuk:** pemilik produk, untuk disetujui sebelum CS1.
-> **Dasar:** [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) bagian 9. Pendekatan lama ada di [archive/PROMPT-CUSTOMER-CARE.md](../archive/PROMPT-CUSTOMER-CARE.md).
+> **Dasar:** [PROMPT-CS-CHAT.md](../archive/PROMPT-CS-CHAT.md) bagian 9. Pendekatan lama ada di [archive/PROMPT-CUSTOMER-CARE.md](../archive/PROMPT-CUSTOMER-CARE.md).
 > **Status (30 Okt 2026):** disetujui pemilik produk ("lakukan yang terbaik sesuai rekomendasi") dan **sudah dieksekusi**. Hasilnya ada di [bagian 4](#4-hasil-eksekusi).
 
 ## Ringkasan
@@ -27,7 +27,7 @@
 | **OLT dummy** | Data nasabah tiruan (`internal/customers`), 10 pesan `customer_*` + `secure_account`, endpoint dev `/api/dev/customers/{id}`, token layanan `DUMMY_OLT_CUSTOMER_TOKEN`, tes. Image naik ke `0.2.0` |
 | **Docker & konfigurasi** | `compose.yml` (service `care-worker` dan `customer-adapter` di profil `care`, 2 secret baru, `care_api` di `PGRST_DB_SCHEMAS`, `jwt_secret` untuk container tools), `compose.dev.yml` (Mailpit + override dev), `compose.dummy-olt.yml`, rute Kong `/care/v1`, rute Traefik dev `/care/v1`, bagian customer care di `.env.example`, secret `olt_customer_service_token` dan `smtp_password` (lokal, di `gen-secrets.sh`) |
 | **Perintah** | Target Makefile/`make.ps1`: `test-care`, `smoke-care`, `demo-care`, `CARE=1`/`-Care`. Skrip `smoke-care.sh`, `demo-care.sh`, `care-lib.sh`, dan entri di `tools.sh` |
-| **Dokumentasi** | `docs/customer-care/` (README, `backend.md`, `compliance-questions.md`, `olt-data-requirements.md`, `design-proposal.md`), README `services/care`, bagian customer care di README root, `docs/PRODUCTION.md` (§2 dan checklist §8), dan README OLT dummy |
+| **Dokumentasi** | `docs/customer-care/` (README, `backend.md`, `compliance-questions.md`, `olt-data-requirements.md`, `design-proposal.md`), README `services/care`, bagian customer care di README root, `docs/panduan/produksi.md` (§2 dan checklist §8), dan README OLT dummy |
 | **Di luar repo** | Halaman web (artifact) **"Persiapan Customer Care"** (privat) yang berisi pertanyaan kepatuhan, kebutuhan data OLT, dan wireframe ticketing |
 | **Data dev** | Tiket smoke/demo, PDF di bucket `care-documents`, email di Mailpit, staf contoh Nadia, Bima, Laras, dan "Smoke Agen" |
 
@@ -66,7 +66,7 @@
 | **Compose & perintah** | Profil `care` menjadi `cs`. `customer-adapter` tetap, `cs-matcher` ditambah di CS2. Target `test-care`/`smoke-care`/`demo-care` dan `CARE=1`/`-Care` diganti padanan CS |
 | **Module Go** | `services/care` menjadi module CS berisi `customer-adapter` dan nantinya `cs-matcher` |
 | **Tes** | Tes kalender (018) dan tes masking (sebagian 021) dipindah ke `cs`. Tes 009 menyesuaikan jumlah policy storage. Helper `create_staff`/`authenticate_staff` menjadi helper agen; `authenticate_service` tetap |
-| **Dokumentasi** | README `services/care`, bagian customer care di README root dan `docs/PRODUCTION.md`, serta README OLT dummy ditulis ulang untuk CS chat |
+| **Dokumentasi** | README `services/care`, bagian customer care di README root dan `docs/panduan/produksi.md`, serta README OLT dummy ditulis ulang untuk CS chat |
 
 ### C. Harus dihapus
 

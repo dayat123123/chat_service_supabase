@@ -1,6 +1,6 @@
 # Checklist Go-Live
 
-Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. Centang setiap butir setelah buktinya dilihat bersama. Detail teknis: [server-install.md](server-install.md), [PRODUCTION.md](PRODUCTION.md) bagian 8, [operations.md](operations.md).
+Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. Centang setiap butir setelah buktinya dilihat bersama. Detail teknis: [instalasi-server.md](instalasi-server.md), [produksi.md](produksi.md) bagian 8, [operasional.md](operasional.md).
 
 ## A. Server & jaringan — Vendor IT
 
@@ -22,15 +22,15 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 - [ ] HTTPS valid, `http://` dialihkan ke `https://`, `https://<domain>/` menjawab 404
 - [ ] OLT dummy dan Studio tidak berjalan
 - [ ] Salinan `docker/.env`, `docker/secrets/`, `pgsodium_root.key` tersimpan di luar server
-- [ ] Restart otomatis aktif dan mengawasi semua layanan (Kesehatan sistem → **Restart otomatis**, alamat `/system`)
+- [ ] Restart otomatis aktif dan mengawasi semua layanan (**Pengaturan → Sistem → Kesehatan sistem → Restart otomatis**)
 
 ## D. Hub & staf — Super Admin
 
 - [ ] Super Admin pertama dibuat dan password sementara sudah diganti
 - [ ] Hub hanya terbuka dari IP kantor/VPN — dibuka dari jaringan lain mendapat 403
 - [ ] Akun staf CS, Kepatuhan, dan moderator dibuat, password ≥ 12 karakter
-- [ ] **Pengaturan → Alert**: Telegram/email diisi, **Kirim uji** diterima; pemantau uptime dari luar server dipasang
-- [ ] **Pengaturan → Backup**: tujuan di disk terpisah atau S3, backup penuh dan uji restore berhasil, password di luar server
+- [ ] **Pengaturan → Sistem → Alert**: Telegram/email diisi, **Kirim uji** diterima; pemantau uptime dari luar server dipasang
+- [ ] **Pengaturan → Sistem → Backup**: tujuan di disk terpisah atau S3, backup penuh dan uji restore berhasil, password di luar server
 - [ ] **Pengaturan → Push notification**: kunci Firebase diunggah (bila push dipakai)
 
 ## E. Aplikasi OLT — Tim aplikasi

@@ -1,6 +1,6 @@
 # Instalasi Server Baru
 
-Panduan memasang server sosial di server Ubuntu baru sampai API bisa diakses publik lewat domain dengan HTTPS. Sebagian besar langkah dikerjakan satu script, [`scripts/server-install.sh`](../scripts/server-install.sh), yang dikirim ke server dengan `scp` sebelum repo di-clone di sana. Isinya juga ada di bagian 3.
+Panduan memasang server sosial di server Ubuntu baru sampai API bisa diakses publik lewat domain dengan HTTPS. Sebagian besar langkah dikerjakan satu script, [`scripts/server-install.sh`](../../scripts/server-install.sh), yang dikirim ke server dengan `scp` sebelum repo di-clone di sana. Isinya juga ada di bagian 3.
 
 Hasil akhirnya:
 
@@ -8,7 +8,7 @@ Hasil akhirnya:
 - Rendezvous Hub di `https://<domain Hub>`, hanya dari IP kantor/VPN (opsional).
 - Backup berjalan ke folder di disk terpisah setelah diatur dari Hub.
 
-Rujukan lain: [operations.md](operations.md) (operasional), [runbook-gangguan.md](runbook-gangguan.md) (gangguan), [PRODUCTION.md](PRODUCTION.md) (detail produksi), [dev-server.md](dev-server.md) (spek dan mode dev).
+Rujukan lain: [operasional.md](operasional.md) (operasional), [gangguan.md](gangguan.md) (gangguan), [produksi.md](produksi.md) (detail produksi), [server-development.md](server-development.md) (spek dan mode dev).
 
 ## 1. Yang harus ada sebelum mulai
 
@@ -21,7 +21,7 @@ Rujukan lain: [operations.md](operations.md) (operasional), [runbook-gangguan.md
 | Firewall penyedia: 80 dan 443 dari internet, 22 hanya dari IP admin | Vendor IT | — |
 | Akses HTTPS keluar dari server ke `database.clamav.net` (signature antivirus, ±300 MB saat start pertama lalu update harian) | Vendor IT | — |
 | User SSH dengan `sudo`, login dengan SSH key | Vendor IT | — |
-| JWKS (kunci **publik**) penanda tangan token sosial | Tim backend OLT ([olt-integration.md](olt-integration.md)) | `{"keys":[{"kty":"OKP",...}]}` |
+| JWKS (kunci **publik**) penanda tangan token sosial | Tim backend OLT ([olt-integration.md](../olt-integration.md)) | `{"keys":[{"kty":"OKP",...}]}` |
 | Email tim IT (notifikasi sertifikat) | Anda | `it@perusahaan.co.id` |
 | IP publik kantor / subnet VPN untuk Hub | Tim IT | `198.51.100.7/32` |
 | Akses admin repo GitHub `chat_service_supabase`, dan `rendezvous_hub` bila Hub dipasang (untuk menambah deploy key) | Anda | — |
@@ -73,7 +73,7 @@ Waktu: ±15–30 menit, sebagian besar untuk mengunduh dan build image pertama k
 
 ## 3. Isi script
 
-Sama dengan [`scripts/server-install.sh`](../scripts/server-install.sh). Setelah repo ter-clone, jalankan ulang dari repo: `bash ~/chat_service_supabase/scripts/server-install.sh`.
+Sama dengan [`scripts/server-install.sh`](../../scripts/server-install.sh). Setelah repo ter-clone, jalankan ulang dari repo: `bash ~/chat_service_supabase/scripts/server-install.sh`.
 
 ```bash
 #!/usr/bin/env bash
@@ -356,7 +356,7 @@ EOF
 [ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: $vpn_ranges)"
 cat <<EOF
 
-Next steps (docs/server-install.md section 5):
+Next steps (docs/panduan/instalasi-server.md section 5):
   1. Log in to the Hub as Super Admin and change the temporary password.
   2. Pengaturan -> Backup: choose a destination, create an encryption password, store it off the server.
   3. Pengaturan -> Alert: fill in Telegram/email, then Kirim uji.
@@ -383,11 +383,11 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://
 ## 5. Setelah server jalan
 
 1. **Login Hub** (`https://<domain Hub>`, dari kantor/VPN) dengan email Super Admin dan password sementara, lalu ganti password.
-2. **Pengaturan → Backup**: pilih tujuan (Folder lokal di server, atau S3), buat password enkripsi, simpan. Tekan **Uji restore sekarang** setelah backup penuh pertama selesai.
-3. **Pengaturan → Alert**: isi Telegram/email, lalu **Kirim uji**. Tanpa kanal ini, alert gangguan tidak terkirim ke siapa pun.
+2. **Pengaturan → Sistem → Backup**: pilih tujuan (Folder lokal di server, atau S3), buat password enkripsi, simpan. Tekan **Uji restore sekarang** setelah backup penuh pertama selesai.
+3. **Pengaturan → Sistem → Alert**: isi Telegram/email, lalu **Kirim uji**. Tanpa kanal ini, alert gangguan tidak terkirim ke siapa pun.
 4. **Pengaturan → Push notification**: unggah kunci Firebase (project Firebase aplikasi OLT), bila push dipakai.
 5. **Pengaturan → Akun CS**: buat akun staf lain.
-6. **Simpan di luar server** (password manager / brankas): `docker/.env`, folder `docker/secrets/`, password backup, salinan `pgsodium_root.key` ([backup](backup/README.md#pemulihan)).
+6. **Simpan di luar server** (password manager / brankas): `docker/.env`, folder `docker/secrets/`, password backup, salinan `pgsodium_root.key` ([backup](../backup/README.md#pemulihan)).
 7. **Data untuk tim aplikasi OLT**: `supabaseUrl` = `https://<domain API>`, `anonKey` = hasil `make anon-key`, versi library `v1.17.0` ([panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md)).
 8. Uji dari aplikasi: login, buka feed, kirim chat antar dua akun.
 
@@ -403,7 +403,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://
 | `Rendezvous Hub checkout not found at ...` | Domain Hub diisi tetapi `~/rendezvous_hub` belum ada | Jalankan ulang script (langkah 7), atau isi `HUB_DIR` di `docker/.env` |
 | Hub 403 dari kantor | IP kantor tidak ada di `VPN_SOURCE_RANGES` | Cek IP publik kantor, perbaiki `docker/.env`, `make up` |
 | `olt_mode` bukan `jwt` | Konfigurasi auth-bridge | `make logs s=auth-bridge` |
-| `make up` habis waktu menunggu `clamav`, atau Hub menolak dokumen/video chat CS dengan "Virus check is unavailable" | Start pertama clamav masih mengunduh signature (±300 MB) atau server tidak bisa mengakses `database.clamav.net` | `make logs s=clamav`; `make up` sudah menunggu sampai 15 menit; bila tetap habis waktu, tunggu sampai "socket found, clamd started", lalu `make up` lagi. clamd butuh ±1,1–1,6 GB RAM (lihat [PRODUCTION.md](PRODUCTION.md)) |
+| `make up` habis waktu menunggu `clamav`, atau Hub menolak dokumen/video chat CS dengan "Virus check is unavailable" | Start pertama clamav masih mengunduh signature (±300 MB) atau server tidak bisa mengakses `database.clamav.net` | `make logs s=clamav`; `make up` sudah menunggu sampai 15 menit; bila tetap habis waktu, tunggu sampai "socket found, clamd started", lalu `make up` lagi. clamd butuh ±1,1–1,6 GB RAM (lihat [produksi.md](produksi.md)) |
 | Login dari aplikasi selalu "Sesi berakhir" | `iss`/`aud`/jam server OLT tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (field `reason`) |
 
 ## 7. Belum ada JWKS OLT: mode dev sementara

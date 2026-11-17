@@ -1,6 +1,6 @@
 # Perbaikan Tampilan Web CS — Bersih, Profesional, Bukan "AI Slop"
 
-> Simpan sebagai `docs/PROMPT-CS-UI-POLISH.md`. Tugas ini **khusus tampilan (UI/UX)** pada `apps/cs-console` (React).
+> Simpan sebagai `docs/archive/PROMPT-CS-UI-POLISH.md`. Tugas ini **khusus tampilan (UI/UX)** pada `apps/cs-console` (React).
 > **Jangan mengubah logika, API, RLS, atau backend.** Semua tes yang ada harus tetap lulus.
 
 ---

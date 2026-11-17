@@ -74,7 +74,7 @@ flowchart LR
   |---|---|
   | `dev` | Laptop: `http://localhost:8000`, Studio, token mock, CORS terbuka |
   | `single` | Produksi satu server: HTTPS Let's Encrypt, hanya path API publik, Studio mati |
-  | `cluster` | Docker Swarm multi-node ([docs/scaling.md](docs/scaling.md)) |
+  | `cluster` | Docker Swarm multi-node ([docs/panduan/skalabilitas.md](docs/panduan/skalabilitas.md)) |
 
 ## Isi repo
 
@@ -159,29 +159,20 @@ make gen-secrets PROFILE=single
 make up PROFILE=single CS=1      # CS=1 menyalakan Rendezvous Hub di domain CS (LAN/VPN)
 ```
 
-Langkah lengkapnya ada di [docs/PRODUCTION.md](docs/PRODUCTION.md): domain dan TLS, secrets, batas & rate limit, alert kapasitas, backup dan PITR, urutan rilis dan versi minimum aplikasi, serta checklist go-live.
+Langkah lengkapnya ada di [docs/panduan/produksi.md](docs/panduan/produksi.md): domain dan TLS, secrets, batas & rate limit, alert kapasitas, backup dan PITR, urutan rilis dan versi minimum aplikasi, serta checklist go-live.
 
 Konfigurasi operasional dikelola Super Admin dari **Rendezvous Hub**, dengan jejak audit, bukan dari file di server. Contohnya kunci Firebase, tujuan backup, kanal alert, alamat csAdmin, API key integrasi, dan versi minimum aplikasi.
 
 ## Dokumentasi
 
-| Dokumen | Isi |
+Indeks lengkap: [docs/README.md](docs/README.md).
+
+| Untuk | Dokumen |
 |---|---|
-| [olt-integration.md](docs/olt-integration.md) | Kontrak token sosial untuk tim backend OLT |
-| [integration/](docs/integration/README.md) | API notifikasi OLT (`/integration/v1`) |
-| [dev-server.md](docs/dev-server.md) | Server development untuk integrasi aplikasi client: spek, port, domain, pemasangan |
-| [PRODUCTION.md](docs/PRODUCTION.md) | Deploy, operasional, rilis, checklist |
-| [server-install.md](docs/server-install.md) | Instalasi server baru sampai bisa diakses publik, dengan script `scripts/server-install.sh` |
-| [go-live-checklist.md](docs/go-live-checklist.md) ([PDF](docs/go-live-checklist.pdf)) | Checklist rapat go-live satu halaman: vendor IT, tim OLT, tim aplikasi, Kepatuhan |
-| [operations.md](docs/operations.md) | Panduan operasional: komponen, di mana mengatur apa, perintah, pemantauan, rutinitas |
-| [runbook-gangguan.md](docs/runbook-gangguan.md) | Langkah saat gangguan: triase, gejala per layanan, pemulihan, rollback |
-| [panduan-hub.md](docs/panduan-hub.md) ([PDF](docs/panduan-hub.pdf)) | Panduan pelatihan Rendezvous Hub untuk staf non-teknis: CS, Supervisor/Super Admin, Kepatuhan, moderator Komunitas |
-| [scaling.md](docs/scaling.md) | Profil deploy dan migrasi single → cluster |
-| [social/](docs/social/README.md) | Feed, chat, realtime, gap-fill, typing, pratinjau room |
-| [cs-chat/](docs/cs-chat/README.md) | Chat CS, tiket, matching engine, `cs_api` |
-| [community/](docs/community/), [nasabah/](docs/nasabah/), [push/](docs/push/), [backup/](docs/backup/README.md), [system-health/](docs/system-health/README.md), [evidence/](docs/evidence/) | Desain per fitur |
-| [content-safety.md](docs/content-safety.md) | Kata terlarang, NSFW, karantina bukti |
-| [testing/](docs/testing/README.md) | Cara menjalankan uji keamanan/beban/chaos dan laporannya |
+| **Tim IT dan Super Admin** | [docs/panduan](docs/panduan/README.md): [spesifikasi server](docs/panduan/spesifikasi-server.md), [instalasi server](docs/panduan/instalasi-server.md), [checklist go-live](docs/panduan/checklist-go-live.md), [operasional](docs/panduan/operasional.md), [pembaruan dan rollback](docs/panduan/pembaruan-sistem.md), [catatan rilis](docs/panduan/catatan-rilis.md), [backup dan pemulihan](docs/panduan/backup.md), [gangguan](docs/panduan/gangguan.md), [produksi](docs/panduan/produksi.md), [skalabilitas](docs/panduan/skalabilitas.md), [server development](docs/panduan/server-development.md) |
+| **Staf pengguna Hub** | [docs/panduan/hub-untuk-staf.md](docs/panduan/hub-untuk-staf.md) ([PDF](docs/panduan/hub-untuk-staf.pdf)) |
+| **Tim OLT dan tim aplikasi** | [olt-integration.md](docs/olt-integration.md) (token sosial), [integration/](docs/integration/README.md) (API notifikasi), [rendezvous-community](docs/rendezvous-community/README.md) |
+| **Pengembang** | Desain per fitur ([social](docs/social/README.md), [cs-chat](docs/cs-chat/README.md), [community](docs/community/README.md), [content-safety](docs/content-safety.md), [backup](docs/backup/README.md), [system-health](docs/system-health/README.md), dan lainnya di [docs](docs/README.md)), [testing](docs/testing/README.md) |
 
 ## Keamanan
 

@@ -1,6 +1,6 @@
 # Addendum: Production Readiness, Keamanan & Skalabilitas — OLT Social
 
-> Addendum ini **melengkapi** `docs/PROMPT.md`. Simpan file ini sebagai `docs/PROMPT-PRODUCTION.md`.
+> Addendum ini **melengkapi** `docs/archive/PROMPT.md`. Simpan file ini sebagai `docs/archive/PROMPT-PRODUCTION.md`.
 > Jika ada yang bertentangan, **addendum ini yang berlaku**. Bagian bertanda `[...]` silakan disesuaikan.
 
 ---
@@ -44,7 +44,7 @@ Perbedaan profil hanya diatur lewat konfigurasi:
 - Storage backend.
 - Target koneksi DB (primary saja, atau primary + replica).
 
-Sediakan `docs/scaling.md` yang menjelaskan langkah **migrasi single → cluster** (termasuk pindah data storage dan menambah replica DB) dengan downtime minimal.
+Sediakan `docs/panduan/skalabilitas.md` yang menjelaskan langkah **migrasi single → cluster** (termasuk pindah data storage dan menambah replica DB) dengan downtime minimal.
 
 ---
 
@@ -238,7 +238,7 @@ Terapkan di semua service jika didukung image:
 - Backup disimpan **di luar server utama** (server lain atau object storage terpisah) dan **dienkripsi**.
 - Kebijakan retensi: harian `[7]`, mingguan `[4]`, bulanan `[6]`.
 - Script `make restore` dan **uji restore otomatis** berkala ke lingkungan terpisah. Backup yang belum pernah diuji restore dianggap tidak ada.
-- Target: **RPO** ≤ `[5 menit]`, **RTO** ≤ `[1 jam]`. Dokumentasikan langkah DR di `docs/operations.md`.
+- Target: **RPO** ≤ `[5 menit]`, **RTO** ≤ `[1 jam]`. Dokumentasikan langkah DR di `docs/panduan/operasional.md`.
 
 ---
 
@@ -301,7 +301,7 @@ Buat `docs/production-checklist.md` dan **centang semuanya sebelum go-live**:
 
 ## 11. Penyesuaian Tahapan
 
-Gabungkan addendum ini ke tahapan di `docs/PROMPT.md`:
+Gabungkan addendum ini ke tahapan di `docs/archive/PROMPT.md`:
 - **Tahap 1 (Infrastruktur)**:
   - Tiga profil (`dev`, `single`, `cluster`, dengan cluster boleh berupa kerangka dulu), Traefik, pooler, Valkey, Docker secrets, network terpisah, container hardening, `make gen-secrets`.
 - **Tahap 2 (Database)**:

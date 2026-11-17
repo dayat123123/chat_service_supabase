@@ -1,5 +1,5 @@
 # Docker Swarm overlay for compose.yml. Still a skeleton that has not been fully tested; see
-# docs/scaling.md for prerequisites and migration. It only overrides deploy settings: images, service
+# docs/panduan/skalabilitas.md for prerequisites and migration. It only overrides deploy settings: images, service
 # names, and env names stay the same. Swarm ignores depends_on, build, security_opt, shm_size, and
 # network_mode, so self-built images must be pushed to ${REGISTRY}/olt-social/... first.
 

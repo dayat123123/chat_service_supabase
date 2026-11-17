@@ -1,6 +1,6 @@
 # Revisi CS-2: Tiket Bebas Diambil CS, Integrasi ke Aplikasi Nasabah & Web CS Khusus
 
-> Revisi ini **memperbarui `docs/PROMPT-CS-CHAT.md`**. Simpan sebagai `docs/PROMPT-CS-REVISI-2.md`.
+> Revisi ini **memperbarui `docs/archive/PROMPT-CS-CHAT.md`**. Simpan sebagai `docs/archive/PROMPT-CS-REVISI-2.md`.
 > Jika ada yang bertentangan, **revisi ini yang berlaku**. Bagian `[...]` silakan disesuaikan.
 > Pekerjaan CS1 (backend, `cs_api`, `customer-adapter`, demo page) **dipertahankan dan disempurnakan**, bukan dibuat ulang.
 

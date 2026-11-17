@@ -1,6 +1,6 @@
 # Addendum 2: Fitur Lanjutan, Integrasi Pasar & Moderasi — OLT Social
 
-> Addendum ini **melengkapi** `docs/PROMPT.md` dan `docs/PROMPT-PRODUCTION.md`. Simpan sebagai `docs/PROMPT-FEATURES.md`.
+> Addendum ini **melengkapi** `docs/archive/PROMPT.md` dan `docs/archive/PROMPT-PRODUCTION.md`. Simpan sebagai `docs/archive/PROMPT-FEATURES.md`.
 > Semua aturan di dua dokumen sebelumnya tetap berlaku untuk fitur di sini, yaitu lisensi permisif, Docker, stateless, RLS, rate limit, dan keamanan.
 > Bagian bertanda `[...]` silakan disesuaikan.
 

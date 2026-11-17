@@ -1,6 +1,6 @@
 # Panduan Produksi
 
-Panduan ini menjelaskan cara menjalankan OLT Social di VPS Ubuntu dengan profil **`single`** (produksi 1 server): deploy, rahasia, backup, update, moderasi, dan checklist sebelum rilis. Pindah ke banyak node: [scaling.md](scaling.md).
+Panduan ini menjelaskan cara menjalankan OLT Social di VPS Ubuntu dengan profil **`single`** (produksi 1 server): deploy, rahasia, backup, update, moderasi, dan checklist sebelum rilis. Pindah ke banyak node: [skalabilitas.md](skalabilitas.md).
 
 ## 1. Arsitektur produksi
 
@@ -64,7 +64,7 @@ make anon-key              # ANON_KEY untuk build app OLT
 Catatan:
 - **Uji sertifikat dulu.** Uji dengan `ACME_CA_SERVER=https://acme-staging-v02.api.letsencrypt.org/directory` agar tidak kena rate limit Let's Encrypt. Setelah berhasil, hapus baris itu, lalu hapus volume `olt-social_traefik-acme`.
 - **Mode mock tidak bisa dipakai.** Profil single selalu menjalankan auth-bridge dengan `APP_ENV=production`, dan auth-bridge menolak start bila `AUTH_BRIDGE_OLT_MODE=mock`. Default profil single adalah `jwt`.
-- **Ganti kunci publik OLT.** Sebelum `make up`, timpa `docker/secrets/olt_jwks` dengan JWKS dari tim OLT (bagian 2 [olt-integration.md](olt-integration.md)). `make gen-secrets` tidak pernah menimpa JWKS produksi. Kunci dev (`kid` berawalan `dev-`) ditolak di produksi, jadi auth-bridge tidak mau start bila file ini lupa diganti.
+- **Ganti kunci publik OLT.** Sebelum `make up`, timpa `docker/secrets/olt_jwks` dengan JWKS dari tim OLT (bagian 2 [olt-integration.md](../olt-integration.md)). `make gen-secrets` tidak pernah menimpa JWKS produksi. Kunci dev (`kid` berawalan `dev-`) ditolak di produksi, jadi auth-bridge tidak mau start bila file ini lupa diganti.
 - **Rahasia ada di `docker/secrets/`.** Folder ini harus `chmod 700` dan dimiliki deployer. Isinya tidak pernah masuk `.env`, image, atau `docker inspect`.
 - **Membuka Studio** (default mati):
   1. Nyalakan Studio: `make admin-up PROFILE=single`.
@@ -72,8 +72,8 @@ Catatan:
   3. Buka `http://localhost:8000` di browser.
   4. Login dengan `DASHBOARD_USERNAME` dan password di `docker/secrets/dashboard_password`.
   5. Setelah selesai: `make admin-down PROFILE=single`.
-- **Customer service lewat chat.** Chat CS nasabah memakai schema `cs_api` lewat `/rest/v1` dan Realtime (sudah ada di `PGRST_DB_SCHEMAS` default), jadi tidak butuh service tambahan. Server tidak mengambil data nasabah dari OLT; agen membuka back-office OLT bila butuh data akun ([olt-integration.md](olt-integration.md)). Detail: [docs/cs-chat](cs-chat/README.md).
-- **API staf hanya di domain CS** (temuan T4, [laporan uji 3 Nov](testing/report-2026-11-03.md)). Di domain publik `PROXY_DOMAIN` (`docker/volumes/traefik/prod.yml`):
+- **Customer service lewat chat.** Chat CS nasabah memakai schema `cs_api` lewat `/rest/v1` dan Realtime (sudah ada di `PGRST_DB_SCHEMAS` default), jadi tidak butuh service tambahan. Server tidak mengambil data nasabah dari OLT; agen membuka back-office OLT bila butuh data akun ([olt-integration.md](../olt-integration.md)). Detail: [docs/cs-chat](../cs-chat/README.md).
+- **API staf hanya di domain CS** (temuan T4, [laporan uji 3 Nov](../testing/report-2026-11-03.md)). Di domain publik `PROXY_DOMAIN` (`docker/volumes/traefik/prod.yml`):
   1. Skema `cs_api` hanya dibuka untuk 14 RPC chat CS yang dipanggil app nasabah (router `api-cs-customer`: `support_home`, `topics`, `open_ticket`, `my_tickets`, `ticket_messages`, `close_ticket`, `rate_ticket`, `request_complaint`, `report_fake_cs`, `check_sensitive`, `get_messages`, `send_message`, `mark_read`, `room_members`). Permintaan lain dengan `Accept-Profile`/`Content-Profile` `cs_api` dijawab 403 (`api-cs-staff-block`), dan router `api` membuang kedua header itu sehingga hanya skema `public` yang terjangkau.
   2. Router REST publik memasang header `X-Olt-Edge: public` (menimpa nilai dari klien). `private.check_request` (migrasi `0100`) menolak JWT akun CS yang datang dengan penanda ini (`403 cs_staff_public_edge`), jadi JWT staf yang bocor tidak bisa dipakai dari internet, termasuk untuk RPC yang dibuka bagi nasabah. Domain CS membuang header ini.
   3. `/functions/v1` (Edge Function `cs-admin`) tidak dipublikasikan; hanya ada di domain CS. Fungsi contoh `hello` sudah dihapus.
@@ -102,51 +102,42 @@ Catatan:
   3. Salin blok `integration { … }` dari halaman yang sama ke config CS Admin service di server API Nasabah (nama file mengikuti kode broker), lalu restart service-nya. Sebaiknya tambahkan `allowed_ips = <IP server web CS>`.
   4. Klik **Simpan & aktifkan**. Gateway mengetes koneksi dulu dan hanya menyimpan bila berhasil. Setelah itu menu Akun Nasabah tampil untuk CS yang punya izin, paling lambat 1 menit, tanpa restart.
 
-  Rinciannya ada di [docs/nasabah](nasabah/README.md#konfigurasi-gateway).
-- **Menu Komunitas** (postingan resmi, pengumuman, notifikasi, moderasi) tidak butuh konfigurasi server. Super Admin memberi izin per staf di **Pengaturan → Akun CS** dan membuat akun resmi pertama di **Komunitas → Akun resmi** (butuh izin "Kelola akun resmi"). Foto akun resmi memakai `SUPABASE_PUBLIC_URL`, jadi isi dengan domain API publik. Rinciannya ada di [docs/community](community/README.md).
-- **Push notification ke HP**: Super Admin mengunggah file kunci service account Firebase (`.json`) di web CS, **Pengaturan → Push notification → Kunci Firebase**. Kunci disimpan terenkripsi di Vault, notifier memuat dan memeriksanya ke Google dalam beberapa detik tanpa restart, lalu status menjadi Aktif. Sebelum itu semua notifikasi tetap masuk ke kotak notifikasi aplikasi. Panduan lengkap (APNs, rotasi kunci, restore, integrasi aplikasi): [docs/push](push/README.md).
-- **Upload media nasabah**: aplikasi mengunggah foto dan PDF lewat `/media/v1`, bukan langsung ke Storage. Layanan `media` memeriksa isi file (bukan nama atau header), membuang EXIF/GPS, XMP, dan metadata teks tanpa menurunkan kualitas gambar, serta menolak PDF terenkripsi atau berisi JavaScript. Storage menolak upload nasabah yang tidak lewat layanan ini (migrasi `0063`). Staf di web CS tetap mengunggah langsung. Tidak perlu konfigurasi. Detail: [services/media](../services/media/README.md).
-- **Dokumen hukum (S&K, Pedoman Komunitas, Kebijakan Privasi)** diterbitkan staf Kepatuhan dari web CS (**Kepatuhan → Dokumen hukum**) dengan persetujuan empat mata. Selama belum ada dokumen yang terbit, nasabah tidak diminta menyetujui apa pun. Detail: [kepatuhan.md](cs-chat/kepatuhan.md#dokumen-hukum).
-- **Kesehatan sistem dan alert**: Super Admin membuka **Kesehatan sistem** di web CS untuk melihat status semua layanan, disk, database, antrean, dan backup. Isi kanal alert Telegram dan/atau email di tab **Alert**, lalu tekan **Kirim uji**. Detail: [docs/system-health](system-health/README.md).
-- **Backup**: isi tujuan (S3, atau sementara **Folder lokal di server** dengan `BACKUP_LOCAL_REPO_DIR` di disk terpisah) dan password enkripsi di **Pengaturan → Backup** segera setelah deploy. Sebelum itu muncul alert "Backup belum diatur". Simpan password enkripsi dan salinan `pgsodium_root.key` di luar server. Detail: [docs/backup](backup/README.md).
-- **Moderasi gambar**: layanan `classifier` (model NSFW MobileNetV4, Apache-2.0, CPU) dipanggil `media` untuk setiap gambar nasabah sebelum disimpan. Gambar porno ditolak, gambar meragukan ditahan (hanya terlihat pengunggah dan moderator) dan masuk antrean **Komunitas → Moderasi → Gambar ditahan**. Bila `classifier` mati, upload gambar ditolak (fail closed) dan Kesehatan sistem memberi alert. Ambang diatur Kepatuhan (**Kepatuhan → Kebijakan konten → Ambang gambar**). Detail: [services/classifier](../services/classifier/README.md).
+  Rinciannya ada di [docs/nasabah](../nasabah/README.md#konfigurasi-gateway).
+- **Menu Komunitas** (postingan resmi, pengumuman, notifikasi, moderasi) tidak butuh konfigurasi server. Super Admin memberi izin per staf di **Pengaturan → Akun CS** dan membuat akun resmi pertama di **Komunitas → Akun resmi** (butuh izin "Kelola akun resmi"). Foto akun resmi memakai `SUPABASE_PUBLIC_URL`, jadi isi dengan domain API publik. Rinciannya ada di [docs/community](../community/README.md).
+- **Push notification ke HP**: Super Admin mengunggah file kunci service account Firebase (`.json`) di web CS, **Pengaturan → Push notification → Kunci Firebase**. Kunci disimpan terenkripsi di Vault, notifier memuat dan memeriksanya ke Google dalam beberapa detik tanpa restart, lalu status menjadi Aktif. Sebelum itu semua notifikasi tetap masuk ke kotak notifikasi aplikasi. Panduan lengkap (APNs, rotasi kunci, restore, integrasi aplikasi): [docs/push](../push/README.md).
+- **Upload media nasabah**: aplikasi mengunggah foto dan PDF lewat `/media/v1`, bukan langsung ke Storage. Layanan `media` memeriksa isi file (bukan nama atau header), membuang EXIF/GPS, XMP, dan metadata teks tanpa menurunkan kualitas gambar, serta menolak PDF terenkripsi atau berisi JavaScript. Storage menolak upload nasabah yang tidak lewat layanan ini (migrasi `0063`). Staf di web CS tetap mengunggah langsung. Tidak perlu konfigurasi. Detail: [services/media](../../services/media/README.md).
+- **Dokumen hukum (S&K, Pedoman Komunitas, Kebijakan Privasi)** diterbitkan staf Kepatuhan dari web CS (**Kepatuhan → Dokumen hukum**) dengan persetujuan empat mata. Selama belum ada dokumen yang terbit, nasabah tidak diminta menyetujui apa pun. Detail: [kepatuhan.md](../cs-chat/kepatuhan.md#dokumen-hukum).
+- **Kesehatan sistem dan alert**: Super Admin membuka **Pengaturan → Sistem → Kesehatan sistem** di Hub untuk melihat peta layanan, status semua layanan, disk, database, antrean, dan backup. Isi kanal alert Telegram dan/atau email di **Pengaturan → Sistem → Alert**, lalu tekan **Kirim uji**. Detail: [docs/system-health](../system-health/README.md).
+- **Backup**: isi tujuan (S3, atau sementara **Folder lokal di server** dengan `BACKUP_LOCAL_REPO_DIR` di disk terpisah) dan password enkripsi di **Pengaturan → Sistem → Backup** segera setelah deploy. Sebelum itu muncul alert "Backup belum diatur". Simpan password enkripsi dan salinan `pgsodium_root.key` di luar server. Detail: [docs/backup](../backup/README.md).
+- **Moderasi gambar**: layanan `classifier` (model NSFW MobileNetV4, Apache-2.0, CPU) dipanggil `media` untuk setiap gambar nasabah sebelum disimpan. Gambar porno ditolak, gambar meragukan ditahan (hanya terlihat pengunggah dan moderator) dan masuk antrean **Komunitas → Moderasi → Gambar ditahan**. Bila `classifier` mati, upload gambar ditolak (fail closed) dan Kesehatan sistem memberi alert. Ambang diatur Kepatuhan (**Kepatuhan → Kebijakan konten → Ambang gambar**). Detail: [services/classifier](../../services/classifier/README.md).
 - **Antivirus lampiran chat CS** (container `clamav`, image resmi `clamav/clamav`, migrasi `0131`/`0132`): `media` memindai setiap dokumen (PDF, Word, Excel, PowerPoint, TXT, CSV) dan video chat CS dengan clamd sebelum disimpan; file terinfeksi ditolak `malware_detected`, dan bila clamd mati upload dokumen/video CS ditolak (`scanner_unavailable`, fail closed) sementara chat teks dan gambar tetap jalan. Hal yang perlu disiapkan:
   - **RAM**: clamd memuat seluruh signature ke memori, terukur ~1,1 GB (database 9 Nov 2026) dan bertambah pelan seiring database. Batas container `CLAMAV_MEMORY` bawaan 2G. `ConcurrentDatabaseReload no` mencegah RAM berlipat dua saat reload; akibatnya scan tertahan beberapa detik saat freshclam memuat update. Untuk server 8 GB ini muat bersama stack lain; di server 4 GB pertimbangkan menambah RAM.
   - **Internet saat start pertama**: volume `clamav-db` masih kosong, jadi start pertama mengunduh ±300 MB dari `database.clamav.net` (HTTPS keluar lewat network `egress`) lalu memuatnya; container baru `healthy` setelah itu (biasanya 1–3 menit, `start_period` 10 menit). `make up` menunggu sampai 15 menit, cukup untuk unduhan pertama yang lambat; bila tetap habis waktu (misalnya akses ke `database.clamav.net` diblokir), periksa `make logs s=clamav` lalu jalankan `make up` lagi.
   - **Update signature**: freshclam di container yang sama mengecek `CLAMAV_FRESHCLAM_CHECKS` kali sehari (bawaan 4) dan memberi tahu clamd untuk reload. Bila server tidak boleh mengakses internet, siapkan mirror privat (`PrivateMirror` di `docker/volumes/clamav/freshclam.conf`). Signature yang lebih tua dari 3 hari membuat Kesehatan sistem menampilkan "Layanan Upload media bermasalah: Database virus pemindai antivirus belum diperbarui ...".
-  - **Pemantauan**: media melaporkan pemindai di heartbeat (sama seperti classifier) dan sentinel memprobe `clamav:3310` ("Pemindai antivirus tidak merespons"). Format dan batas ukuran/durasi lampiran diatur Super Admin dari Hub. Detail: [services/media](../services/media/README.md#lampiran-chat-cs).
-- **Keamanan konten & anti goreng saham**: filter kata ternormalisasi, domain/link, kontak dan frasa promosi, batasan akun baru, permintaan pesan DM, banding, deteksi manipulasi, dan slow mode room saham berjalan otomatis; kebijakannya diatur Kepatuhan dari web. Detail: [docs/content-safety.md](content-safety.md).
-- **Kill switch & versi minimum**: Super Admin atau peran Fitur & Kampanye (migrasi `0121`) dapat mematikan fitur sosial seketika (wajib alasan; chat CS tetap jalan), membuka fitur bertahap lewat feature flag, dan mewajibkan update aplikasi di **Fitur & Kampanye → Fitur & versi**. Selama kill switch aktif, tulis konten dan chat non-CS dari nasabah ditolak dengan **`403 social_disabled`** (SQLSTATE `PT403`, migrasi `0109`; sebelumnya `503`, lihat T24 di bawah). Paket Flutter mengenali kode `social_disabled`, bukan statusnya. Detail: [docs/social](social/README.md).
-- **Gateway integrasi OLT** (`/integration/v1`, layanan `integration`): notifEngine OLT mengirim notifikasi transaksi per `cust_id`; server memetakan ke pemilik rekening dari klaim `accounts` di token sosial OLT. API key dibuat Super Admin di **Pengaturan → Integrasi OLT** (ditampilkan sekali). Batasi sumbernya dengan CIDR pada key. Spesifikasi untuk tim OLT: [docs/integration](integration/README.md).
-- **Pratinjau link**: layanan `link-preview` (satu-satunya yang mengambil URL internet sembarang, dengan proteksi SSRF) membuat pratinjau link di postingan dan chat. Detail: [services/link-preview](../services/link-preview/README.md).
-- **Pembersihan file storage**: layanan `janitor` menghapus file milik akun yang dihapus (avatar, lampiran postingan dan chat, dokumen CS) serta surat yang lewat masa simpan, dari antrean `private.storage_cleanup_queue`. Tidak perlu konfigurasi. Folder yang gagal dicoba ulang dengan jeda sampai 6 jam. Cek antrean: `select bucket_id, prefix, failures, error from private.storage_cleanup_queue where done_at is null;`. Detail: [services/janitor](../services/janitor/README.md).
-- **Karantina bukti** (migrasi `0095`): konten yang dilaporkan atau dihapus moderator/sistem disimpan utuh (teks, konteks, sidik SHA-256) dan file-nya disalin `janitor` ke bucket privat `evidence` sebelum aslinya dibersihkan. Bukti append-only, disimpan 730 hari (`private.settings` kunci `retention.evidence_days`) kecuali Kepatuhan memasang legal hold, lalu dihapus job `evidence-purge`. Akses hanya Kepatuhan (dan Super Admin baca saja) di **Kepatuhan → Bukti**, setiap buka/periksa/ekspor tercatat. Hitung ukuran bucket `evidence` dalam kapasitas disk storage. Cek salinan yang tertahan: `select status, count(*) from private.evidence_files group by 1;`. Detail: [docs/evidence](evidence/README.md).
+  - **Pemantauan**: media melaporkan pemindai di heartbeat (sama seperti classifier) dan sentinel memprobe `clamav:3310` ("Pemindai antivirus tidak merespons"). Format dan batas ukuran/durasi lampiran diatur Super Admin dari Hub. Detail: [services/media](../../services/media/README.md#lampiran-chat-cs).
+- **Keamanan konten & anti goreng saham**: filter kata ternormalisasi, domain/link, kontak dan frasa promosi, batasan akun baru, permintaan pesan DM, banding, deteksi manipulasi, dan slow mode room saham berjalan otomatis; kebijakannya diatur Kepatuhan dari web. Detail: [docs/content-safety.md](../content-safety.md).
+- **Kill switch & versi minimum**: Super Admin atau peran Fitur & Kampanye (migrasi `0121`) dapat mematikan fitur sosial seketika (wajib alasan; chat CS tetap jalan), membuka fitur bertahap lewat feature flag, dan mewajibkan update aplikasi di **Fitur & Kampanye → Fitur & versi**. Selama kill switch aktif, tulis konten dan chat non-CS dari nasabah ditolak dengan **`403 social_disabled`** (SQLSTATE `PT403`, migrasi `0109`; sebelumnya `503`, lihat T24 di bawah). Paket Flutter mengenali kode `social_disabled`, bukan statusnya. Detail: [docs/social](../social/README.md).
+- **Gateway integrasi OLT** (`/integration/v1`, layanan `integration`): notifEngine OLT mengirim notifikasi transaksi per `cust_id`; server memetakan ke pemilik rekening dari klaim `accounts` di token sosial OLT. API key dibuat Super Admin di **Pengaturan → Integrasi OLT** (ditampilkan sekali). Batasi sumbernya dengan CIDR pada key. Spesifikasi untuk tim OLT: [docs/integration](../integration/README.md).
+- **Pratinjau link**: layanan `link-preview` (satu-satunya yang mengambil URL internet sembarang, dengan proteksi SSRF) membuat pratinjau link di postingan dan chat. Detail: [services/link-preview](../../services/link-preview/README.md).
+- **Pembersihan file storage**: layanan `janitor` menghapus file milik akun yang dihapus (avatar, lampiran postingan dan chat, dokumen CS) serta surat yang lewat masa simpan, dari antrean `private.storage_cleanup_queue`. Tidak perlu konfigurasi. Folder yang gagal dicoba ulang dengan jeda sampai 6 jam. Cek antrean: `select bucket_id, prefix, failures, error from private.storage_cleanup_queue where done_at is null;`. Detail: [services/janitor](../../services/janitor/README.md).
+- **Karantina bukti** (migrasi `0095`): konten yang dilaporkan atau dihapus moderator/sistem disimpan utuh (teks, konteks, sidik SHA-256) dan file-nya disalin `janitor` ke bucket privat `evidence` sebelum aslinya dibersihkan. Bukti append-only, disimpan 730 hari (`private.settings` kunci `retention.evidence_days`) kecuali Kepatuhan memasang legal hold, lalu dihapus job `evidence-purge`. Akses hanya Kepatuhan (dan Super Admin baca saja) di **Kepatuhan → Bukti**, setiap buka/periksa/ekspor tercatat. Hitung ukuran bucket `evidence` dalam kapasitas disk storage. Cek salinan yang tertahan: `select status, count(*) from private.evidence_files group by 1;`. Detail: [docs/evidence](../evidence/README.md).
 
 ## 3. Backup & restore
 
-Backup berkelanjutan dijalankan layanan `backup`, dan diatur Super Admin dari web CS (**Pengaturan → Backup**). Prosesnya:
-- WAL dialirkan terus lewat replikasi.
-- Backup penuh harian dan file storage dibuat otomatis.
-- Semuanya dikirim ke repositori restic terenkripsi di S3 di luar server. Bila S3 belum ada, pilih **Folder lokal di server**: repositori disimpan di `BACKUP_LOCAL_REPO_DIR` (`docker/.env`, arahkan ke disk terpisah, mis. `/mnt/backup/restic` milik uid 10001). Folder lokal tidak melindungi dari server rusak/hilang, jadi salin isinya ke luar server secara berkala (`restic copy` atau salin folder saat backup berhenti) dan pindah ke S3 begitu tersedia. Detail: [docs/backup → Tujuan folder lokal](backup/README.md#tujuan-folder-lokal).
-- Uji restore berjalan otomatis setiap minggu.
+Backup berkelanjutan dijalankan layanan `backup` dan diatur Super Admin dari Hub (**Pengaturan → Sistem → Backup**): WAL dialirkan terus, backup penuh dan file storage dibuat harian, semuanya dikirim ke repositori restic terenkripsi (S3 di luar server, atau sementara **Folder lokal di server** di disk terpisah), dan uji restore berjalan setiap minggu.
 
-Arsitektur, jadwal, retensi, alert, dan pemulihan ke titik waktu tertentu dijelaskan di [docs/backup](backup/README.md). Perintah teknisnya ada di [services/backup](../services/backup/README.md).
-
-`make backup` tetap ada untuk salinan sesaat (`pg_dump` + arsip file storage ke `backups/`), misalnya sebelum upgrade besar:
-
-```bash
-make backup PROFILE=single
-make down PROFILE=single
-docker compose -f docker/compose.yml -f docker/compose.prod.yml up -d --wait db
-make restore PROFILE=single FILE=olt-20261029-020000.dump CONFIRM=yes
-make up PROFILE=single
-```
+- Langkah praktis (persiapan, pengaturan, pemeriksaan rutin, pemulihan per kejadian): [backup.md](backup.md).
+- Arsitektur, jadwal, retensi, dan alert: [docs/backup](../backup/README.md). Perintah teknis: [services/backup](../../services/backup/README.md).
 
 Bucket `evidence` (karantina bukti) ikut backup file storage. Bukti yang sudah lewat masa simpan masih ada di backup lama sampai backup itu terpangkas (retensi bulanan 6 bulan); sampaikan ini ke tim legal bila menjawab permintaan penghapusan data.
 
-Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Setelah memulihkan ke server baru, isi ulang kunci Firebase, tujuan backup, dan kanal alert dari web, atau pulihkan salinan `pgsodium_root.key` yang disimpan di luar server.
+Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Simpan salinan `pgsodium_root.key` di luar server ([backup.md](backup.md#2-persiapan-wajib-sekali-sebelum-ada-masalah)).
 
 ## 4. Update versi
+
+Update rutin (`git pull` + `make up`), pemeriksaan sesudahnya, dan rollback: [pembaruan-sistem.md](pembaruan-sistem.md). Catatan per rilis yang butuh langkah tambahan: [catatan-rilis.md](catatan-rilis.md).
+
+Bagian ini untuk **mengganti versi image pihak ketiga** (Postgres, Realtime, Kong, dan lain-lain):
 
 1. Baca `docker/versions.md` dan CHANGELOG di [supabase/supabase/docker](https://github.com/supabase/supabase/tree/master/docker).
 2. Ubah image di `docker/compose.yml` dengan tag **dan** digest baru. Digest multi-arch didapat dengan `docker buildx imagetools inspect <image:tag>`. Jangan pernah memakai `latest`.
@@ -166,27 +157,6 @@ Kunci enkripsi Vault (volume `db-config`) tidak ikut backup mana pun. Setelah me
    ```
 
 5. Upgrade major Postgres (misalnya 17 → 18) butuh `pg_upgrade` dan tidak tercakup langkah di atas.
-
-**Rilis alert kapasitas (migrasi `0104`, sentinel 0.2.0, image PgBouncer `1.24.0-4`):** rilis ini menambah Docker secret `pgbouncer_stats_password` (user konsol admin PgBouncer `olt_stats` untuk sentinel). Jalankan `make gen-secrets` (Windows: `.\make.ps1 gen-secrets`) sebelum `make up`; secret yang sudah ada dipertahankan dan hanya yang belum ada dibuat. Tanpa secret ini `check-config` gagal dan PgBouncer tidak mau start.
-
-**Rilis batas CGNAT dan latensi alert (migrasi `0108`, sentinel 0.3.0, image PgBouncer `1.24.0-5`, 4 Nov):** sebelum `make up`, periksa `docker/.env` server. Baris `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` atau `EDGE_WS_PER_IP` yang lebih kecil dari 1.000 (mis. sisa 30/300/150 dari rilis lama) membuat `check-config` profil `single`/`cluster` gagal; hapus barisnya agar default baru (1.500) dipakai. Traefik kini dibatasi 768M (sebelumnya 256M). PgBouncer dan sentinel di-build ulang otomatis oleh `make up`.
-
-**Rilis image pihak ketiga (T5, 4 Nov):** Postgres `17.6.1.136` → `17.11.0.008` (PostgreSQL 17.6 → 17.11, major sama, tanpa dump/restore), Realtime `v2.148.6`, Storage `v1.84.32`, Studio `2026.10.26-sha-478bd88`, edge-runtime `v1.77.9`, Kong `3.9.4`, Traefik `v3.7.16`. Rincian dan alasan per image: [laporan uji 12.7](testing/report-2026-11-03.md#127-t5-versi-image-pihak-ketiga-4-nov).
-
-- Wajib `make backup PROFILE=single` sebelum `make up`. Image `db` berganti, jadi `db` dan layanan yang bergantung padanya dibuat ulang. Di dev, semua service healthy lagi dalam ±2 menit.
-- PostgreSQL 17.11 hanya mengizinkan output plugin di `output_plugin_libraries`. `postgresql.conf` image sudah berisi `pgoutput, test_decoding, wal2json`. Bila config Postgres diganti sendiri, `wal2json` wajib ada; tanpa itu `postgres_changes` Realtime berhenti.
-- Tidak perlu `REINDEX`: tidak ada `btree_gist`, `comments.path` (ltree) jauh di bawah 14.653 label, dan tidak ada fungsi kita yang memakai PGP pgcrypto.
-- Volume `db-config` (`/etc/postgresql-custom`) tidak diperbarui otomatis. Isinya tetap berkas image lama (`supautils.conf`, `extension-custom-scripts/`, tanpa `conf.d/pg_net.conf`), sama seperti upstream. Server baru mendapat versi baru. Jangan hapus volume ini (berisi `pgsodium_root.key`).
-- `make up --wait` bisa gagal sekali dengan `rest is unhealthy`: PgBouncer ikut dibuat ulang, listener PostgREST mundur 8 → 16 → 32 dtk, dan `/ready` 503 ±70 dtk. Tunggu sebentar, lalu jalankan `make up` lagi.
-- Storage `v1.84.32` tidak menambah migrasi internal (terakhir tetap `74 unlock-object-versioning`), jadi kembali ke `v1.81.0` masih aman.
-- Realtime `v2.148.6` memakai Phoenix 1.8.15: pesan WebSocket dengan `join_ref` yang tidak cocok dengan join channel diabaikan diam-diam. Klien Dart (`realtime_client`) dan realtime-js aman. Klien buatan sendiri wajib mengirim `join_ref` = `ref` dari `phx_join` channel itu.
-
-**Rilis Realtime Broadcast (migrasi `0098`, `rendezvous_community` 1.5.0) memutus klien lama.** Klien 1.4.x tetap tersambung, tetapi tidak lagi menerima pesan baru secara realtime (hanya saat memuat ulang) dan typing-nya tidak sampai. Urutan rilis:
-
-1. App OLT dengan `rendezvous_community` 1.5.0 sudah tersedia di toko aplikasi / kanal update Windows untuk semua platform.
-2. Deploy backend (`git pull`, `make up`).
-3. Segera setelahnya, Super Admin atau peran Fitur & Kampanye membuka web CS **Fitur & Kampanye → Fitur & versi → Versi minimum aplikasi** dan mengisi versi app OLT pertama yang membawa 1.5.0 untuk setiap platform yang dipakai OLT (`android`, `windows`, dan `ios`/`macos`/`linux`/`web` bila ada). Yang dibandingkan adalah `appVersion` app OLT yang dikirim ke `initialize(...)`, bukan versi package. Perubahan tercatat di jejak audit. App yang lebih lama menerima `update_required: true` dari `get_client_config` dan callback `onUpdateRequired` mengarahkan nasabah ke update. Detail: [panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md#kompatibilitas-server-dan-versi-minimum).
-4. Data di database tidak perlu diubah manual.
 
 **Aturan migrasi:**
 - Tambahkan file migrasi baru dengan nomor berikutnya. **Jangan pernah mengedit file yang sudah jalan**; runner menolaknya lewat pengecekan checksum.
@@ -241,7 +211,7 @@ Studio berjalan sebagai `postgres`, bukan akun admin `aal2`, sehingga tidak bisa
 
 ## 6. Rotasi kunci
 
-> Prosedur lengkap dengan masa transisi akan ditulis di `docs/operations.md` (Tahap 6).
+> Prosedur lengkap dengan masa transisi akan ditulis di `docs/panduan/operasional.md` (Tahap 6).
 
 Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan semua JWT user**:
 1. Di staging, hapus file `docker/secrets/jwt_secret`, `anon_key`, dan `service_role_key`, lalu jalankan `make gen-secrets`. Ketiganya dibuat ulang dengan pasangan yang cocok.
@@ -251,14 +221,14 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
 
 ## 7. Monitoring & log
 
-- **Kesehatan sistem** (web CS, Super Admin): status layanan, probe, disk, database, antrean, cron, dan backup. Alert dikirim ke Telegram/email. Bila database mati, sentinel tetap mengirim alert "API/database tidak bisa dihubungi". Detail: [docs/system-health](system-health/README.md).
+- **Kesehatan sistem** (web CS, Super Admin): status layanan, probe, disk, database, antrean, cron, dan backup. Alert dikirim ke Telegram/email. Bila database mati, sentinel tetap mengirim alert "API/database tidak bisa dihubungi". Detail: [docs/system-health](../system-health/README.md).
 - **Pemantau dari luar server:** pasang Uptime Kuma atau layanan uptime lain di server berbeda untuk memeriksa `https://<PROXY_DOMAIN>/bridge/v1/health` (header `apikey`). Alert dari dalam server tidak bisa terkirim bila seluruh server mati.
 - **Log:** `make logs PROFILE=single s=auth-bridge`.
   - Log Traefik (akses) dan auth-bridge berupa JSON. Log auth-bridge memuat `request_id`, `user_id`, `status`, dan `duration_ms`.
   - Header, token, dan password tidak pernah ditulis ke log.
 - **Rotasi log:** semua container memakai rotasi json-file 10 MB × 5 file.
 - **Health:** `make ps PROFILE=single`. Semua service punya healthcheck; service `migrate` dan `volume-init` harus `Exited (0)`.
-- **Restart otomatis (healer, profil single):** container yang mati di-restart Docker (`restart: unless-stopped`), tetapi container yang hanya **unhealthy** tidak. Layanan `healer` ([services/healer](../services/healer/README.md)) me-restart container berlabel `olt.autoheal=true` yang unhealthy ≥ 60 dtk dan sudah berjalan ≥ 120 dtk, maks 3 kali per layanan per jam (lalu menyerah dan membuka alert kritis `healer:gave_up:<layanan>`), maks 1 restart per 30 dtk untuk seluruh stack. Riwayatnya di web CS, Kesehatan sistem → Restart otomatis. Di Linux, isi `HEALER_DOCKER_GID` di `docker/.env` dengan GID grup `docker` (`getent group docker | cut -d: -f3`); tanpa itu healer tidak bisa membaca socket dan alert `healer:stale` terbuka. Healer adalah satu-satunya container dengan Docker socket (setara root di host), karena itu tanpa jaringan, tanpa port, read-only, non-root, dan diperiksa `make test-security`. Profil cluster tidak menjalankannya (Swarm mengganti task unhealthy).
+- **Restart otomatis (healer, profil single):** container yang mati di-restart Docker (`restart: unless-stopped`), tetapi container yang hanya **unhealthy** tidak. Layanan `healer` ([services/healer](../../services/healer/README.md)) me-restart container berlabel `olt.autoheal=true` yang unhealthy ≥ 60 dtk dan sudah berjalan ≥ 120 dtk, maks 3 kali per layanan per jam (lalu menyerah dan membuka alert kritis `healer:gave_up:<layanan>`), maks 1 restart per 30 dtk untuk seluruh stack. Riwayatnya di web CS, Kesehatan sistem → Restart otomatis. Di Linux, isi `HEALER_DOCKER_GID` di `docker/.env` dengan GID grup `docker` (`getent group docker | cut -d: -f3`); tanpa itu healer tidak bisa membaca socket dan alert `healer:stale` terbuka. Healer adalah satu-satunya container dengan Docker socket (setara root di host), karena itu tanpa jaringan, tanpa port, read-only, non-root, dan diperiksa `make test-security`. Profil cluster tidak menjalankannya (Swarm mengganti task unhealthy).
 - **auth-bridge (port ops internal 9100).** Port ini tidak dipublikasikan dan tidak lewat Kong; akses dari jaringan Docker:
 
   ```bash
@@ -267,7 +237,7 @@ Mengganti `jwt_secret` akan **membatalkan `anon_key`, `service_role_key`, dan se
   ```
 
   - `/readyz` bernilai `degraded` bila Valkey bermasalah (rate limit jatuh ke per-instance) atau circuit breaker OLT terbuka.
-  - Metrik dan alert yang disarankan ada di [services/auth-bridge/README.md](../services/auth-bridge/README.md#port-ops-internal).
+  - Metrik dan alert yang disarankan ada di [services/auth-bridge/README.md](../../services/auth-bridge/README.md#port-ops-internal).
 - **Yang perlu dipantau:**
   - disk (volume `db-data`, `storage-data`, folder `backups/`, repositori backup lokal `BACKUP_LOCAL_REPO_DIR`)
   - koneksi Postgres (PgBouncer membatasi maks 80 koneksi server)
@@ -298,7 +268,7 @@ Sentinel membaca metrik internal setiap `REPORT_INTERVAL` (30 dtk) lewat `METRIC
 
 ### Batas & rate limit
 
-Batas per IP dibuat longgar karena banyak nasabah bisa berbagi satu IP: NAT operator seluler (CGNAT) atau Wi-Fi kantor saat pasar buka 09:00 (temuan T3, [laporan uji 3 Nov](testing/report-2026-11-03.md), bagian 12). Default-nya cukup untuk **±1.000 nasabah di balik satu IP**; uji 800 VU dari satu IP lewat Traefik: 0 × 429, semua WebSocket terbuka. Perlindungan dari penyalahgunaan per akun tetap dijaga batas per user. Semua nilai bisa diubah lewat `docker/.env` tanpa ubah kode.
+Batas per IP dibuat longgar karena banyak nasabah bisa berbagi satu IP: NAT operator seluler (CGNAT) atau Wi-Fi kantor saat pasar buka 09:00 (temuan T3, [laporan uji 3 Nov](../testing/report-2026-11-03.md), bagian 12). Default-nya cukup untuk **±1.000 nasabah di balik satu IP**; uji 800 VU dari satu IP lewat Traefik: 0 × 429, semua WebSocket terbuka. Perlindungan dari penyalahgunaan per akun tetap dijaga batas per user. Semua nilai bisa diubah lewat `docker/.env` tanpa ubah kode.
 
 | Batas | Variabel `docker/.env` | Default | Catatan |
 |---|---|---|---|
@@ -319,11 +289,11 @@ Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat d
 ### Batas Realtime
 
 - Realtime men-seed ulang tenant dari env setiap start (`SEED_SELF_HOST`). `UPDATE _realtime.tenants` hilang setelah restart, jadi ubah `REALTIME_MAX_EVENTS_PER_SECOND` di `docker/.env`, lalu `docker compose ... up -d --no-deps realtime`.
-- Pesan chat dikirim lewat Broadcast dari database (`0098`, [docs/social](social/README.md#pengiriman-pesan-realtime-0098)). Setiap event yang **diterima** satu klien dihitung ke batas ini: satu pesan di room berisi 400 orang = 400 event. Room saham ramai dengan 12 pesan/detik dan 400 penerima ≈ 4.800 event/detik.
+- Pesan chat dikirim lewat Broadcast dari database (`0098`, [docs/social](../social/README.md#pengiriman-pesan-realtime-0098)). Setiap event yang **diterima** satu klien dihitung ke batas ini: satu pesan di room berisi 400 orang = 400 event. Room saham ramai dengan 12 pesan/detik dan 400 penerima ≈ 4.800 event/detik.
 - Bawaan 20.000/detik (sebelumnya 10.000). Fan-out satu room saham ≈ penerima × pesan/dtk ke room itu, kira-kira N²/20 pada room ramai: 10.000 habis di ±450 penerima aktif, 20.000 cukup untuk ±630. Butuh `realtime` 2 vCPU (batas di compose); uji 40.000 tanpa event dibuang dengan CPU `realtime` ≤ 53% (laporan uji bagian 10). Naikkan bersama CPU bila room terbesar lebih ramai. Di atas batas, Realtime membuang event diam-diam (log `MessagePerSecondRateLimitReached`, lalu `UnableToBroadcastChanges: too_many_requests`). Alert `realtime:events` (Kesehatan sistem) terbuka mulai 70% batas, kritis mulai 90%. Klien Flutter dan web CS mengisi celah lewat `get_messages(p_after)` saat tersambung, tiap 45 detik, dan saat kembali ke aplikasi. Pesan tidak hilang, hanya terlambat.
 - Naikkan bertahap sambil memantau CPU container `realtime` (laporan uji: CPU Realtime rendah, bottleneck sebelumnya adalah RLS `postgres_changes` di Postgres, yang kini tidak dipakai untuk pesan).
 - `REALTIME_MAX_BYTES_PER_SECOND` tidak ditegakkan oleh Realtime v2.143–v2.148 (diperiksa ulang di sumber v2.148.6). `max_presence_events_per_second` (1.000) tidak bisa diatur lewat env.
-- Typing dan presence di room besar dibatasi server (`0106`, [docs/social](social/README.md#typing-dan-presence-di-room-besar-0106)). Room non-CS mulai 50 anggota hanya menerima `typing_summary` (maksimal 1 per 3 dtk per room), sehingga di room 500 penerima typing turun dari ±25.000 menjadi ±167 event/dtk. Presence di room saham ditolak. Settingnya `rooms.typing_*` dan `rooms.presence_*` di `private.settings`.
+- Typing dan presence di room besar dibatasi server (`0106`, [docs/social](../social/README.md#typing-dan-presence-di-room-besar-0106)). Room non-CS mulai 50 anggota hanya menerima `typing_summary` (maksimal 1 per 3 dtk per room), sehingga di room 500 penerima typing turun dari ±25.000 menjadi ±167 event/dtk. Presence di room saham ditolak. Settingnya `rooms.typing_*` dan `rooms.presence_*` di `private.settings`.
 - Daftar chat aplikasi memoll `get_room_previews` untuk room saham (`0107`, bawaan 15 dtk, `rooms.preview_poll_seconds`). Polling ini tidak memakai anggaran Realtime. Bila REST/DB sedang berat, naikkan nilainya; klien mengikuti mulai poll berikutnya.
 
 ### Perilaku saat gangguan (laporan uji chaos 3 Nov)
@@ -360,7 +330,7 @@ Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat d
 - [ ] `retention.archive_days` (arsip regulator) sudah ditetapkan bersama tim legal. Default sementara: 5 tahun.
 
 **Data & operasional**
-- [ ] Tujuan backup diatur di web (**Pengaturan → Backup**): S3, atau folder lokal di disk terpisah yang disalin ke luar server secara berkala, backup penuh pertama berhasil, dan uji restore berhasil. Password enkripsi dan salinan `pgsodium_root.key` disimpan di luar server.
+- [ ] Tujuan backup diatur di web (**Pengaturan → Sistem → Backup**): S3, atau folder lokal di disk terpisah yang disalin ke luar server secara berkala, backup penuh pertama berhasil, dan uji restore berhasil. Password enkripsi dan salinan `pgsodium_root.key` disimpan di luar server.
 - [ ] Kanal alert (Telegram dan/atau email) diisi, dan **Kirim uji** sudah diterima tim operasional. Pemantau uptime dari luar server sudah dipasang.
 - [ ] Halaman **Kesehatan sistem** tidak menampilkan masalah kritis, dan tidak ada "Metrik … tidak bisa dibaca" (sumber `rest`, `realtime`, `pgbouncer` terbaca sentinel).
 - [ ] `docker/.env` server tidak menurunkan `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` atau `EDGE_WS_PER_IP` di bawah 1.000 (`check-config` menolaknya) dan `/bridge/v1/health` menunjukkan `olt_mode: jwt`.
@@ -374,9 +344,9 @@ Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat d
 - [ ] Prosedur moderasi (bagian 5) sudah disosialisasikan.
 - [ ] DNS dan sertifikat HTTPS valid (Traefik memperbarui otomatis).
 
-**Customer service lewat chat (sebelum dibuka untuk nasabah; lihat [docs/cs-chat](cs-chat/README.md))**
+**Customer service lewat chat (sebelum dibuka untuk nasabah; lihat [docs/cs-chat](../cs-chat/README.md))**
 - [ ] Revisi CS-2 (R1–R4) selesai. `make test-db`, `make cs-race`, dan `make smoke-cs` lulus di staging. `make cs-race` mencakup tes rebutan lewat beberapa replika API.
-- [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
+- [ ] Tim kepatuhan sudah menjawab [compliance-questions.md](../cs-chat/compliance-questions.md), dan nilai di `cs.cs_settings` (tenggat pengaduan, retensi, jam layanan, pesan otomatis) sudah disesuaikan.
 - [ ] Kalender libur tahun berjalan dan tahun depan sudah diperiksa kepatuhan (`cs.holidays.verified = true`), termasuk libur bursa dari pengumuman BEI.
 - [ ] API agen (`cs_api.agent_*`) dan web CS (Rendezvous Hub, repo `rendezvous_hub`, domain `CS_CONSOLE_DOMAIN`) hanya bisa diakses dari IP di `VPN_SOURCE_RANGES` (LAN kantor atau VPN): uji dari jaringan lain harus mendapat 403. Staf CS login dengan email + password (tanpa TOTP, jadi pembatasan jaringan dan password kuat minimal 12 karakter adalah lapisan utamanya), dan pendaftaran publik GoTrue tetap mati.
 - [ ] `make test-cs-console` (CI repo `rendezvous_hub`) lulus dan E2E web CS (`make e2e-cs-console`) lulus di staging, dari commit Hub yang akan dirilis.

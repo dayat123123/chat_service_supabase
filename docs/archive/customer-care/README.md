@@ -1,6 +1,6 @@
 # Customer Care & Ticketing
 
-> **DIBATALKAN DAN DIARSIPKAN (30 Okt 2026).** Pendekatan ticketing diganti CS lewat chat + matching engine ([PROMPT-CS-CHAT.md](../../PROMPT-CS-CHAT.md), dokumentasi aktif di [docs/cs-chat](../../cs-chat/README.md)). Schema `care`, `care-worker`, dan surat resmi sudah dihapus lewat migrasi `0026_care_cancel`. Dokumen di folder ini hanya untuk referensi; nasib tiap bagiannya ada di [audit pembersihan](../../cs-chat/audit-pembersihan.md).
+> **DIBATALKAN DAN DIARSIPKAN (30 Okt 2026).** Pendekatan ticketing diganti CS lewat chat + matching engine ([PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md), dokumentasi aktif di [docs/cs-chat](../../cs-chat/README.md)). Schema `care`, `care-worker`, dan surat resmi sudah dihapus lewat migrasi `0026_care_cancel`. Dokumen di folder ini hanya untuk referensi; nasib tiap bagiannya ada di [audit pembersihan](../../cs-chat/audit-pembersihan.md).
 
 Spesifikasi: [PROMPT-CUSTOMER-CARE.md](../PROMPT-CUSTOMER-CARE.md) (Addendum 3, dibatalkan).
 
@@ -45,4 +45,4 @@ Usulan default di [compliance-questions.md](compliance-questions.md) dipakai sam
 - Tim OLT menyediakan endpoint data nasabah (Protokol v1) dan kredensialnya.
 - SMTP produksi dengan SPF, DKIM, dan DMARC.
 
-Item ini juga ada di [checklist produksi](../../PRODUCTION.md#8-checklist-sebelum-rilis).
+Item ini juga ada di [checklist produksi](../../panduan/produksi.md#8-checklist-sebelum-rilis).

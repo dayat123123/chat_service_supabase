@@ -1,10 +1,10 @@
 > **DIBATALKAN (30 Okt 2026).** Pendekatan ticketing/helpdesk di dokumen ini tidak dipakai lagi.
-> Penggantinya: [PROMPT-CS-CHAT.md](../PROMPT-CS-CHAT.md) (CS lewat chat + matching engine).
+> Penggantinya: [PROMPT-CS-CHAT.md](PROMPT-CS-CHAT.md) (CS lewat chat + matching engine).
 > Hasil kerja yang sudah dibuat dari dokumen ini diaudit di [cs-chat/audit-pembersihan.md](../cs-chat/audit-pembersihan.md).
 
 # Addendum 3: Customer Care & Ticketing — Rendezvous OLT
 
-> Addendum ini **melengkapi** `docs/PROMPT.md`, `docs/PROMPT-PRODUCTION.md`, dan `docs/PROMPT-FEATURES.md`. Simpan sebagai `docs/PROMPT-CUSTOMER-CARE.md`.
+> Addendum ini **melengkapi** `docs/archive/PROMPT.md`, `docs/archive/PROMPT-PRODUCTION.md`, dan `docs/archive/PROMPT-FEATURES.md`. Simpan sebagai `docs/PROMPT-CUSTOMER-CARE.md`.
 > Semua aturan sebelumnya tetap berlaku: lisensi permisif, Docker, stateless, siap multi-node, RLS, rate limit berlapis, keamanan, observabilitas, dan backup.
 > Bagian bertanda `[...]` wajib disesuaikan. Hal yang terkait regulasi **wajib diverifikasi oleh tim kepatuhan / legal sekuritas** sebelum go-live.
 

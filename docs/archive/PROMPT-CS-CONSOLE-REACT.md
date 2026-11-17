@@ -1,6 +1,6 @@
 # Migrasi Web CS: Flutter Web → React (TypeScript)
 
-> Simpan sebagai `docs/PROMPT-CS-CONSOLE-REACT.md`. Dokumen ini melengkapi `PROMPT-CS-CHAT.md` dan `PROMPT-CS-REVISI-2.md`.
+> Simpan sebagai `docs/archive/PROMPT-CS-CONSOLE-REACT.md`. Dokumen ini melengkapi `PROMPT-CS-CHAT.md` dan `PROMPT-CS-REVISI-2.md`.
 > Semua aturan sebelumnya tetap berlaku: Docker, lisensi permisif, keamanan, RLS, audit, dan rate limit.
 > Bagian `[...]` silakan disesuaikan.
 
@@ -191,7 +191,7 @@ apps/cs-console/
 
 ## 6. Paritas Fitur (checklist wajib)
 
-Buat `docs/cs-console-parity.md` berisi tabel **fitur Flutter lama → fitur React baru → status → tes**. Minimal mencakup:
+Buat `docs/archive/cs-console-parity.md` berisi tabel **fitur Flutter lama → fitur React baru → status → tes**. Minimal mencakup:
 
 - [ ] Login + 2FA + idle timeout + logout
 - [ ] Status agen (Online/Istirahat/Offline + alasan), heartbeat, dan batas tiket aktif
