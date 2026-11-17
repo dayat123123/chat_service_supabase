@@ -4,6 +4,15 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 17 November 2026
+
+### Kontrol komentar (migrasi `0169`, library 1.31.0)
+
+- Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar. Semua post lama tetap terbuka untuk semua orang.
+- Migrasi berjalan otomatis lewat `make up` (atau `make migrate`). Tidak ada pengaturan baru di `docker/.env` dan tidak ada container baru.
+- Pasang server lebih dulu, baru aplikasi dengan library 1.31.0. Aplikasi dengan library lama tetap jalan: pilihan komentar tidak tampil, dan komentar ke post yang dimatikan ditolak dengan pesan error umum.
+- Komentar yang disembunyikan tidak dihapus. Hub tetap bisa melihat dan memoderasinya.
+
 ## 16 November 2026
 
 ### Kesehatan sistem pindah ke Pengaturan (Hub)
