@@ -44,8 +44,8 @@ Super Admin memberi setiap akun **peran** dan, bila perlu, **izin tambahan**:
 | **Super Admin** | Supervisor / admin operasional CS. Memantau tiket dan CS, tidak membalas nasabah. Mengelola akun staf dan semua pengaturan |
 | **Kepatuhan** | Tim kepatuhan: pengaduan, penipuan, audit, kebijakan, dokumen hukum, bukti |
 | **Komunitas** | Tim riset/marketing/moderasi yang tidak menangani tiket. Menunya ditentukan **Izin Komunitas** |
-| **Fitur & Kampanye** | Tim produk/marketing yang mengelola fitur sosial, kill switch, versi minimum aplikasi, serta banner dan popup. Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
-| **Konten Layanan** | Tim yang mengelola isi bantuan untuk nasabah di aplikasi: topik chat CS dan Pusat Bantuan (FAQ). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
+| **Fitur & Banner** | Tim produk/marketing yang mengelola fitur sosial, kill switch, versi minimum aplikasi, dan tab Stream (di menu **Komunitas**), serta banner dan popup (menu **Banner & Popup**). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
+| **Pusat Bantuan** | Tim yang mengelola isi bantuan untuk nasabah di aplikasi: topik chat CS dan artikel bantuan (FAQ). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
 
 Izin tambahan:
 
@@ -54,15 +54,15 @@ Izin tambahan:
 
 Menu di bar atas mengikuti peran dan izin. Satu akun bisa punya lebih dari satu peran; menunya digabung.
 
-| Menu | CS | Super Admin | Kepatuhan | Komunitas | Fitur & Kampanye | Konten Layanan |
+| Menu | CS | Super Admin | Kepatuhan | Komunitas | Fitur & Banner | Pusat Bantuan |
 |---|---|---|---|---|---|---|
 | **Layanan Nasabah** (tiket) | Ya | Ya, hanya pantau | – | – | – | – |
 | **Dashboard** | – | Ya | – | – | – | – |
 | **Laporan** | – | Ya | – | – | – | – |
 | **Akun Nasabah** | Bila punya Akses Akun Nasabah | – | – | – | – | – |
-| **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas | – | – |
-| **Konten Layanan** | – | Ya | – | – | – | Ya |
-| **Fitur & Kampanye** | – | Ya | – | – | Ya | – |
+| **Komunitas** | Bila punya Izin Komunitas | Ya (tab **Fitur & versi**, **Tab Stream**, **Analitik**; tab lain sesuai Izin Komunitas) | Bila punya Izin Komunitas | Bila punya Izin Komunitas | Ya, hanya tab **Fitur & versi** dan **Tab Stream** | – |
+| **Pusat Bantuan** | – | Ya | – | – | – | Ya |
+| **Banner & Popup** | – | Ya | – | – | Ya | – |
 | **Pengaturan** | – | Ya | – | – | – | – |
 | **Kepatuhan** ▾: **Ringkasan**, **Kasus**, **Kebijakan konten** (termasuk tab **Kata terlarang**), **Tenggat & retensi**, **Dokumen hukum**, **Jejak Audit** | – | – | Ya | – | – | – |
 | **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – | – | – |
@@ -162,9 +162,9 @@ Bila status bukan Online, muncul pesan **Status Anda … Ubah ke Online dulu unt
 
 ### 2.5 Membalas nasabah
 
-**Sebelum membalas, lihat panel kanan tiket:** **Jawaban awal nasabah** (jawaban isian yang diatur per topik, misalnya ID login atau tanggal kejadian) dan **SOP topik** (langkah penanganan internal; klik untuk membuka). Keduanya diatur tim Konten Layanan.
+**Sebelum membalas, lihat panel kanan tiket:** **Jawaban awal nasabah** (jawaban isian yang diatur per topik, misalnya ID login atau tanggal kejadian) dan **SOP topik** (langkah penanganan internal; klik untuk membuka). Keduanya diatur tim Pusat Bantuan.
 
-**Sisipkan artikel FAQ:** di menu ⋯ kotak balas, pilih **Sisipkan artikel FAQ**, cari, lalu pilih artikel; pertanyaan dan jawabannya masuk ke kotak balas sebagai teks biasa (tautan ditulis lengkap) dan bisa diedit sebelum dikirim. Bila artikel sudah tidak sesuai, klik **Tandai perlu diperbarui** dan tulis catatan; tim Konten Layanan melihatnya di Pusat Bantuan.
+**Sisipkan artikel FAQ:** di menu ⋯ kotak balas, pilih **Sisipkan artikel FAQ**, cari, lalu pilih artikel; pertanyaan dan jawabannya masuk ke kotak balas sebagai teks biasa (tautan ditulis lengkap) dan bisa diedit sebelum dikirim. Bila artikel sudah tidak sesuai, klik **Tandai perlu diperbarui** dan tulis catatan; tim Pusat Bantuan melihatnya di Pusat Bantuan.
 
 Kotak balas punya dua mode: **Balas** (terkirim ke nasabah) dan **Catatan internal** (**Tidak terlihat nasabah**).
 
@@ -345,7 +345,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 
 **Form penting terkunci.** Integrasi API Nasabah, Integrasi aplikasi (skema deep link), Push notification (kunci Firebase), Alert, Backup, Penugasan, dan Komunitas tampil terkunci. Klik **Ubah** untuk membuka, lalu **Simpan**: Hub menampilkan konfirmasi yang menjelaskan dampaknya, dan perubahan baru tersimpan setelah dikonfirmasi. **Batal** atau **Esc** mengembalikan nilai semula. Tes koneksi, Kirim uji, dan push uji tetap bisa langsung dijalankan; Backup penuh dan Uji restore meminta konfirmasi.
 
- Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Fitur sosial, versi minimum, serta banner dan popup untuk nasabah ada di menu **Fitur & Kampanye** (bagian 3.5).
+ Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Fitur sosial, versi minimum, dan tab Stream ada di menu **Komunitas**, sedangkan banner dan popup di menu **Banner & Popup** (bagian 3.5).
 
 | Kelompok | Bagian | Fungsi | Kapan dipakai |
 |---|---|---|---|
@@ -375,13 +375,13 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 
 #### Quick reply
 
-- **Topik** chat CS kini ada di menu **Konten Layanan → Topik chat CS** (Super Admin dan peran Konten Layanan). Semua isi halaman pilih topik di aplikasi diambil dari sini, tidak ditulis tetap di aplikasi:
+- **Topik** chat CS kini ada di menu **Pusat Bantuan → Topik chat CS** (Super Admin dan peran Pusat Bantuan). Semua isi halaman pilih topik di aplikasi diambil dari sini, tidak ditulis tetap di aplikasi:
   - **Kode** (tidak bisa diubah setelah dibuat), **Nama** dan **Deskripsi** (Indonesia/Inggris, deskripsi maks. 120 karakter, tampil di bawah nama), **Ikon** (16 pilihan), **Tampilan** (**Biasa** atau **Merah**, misalnya untuk Laporkan Penipuan), **Skill CS**, **Prioritas default**, **Tautan bantuan (opsional)**, urutan, dan **Tampilkan ke nasabah**. **Pratinjau di aplikasi** menunjukkan kartu topik seperti yang dilihat nasabah.
   - **Tanda tiket** (**Pengaduan**/**Penipuan**) hanya bisa diubah Super Admin, karena tiket dari topik bertanda otomatis masuk register Kasus Kepatuhan. Perubahannya tercatat terpisah di Jejak Audit (aksi `topic.flags`).
   - **Teks halaman pilih topik**: judul dan petunjuk di atas daftar topik (Indonesia/Inggris). Form terkunci (**Ubah** → **Simpan** → konfirmasi). **Pratinjau di aplikasi** di sebelahnya menampilkan judul, petunjuk, dan beberapa topik aktif seperti di HP nasabah (bisa diganti ID/EN). Kolom yang kosong memakai teks bawaan aplikasi ("Apa yang bisa kami bantu?" / "How can we help?"), ditandai **bawaan** di pratinjau.
   - Setiap simpan tercatat di Jejak Audit dengan nilai sebelum dan sesudah.
   - **Isian & SOP** per topik: sampai 8 **pertanyaan awal** yang diisi nasabah sebelum chat dimulai (teks, angka, tanggal, atau pilihan; wajib/opsional; label dua bahasa), sampai 6 **saran balasan nasabah** (tombol cepat seperti "Sudah saya coba", maks. 40 karakter), dan **SOP untuk CS** (maks. 4.000 karakter, hanya terlihat CS). Tercatat di Jejak Audit (aksi `topic.extras`).
-- **Pusat Bantuan (FAQ)** ada di **Konten Layanan → Pusat Bantuan** (Super Admin dan peran Konten Layanan). Nasabah membacanya di aplikasi sebelum menghubungi CS:
+- **Artikel bantuan (FAQ)** ada di **Pusat Bantuan → Artikel bantuan** (Super Admin dan peran Pusat Bantuan). Nasabah membacanya di aplikasi sebelum menghubungi CS:
   - **Tambah artikel**: pilih **Kategori**, **Topik chat terkait** (opsional; artikel tampil sebagai saran "Mungkin ini membantu" saat nasabah memilih topik itu sebelum chat CS), isi **Pertanyaan** dan **Jawaban** dalam dua bahasa, **Kata kunci** (dipisah koma), dan urutan. Jawaban boleh memakai **tebal**, *miring*, daftar, dan tautan `https://`; tag HTML dan tautan selain `https://` ditolak. **Sisipkan gambar (ID/EN)** mengunggah gambar JPEG, PNG, atau WebP (maks. 2 MB, diperkecil otomatis bila lebih besar) dan menaruhnya di posisi kursor; gambar dari situs lain ditolak. **Pratinjau di aplikasi** menunjukkan tampilan artikel, bisa diganti ID/EN.
   - Artikel baru tersimpan sebagai **Draf** dan belum tampil di aplikasi. Pilih **Terbitkan** dari menu baris (ikon titik tiga) agar tampil, **Jadikan draf** untuk menyembunyikannya lagi, atau **Arsipkan** bila tidak dipakai. Artikel arsip disembunyikan dari daftar kecuali disaring status **Arsip**.
   - Setiap simpan membuat versi baru. **Riwayat versi** menampilkan semua versi; **Pulihkan** (dengan konfirmasi) menyalin isi versi lama sebagai versi baru tanpa mengubah status. Bila dua staf menyimpan artikel yang sama, simpanan kedua ditolak dan diminta memuat ulang.
@@ -435,7 +435,7 @@ Dipakai bersama tim IT saat pemasangan. Isi **Alamat API Nasabah** dan **Client 
 
 Data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Status login OLT** bersifat hanya-baca. Anon key memang publik, bukan rahasia. Bila status bukan **Aktif**, laporkan ke IT. Kunci OLT tidak bisa diganti dari Hub.
 
-**Skema deep link aplikasi** (terkunci, **Ubah** → **Simpan** → konfirmasi): awalan tautan yang membuka halaman di dalam aplikasi OLT dari banner atau popup, mis. `olt://promo/akhir-tahun` membuka halaman promo di aplikasi, bukan di browser. Isi sesuai skema yang didaftarkan aplikasi OLT (bawaan `olt`, maksimal 5); biasanya cukup diatur sekali oleh tim IT. Dikosongkan berarti tautan banner hanya boleh `https://`. Skema web dan skema berbahaya (javascript, data, file, intent, content, dan sejenisnya) selalu ditolak. Banner aktif yang memakai skema yang dicabut tetap tampil, tetapi tanpa tautan dan tombol. Hanya Super Admin yang bisa mengubahnya; peran Fitur & Kampanye hanya melihat daftarnya saat mengisi tautan banner.
+**Skema deep link aplikasi** (terkunci, **Ubah** → **Simpan** → konfirmasi): awalan tautan yang membuka halaman di dalam aplikasi OLT dari banner atau popup, mis. `olt://promo/akhir-tahun` membuka halaman promo di aplikasi, bukan di browser. Isi sesuai skema yang didaftarkan aplikasi OLT (bawaan `olt`, maksimal 5); biasanya cukup diatur sekali oleh tim IT. Dikosongkan berarti tautan banner hanya boleh `https://`. Skema web dan skema berbahaya (javascript, data, file, intent, content, dan sejenisnya) selalu ditolak. Banner aktif yang memakai skema yang dicabut tetap tampil, tetapi tanpa tautan dan tombol. Hanya Super Admin yang bisa mengubahnya; peran Fitur & Banner hanya melihat daftarnya saat mengisi tautan banner.
 
 **Batas rekening per nasabah** (terkunci, **Ubah** → **Simpan** → konfirmasi): jumlah maksimal rekening (cust id) dari token login OLT yang ditautkan ke satu nasabah untuk notifikasi transaksi. Bawaan dan nilai tertinggi 200, paling kecil 1. Rekening di atas batas diabaikan mulai login berikutnya dan tidak menerima notifikasi transaksi. Hanya Super Admin yang bisa mengubahnya, dan perubahannya tercatat di Jejak Audit.
 
@@ -489,22 +489,32 @@ Kondisi server, diperbarui otomatis. Bila ada alert gangguan, angka merah muncul
 
 Halaman ini hanya untuk melihat. Perbaikan dilakukan IT sesuai [panduan gangguan](gangguan.md).
 
-### 3.5 Fitur & Kampanye
+### 3.5 Fitur aplikasi, Tab Stream, dan Banner & Popup
 
-Menu **Fitur & Kampanye** untuk Super Admin dan akun berperan **Fitur & Kampanye**: fitur sosial, kill switch, versi minimum aplikasi, serta kampanye banner dan popup untuk nasabah. Isinya dua tab; tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama pengelola. Setiap perubahan tercatat di Jejak Audit.
+Untuk Super Admin dan akun berperan **Fitur & Banner**. Setiap perubahan tercatat di Jejak Audit.
 
-| Tab | Fungsi | Kapan dipakai |
+| Letak | Fungsi | Kapan dipakai |
 |---|---|---|
-| **Fitur & versi** | Kill switch, sakelar fitur aplikasi, versi minimum | Insiden, rilis aplikasi |
-| **Banner & popup** | Strip di atas atau popup di tengah aplikasi nasabah, dengan statistik tayang dan klik | Gangguan, pemeliharaan, info, promo |
+| **Komunitas → Fitur & versi** | Kill switch, sakelar fitur aplikasi, versi minimum | Insiden, rilis aplikasi |
+| **Komunitas → Tab Stream** | Tab di atas stream aplikasi (Terbaru, Teratas, Grafik & Media, Polling, dan tab tambahan) | Menambah, mematikan, atau mengurutkan tab |
+| **Banner & Popup** | Strip di atas atau popup di tengah aplikasi nasabah, dengan statistik tayang dan klik | Gangguan, pemeliharaan, info, promo |
 
-#### Fitur & versi
+Peran **Fitur & Banner** yang tidak punya Izin Komunitas hanya melihat dua tab itu di menu Komunitas, tanpa angka moderasi di atasnya. Tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama pengelola.
+
+#### Fitur & versi (Komunitas)
 
 - **Kill switch fitur sosial**: lihat bagian 6.
 - **Fitur aplikasi** (klik **Ubah** dulu; setiap sakelar meminta konfirmasi, lalu **Selesai** untuk mengunci lagi): nyalakan/matikan fitur seperti **Pencarian**, **Trending**, **Simpan postingan**, **Edit postingan**, **Reaksi pesan**, **Bagikan ke chat**, **Pengaturan notifikasi**, **Analitik aplikasi**. Berlaku saat aplikasi berikutnya membaca pengaturan.
 - **Versi minimum aplikasi** per platform (terkunci per baris: **Ubah** → **Simpan** → konfirmasi): pengguna versi lebih lama diminta memperbarui aplikasi. **Risiko:** pastikan versi itu sudah tersedia di toko aplikasi; bila belum, pengguna tidak bisa memakai aplikasi.
 
-#### Banner & popup
+#### Tab Stream (Komunitas)
+
+- Urutan di tabel sama dengan urutan tab di aplikasi. Pakai tombol naik/turun untuk memindah tab.
+- **Tambah tab**: isi nama tab (Indonesia dan Inggris), **Isi** (**Semua post**, **Hanya post bergambar**, atau **Hanya post polling**), cara urut (**Urut terbaru** atau **Urut teratas**), dan ikon. Periksa **Pratinjau tab di aplikasi**, lalu simpan.
+- Matikan sakelar **Aktif** untuk menyembunyikan tab tanpa menghapusnya. Bila tidak ada tab aktif, aplikasi tidak menampilkan pilihan tab.
+- Aplikasi membaca daftar tab dari server, jadi perubahan berlaku tanpa rilis aplikasi.
+
+#### Banner & Popup (menu tersendiri)
 
 Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi, misalnya gangguan atau pemeliharaan) dan **Popup tengah** (kartu di tengah layar dengan latar gelap, cocok untuk promo).
 
@@ -519,7 +529,7 @@ Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi
 7. **Skema deep link**: tautan banner boleh `https://` atau deep link aplikasi dengan skema yang diizinkan (ditampilkan di bawah kolom tautan). Daftar skemanya diatur Super Admin di **Pengaturan → Integrasi → Integrasi aplikasi**.
 8. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
 
-Data koneksi untuk tim aplikasi OLT ada di **Pengaturan → Integrasi → Integrasi aplikasi** (bagian 3.4). Tautan lama berawalan `/app` otomatis dialihkan ke menu ini atau ke Pengaturan.
+Data koneksi untuk tim aplikasi OLT ada di **Pengaturan → Integrasi → Integrasi aplikasi** (bagian 3.4). Tautan lama ke tab Fitur & versi atau Tab Stream dialihkan otomatis ke tab barunya di Komunitas; tautan lama berawalan `/app` dialihkan ke Komunitas, Banner & Popup, atau Pengaturan.
 
 ### 3.6 Analitik komunitas
 
@@ -654,17 +664,19 @@ Menu **Komunitas** mengelola stream komunitas di aplikasi nasabah. Tab yang tamp
 
 | Izin | Boleh | Tab |
 |---|---|---|
-| **Tulis postingan resmi** | Membuat draf postingan, pengumuman, dan notifikasi atas nama akun resmi | **Stream**, **Notifikasi** |
-| **Setujui & terbitkan** | Menyetujui, menerbitkan, menjadwalkan, menyematkan, dan menghapus postingan resmi; menyetujui notifikasi | **Stream**, **Notifikasi** |
+| **Tulis postingan resmi** | Membuat draf postingan, pengumuman, dan notifikasi atas nama akun resmi | **Postingan resmi**, **Notifikasi** |
+| **Setujui & terbitkan** | Menyetujui, menerbitkan, menjadwalkan, menyematkan, dan menghapus postingan resmi; menyetujui notifikasi | **Postingan resmi**, **Notifikasi** |
 | **Moderasi konten** | Antrean laporan, konten dan gambar ditahan, indikasi manipulasi, banding konten, serta slow mode dan pin room saham | **Moderasi**, **Room saham** |
 | **Sanksi pengguna** | Peringatan, bisukan, blokir, cabut sesi, banding sanksi, dan toleransi nol | **Moderasi** |
 | **Kelola akun resmi** | Membuat akun resmi dan memberi badge verifikasi | **Akun resmi** |
+
+Tab **Fitur & versi** dan **Tab Stream** tidak memakai Izin Komunitas; keduanya untuk Super Admin dan peran Fitur & Banner (bagian 3.5).
 
 Di atas tab ada angka: **Postingan menunggu persetujuan**, **Postingan terjadwal**, **Notifikasi menunggu persetujuan**, **Laporan terbuka**.
 
 Semua tindakan yang meminta **Alasan** (5–500 karakter) tercatat di Jejak Audit. Tulis fakta singkat.
 
-### 5.1 Postingan dan pengumuman resmi (tab **Stream**)
+### 5.1 Postingan dan pengumuman resmi (tab **Postingan resmi**)
 
 1. Klik **Buat postingan**. Pilih **Jenis**: **Postingan** atau **Pengumuman** (wajib berjudul, selalu disematkan).
 2. Pilih **Akun resmi** pengirim. Tulis **Isi**; tulis **$KODE** untuk menautkan saham. Kata terlarang ditolak otomatis. Tambah gambar bila perlu.
@@ -747,7 +759,7 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 
 ### 6.1 Kill switch fitur sosial
 
-**Siapa:** **Super Admin** atau akun berperan **Fitur & Kampanye**, di **Fitur & Kampanye → Fitur & versi → Kill switch fitur sosial**.
+**Siapa:** **Super Admin** atau akun berperan **Fitur & Banner**, di **Komunitas → Fitur & versi → Kill switch fitur sosial**.
 
 **Kapan:** insiden besar seperti spam masif, konten berbahaya yang menyebar, atau gangguan yang belum dipahami dan butuh waktu untuk diperbaiki.
 
@@ -763,7 +775,7 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 1. Klik **Matikan fitur sosial**.
 2. Isi **Alasan** (10–500 karakter; terlihat oleh Super Admin lain).
 3. Ketik **MATIKAN**, lalu klik tombolnya. Hub menampilkan konfirmasi terakhir berisi dampak dan alasannya; konfirmasi untuk menerapkan.
-4. Beri tahu tim CS, Kepatuhan, dan IT bahwa kill switch aktif. Pertimbangkan **Fitur & Kampanye → Banner & popup** untuk memberi tahu pengguna.
+4. Beri tahu tim CS, Kepatuhan, dan IT bahwa kill switch aktif. Pertimbangkan menu **Banner & Popup** untuk memberi tahu pengguna.
 5. Setelah masalah beres: **Nyalakan kembali**, isi alasan, ketik **NYALAKAN**, lalu konfirmasi.
 
 Jangan lupa menyalakan kembali; kill switch tidak mati sendiri.

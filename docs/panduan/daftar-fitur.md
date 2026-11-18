@@ -95,8 +95,8 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 | **Layanan Nasabah** | Antrean tiket (Terbuka, Tiket saya, Selesai hari ini, Semua aktif). Staf bisa mengambil, membalas, melampirkan file, memberi label, dan menutup tiket, termasuk pengaduan tamu |
 | **Dashboard** | Pantauan live: tiket terbuka, tunggu terlama, CS online, dan tiket yang perlu perhatian. Supervisor dan Super Admin hanya memantau |
 | **Akun Nasabah** | Lihat dan bantu akun nasabah OLT (misalnya status dan reset) lewat gateway csAdmin resmi, khusus akun CS |
-| **Konten Layanan → Topik** | Topik chat CS: ikon, urutan, pertanyaan awal, saran balasan, dan SOP |
-| **Konten Layanan → FAQ** | Artikel Pusat Bantuan dua bahasa dengan gambar, statistik dibaca, dan nilai membantu |
+| **Pusat Bantuan → Topik** | Topik chat CS: ikon, urutan, pertanyaan awal, saran balasan, dan SOP |
+| **Pusat Bantuan → Artikel bantuan** | Artikel Pusat Bantuan dua bahasa dengan gambar, statistik dibaca, dan nilai membantu |
 | **Laporan** | Laporan per nasabah, kinerja CS, dan statistik FAQ. Bisa diekspor ke CSV |
 
 ![Layanan Nasabah](gambar/fitur/hub-tickets.jpg)
@@ -106,31 +106,31 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 *Dashboard: ringkasan antrean, tiket yang perlu perhatian, dan status setiap CS hari ini.*
 
 ![Topik chat CS](gambar/fitur/hub-content-topics.jpg)
-*Konten Layanan → Topik chat CS, dengan pratinjau tampilan di aplikasi.*
+*Pusat Bantuan → Topik chat CS, dengan pratinjau tampilan di aplikasi.*
 
 ### 2.2 Fitur, kampanye, dan komunitas
 
 | Menu | Deskripsi singkat |
 |---|---|
-| **Fitur & Kampanye → Fitur & versi** | Nyala/matikan fitur sosial, kill switch, dan versi minimum aplikasi per platform |
-| **Fitur & Kampanye → Banner & popup** | Kampanye banner strip dan popup promo: jadwal, platform, prioritas, gambar, tombol CTA, frekuensi, serta statistik tampil, klik, dan tutup |
-| **Fitur & Kampanye → Tab Stream** | Atur tab filter yang tampil di Stream |
-| **Komunitas → Stream** | Postingan dan pengumuman resmi dengan persetujuan empat mata, jadwal terbit, dan sematan |
+| **Banner & Popup** | Kampanye banner strip dan popup promo: jadwal, platform, prioritas, gambar, tombol CTA, frekuensi, serta statistik tampil, klik, dan tutup |
+| **Komunitas → Postingan resmi** | Postingan dan pengumuman resmi dengan persetujuan empat mata, jadwal terbit, dan sematan |
 | **Komunitas → Notifikasi** | Kampanye notifikasi atau push ke segmen nasabah, dengan statistik dibuka dan diketuk |
 | **Komunitas → Moderasi** | Antrean laporan, konten dan gambar yang ditahan, indikasi manipulasi pasar, banding, dan sanksi user |
 | **Komunitas → Room saham** | Slow mode, pin pesan, dan moderator room |
 | **Komunitas → Indeks** | Kelola daftar indeks dan instrumen untuk tab filter Stream |
 | **Komunitas → Akun resmi** | Kelola foto, nama, dan pratinjau akun resmi, dengan audit setiap perubahan |
+| **Komunitas → Fitur & versi** | Nyala/matikan fitur sosial, kill switch, dan versi minimum aplikasi per platform |
+| **Komunitas → Tab Stream** | Atur tab filter yang tampil di Stream |
 | **Analitik** | Statistik pemakaian fitur sosial, filter Stream, dan notifikasi |
 
 ![Fitur & versi](gambar/fitur/hub-features.jpg)
-*Fitur & Kampanye → Fitur & versi: kill switch fitur sosial dan sakelar per fitur, semuanya tercatat di jejak audit.*
+*Komunitas → Fitur & versi: kill switch fitur sosial dan sakelar per fitur, semuanya tercatat di jejak audit.*
 
 ![Banner & popup](gambar/fitur/hub-banners.jpg)
-*Fitur & Kampanye → Banner & popup: daftar kampanye dengan jadwal, sasaran platform, statistik tayang/klik/CTR, dan prioritas.*
+*Banner & Popup: daftar kampanye dengan jadwal, sasaran platform, statistik tayang/klik/CTR, dan prioritas.*
 
 ![Postingan resmi](gambar/fitur/hub-community-stream.jpg)
-*Komunitas → Stream: postingan resmi per status (perlu ditinjau, terjadwal, terbit, draf).*
+*Komunitas → Postingan resmi: postingan resmi per status (perlu ditinjau, terjadwal, terbit, draf).*
 
 ![Kampanye notifikasi](gambar/fitur/hub-community-notifications.jpg)
 *Komunitas → Notifikasi: kampanye notifikasi dengan jumlah penerima, dibuka, dan diketuk.*

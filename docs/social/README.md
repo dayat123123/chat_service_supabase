@@ -160,7 +160,7 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 
 ### Tab filter Stream dari server (`0149`, `0152`)
 
-Tab Stream (Terbaru, Teratas, Grafik & Media, Polling) disimpan di `public.feed_filters`. Tab baru bisa ditambah, dimatikan, atau diurutkan dari Hub (**Fitur & Kampanye → Tab Stream**, peran `cs_super_admin`/`product`) tanpa rilis library atau aplikasi. Tabel tidak bisa dibaca langsung (RLS, tanpa grant).
+Tab Stream (Terbaru, Teratas, Grafik & Media, Polling) disimpan di `public.feed_filters`. Tab baru bisa ditambah, dimatikan, atau diurutkan dari Hub (**Komunitas → Tab Stream**, peran `cs_super_admin`/`product`) tanpa rilis library atau aplikasi. Tabel tidak bisa dibaca langsung (RLS, tanpa grant).
 
 | Kolom | Isi |
 |---|---|
@@ -365,7 +365,7 @@ Semua event membawa `actor_id` dan `actor_name`. Pesan sistem dibuat dengan klai
 
 ## Feature flag, kill switch, versi minimum (`0077`, `0091`)
 
-Daftar flag **tetap**: aplikasi hanya membaca delapan kunci `search`, `trending`, `bookmarks`, `post_edit`, `message_reactions`, `share_post_to_chat`, `notification_prefs`, `analytics` (`private.known_feature_flags()`). Kunci yang tidak ada di `flags` dianggap **mati** oleh aplikasi. Flag baru tidak bisa dibuat dan flag tidak bisa dihapus; di web CS (Fitur & Kampanye → Fitur & versi) setiap fitur hanya punya sakelar nyala/mati. Menambah fitur baru = migrasi baru yang memperluas daftar.
+Daftar flag **tetap**: aplikasi hanya membaca delapan kunci `search`, `trending`, `bookmarks`, `post_edit`, `message_reactions`, `share_post_to_chat`, `notification_prefs`, `analytics` (`private.known_feature_flags()`). Kunci yang tidak ada di `flags` dianggap **mati** oleh aplikasi. Flag baru tidak bisa dibuat dan flag tidak bisa dihapus; di web CS (Komunitas → Fitur & versi) setiap fitur hanya punya sakelar nyala/mati. Menambah fitur baru = migrasi baru yang memperluas daftar.
 
 ### `get_client_config(p_platform = null, p_app_version = null)` → `jsonb` (`anon` dan `authenticated`)
 

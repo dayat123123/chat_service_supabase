@@ -38,7 +38,7 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 - [ ] Library `rendezvous_community` v1.17.0; URL HTTPS produksi dan anon key dari `config/prod.json`
 - [ ] Build release Android tanpa cleartext; tidak ada `service_role` key di aplikasi
 - [ ] Uji manual Android dan Windows: login, feed, chat dua akun, chat CS, unggah gambar
-- [ ] **Fitur & Kampanye → Fitur & versi**: versi minimum aplikasi diset; versi lama mendapat "Perbarui aplikasi"
+- [ ] **Komunitas → Fitur & versi**: versi minimum aplikasi diset; versi lama mendapat "Perbarui aplikasi"
 
 ## F. Kepatuhan & legal — Kepatuhan
 
@@ -57,5 +57,5 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 ## H. Hari-H — Semua
 
 - [ ] Rilis di luar jam bursa; `make backup` sebelum rilis
-- [ ] Penanggung jawab kill switch (**Fitur & Kampanye → Fitur & versi**) siaga
+- [ ] Penanggung jawab kill switch (**Komunitas → Fitur & versi**) siaga
 - [ ] Kontak darurat vendor IT, tim OLT, dan pengembang dibagikan; runbook gangguan dicetak
