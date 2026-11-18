@@ -6,6 +6,17 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Nama menu Hub disesuaikan dengan isinya (Hub)
+
+- **Konten Layanan** menjadi **Pusat Bantuan** (tab **Topik chat CS** dan **Artikel bantuan**, dulu tab "Pusat Bantuan").
+- **Fitur & Kampanye** dipecah supaya sejenis dengan isinya:
+  - Tab **Fitur & versi** dan **Tab Stream** pindah ke menu **Komunitas** (tab terakhir sebelum Analitik).
+  - Sisanya menjadi menu **Banner & Popup** (kampanye banner strip dan popup promo).
+  - Tab **Stream** di Komunitas berganti nama menjadi **Postingan resmi**, supaya tidak tertukar dengan Tab Stream.
+- Nama peran staf **Fitur & Kampanye** menjadi **Fitur & Banner**. Hak aksesnya tetap: Super Admin dan peran ini saja yang bisa mengubah fitur, versi minimum, tab Stream, dan banner (server juga menolak peran lain). Peran ini kini bisa membuka menu Komunitas, tetapi hanya melihat dua tab tersebut, tanpa angka moderasi. Staf Komunitas tanpa peran ini tidak melihat kedua tab itu.
+- Tautan dan bookmark lama dialihkan otomatis ke letak barunya.
+- Cukup perbarui Hub (`git -C ~/rendezvous_hub pull --ff-only && make up`). Tidak ada perubahan server.
+
 ### Menu Hub dirapikan (Hub)
 
 - **Kata terlarang** pindah menjadi tab pertama di **Kebijakan konten**. Alamat lama dialihkan otomatis.
