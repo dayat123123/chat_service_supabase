@@ -1,0 +1,1680 @@
+openapi: 3.1.0
+info:
+  title: Rendezvous Chat API
+  version: "2026.11.18"
+  summary: API HTTP untuk mengintegrasikan aplikasi dan layanan ke chat Rendezvous Community.
+  description: |
+    Spesifikasi ini mencakup semua panggilan HTTP yang dibutuhkan klien chat (aplikasi nasabah) dan
+    layanan server (notifikasi). Event realtime (WebSocket) dijelaskan terpisah di `asyncapi.yaml`.
+
+    ## Jalur
+
+    | Jalur | Isi |
+    |---|---|
+    | `/bridge/v1` | Menukar token sosial dari sistem host (OLT) menjadi sesi Rendezvous |
+    | `/rest/v1/rpc/{fungsi}` | Semua aksi chat. Setiap fungsi database menjadi satu endpoint (PostgREST) |
+    | `/media/v1` | Upload lampiran |
+    | `/storage/v1` | Membaca lampiran |
+    | `/integration/v1` | API server ke server (API key integrasi) |
+
+    ## Konvensi
+
+    - Semua JSON memakai `snake_case`. Waktu ISO-8601 dengan zona waktu, id berupa UUID.
+    - Parameter RPC selalu berawalan `p_`. Parameter yang tidak dikirim memakai nilai bawaan.
+    - RPC yang hanya membaca juga bisa dipanggil `GET` dengan parameter di query string; spesifikasi ini memakai `POST` untuk semuanya.
+    - Fungsi yang tidak mengembalikan apa pun menjawab `204 No Content`.
+    - Paginasi memakai **cursor opaque**: kirim `cursor` dari baris terakhir sebagai `p_cursor`. Jangan mengurai isinya.
+    - Klien wajib mengabaikan field yang tidak dikenal. Server baru boleh menambah field tanpa menaikkan versi.
+    - Fungsi yang belum ada di server versi lama dijawab `404` dengan `code` `PGRST202`.
+
+    ## Error
+
+    Error RPC memakai format PostgREST. Kode stabil untuk program ada di `message` bila `code` berawalan `PT`
+    (status HTTP = tiga digit setelah `PT`). `details` dan `hint` boleh berisi teks bebas; untuk `slow_mode`,
+    `details` berisi jumlah detik tunggu.
+
+    ```json
+    {"code": "PT403", "message": "dm_not_allowed", "details": null, "hint": null}
+    ```
+
+    Error `/bridge`, `/media`, dan `/integration` memakai `{"error": "<kode>", "message": "..."}`.
+  license:
+    name: Proprietary
+servers:
+  - url: https://{host}
+    description: Produksi
+    variables:
+      host:
+        default: api.contoh.co.id
+        description: Domain API sosial
+  - url: http://localhost:8000
+    description: Lingkungan dev (Kong lokal)
+security:
+  - anonKey: []
+    userToken: []
+tags:
+  - name: Autentikasi
+  - name: Room
+    description: Daftar room, DM, dan anggota
+  - name: Pesan
+  - name: Status baca dan mengetik
+  - name: Permintaan DM
+    description: DM dari orang yang belum saling ikuti masuk sebagai permintaan
+  - name: Grup
+  - name: Room saham
+  - name: Moderator room saham
+  - name: Lampiran
+  - name: Push
+  - name: Konfigurasi klien
+  - name: Integrasi server
+    description: Dipanggil server (bukan aplikasi) dengan API key integrasi dari Hub
+
+paths:
+  /bridge/v1/exchange:
+    post:
+      tags: [Autentikasi]
+      operationId: exchangeToken
+      summary: Tukar token sosial menjadi sesi
+      description: |
+        Token sosial adalah JWT yang ditandatangani sistem host (OLT) dengan kunci yang terdaftar di server
+        (kontrak lengkap: `docs/olt-integration.md`). Hasilnya `access_token` (±15 menit) untuk semua jalur lain.
+        Tukar ulang dengan token sosial baru sebelum `expires_at`. Profil sosial dibuat otomatis pada penukaran pertama.
+      security:
+        - anonKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                  description: Token sosial dari sistem host
+      responses:
+        "200":
+          description: Sesi dibuat
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Session"}
+        "400": {$ref: "#/components/responses/GatewayError"}
+        "401": {$ref: "#/components/responses/GatewayError"}
+        "403": {$ref: "#/components/responses/GatewayError"}
+        "429": {$ref: "#/components/responses/GatewayError"}
+        "502": {$ref: "#/components/responses/GatewayError"}
+
+  /rest/v1/rpc/get_my_rooms:
+    post:
+      tags: [Room]
+      operationId: getMyRooms
+      summary: Daftar room saya
+      description: |
+        Chat CS di atas, lalu urut dari aktivitas terbaru. Halaman berikutnya dengan `p_cursor` = `cursor`
+        room terakhir.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                p_cursor: {$ref: "#/components/schemas/NullableCursor"}
+                p_limit: {type: integer, default: 30, minimum: 1, maximum: 100}
+      responses:
+        "200":
+          description: Daftar room
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/ChatRoomSummary"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_my_room:
+    post:
+      tags: [Room]
+      operationId: getMyRoom
+      summary: Ringkasan satu room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "200":
+          description: Array berisi 0 atau 1 room (kosong bila bukan anggota)
+          content:
+            application/json:
+              schema: {type: array, maxItems: 1, items: {$ref: "#/components/schemas/ChatRoomSummary"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_or_create_direct_room:
+    post:
+      tags: [Room]
+      operationId: getOrCreateDirectRoom
+      summary: Buka atau buat DM dengan pengguna lain
+      description: |
+        Mengembalikan id room DM yang sudah ada atau membuat yang baru. Bila penerima belum mengikuti pengirim,
+        pesan pertama menjadi permintaan DM (lihat tag Permintaan DM). Error: `invalid_user`, `user_not_found`,
+        `blocked`, `dm_not_allowed`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_other_user_id]
+              properties:
+                p_other_user_id: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "200":
+          description: Id room
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Uuid"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/search_profiles:
+    post:
+      tags: [Room]
+      operationId: searchProfiles
+      summary: Cari pengguna untuk diajak chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_query]
+              properties:
+                p_query: {type: string}
+                p_limit: {type: integer, default: 10}
+      responses:
+        "200":
+          description: Pengguna yang cocok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - {$ref: "#/components/schemas/UserSummary"}
+                    - type: object
+                      properties:
+                        is_official: {type: boolean}
+                        can_mention:
+                          type: boolean
+                          description: "Sejak `0172`: apakah pemanggil boleh menyebut pengguna ini (`@`). Saran `@` sebaiknya hanya menampilkan baris yang `true`; pencarian untuk diajak chat tetap menampilkan semuanya."
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_room_members:
+    post:
+      tags: [Room]
+      operationId: getRoomMembers
+      summary: Anggota room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "200":
+          description: Daftar anggota
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/RoomMember"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/hide_room:
+    post:
+      tags: [Room]
+      operationId: hideRoom
+      summary: Hapus chat dari daftar saya
+      description: |
+        Room hilang dari daftar dan riwayat lama tidak tampil lagi untuk saya; anggota lain tidak terpengaruh.
+        Room muncul lagi bila ada pesan baru. Chat CS tidak bisa disembunyikan (`cannot_hide_support`).
+        Server mengirim event `room_removed` (`reason: hidden`) ke `user:{saya}`.
+      requestBody: {$ref: "#/components/requestBodies/RoomId"}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/leave_room:
+    post:
+      tags: [Room, Grup]
+      operationId: leaveRoom
+      summary: Keluar dari grup atau room saham
+      description: DM dan chat CS tidak bisa ditinggalkan (`cannot_leave_direct`, `cannot_leave_support`).
+      requestBody: {$ref: "#/components/requestBodies/RoomId"}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_messages:
+    post:
+      tags: [Pesan]
+      operationId: getMessages
+      summary: Riwayat pesan
+      description: |
+        Tanpa cursor: pesan terbaru. `p_cursor` mengambil pesan yang lebih lama dari cursor itu (scroll ke atas),
+        `p_after` mengambil pesan yang lebih baru (dipakai bila `p_after` diisi, `p_cursor` diabaikan).
+        Urutan hasil selalu dari terbaru ke terlama. Riwayat sebelum saya menghapus chat (`hide_room`) tidak ikut.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_cursor: {$ref: "#/components/schemas/NullableCursor"}
+                p_after: {$ref: "#/components/schemas/NullableCursor"}
+                p_limit: {type: integer, default: 30, minimum: 1, maximum: 100}
+      responses:
+        "200":
+          description: Pesan
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/ChatMessage"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_message_ids:
+    post:
+      tags: [Pesan]
+      operationId: getMessageIds
+      summary: Id pesan setelah cursor (mengisi celah setelah putus koneksi)
+      description: |
+        Dipakai setelah WebSocket tersambung ulang: kirim cursor pesan terakhir yang dimiliki klien, lalu ambil
+        isi id yang belum dimiliki lewat `get_messages_by_ids`. Ulangi selama `more` bernilai `true`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_after]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_after: {$ref: "#/components/schemas/Cursor"}
+                p_limit: {type: integer, default: 500, minimum: 1, maximum: 1000}
+      responses:
+        "200":
+          description: Id urut dari terlama
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ids, more]
+                properties:
+                  ids: {type: array, items: {$ref: "#/components/schemas/Uuid"}}
+                  last: {oneOf: [{$ref: "#/components/schemas/Cursor"}, {type: "null"}]}
+                  more: {type: boolean}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_messages_by_ids:
+    post:
+      tags: [Pesan]
+      operationId: getMessagesByIds
+      summary: Ambil pesan berdasarkan id
+      description: |
+        Juga dipakai untuk event realtime `message` yang hanya membawa `ref: true` (isi pesan tidak disiarkan
+        karena aturan blokir). Maksimal 100 id (`too_many_ids`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_ids]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_ids: {type: array, maxItems: 100, items: {$ref: "#/components/schemas/Uuid"}}
+      responses:
+        "200":
+          description: Pesan yang terlihat oleh saya
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/ChatMessage"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/send_message:
+    post:
+      tags: [Pesan]
+      operationId: sendMessage
+      summary: Kirim pesan
+      description: |
+        Server memeriksa keanggotaan, blokir, kebijakan DM, slow mode, bisu, filter kata/tautan/kontak, dan
+        lampiran, lalu menyiarkan event `message` ke `room:{room_id}` dan push ke anggota yang offline.
+
+        Kirim `p_client_id` (UUID buatan klien) untuk setiap pesan. Mengulang kiriman dengan `p_client_id` yang
+        sama tidak membuat pesan ganda, dan nilainya ikut di event realtime sehingga klien bisa mencocokkan pesan
+        sementara (optimistis) dengan pesan resmi.
+
+        Error yang umum: `not_member`, `cannot_send`, `empty_body`, `body_too_long`, `invalid_attachments`,
+        `invalid_reply`, `dm_not_allowed`, `dm_request_limit`, `group_admins_only`, `room_muted`, `user_muted`,
+        `new_account_restricted`, `content_blocked`, `link_blocked`, `contact_blocked` (422),
+        `slow_mode` (429, `details` = detik tunggu), `rate_limited` (429), `social_disabled`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_body]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_body:
+                  type: string
+                  description: Boleh kosong bila ada lampiran. Mention ditulis `@username` huruf kecil.
+                p_client_id: {$ref: "#/components/schemas/Uuid"}
+                p_reply_to_id:
+                  oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]
+                p_attachments:
+                  type: array
+                  default: []
+                  items: {$ref: "#/components/schemas/OutgoingAttachment"}
+            example:
+              p_room_id: a3e0c1f2-7d4b-4c55-9a51-0f8a3f7c1d20
+              p_body: Ada yang pegang @andi BBCA?
+              p_client_id: 5b9f2c1e-3a77-4f0c-8d2e-91c3a0b7e6f4
+              p_attachments:
+                - bucket: attachments
+                  path: rooms/a3e0c1f2-7d4b-4c55-9a51-0f8a3f7c1d20/6f1c2b9e-0d1a-4b8e-a4f5-2d7c9e3b1a60/7c1e.jpg
+                  mime: image/jpeg
+                  width: 1080
+                  height: 720
+                - type: stock
+                  code: BBCA
+      responses:
+        "200":
+          description: Pesan tersimpan (array berisi satu pesan)
+          content:
+            application/json:
+              schema: {type: array, minItems: 1, maxItems: 1, items: {$ref: "#/components/schemas/ChatMessage"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/share_post_to_chat:
+    post:
+      tags: [Pesan]
+      operationId: sharePostToChat
+      summary: Bagikan postingan feed ke room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_post_id]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_post_id: {$ref: "#/components/schemas/Uuid"}
+                p_body: {type: ["string", "null"]}
+                p_client_id: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "200":
+          description: Pesan berisi kartu postingan
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/ChatMessage"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/edit_message:
+    post:
+      tags: [Pesan]
+      operationId: editMessage
+      summary: Edit pesan sendiri
+      description: |
+        Hanya pengirim, dalam jendela waktu edit (`edit_window_closed` bila lewat). Pesan sistem dan pesan CS yang
+        terkunci tidak bisa diedit (`not_editable`, `support_message_locked`). Event: `message_edited`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_message_id, p_body]
+              properties:
+                p_message_id: {$ref: "#/components/schemas/Uuid"}
+                p_body: {type: string}
+      responses:
+        "200":
+          description: Pesan setelah diedit
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/ChatMessage"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/delete_message:
+    post:
+      tags: [Pesan]
+      operationId: deleteMessage
+      summary: Hapus pesan sendiri
+      description: Pesan tetap ada sebagai `is_deleted = true` tanpa isi.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_message_id]
+              properties:
+                p_message_id: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/react_to_message:
+    post:
+      tags: [Pesan]
+      operationId: reactToMessage
+      summary: Beri, ganti, atau hapus reaksi
+      description: |
+        Satu reaksi per orang per pesan. Mengirim emoji yang sama atau `null` menghapus reaksi.
+        Emoji yang diizinkan: 👍 ❤️ 😂 😮 😢 🔥. Tidak tersedia di chat CS. Event: `reaction`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_message_id]
+              properties:
+                p_message_id: {$ref: "#/components/schemas/Uuid"}
+                p_emoji: {type: ["string", "null"], enum: ["👍", "❤️", "😂", "😮", "😢", "🔥", null]}
+      responses:
+        "200":
+          description: Reaksi terkini
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message_id: {$ref: "#/components/schemas/Uuid"}
+                  emoji: {type: ["string", "null"]}
+                  reactions: {type: array, items: {$ref: "#/components/schemas/Reaction"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_message_info:
+    post:
+      tags: [Pesan]
+      operationId: getMessageInfo
+      summary: Info terkirim/dibaca untuk pesan sendiri
+      description: Room saham tidak menampilkan penerima (array kosong).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_message_id]
+              properties:
+                p_message_id: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "200":
+          description: Status per penerima
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MessageInfo"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/mark_rooms_delivered:
+    post:
+      tags: [Status baca dan mengetik]
+      operationId: markRoomsDelivered
+      summary: Tandai pesan sudah sampai di perangkat (centang dua)
+      description: Kirim saat aplikasi menerima pesan. `null` = semua room saya. Event `receipt` ke room terkait.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                p_room_ids:
+                  type: ["array", "null"]
+                  items: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "200":
+          description: Jumlah room yang diperbarui
+          content:
+            application/json:
+              schema: {type: integer}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/mark_room_read:
+    post:
+      tags: [Status baca dan mengetik]
+      operationId: markRoomRead
+      summary: Tandai room sudah dibaca
+      description: Event `receipt` ke `room:{room_id}`.
+      requestBody: {$ref: "#/components/requestBodies/RoomId"}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_unread_counts:
+    post:
+      tags: [Status baca dan mengetik]
+      operationId: getUnreadCounts
+      summary: Jumlah belum dibaca per room
+      responses:
+        "200":
+          description: Hanya room yang punya pesan belum dibaca
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    room_id: {$ref: "#/components/schemas/Uuid"}
+                    unread_count: {type: integer}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_unread_chat_count:
+    post:
+      tags: [Status baca dan mengetik]
+      operationId: getUnreadChatCount
+      summary: Jumlah room yang punya pesan belum dibaca (badge tab Chat)
+      description: Hanya DM dan grup yang tidak dibisukan. Room saham, chat CS, dan permintaan DM tidak dihitung.
+      responses:
+        "200":
+          description: Jumlah
+          content:
+            application/json:
+              schema: {type: integer}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/send_typing:
+    post:
+      tags: [Status baca dan mengetik]
+      operationId: sendTyping
+      summary: Kabarkan sedang/berhenti mengetik
+      description: |
+        Server membatasi frekuensi (`false` = tidak disiarkan karena terlalu sering). Room dengan ≥ 50 anggota
+        menerima `typing_summary` (jumlah orang), room ≥ 2.000 anggota tidak menerima apa pun.
+        Kirim `true` saat mulai mengetik (diulang paling cepat tiap 3 detik) dan `false` saat berhenti.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_typing: {type: boolean, default: true}
+      responses:
+        "200":
+          description: "`true` bila disiarkan"
+          content:
+            application/json:
+              schema: {type: boolean}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_dm_policy:
+    post:
+      tags: [Permintaan DM]
+      operationId: getDmPolicy
+      summary: Siapa yang boleh mengirim DM ke saya
+      responses:
+        "200":
+          description: Kebijakan saat ini
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DmPolicy"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/set_dm_policy:
+    post:
+      tags: [Permintaan DM]
+      operationId: setDmPolicy
+      summary: Ubah kebijakan DM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_policy]
+              properties:
+                p_policy: {type: string, enum: [everyone, following, none]}
+      responses:
+        "200":
+          description: Kebijakan setelah diubah
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DmPolicy"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_mention_policy:
+    post:
+      tags: [Permintaan DM]
+      operationId: getMentionPolicy
+      summary: Siapa yang boleh menyebut saya (sejak 0172)
+      responses:
+        "200":
+          description: Kebijakan saat ini
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MentionPolicy"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/set_mention_policy:
+    post:
+      tags: [Permintaan DM]
+      operationId: setMentionPolicy
+      summary: Ubah kebijakan mention (sejak 0172)
+      description: "`following` = hanya orang yang saya ikuti. Mention dari orang yang tidak diizinkan tidak menghasilkan notifikasi; teks `@nama` tetap tersimpan apa adanya. Staf dan akun resmi selalu diizinkan. Nilai tidak dikenal → `400 invalid_policy`."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_policy]
+              properties:
+                p_policy: {type: string, enum: [everyone, following, none]}
+      responses:
+        "200":
+          description: Kebijakan setelah diubah
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/MentionPolicy"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_message_requests:
+    post:
+      tags: [Permintaan DM]
+      operationId: getMessageRequests
+      summary: Permintaan DM yang masuk
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                p_limit: {type: integer, default: 50}
+                p_before:
+                  oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]
+                  description: Halaman berikutnya = `created_at` permintaan terakhir
+      responses:
+        "200":
+          description: Permintaan, terbaru dulu
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/MessageRequest"}}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_message_request_count:
+    post:
+      tags: [Permintaan DM]
+      operationId: getMessageRequestCount
+      summary: Jumlah permintaan DM yang menunggu
+      responses:
+        "200":
+          description: Jumlah
+          content:
+            application/json:
+              schema: {type: integer}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_dm_request_state:
+    post:
+      tags: [Permintaan DM]
+      operationId: getDmRequestState
+      summary: Apakah room DM ini masih berupa permintaan
+      requestBody: {$ref: "#/components/requestBodies/RoomId"}
+      responses:
+        "200":
+          description: Status permintaan
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DmRequestState"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/respond_message_request:
+    post:
+      tags: [Permintaan DM]
+      operationId: respondMessageRequest
+      summary: Terima, tolak, atau blokir permintaan DM
+      description: "`block` juga memblokir pengirim dan mencatat laporan spam."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_action]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_action: {type: string, enum: [accept, decline, block]}
+      responses:
+        "200":
+          description: Hasil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  room_id: {$ref: "#/components/schemas/Uuid"}
+                  status: {type: string, enum: [accepted, declined]}
+                  blocked: {type: boolean}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/create_group_room:
+    post:
+      tags: [Grup]
+      operationId: createGroupRoom
+      summary: Buat grup
+      description: Pembuat menjadi `owner`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_name]
+              properties:
+                p_name: {type: string}
+                p_member_ids: {type: array, default: [], items: {$ref: "#/components/schemas/Uuid"}}
+      responses:
+        "200":
+          description: Id room grup
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Uuid"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/add_room_members:
+    post:
+      tags: [Grup]
+      operationId: addRoomMembers
+      summary: Tambah anggota (owner/admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_user_ids]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_user_ids: {type: array, items: {$ref: "#/components/schemas/Uuid"}}
+      responses:
+        "200":
+          description: Jumlah anggota yang ditambahkan
+          content:
+            application/json:
+              schema: {type: integer}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/remove_room_member:
+    post:
+      tags: [Grup]
+      operationId: removeRoomMember
+      summary: Keluarkan anggota (owner/admin)
+      description: Untuk diri sendiri pakai `leave_room` (`use_leave_room`).
+      requestBody: {$ref: "#/components/requestBodies/RoomUser"}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/set_room_member_role:
+    post:
+      tags: [Grup]
+      operationId: setRoomMemberRole
+      summary: Jadikan atau cabut admin (owner)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_user_id, p_role]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_user_id: {$ref: "#/components/schemas/Uuid"}
+                p_role: {type: string, enum: [admin, member]}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/transfer_room_ownership:
+    post:
+      tags: [Grup]
+      operationId: transferRoomOwnership
+      summary: Serahkan kepemilikan grup (owner)
+      requestBody: {$ref: "#/components/requestBodies/RoomUser"}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/update_group_info:
+    post:
+      tags: [Grup]
+      operationId: updateGroupInfo
+      summary: Ubah nama, deskripsi, atau foto grup
+      description: Field `null` tidak diubah. Bila `only_admins_edit` aktif, hanya admin (`group_admins_only_edit`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_name: {type: ["string", "null"]}
+                p_description: {type: ["string", "null"]}
+                p_avatar_url: {type: ["string", "null"], description: Path hasil upload ke bucket `avatars`}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/update_group_settings:
+    post:
+      tags: [Grup]
+      operationId: updateGroupSettings
+      summary: Atur siapa yang boleh mengirim dan mengubah info (owner/admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_only_admins_send: {type: ["boolean", "null"]}
+                p_only_admins_edit: {type: ["boolean", "null"]}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/delete_group:
+    post:
+      tags: [Grup]
+      operationId: deleteGroup
+      summary: Hapus grup untuk semua anggota (owner)
+      description: Event `room_deleted` ke room dan `room_removed` ke setiap anggota.
+      requestBody: {$ref: "#/components/requestBodies/RoomId"}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/join_stock_room:
+    post:
+      tags: [Room saham]
+      operationId: joinStockRoom
+      summary: Masuk room diskusi satu kode saham atau indeks
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_stock_code]
+              properties:
+                p_stock_code: {type: string, example: BBCA}
+      responses:
+        "200":
+          description: Id room saham
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Uuid"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_stock_room_state:
+    post:
+      tags: [Room saham]
+      operationId: getStockRoomState
+      summary: Status room saham (slow mode, pesan tersemat, moderator)
+      description: Perubahannya disiarkan sebagai event `room_state`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_code]
+              properties:
+                p_code: {type: string}
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/StockRoomState"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_room_previews:
+    post:
+      tags: [Room saham]
+      operationId: getRoomPreviews
+      summary: Pratinjau room saham (polling)
+      description: |
+        Room saham tidak mengirim `room_activity` ke saluran pribadi karena terlalu ramai. Klien mem-polling
+        fungsi ini tiap `poll_seconds` untuk daftar chat. Maksimal 50 room.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_ids]
+              properties:
+                p_room_ids: {type: array, maxItems: 50, items: {$ref: "#/components/schemas/Uuid"}}
+      responses:
+        "200":
+          description: Pratinjau
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  poll_seconds: {type: integer}
+                  rooms:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        room_id: {$ref: "#/components/schemas/Uuid"}
+                        last_message_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+                        last_message_preview: {type: ["string", "null"]}
+                        last_message_sender_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+                        unread_count: {type: integer, maximum: 100}
+                        cursor: {$ref: "#/components/schemas/Cursor"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/room_mod_hide_message:
+    post:
+      tags: [Moderator room saham]
+      operationId: roomModHideMessage
+      summary: Sembunyikan pesan (moderator room)
+      requestBody: {$ref: "#/components/requestBodies/ModMessage"}
+      responses:
+        "200": {$ref: "#/components/responses/ModResult"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/room_mod_escalate:
+    post:
+      tags: [Moderator room saham]
+      operationId: roomModEscalate
+      summary: Teruskan pesan ke tim moderasi
+      requestBody: {$ref: "#/components/requestBodies/ModMessage"}
+      responses:
+        "200": {$ref: "#/components/responses/ModResult"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/room_mod_mute_user:
+    post:
+      tags: [Moderator room saham]
+      operationId: roomModMuteUser
+      summary: Bisukan pengguna di room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_user_id, p_minutes, p_reason]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_user_id: {$ref: "#/components/schemas/Uuid"}
+                p_minutes: {type: integer, minimum: 1}
+                p_reason: {type: string}
+                p_note: {type: ["string", "null"]}
+                p_message_id:
+                  oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]
+      responses:
+        "200": {$ref: "#/components/responses/ModResult"}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /media/v1/object/{bucket}/{path}:
+    post:
+      tags: [Lampiran]
+      operationId: uploadObject
+      summary: Upload lampiran
+      description: |
+        Body berisi byte file mentah. Jenis file dideteksi dari isinya (header `Content-Type` diabaikan),
+        metadata EXIF dibuang, gambar diperiksa NSFW, dokumen dan video CS dipindai antivirus.
+        Upload langsung ke `/storage/v1` ditolak; selalu lewat jalur ini.
+
+        Path lampiran chat: `rooms/{room_id}/{user_id saya}/{uuid}.{ext}` di bucket `attachments`
+        (chat CS juga `cs-documents` dan `cs-videos`). Pakai `path` dan `mime` dari respons di `p_attachments`.
+
+        | Bucket | Batas | Jenis |
+        |---|---|---|
+        | `attachments` | 5 MiB (chat CS 10 MiB) | JPEG, PNG, WebP, GIF |
+        | `avatars` | 2 MiB | JPEG, PNG, WebP |
+        | `cs-documents` | 10 MiB | PDF, DOCX, XLSX, PPTX, TXT, CSV |
+        | `cs-videos` | 25 MiB, 120 detik | MP4, MOV, WebM |
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema: {type: string, enum: [attachments, avatars, cs-documents, cs-videos]}
+        - name: path
+          in: path
+          required: true
+          description: 1–6 segmen `[A-Za-z0-9._-]{1,128}` dipisah `/`, total ≤ 400 karakter
+          schema: {type: string}
+        - name: x-upsert
+          in: header
+          schema: {type: string, enum: ["true"]}
+          description: Hanya berlaku untuk bucket `avatars`
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, contentMediaType: application/octet-stream}
+      responses:
+        "200":
+          description: Tersimpan
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UploadResult"}
+        "400": {$ref: "#/components/responses/GatewayError"}
+        "401": {$ref: "#/components/responses/GatewayError"}
+        "403": {$ref: "#/components/responses/GatewayError"}
+        "413": {$ref: "#/components/responses/GatewayError"}
+        "415": {$ref: "#/components/responses/GatewayError"}
+        "422": {$ref: "#/components/responses/GatewayError"}
+        "503": {$ref: "#/components/responses/GatewayError"}
+
+  /storage/v1/object/authenticated/{bucket}/{path}:
+    get:
+      tags: [Lampiran]
+      operationId: downloadObject
+      summary: Unduh lampiran
+      description: Hanya anggota room yang bisa membaca lampiran room itu.
+      parameters:
+        - name: bucket
+          in: path
+          required: true
+          schema: {type: string}
+        - name: path
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Isi file
+          content:
+            "*/*":
+              schema: {type: string, contentMediaType: application/octet-stream}
+        "4XX": {description: Tidak ditemukan atau tidak berhak}
+
+  /rest/v1/rpc/register_push_device:
+    post:
+      tags: [Push]
+      operationId: registerPushDevice
+      summary: Daftarkan token FCM perangkat
+      description: |
+        Panggil setelah login dan setiap token FCM berubah. Token yang sebelumnya milik akun lain dipindah ke akun
+        ini (push lama untuk akun itu dibatalkan). Maksimal 10 perangkat per akun; yang paling lama dilepas.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_token, p_platform]
+              properties:
+                p_token: {type: string, minLength: 20, maxLength: 4096}
+                p_platform: {type: string, enum: [android, ios, web]}
+                p_locale: {type: string, enum: [id, en], default: id}
+                p_app_version: {type: ["string", "null"], maxLength: 40}
+      responses:
+        "200":
+          description: Perangkat terdaftar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: {$ref: "#/components/schemas/Uuid"}
+                  platform: {type: string}
+                  locale: {type: string}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/unregister_push_device:
+    post:
+      tags: [Push]
+      operationId: unregisterPushDevice
+      summary: Lepas token saat logout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_token]
+              properties:
+                p_token: {type: string}
+      responses:
+        "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/get_client_config:
+    post:
+      tags: [Konfigurasi klien]
+      operationId: getClientConfig
+      summary: Konfigurasi, fitur aktif, dan versi minimum aplikasi
+      description: |
+        Panggil saat aplikasi dibuka. `update_required: true` berarti versi aplikasi di bawah versi minimum
+        yang diatur di Hub; arahkan pengguna untuk memperbarui. Isi `config` bisa bertambah.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                p_platform: {type: ["string", "null"], enum: [android, ios, web, windows, macos, linux, null]}
+                p_app_version: {type: ["string", "null"], example: "3.4.0"}
+      responses:
+        "200":
+          description: Konfigurasi
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                properties:
+                  update_required: {type: boolean}
+                  config: {type: object, additionalProperties: true}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /integration/v1/notify/messages:
+    post:
+      tags: [Integrasi server]
+      operationId: notifyMessages
+      summary: Kirim notifikasi dari server host
+      description: |
+        Dipanggil server (bukan aplikasi). API key integrasi dibuat Super Admin di Hub, berawalan `oik_`, dan bisa
+        dibatasi IP. Maksimal 500 pesan per request dan body 2 MiB. Panduan lengkap: `docs/integration/README.md`.
+
+        | Target | Pengiriman | Izin key |
+        |---|---|---|
+        | `cust_id` / `{"cust_id"}` | Sinkron ke semua login pemilik rekening | `notify` |
+        | `{"olt_user_id"}` | Sinkron ke satu login (mis. alert harga) | `notify` |
+        | `{"olt_user_ids"}`, `{"audience": "all"}`, `{"audience": "stock_watchers"}` | Siaran asinkron | `notify` + `notify_broadcast` |
+      security:
+        - anonKey: []
+          integrationKey: []
+      parameters:
+        - name: X-Request-Id
+          in: header
+          schema: {type: string, pattern: "^[A-Za-z0-9._-]{1,64}$"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                messages:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items: {$ref: "#/components/schemas/NotifyMessage"}
+            example:
+              messages:
+                - id: pa-8812-20261118
+                  target: {olt_user_id: "1001"}
+                  kind: olt.price_alert.above
+                  title: BBCA menyentuh 10.000
+                  data: {stock: BBCA, alert_id: "8812"}
+                  collapse_key: pa-BBCA
+                  ttl_seconds: 3600
+      responses:
+        "200":
+          description: Hasil per pesan (pesan yang tidak valid tidak menggagalkan pesan lain)
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NotifyResult"}
+        "400": {$ref: "#/components/responses/GatewayError"}
+        "401": {$ref: "#/components/responses/GatewayError"}
+        "403": {$ref: "#/components/responses/GatewayError"}
+        "413": {$ref: "#/components/responses/GatewayError"}
+        "429": {$ref: "#/components/responses/GatewayError"}
+        "503": {$ref: "#/components/responses/GatewayError"}
+
+components:
+  securitySchemes:
+    anonKey:
+      type: apiKey
+      in: header
+      name: apikey
+      description: Kunci publik aplikasi (ANON_KEY), sama untuk semua pengguna. Wajib di setiap request.
+    userToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: "`access_token` dari `/bridge/v1/exchange`"
+    integrationKey:
+      type: http
+      scheme: bearer
+      description: API key integrasi `oik_…` dari Hub. Rahasiakan di server, jangan dipasang di aplikasi.
+
+  requestBodies:
+    RoomId:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [p_room_id]
+            properties:
+              p_room_id: {$ref: "#/components/schemas/Uuid"}
+    RoomUser:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [p_room_id, p_user_id]
+            properties:
+              p_room_id: {$ref: "#/components/schemas/Uuid"}
+              p_user_id: {$ref: "#/components/schemas/Uuid"}
+    ModMessage:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [p_message_id, p_reason]
+            properties:
+              p_message_id: {$ref: "#/components/schemas/Uuid"}
+              p_reason: {type: string}
+              p_note: {type: ["string", "null"]}
+
+  responses:
+    RpcError:
+      description: Error RPC (status 400, 401, 403, 404, 409, 422, 429, 503)
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/RpcError"}
+    GatewayError:
+      description: Error layanan gateway
+      headers:
+        Retry-After:
+          schema: {type: integer}
+          description: Ada pada 429 dan 503
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/GatewayError"}
+    ModResult:
+      description: Hasil tindakan moderator
+      content:
+        application/json:
+          schema: {type: object, additionalProperties: true}
+
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    Timestamp:
+      type: string
+      format: date-time
+    Cursor:
+      type: string
+      description: Opaque. Kirim kembali apa adanya.
+    NullableCursor:
+      oneOf: [{$ref: "#/components/schemas/Cursor"}, {type: "null"}]
+
+    RpcError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: "`PT<status>` untuk error aplikasi; kode PostgREST (`PGRST…`) atau SQLSTATE untuk lainnya"
+          examples: [PT403, PT429, PGRST202]
+        message:
+          type: string
+          description: Untuk `PT…`, kode stabil seperti `not_member`, `slow_mode`, `dm_not_allowed`
+        details: {type: ["string", "null"]}
+        hint: {type: ["string", "null"]}
+
+    GatewayError:
+      type: object
+      required: [error]
+      properties:
+        error: {type: string, examples: [invalid_token, rate_limited, file_too_large, scope_forbidden]}
+        message: {type: string}
+
+    Session:
+      type: object
+      required: [access_token, expires_at, user]
+      properties:
+        access_token: {type: string}
+        token_type: {type: string, const: bearer}
+        expires_in: {type: integer, description: Detik}
+        expires_at: {type: integer, description: Detik Unix}
+        user:
+          allOf:
+            - {$ref: "#/components/schemas/UserSummary"}
+            - type: object
+              properties:
+                olt_user_id: {type: string, description: "`sub` token sosial"}
+
+    UserSummary:
+      type: object
+      required: [id, username]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        username: {type: string}
+        display_name: {type: ["string", "null"]}
+        avatar_url: {type: ["string", "null"]}
+        is_verified: {type: boolean}
+
+    ChatRoomSummary:
+      type: object
+      required: [id, type, created_at, cursor]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        type: {type: string, enum: [direct, group, stock, support]}
+        name: {type: ["string", "null"]}
+        description: {type: ["string", "null"]}
+        avatar_url: {type: ["string", "null"]}
+        stock_code: {type: ["string", "null"]}
+        created_by: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+        last_message_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+        last_message_preview: {type: ["string", "null"]}
+        last_message_sender_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        last_message_status: {type: ["string", "null"], description: Status centang pesan terakhir saya}
+        my_role: {type: ["string", "null"], enum: [owner, admin, member, null]}
+        muted: {type: boolean}
+        last_read_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+        unread_count: {type: integer}
+        member_count: {type: integer}
+        other_user_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}], description: Lawan bicara (DM)}
+        other_username: {type: ["string", "null"]}
+        other_display_name: {type: ["string", "null"]}
+        other_avatar_url: {type: ["string", "null"]}
+        other_is_verified: {type: ["boolean", "null"]}
+        only_admins_send: {type: ["boolean", "null"]}
+        only_admins_edit: {type: ["boolean", "null"]}
+        cursor: {$ref: "#/components/schemas/Cursor"}
+
+    RoomMember:
+      type: object
+      properties:
+        user_id: {$ref: "#/components/schemas/Uuid"}
+        username: {type: string}
+        display_name: {type: ["string", "null"]}
+        avatar_url: {type: ["string", "null"]}
+        is_verified: {type: boolean}
+        role: {type: string, enum: [owner, admin, member]}
+        last_read_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+        last_delivered_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+        joined_at: {$ref: "#/components/schemas/Timestamp"}
+
+    ChatMessage:
+      type: object
+      required: [id, room_id, created_at]
+      properties:
+        id: {$ref: "#/components/schemas/Uuid"}
+        room_id: {$ref: "#/components/schemas/Uuid"}
+        kind:
+          type: ["string", "null"]
+          enum: [text, system, quick_reply, help_link, identity_request, csat, group_event, null]
+          description: Kind yang tidak dikenal tampilkan sebagai `text`
+        sender_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}], description: "`null` untuk pesan sistem"}
+        sender_username: {type: ["string", "null"]}
+        sender_display_name: {type: ["string", "null"]}
+        sender_avatar_url: {type: ["string", "null"]}
+        sender_role: {type: ["string", "null"], description: Diisi di chat CS (mis. agen)}
+        body: {type: ["string", "null"]}
+        is_deleted: {type: boolean}
+        edited_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+        client_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        reply_to_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        reply_to_body: {type: ["string", "null"]}
+        reply_to_sender_username: {type: ["string", "null"]}
+        attachments: {type: array, items: {$ref: "#/components/schemas/Attachment"}}
+        reactions:
+          type: ["array", "null"]
+          items: {$ref: "#/components/schemas/Reaction"}
+        shared_post: {type: ["object", "null"], additionalProperties: true, description: Ringkasan postingan yang dibagikan}
+        payload: {type: object, additionalProperties: true, description: Data tambahan sesuai `kind`}
+        session_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}], description: Tiket CS}
+        moderation_status: {type: ["string", "null"], description: "`visible` atau status tahan (hanya terlihat pengirim)"}
+        cursor: {$ref: "#/components/schemas/Cursor"}
+
+    Attachment:
+      description: Lampiran di pesan. Bedakan dengan field `type`; tanpa `type` berarti file.
+      oneOf:
+        - {$ref: "#/components/schemas/FileAttachment"}
+        - {$ref: "#/components/schemas/StockCardAttachment"}
+        - {$ref: "#/components/schemas/PostCardAttachment"}
+
+    OutgoingAttachment:
+      description: Lampiran yang dikirim. Maksimal 4 file dan 3 kartu saham per pesan.
+      oneOf:
+        - {$ref: "#/components/schemas/FileAttachment"}
+        - {$ref: "#/components/schemas/StockCardAttachment"}
+
+    FileAttachment:
+      type: object
+      required: [path]
+      properties:
+        bucket: {type: string, enum: [attachments, cs-documents, cs-videos]}
+        path: {type: string}
+        mime: {type: string}
+        name: {type: string, description: Nama asli dokumen}
+        size: {type: integer}
+        width: {type: integer}
+        height: {type: integer}
+        duration: {type: number, description: Detik (video)}
+        thumbnail: {type: string, description: Path JPEG thumbnail video}
+
+    StockCardAttachment:
+      type: object
+      required: [type, code]
+      properties:
+        type: {const: stock}
+        code: {type: string, examples: [BBCA, COMPOSITE]}
+
+    PostCardAttachment:
+      type: object
+      required: [type, post_id]
+      properties:
+        type: {const: post}
+        post_id: {$ref: "#/components/schemas/Uuid"}
+
+    Reaction:
+      type: object
+      properties:
+        emoji: {type: string}
+        count: {type: integer}
+        me: {type: boolean}
+
+    MessageInfo:
+      type: object
+      properties:
+        message_id: {$ref: "#/components/schemas/Uuid"}
+        sent_at: {$ref: "#/components/schemas/Timestamp"}
+        room_type: {type: string}
+        recipients:
+          type: array
+          items:
+            type: object
+            properties:
+              user_id: {$ref: "#/components/schemas/Uuid"}
+              username: {type: string}
+              display_name: {type: ["string", "null"]}
+              avatar_url: {type: ["string", "null"]}
+              delivered: {type: boolean}
+              read: {type: boolean}
+              delivered_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+              read_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+
+    DmPolicy:
+      type: object
+      properties:
+        policy: {type: string, enum: [everyone, following, none]}
+        request_max_messages: {type: integer, description: Pesan maksimal yang boleh dikirim sebelum permintaan diterima}
+
+    MentionPolicy:
+      type: object
+      required: [policy]
+      properties:
+        policy: {type: string, enum: [everyone, following, none]}
+
+    DmRequestState:
+      type: object
+      required: [is_request]
+      properties:
+        is_request: {type: boolean}
+        role: {type: string, enum: [sender, recipient]}
+        status: {type: string, enum: [pending, declined]}
+        sent: {type: integer, description: Hanya untuk pengirim}
+        max_messages: {type: integer, description: Hanya untuk pengirim}
+
+    MessageRequest:
+      type: object
+      properties:
+        room_id: {$ref: "#/components/schemas/Uuid"}
+        sender_id: {$ref: "#/components/schemas/Uuid"}
+        username: {type: string}
+        display_name: {type: ["string", "null"]}
+        avatar_url: {type: ["string", "null"]}
+        is_verified: {type: boolean}
+        message_count: {type: integer}
+        has_image: {type: boolean}
+        last_message_preview: {type: ["string", "null"]}
+        last_message_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+        created_at: {$ref: "#/components/schemas/Timestamp"}
+
+    StockRoomState:
+      type: object
+      additionalProperties: true
+      properties:
+        stock_code: {type: string}
+        room_id: {oneOf: [{$ref: "#/components/schemas/Uuid"}, {type: "null"}]}
+        room_enabled: {type: boolean}
+        slow_mode:
+          type: object
+          properties:
+            seconds: {type: integer, description: "`0` = tidak aktif"}
+            until: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+            source: {type: ["string", "null"], description: Sumber slow mode, mis. `schedule`}
+        wait_seconds: {type: integer, description: Detik sampai saya boleh mengirim lagi}
+        pinned_message: {type: ["object", "null"], additionalProperties: true}
+        pinned_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+        moderators: {type: array, items: {type: object, additionalProperties: true}}
+        is_moderator: {type: boolean}
+        muted_until: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
+
+    UploadResult:
+      type: object
+      required: [bucket, path, mime, size]
+      properties:
+        bucket: {type: string}
+        path: {type: string, description: Path final (ekstensi bisa diganti sesuai isi file)}
+        mime: {type: string}
+        size: {type: integer}
+        width: {type: integer}
+        height: {type: integer}
+        duration: {type: number}
+        thumbnail: {type: string}
+        held: {type: boolean, description: "`true` bila gambar ditahan untuk ditinjau moderator"}
+
+    LocalizedText:
+      oneOf:
+        - {type: string}
+        - type: object
+          required: [id]
+          properties:
+            id: {type: string}
+            en: {type: string}
+
+    NotifyMessage:
+      type: object
+      required: [id, title]
+      properties:
+        id:
+          type: string
+          pattern: "^[A-Za-z0-9._:-]{1,100}$"
+          description: Unik per event; kunci idempotensi per key
+        cust_id: {type: string, description: Rekening. Jangan diisi bila `target` diisi}
+        target:
+          oneOf:
+            - type: object
+              required: [cust_id]
+              properties: {cust_id: {type: string}}
+              additionalProperties: false
+            - type: object
+              required: [olt_user_id]
+              properties: {olt_user_id: {type: [string, integer]}}
+              additionalProperties: false
+            - type: object
+              required: [olt_user_ids]
+              properties: {olt_user_ids: {type: array, minItems: 1, maxItems: 500, items: {type: [string, integer]}}}
+              additionalProperties: false
+            - type: object
+              required: [audience]
+              properties: {audience: {const: all}}
+              additionalProperties: false
+            - type: object
+              required: [audience, stock]
+              properties:
+                audience: {const: stock_watchers}
+                stock: {type: string}
+              additionalProperties: false
+        kind:
+          type: string
+          pattern: "^olt\\.[a-z0-9_]+(\\.[a-z0-9_]+)*$"
+          maxLength: 40
+          description: Menentukan layar tujuan di aplikasi dan jenis preferensi notifikasi
+        title: {$ref: "#/components/schemas/LocalizedText"}
+        body: {$ref: "#/components/schemas/LocalizedText"}
+        data: {type: object, additionalProperties: true, description: Maks. 2 KB, nilai diteruskan ke app sebagai string}
+        ttl_seconds: {type: integer, minimum: 60, maximum: 2419200}
+        collapse_key: {type: string, minLength: 1, maxLength: 64}
+        priority: {type: string, enum: [high, normal], default: high}
+        channels:
+          type: array
+          minItems: 1
+          maxItems: 2
+          uniqueItems: true
+          items: {type: string, enum: [push, inbox]}
+        category: {type: string, enum: [important, info, promo], default: info}
+
+    NotifyResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            type: object
+            required: [index, status]
+            properties:
+              index: {type: integer}
+              id: {type: ["string", "null"]}
+              status: {type: string, enum: [queued, no_recipient, accepted, duplicate, invalid]}
+              devices: {type: integer}
+              inbox: {type: integer}
+              broadcast_id: {$ref: "#/components/schemas/Uuid"}
+              error:
+                type: string
+                examples: [invalid_target, invalid_title, scope_forbidden]
+        queued: {type: integer}
+        devices: {type: integer}
+        no_recipient: {type: integer}
+        duplicate: {type: integer}
+        invalid: {type: integer}
+        accepted: {type: integer}
+        inbox: {type: integer}
