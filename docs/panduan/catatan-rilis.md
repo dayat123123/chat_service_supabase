@@ -6,6 +6,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Mention di grup (migrasi `0173`, library 1.36.0)
+
+- Di chat grup, pengguna bisa menyebut anggota grup dengan `@`. Saran nama hanya berisi anggota grup itu, dan `$KODE` di grup tetap mati.
+- Anggota yang disebut mendapat notifikasi "X menyebut Anda di <grup>" sebagai pengganti notifikasi pesan biasa, walaupun ia membisukan grup itu. Pengaturan "Siapa yang bisa menyebut saya" tetap dihormati.
+- Migrasi berjalan otomatis lewat `make up`. Tidak ada pengaturan atau container baru. `0172` dan `0173` boleh terpasang dalam satu kali update.
+- Aplikasi dengan library 1.35.0 tetap jalan, hanya tanpa saran `@` di grup.
+
 ### Pengaturan mention (migrasi `0172`, library 1.35.0)
 
 - Pengguna bisa memilih siapa yang boleh menyebut dirinya: semua orang (bawaan), hanya yang ia ikuti, atau tidak ada. Mention dari orang yang tidak diizinkan tidak memberi notifikasi, dan namanya tidak muncul di saran `@`. Teks `@nama` di postingan tetap tampil apa adanya.
