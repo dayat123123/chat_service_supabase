@@ -6,6 +6,19 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Menu Hub dirapikan (Hub)
+
+- **Kata terlarang** pindah menjadi tab pertama di **Kebijakan konten**. Alamat lama dialihkan otomatis.
+- Menu **Kebijakan** berganti nama menjadi **Tenggat & retensi** (tenggat pengaduan, perpanjangan, retensi chat), supaya tidak tertukar dengan Kebijakan konten.
+- Untuk akun Kepatuhan yang juga punya menu lain (misalnya Super Admin), semua menu Kepatuhan digabung dalam satu menu bertingkat **Kepatuhan ▾**, sehingga bilah menu atas tidak terpotong. Akun yang hanya Kepatuhan tetap melihat menunya berjajar.
+- Cukup perbarui Hub (`git -C ~/rendezvous_hub pull --ff-only && make up`). Tidak ada perubahan server.
+
+### Pratinjau daftar chat setelah pesan dihapus (migrasi `0179`)
+
+- Sebelumnya, setelah pesan terakhir dihapus, di dalam chat tertulis "[pesan dihapus]" tetapi daftar chat masih menampilkan isi pesan lama.
+- Sekarang pratinjau di daftar chat berganti menjadi "[pesan dihapus]", dan daftar chat yang sedang terbuka langsung diperbarui. Ini berlaku juga untuk pesan yang dihapus moderator atau ikut terhapus bersama akun.
+- Room yang pratinjaunya sudah telanjur memuat pesan terhapus ikut diperbaiki saat migrasi. Aplikasi tidak perlu diperbarui.
+
 ### Kata terlarang yang sudah disetujui tetap lolos (migrasi `0178`)
 
 - Pola pencocokan kata terlarang, frasa promosi, pengecualian, dan domain (`private.policy_patterns`, `private.policy_forms`) bisa tertinggal dari isi daftar. Penyebabnya percobaan yang gagal sebelum `0176`, atau data hasil restore/seed. Akibatnya kata yang sudah disetujui tetap lolos di Uji teks dan di app.

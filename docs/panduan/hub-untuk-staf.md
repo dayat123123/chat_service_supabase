@@ -64,8 +64,10 @@ Menu di bar atas mengikuti peran dan izin. Satu akun bisa punya lebih dari satu 
 | **Konten Layanan** | – | Ya | – | – | – | Ya |
 | **Fitur & Kampanye** | – | Ya | – | – | Ya | – |
 | **Pengaturan** | – | Ya | – | – | – | – |
-| **Ringkasan**, **Kasus**, **Jejak Audit**, **Kebijakan**, **Kata terlarang**, **Kebijakan konten**, **Dokumen hukum** | – | – | Ya | – | – | – |
+| **Kepatuhan** ▾: **Ringkasan**, **Kasus**, **Kebijakan konten** (termasuk tab **Kata terlarang**), **Tenggat & retensi**, **Dokumen hukum**, **Jejak Audit** | – | – | Ya | – | – | – |
 | **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – | – | – |
+
+Akun Kepatuhan yang juga punya menu lain (misalnya Super Admin) melihat menu Kepatuhan sebagai satu menu bertingkat **Kepatuhan ▾** supaya bilah atas tidak terpotong. Akun yang hanya Kepatuhan melihatnya berjajar.
 
 Bila akun tidak punya menu sama sekali, Hub menampilkan **Peran akun ini belum punya menu di web CS. Hubungi Super Admin.**
 
@@ -532,7 +534,7 @@ Kepatuhan **mengawasi**, tidak menangani tiket. Akun Kepatuhan langsung membuka 
 - Angka: **Pengaduan aktif**, **Jatuh tempo ≤ 1 hari kerja**, **Lewat tenggat**, **Tepat waktu (30 hari)**, **Penipuan aktif**, **Belum ditinjau**.
 - Daftar: **Tenggat pengaduan terdekat**, **Kasus penipuan aktif**, **Selesai, belum ditinjau**.
 - **Sinyal keamanan (30 hari)**: **Laporan CS palsu** dan **Permintaan data rahasia diblokir**, dengan tabel CS yang mencoba meminta PIN, OTP, atau password. Klik **Buka di Jejak Audit** untuk detail.
-- Bila ada spanduk kebijakan belum dikonfirmasi, klik **Buka Kebijakan** (bagian 4.4).
+- Bila ada spanduk kebijakan belum dikonfirmasi, klik **Buka Tenggat & retensi** (bagian 4.4).
 - **Notifikasi kasus baru**: ikon perisai di bilah atas (Kepatuhan dan Super Admin) menunjukkan jumlah kasus pengaduan atau penipuan baru yang belum dilihat, termasuk yang ditandai CS beserta alasannya. Klik untuk melihat daftar dan membuka kasusnya.
 
 ### 4.2 Kasus
@@ -558,7 +560,7 @@ Catatan semua aksi CS, Super Admin, Kepatuhan, nasabah, dan sistem. **Catatan ti
 - **Ekspor CSV** untuk pemeriksaan.
 - Dipakai juga saat gangguan: melihat siapa mengubah pengaturan apa dan kapan.
 
-### 4.4 Kebijakan
+### 4.4 Tenggat & retensi
 
 Nilai yang wajib dikonfirmasi Kepatuhan. **Super Admin tidak bisa mengubahnya.**
 
@@ -574,7 +576,7 @@ Nilai yang wajib dikonfirmasi Kepatuhan. **Super Admin tidak bisa mengubahnya.**
 
 ### 4.5 Kata terlarang
 
-Berlaku untuk post, komentar, polling, dan chat di aplikasi nasabah. Aksi: **Sensor** (kata diganti bintang, konten tetap terkirim) atau **Blokir** (konten ditolak).
+Tab pertama di **Kebijakan konten** (dulu menu sendiri; alamat lama `/compliance/words` dialihkan ke tab ini). Berlaku untuk post, komentar, polling, dan chat di aplikasi nasabah. Aksi: **Sensor** (kata diganti bintang, konten tetap terkirim) atau **Blokir** (konten ditolak).
 
 - **Tambah kata**: 2–50 karakter, huruf/angka/spasi. Huruf besar/kecil tidak berpengaruh, dan yang cocok hanya kata utuh ("penipu" tidak mengenai "penipuan").
 - **Import Excel**:
@@ -591,6 +593,7 @@ Aturan keamanan konten komunitas. Tabnya:
 
 | Tab | Isi |
 |---|---|
+| **Kata terlarang** | Daftar kata dan frasa yang disensor atau diblokir (bagian 4.5) |
 | **Kategori** | Aksi per kategori (**Judi**, **Pornografi**, **Phishing & IP logger**, **Pemendek tautan**, **Grup chat & messenger**, **Nomor HP**, **Frasa promosi**, **Tautan lain**, dll.): **Izinkan**, **Sensor**, **Tahan** (ditinjau moderator), atau **Blokir**, dengan cakupan **Publik saja** atau **Publik + DM & grup**. Juga **Masa akun baru** |
 | **Domain** | **Domain diblokir** (domain atau kata kunci) dan **Domain tepercaya** (selalu lolos) |
 | **Frasa & pengecualian** | **Frasa promosi** dan **Istilah pengecualian** (mis. istilah wajar yang mengandung kata terlarang) |
@@ -601,7 +604,7 @@ Aturan keamanan konten komunitas. Tabnya:
 
 **Alur perubahan (versi, draf, empat mata):**
 
-1. Ubah aturan di tab mana pun atau di **Kata terlarang**. Perubahan masuk ke **Draf perubahan Anda** dan **belum berlaku**.
+1. Ubah aturan di tab mana pun, termasuk **Kata terlarang**. Perubahan masuk ke **Draf perubahan Anda** dan **belum berlaku**.
 2. Buka tab **Versi & persetujuan**. Klik **Simulasi** → **Jalankan simulasi** untuk melihat konten nyata yang perlakuannya berubah (**Lebih ketat** / **Lebih longgar**). Simulasi tidak menyimpan apa pun.
 3. Isi **Alasan perubahan**, lalu **Ajukan untuk persetujuan**. (Bila empat mata dimatikan Super Admin, tombolnya **Aktifkan sekarang**.)
 4. Staf Kepatuhan **lain** membuka **Menunggu persetujuan**, membaca alasan, isi perubahan, dan hasil simulasi, lalu **Setujui** atau **Tolak** (alasan penolakan terlihat pembuat). Pengaju bisa **Tarik**.
