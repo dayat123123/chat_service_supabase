@@ -132,3 +132,31 @@ func TestResolveLinksAccountsOfBannedUsers(t *testing.T) {
 		t.Fatalf("rekening nasabah yang di-ban tetap tertaut untuk notifikasi transaksi: calls=%d", store.calls)
 	}
 }
+
+func TestResolveRejectsDeletedAccountInCooldownWithoutLinking(t *testing.T) {
+	until := time.Date(2026, 11, 21, 8, 0, 0, 0, time.UTC)
+	store := &linkingStore{fakeStore: fakeStore{rejoinAt: &until}}
+	svc := NewService(accountVerifier{&olt.AccountClaim{IDs: []string{"W137"}}}, store, NewMemoryCache(), time.Minute)
+	for range 2 {
+		_, cached, err := svc.Resolve(context.Background(), "t")
+		var cooldown *RejoinCooldownError
+		if !errors.As(err, &cooldown) || !cooldown.Until.Equal(until) || cached {
+			t.Fatalf("err = %v cached = %v, want RejoinCooldownError until %v", err, cached, until)
+		}
+	}
+	if store.calls != 0 {
+		t.Fatalf("accounts must not be linked to a deleted account, calls = %d", store.calls)
+	}
+	if store.fakeStore.calls != 2 {
+		t.Fatalf("cooldown must not be cached, upserts = %d", store.fakeStore.calls)
+	}
+}
+
+func TestResolveReportsBanBeforeCooldown(t *testing.T) {
+	until := time.Date(2026, 11, 21, 8, 0, 0, 0, time.UTC)
+	store := &linkingStore{fakeStore: fakeStore{banned: true, rejoinAt: &until}}
+	_, _, err := NewService(accountVerifier{&olt.AccountClaim{IDs: []string{"W137"}}}, store, nil, 0).Resolve(context.Background(), "t")
+	if !errors.Is(err, ErrBanned) || store.calls != 0 {
+		t.Fatalf("err = %v links = %d, want ErrBanned without linking", err, store.calls)
+	}
+}

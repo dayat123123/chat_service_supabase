@@ -27,15 +27,16 @@ func (v *countingVerifier) Verify(ctx context.Context, token string) (olt.User, 
 }
 
 type fakeStore struct {
-	calls  int
-	last   ProfileInput
-	banned bool
+	calls    int
+	last     ProfileInput
+	banned   bool
+	rejoinAt *time.Time
 }
 
 func (s *fakeStore) UpsertProfile(_ context.Context, in ProfileInput) (Profile, error) {
 	s.calls++
 	s.last = in
-	return Profile{ID: in.ID, OLTUserID: in.OLTUserID, Username: in.Username, Banned: s.banned}, nil
+	return Profile{ID: in.ID, OLTUserID: in.OLTUserID, Username: in.Username, Banned: s.banned, RejoinAt: s.rejoinAt}, nil
 }
 
 func TestResolveDerivesStableIDAndCaches(t *testing.T) {
