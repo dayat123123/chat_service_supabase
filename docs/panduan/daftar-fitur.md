@@ -112,7 +112,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 
 | Menu | Deskripsi singkat |
 |---|---|
-| **Banner & Popup** | Kampanye banner strip dan popup promo: jadwal, platform, prioritas, gambar, tombol CTA, frekuensi, serta statistik tampil, klik, dan tutup |
+| **Banner & Popup** | Kampanye banner strip dan popup promo: jadwal, platform, prioritas, gambar, tombol CTA, frekuensi, serta statistik tampil, klik, dan tutup. Banner baru bisa sekaligus dikirim sebagai notifikasi (lewat persetujuan) |
 | **Komunitas → Postingan resmi** | Postingan dan pengumuman resmi dengan persetujuan empat mata, jadwal terbit, dan sematan |
 | **Komunitas → Notifikasi** | Kampanye notifikasi atau push ke segmen nasabah, dengan statistik dibuka dan diketuk |
 | **Komunitas → Moderasi** | Antrean laporan, konten dan gambar yang ditahan, indikasi manipulasi pasar, banding, dan sanksi user |
@@ -120,7 +120,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 | **Komunitas → Indeks** | Kelola daftar indeks dan instrumen untuk tab filter Stream |
 | **Komunitas → Akun resmi** | Kelola foto, nama, dan pratinjau akun resmi, dengan audit setiap perubahan |
 | **Komunitas → Fitur & versi** | Nyala/matikan fitur sosial, kill switch, dan versi minimum aplikasi per platform |
-| **Komunitas → Tab Stream** | Atur tab filter yang tampil di Stream |
+| **Komunitas → Tab Stream** | Nyalakan atau matikan empat tab bawaan Stream (Terbaru, Teratas, Grafik & Media, Polling) |
 | **Analitik** | Statistik pemakaian fitur sosial, filter Stream, dan notifikasi |
 
 ![Fitur & versi](gambar/fitur/hub-features.jpg)
