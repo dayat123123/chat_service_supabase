@@ -6,6 +6,20 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Jeda bergabung lagi setelah hapus akun (migrasi `0175`, auth-bridge, library 1.38.0, Hub)
+
+- Setelah menghapus akun komunitas, login yang sama baru bisa membuka komunitas lagi setelah **72 jam**. Saat bergabung lagi, akun dimulai sebagai akun baru.
+- Lama jeda diatur di Hub: **Kepatuhan → Kebijakan konten → Aturan → Jeda bergabung lagi setelah hapus akun** (0–720 jam, 0 = tanpa jeda). Perubahannya lewat draf dan persetujuan staf Kepatuhan lain, sama seperti kebijakan konten lain.
+- Selama jeda, app menampilkan sisa waktunya dan tombol **Hubungi CS** yang membuka pengaduan tamu. Chat CS di dalam app ikut tertutup, sama seperti akun yang di-ban. Akun yang di-ban kini juga mendapat pesan yang jelas, bukan error umum.
+- `make up` memasang migrasi dan membangun ulang auth-bridge sekaligus. Tidak ada pengaturan di `docker/.env` atau container baru. Pasang server lebih dulu, baru aplikasi dengan library 1.38.0. Aplikasi lama tetap ditolak selama jeda, hanya saja dengan pesan error umum.
+- Jeda berlaku juga untuk akun yang dihapus sebelum rilis ini, dihitung dari waktu hapusnya.
+
+### Blokir tetap berlaku setelah hapus akun (migrasi `0174`)
+
+- Sebelumnya, pengguna yang diblokir bisa menghapus akun komunitas lalu login lagi, dan blokir dari orang lain terhadap dirinya ikut hilang. Sekarang blokir dan mute dari orang lain tetap disimpan dan berlaku lagi saat ia login kembali.
+- Blokir yang hilang karena hapus akun sebelum rilis ini tidak bisa dipulihkan. Pengguna yang terdampak perlu memblokir ulang.
+- Migrasi berjalan otomatis lewat `make up`. Aplikasi tidak perlu diperbarui.
+
 ### Mention di grup (migrasi `0173`, library 1.36.0)
 
 - Di chat grup, pengguna bisa menyebut anggota grup dengan `@`. Saran nama hanya berisi anggota grup itu, dan `$KODE` di grup tetap mati.

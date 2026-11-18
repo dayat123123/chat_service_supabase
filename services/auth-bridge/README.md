@@ -52,6 +52,7 @@ App OLT ──POST /bridge/v1/exchange {"token": "<token sosial>"}──▶ Kong
 | 400 | `invalid_request` | Body bukan `{"token": "..."}` |
 | 401 | `invalid_token` | Token sosial tidak sah (tanda tangan, `iss`/`aud`, kedaluwarsa, umur > `OLT_JWT_MAX_TTL`); app perlu meminta token sosial baru ke OLT. Alasannya ada di log (`reason`) |
 | 403 | `user_banned` | User sedang di-ban dari fitur sosial |
+| 403 | `account_rejoin_cooldown` | Akun komunitas baru dihapus dan masih dalam jeda bergabung lagi (`account.rejoin_cooldown_hours`, bawaan 72 jam, migrasi `0175`). Body juga memuat `retry_at` (RFC 3339), ada header `Retry-After` (detik), dan `message` menyebut waktunya dalam WIB. Rekening OLT tidak ditautkan selama jeda |
 | 429 | `rate_limited` | Melebihi `RATE_LIMIT_PER_MINUTE` per IP atau `RATE_LIMIT_PER_USER_PER_MINUTE` per user. Ada header `Retry-After` |
 | 502 | `exchange_failed` | Gagal upsert profil (setelah retry) |
 | 503 | `olt_unavailable` | Hanya mode `websocket`: server OLT tidak menjawab dalam `OLT_WS_TIMEOUT`, atau circuit breaker terbuka |
@@ -235,6 +236,7 @@ Dependensi runtime: Go stdlib (termasuk verifikasi JWT: `crypto/ed25519`, `crypt
 
 | Versi | Perubahan |
 |---|---|
+| 0.7.0 | Akun komunitas yang baru dihapus ditolak `403 account_rejoin_cooldown` dengan `retry_at` dan `Retry-After` selama jeda bergabung lagi (migrasi `0175`); rekening OLT tidak ditautkan selama jeda. Metrik `bridge_exchanges_total{result="rejoin_cooldown"}` |
 | 0.6.0 | Heartbeat ke `private.service_instances` lewat RPC `service_heartbeat`: mode OLT, `kid` + `alg` JWKS, issuer, audience, max TTL (tanpa isi kunci). Dibaca halaman Hub **Pengaturan → Integrasi aplikasi** (migrasi `0114`). Variabel `INSTANCE_ID` dan `HEARTBEAT_INTERVAL`, metrik `olt_auth_bridge_last_heartbeat_timestamp_seconds`. Image compose: `olt-social/auth-bridge:0.6.0` |
 | 0.5.0 | Klaim opsional `accounts` di token sosial disimpan ke `private.account_links` lewat RPC `set_olt_account_links` (migrasi `0068`). Metrik `olt_auth_bridge_account_links_total`. Versi ditulis di log start. Image compose: `olt-social/auth-bridge:0.5.0` |
 | 0.4.0 | Verifikasi lokal token sosial bertanda tangan OLT (mode `jwt`) |

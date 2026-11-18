@@ -66,6 +66,7 @@ select is((select count(*)::int from private.user_private where user_id = :'cici
 select is((select count(*)::int from private.storage_cleanup_queue where prefix like '%' || :'cici' || '%'), 2,
   'File storage masuk antrean pembersihan');
 
+update profiles set deleted_at = now() - interval '73 hours' where id = :'cici';
 select upsert_olt_profile(:'cici', 'test:' || :'cici', 'cici_kembali', 'Cici') as relogin \gset
 select ok((select deleted_at is null and trust_level = 0 and username::text = 'cici_kembali'
            from profiles where id = :'cici'), 'Akun yang dihapus dibuat ulang bersih (trust_level 0)');

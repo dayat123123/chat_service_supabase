@@ -79,6 +79,9 @@ paths:
         Token sosial adalah JWT yang ditandatangani sistem host (OLT) dengan kunci yang terdaftar di server
         (kontrak lengkap: `docs/olt-integration.md`). Hasilnya `access_token` (±15 menit) untuk semua jalur lain.
         Tukar ulang dengan token sosial baru sebelum `expires_at`. Profil sosial dibuat otomatis pada penukaran pertama.
+
+        `403` berisi `user_banned` (akun di-ban) atau `account_rejoin_cooldown` (akun baru dihapus, sejak `0175`).
+        Untuk yang kedua, body juga memuat `retry_at` dan ada header `Retry-After`. Jangan mencoba lagi sebelum waktu itu.
       security:
         - anonKey: []
       requestBody:
@@ -1308,7 +1311,7 @@ components:
       headers:
         Retry-After:
           schema: {type: integer}
-          description: Ada pada 429 dan 503
+          description: Ada pada 429, 503, dan 403 account_rejoin_cooldown
       content:
         application/json:
           schema: {$ref: "#/components/schemas/GatewayError"}
@@ -1349,8 +1352,9 @@ components:
       type: object
       required: [error]
       properties:
-        error: {type: string, examples: [invalid_token, rate_limited, file_too_large, scope_forbidden]}
+        error: {type: string, examples: [invalid_token, rate_limited, file_too_large, scope_forbidden, account_rejoin_cooldown]}
         message: {type: string}
+        retry_at: {type: string, format: date-time, description: "Hanya pada account_rejoin_cooldown: kapan login boleh dicoba lagi"}
 
     Session:
       type: object

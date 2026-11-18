@@ -729,7 +729,7 @@ services:
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/auth-bridge
-    image: olt-social/auth-bridge:0.6.0
+    image: olt-social/auth-bridge:0.7.0
     # No egress: OLT tokens are verified locally with the OLT public key (jwt mode),
     # so auth-bridge never calls OLT. data: Valkey.
     networks: [app, data]

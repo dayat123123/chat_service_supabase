@@ -308,3 +308,23 @@ func TestAccountLinkResultsAreCountedWithoutFailingExchange(t *testing.T) {
 		t.Errorf("kegagalan tautan rekening harus dicatat:\n%s", logs.String())
 	}
 }
+
+func TestExchangeRejectsDeletedAccountInRejoinCooldown(t *testing.T) {
+	until := time.Now().Add(3 * time.Hour).Truncate(time.Second)
+	rec := post(newTestServer(fakeResolver{err: &exchange.RejoinCooldownError{Until: until}}, 10), `{"token":"t"}`, "192.0.2.1:1", "")
+	var body map[string]string
+	_ = json.Unmarshal(rec.Body.Bytes(), &body)
+	if rec.Code != http.StatusForbidden || body["error"] != "account_rejoin_cooldown" {
+		t.Fatalf("status=%d body=%v, want 403 account_rejoin_cooldown", rec.Code, body)
+	}
+	if got, err := time.Parse(time.RFC3339, body["retry_at"]); err != nil || !got.Equal(until) {
+		t.Fatalf("retry_at = %q, want %v", body["retry_at"], until)
+	}
+	if !strings.Contains(body["message"], until.In(wib).Format("02-01-2006 15:04")+" WIB") {
+		t.Fatalf("message = %q, want the rejoin time in WIB", body["message"])
+	}
+	retry := rec.Header().Get("Retry-After")
+	if retry == "" || retry == "0" {
+		t.Fatalf("Retry-After = %q", retry)
+	}
+}

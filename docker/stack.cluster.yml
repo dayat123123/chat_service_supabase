@@ -91,7 +91,7 @@ services:
       <<: *deploy
       replicas: 2
   auth-bridge:
-    image: ${REGISTRY:?REGISTRY is required}/olt-social/auth-bridge:0.6.0
+    image: ${REGISTRY:?REGISTRY is required}/olt-social/auth-bridge:0.7.0
     deploy:
       <<: *deploy
       replicas: 2

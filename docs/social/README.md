@@ -289,6 +289,29 @@ Pengguna memilih siapa yang boleh menyebutnya dengan `@`. Library: `rendezvous_c
 - Hanya pesan `visible` yang tidak terhapus. Event grup (`group_event`) dan DM tidak berubah.
 - **Tes:** `supabase/tests/150_group_mentions_test.sql`.
 
+### Hapus akun lalu login lagi (`0174`)
+
+Hapus akun (`delete_my_account`) boleh dilakukan berkali-kali. Setelah jeda bergabung lagi (`0175`, di bawah), login berikutnya lewat auth-bridge mengaktifkan kembali profil yang sama (ID dari login OLT), dengan `trust_level` 0 dan `created_at` baru, sehingga semua batasan akun baru berlaku lagi.
+
+| Yang terjadi saat akun dihapus | Setelah login lagi |
+|---|---|
+| Post, komentar, pesan dikosongkan; salinan di `private.content_archive` | Tidak kembali |
+| Follow dua arah, reaksi, keanggotaan chat, notifikasi, persetujuan dokumen hukum dihapus | Mulai dari nol; dokumen hukum harus disetujui lagi |
+| Blokir dan mute **yang dibuat pengguna itu** dihapus | Tidak kembali |
+| Blokir dan mute **dari orang lain terhadap pengguna itu** tetap disimpan (sejak `0174`) | Tetap berlaku: tidak bisa DM, berkomentar, atau tampil ke orang yang memblokirnya |
+| Sanksi moderator (`private.user_sanctions`), laporan, dan penghitung rate limit tidak disentuh | Ban dan mute tetap berlaku; `upsert_olt_profile` mengembalikan `banned` |
+| Permintaan DM yang ditolak (`private.dm_requests`) tetap ada, karena room DM dicari lewat pasangan ID | Tetap ditolak |
+
+Sebelum `0174`, blokir dan mute dari orang lain ikut terhapus, sehingga orang yang diblokir bisa lolos dengan menghapus akun lalu login lagi. Tidak ada batas jumlah hapus akun karena hapus akun adalah hak privasi pengguna. Login dibatasi per IP dan per pengguna oleh auth-bridge. Tes: `supabase/tests/151_delete_account_keeps_others_blocks_test.sql`.
+
+#### Jeda bergabung lagi (`0175`)
+
+- **Pengaturan:** `account.rejoin_cooldown_hours` di `private.settings`, bawaan 72 jam, `0` = tanpa jeda. Diatur dari Hub: Kepatuhan → Kebijakan konten → Aturan, lewat draf dan persetujuan empat mata seperti kebijakan lain (`cs_api.compliance_set_rejoin_cooldown_hours(p_hours)`, 0–720, peran `compliance`, audit `content_rule.rejoin_cooldown_hours`). Nilainya tercatat di riwayat versi kebijakan dan ikut di `compliance_content_rules` sebagai `rejoin_cooldown_hours`.
+- **Penegakan:** `upsert_olt_profile` tidak mengaktifkan kembali profil yang `deleted_at + jeda > now()`. Fungsi ini mengembalikan profil yang masih terhapus beserta `rejoin_at`, dan tidak menyimpan ulang email. Auth-bridge lalu menolak login dengan `403 account_rejoin_cooldown` (`retry_at`, header `Retry-After`) tanpa menautkan rekening OLT. Bila akun juga di-ban, yang dikembalikan `user_banned`.
+- **Klien:** `get_client_config().config.account_rejoin_cooldown_hours` dipakai library 1.38.0 untuk menyebut lama jeda di dialog hapus akun. Saat login ditolak, library menampilkan sisa waktu dan tombol Hubungi CS (pengaduan tamu), lalu mengingat penolakan itu sampai `retry_at` supaya tidak memanggil auth-bridge berulang kali.
+- **CS:** selama jeda, chat CS di dalam app ikut tertutup (sama seperti akun yang di-ban). Nasabah tetap bisa menghubungi CS lewat pengaduan tamu tanpa login.
+- Tes: `supabase/tests/152_account_rejoin_cooldown_test.sql`, dan tes Go di `services/auth-bridge`.
+
 ### Kelola grup (`0146`)
 
 Peran anggota grup ada di `chat_members.role`: `owner` (pembuat), `admin`, `member`. Semua RPC di bawah `authenticated`, hanya untuk room `type = 'group'` (selain itu `404 room_not_found`), dan bukan anggota ditolak `403 not_member`.

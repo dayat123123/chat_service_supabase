@@ -63,7 +63,7 @@ func NewMetrics(r *metrics.Registry) *Metrics {
 		Duration: r.Histogram("olt_auth_bridge_http_request_duration_seconds", "HTTP request duration",
 			[]float64{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10}, "path"),
 		Exchanges: r.Counter("olt_auth_bridge_exchanges_total",
-			"Token exchange results (ok, cached, invalid_token, olt_unavailable, banned, rate_limited_ip, rate_limited_user, error)",
+			"Token exchange results (ok, cached, invalid_token, olt_unavailable, banned, rejoin_cooldown, rate_limited_ip, rate_limited_user, error)",
 			"result"),
 		AccountLinks: r.Counter("olt_auth_bridge_account_links_total",
 			"Stored accounts claims from social tokens (ok, malformed, error)", "result"),
@@ -169,7 +169,20 @@ func (s *Server) handleExchange(w http.ResponseWriter, r *http.Request) {
 	if err == nil || errors.Is(err, exchange.ErrBanned) {
 		s.recordAccounts(r, id)
 	}
+	var cooldown *exchange.RejoinCooldownError
 	switch {
+	case errors.As(err, &cooldown):
+		s.countExchange("rejoin_cooldown")
+		s.logger(r).Info("exchange rejected: deleted account in rejoin cooldown", "user_id", id.Profile.ID,
+			"rejoin_at", cooldown.Until.UTC().Format(time.RFC3339))
+		wait := max(time.Until(cooldown.Until), time.Second)
+		w.Header().Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error":    "account_rejoin_cooldown",
+			"message":  "Akun komunitas Anda baru saja dihapus. Anda bisa bergabung lagi mulai " + jakartaTime(cooldown.Until) + ".",
+			"retry_at": cooldown.Until.UTC().Format(time.RFC3339),
+		})
+		return
 	case errors.Is(err, olt.ErrInvalidToken):
 		s.countExchange("invalid_token")
 		s.logger(r).Info("exchange rejected", "reason", err.Error(), "client_ip", ip)
@@ -372,4 +385,10 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+var wib = time.FixedZone("WIB", 7*60*60)
+
+func jakartaTime(t time.Time) string {
+	return t.In(wib).Format("02-01-2006 15:04") + " WIB"
 }

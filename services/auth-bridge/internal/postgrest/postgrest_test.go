@@ -179,3 +179,19 @@ func TestHeartbeatReportsRejectedCalls(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestUpsertProfileParsesRejoinAt(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"id":"u-1","olt_user_id":"1001","username":"deleted_ab","banned":false,"rejoin_at":"2026-11-21T08:34:12.853+00:00"}`))
+	}))
+	defer srv.Close()
+
+	p, err := NewClient(srv.URL, staticToken("t")).UpsertProfile(context.Background(), exchange.ProfileInput{ID: "u-1", OLTUserID: "1001"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2026, 11, 21, 8, 34, 12, 853_000_000, time.UTC)
+	if p.RejoinAt == nil || !p.RejoinAt.Equal(want) {
+		t.Fatalf("rejoin_at = %v, want %v", p.RejoinAt, want)
+	}
+}

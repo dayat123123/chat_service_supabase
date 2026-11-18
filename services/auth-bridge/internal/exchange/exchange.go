@@ -13,6 +13,14 @@ import (
 
 var ErrBanned = errors.New("user is banned from social features")
 
+type RejoinCooldownError struct {
+	Until time.Time
+}
+
+func (e *RejoinCooldownError) Error() string {
+	return "deleted account cannot rejoin until " + e.Until.UTC().Format(time.RFC3339)
+}
+
 type Profile struct {
 	ID          string     `json:"id"`
 	OLTUserID   string     `json:"olt_user_id"`
@@ -22,6 +30,7 @@ type Profile struct {
 	IsVerified  bool       `json:"is_verified"`
 	Banned      bool       `json:"banned,omitempty"`
 	BanEndsAt   *time.Time `json:"ban_ends_at,omitempty"`
+	RejoinAt    *time.Time `json:"rejoin_at,omitempty"`
 }
 
 type ProfileInput struct {
@@ -91,6 +100,12 @@ func (s *Service) Resolve(ctx context.Context, oltToken string) (id Identity, ca
 	})
 	if err != nil {
 		return Identity{}, false, fmt.Errorf("upsert profile: %w", err)
+	}
+	if profile.RejoinAt != nil {
+		if profile.Banned {
+			return Identity{Profile: profile}, false, ErrBanned
+		}
+		return Identity{Profile: profile}, false, &RejoinCooldownError{Until: *profile.RejoinAt}
 	}
 	id = Identity{Profile: profile, Accounts: s.linkAccounts(ctx, profile.ID, user.Accounts)}
 	if profile.Banned {
