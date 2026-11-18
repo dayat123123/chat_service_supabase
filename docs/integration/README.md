@@ -72,7 +72,7 @@ Tambahkan satu klaim opsional di payload token sosial (format token lengkap: [do
 | URL produksi | `https://<domain API sosial>/integration/v1/notify/messages` |
 | Header wajib | `apikey: <ANON_KEY>` (sama dengan app), `Authorization: Bearer <API key integrasi>`, `Content-Type: application/json` |
 | API key integrasi | Dibuat Super Admin di web CS. Berawalan `oik_`, **hanya ditampilkan sekali**. Simpan di konfigurasi rahasia notifEngine, jangan di kode atau log |
-| Izin (scope) | `notify`. Target selain `cust_id` (siaran) butuh izin tambahan `notify_broadcast` |
+| Izin (scope) | `notify`. Target selain `cust_id` dan `olt_user_id` (siaran) butuh izin tambahan `notify_broadcast` |
 | IP pengirim | Bila Super Admin mengisi daftar IP/CIDR pada key, request dari IP lain ditolak `403 ip_not_allowed` |
 | Batas | Maks **500 pesan** per request, body maks **2 MiB**, `rate_limit_per_minute` request per key (default 3000 = 50 request/detik sejak 0101; key lama tetap pada nilainya, naikkan dari web CS). Batas ini keras: kirim pesan dalam batch (100–500 pesan per request), jangan satu pesan per request. Uji beban: 5 request/detik × 100 pesan = 500 pesan/detik, p95 55 ms |
 
@@ -100,15 +100,15 @@ Tambahkan satu klaim opsional di payload token sosial (format token lengkap: [do
 |---|---|---|
 | `id` | ya | Id unik event, `^[A-Za-z0-9._:-]{1,100}$`. Kunci idempotensi (bagian 3) |
 | `cust_id` | ya* | String, format sama dengan klaim `accounts`. *Tidak dipakai (harus kosong) bila `target` diisi |
-| `target` | tidak | Objek, salah satu dari: `{"cust_id": "W137"}` (sama dengan `cust_id`), `{"olt_user_ids": ["1001", ...]}`, `{"audience": "all"}`, `{"audience": "stock_watchers", "stock": "BBCA"}`. Selain `cust_id` disebut **siaran** (bagian 2a) |
-| `kind` | tidak | Default `olt.trade` untuk `cust_id`, `olt.info` untuk siaran. Harus berawalan `olt.`, huruf kecil/angka/`_`, dipisah titik, maks 40 karakter. Contoh: `olt.trade`, `olt.trade.partial`, `olt.order.rejected`, `olt.deposit.received`, `olt.ipo.offer`. Aplikasi memakai `kind` untuk memilih layar; `kind` juga menentukan jenis preferensi nasabah (bagian 2b) |
+| `target` | tidak | Objek, salah satu dari: `{"cust_id": "W137"}` (sama dengan `cust_id`), `{"olt_user_id": "1001"}` (satu login, bagian 2c), `{"olt_user_ids": ["1001", ...]}`, `{"audience": "all"}`, `{"audience": "stock_watchers", "stock": "BBCA"}`. Selain `cust_id` dan `olt_user_id` disebut **siaran** (bagian 2a) |
+| `kind` | tidak | Default `olt.trade` untuk `cust_id`, `olt.info` untuk target lain. Harus berawalan `olt.`, huruf kecil/angka/`_`, dipisah titik, maks 40 karakter. Contoh: `olt.trade`, `olt.trade.partial`, `olt.order.rejected`, `olt.deposit.received`, `olt.ipo.offer`. Aplikasi memakai `kind` untuk memilih layar; `kind` juga menentukan jenis preferensi nasabah (bagian 2b) |
 | `title` | ya | String 1–200 karakter, atau objek `{"id": "...", "en": "..."}`. HP menampilkan sesuai bahasa aplikasi |
 | `body` | tidak | String ≤ 1000 karakter atau objek `{"id","en"}` |
 | `data` | tidak | Objek, maks 2 KB. Nilai dikirim ke app sebagai string. Server menambahkan `kind`, `source: "olt"`, `message_id`, `cust_id` (target rekening), `category` (bila dikirim, selalu untuk siaran), dan `notification_id` (bila juga masuk kotak notifikasi) |
 | `ttl_seconds` | tidak | 60–2419200. Push yang belum terkirim setelah ini dibuang. Default 24 jam; untuk order match disarankan `3600` |
 | `collapse_key` | tidak | 1–64 karakter. Push dengan kunci sama saling menimpa di HP (mis. beberapa partial fill satu order) |
 | `priority` | tidak | `high` (default) atau `normal` |
-| `channels` | tidak | Subset `["push", "inbox"]`. Default `["push"]` untuk `cust_id` (perilaku lama), `["push", "inbox"]` untuk siaran. `inbox` = notifikasi di kotak masuk aplikasi sosial |
+| `channels` | tidak | Subset `["push", "inbox"]`. Default `["push"]` untuk `cust_id` (perilaku lama), `["push", "inbox"]` untuk `olt_user_id` dan siaran. `inbox` = notifikasi di kotak masuk aplikasi sosial |
 | `category` | tidak | `important`, `info` (default), atau `promo`. Lihat bagian 2b |
 
 Tanpa `channels`, push transaksi **hanya** dikirim ke HP dan tidak masuk kotak notifikasi aplikasi sosial (riwayat transaksi tetap milik app OLT). Dengan `"channels": ["push", "inbox"]` pesan juga masuk kotak notifikasi sebagai pengumuman OLT (judul, isi, `kind`, `category`, `data`); ketukan diteruskan ke aplikasi host (`onOltNotificationTap` di paket Flutter). Push tetap satu per HP walaupun pesan juga masuk kotak notifikasi.
@@ -163,7 +163,7 @@ Format: `{"error": "<kode>", "message": "<penjelasan>"}` + header `X-Request-Id`
 | 502 | kode lain | Respons tak terduga dari database | Ya, dengan backoff |
 | 503 | `unavailable`, `busy` | Database tidak terjangkau / server sibuk | Ya, batch yang **sama**, setelah `Retry-After` |
 
-## 2a. Siaran: `target` selain `cust_id`
+## 2a. Siaran: `target` selain `cust_id` dan `olt_user_id`
 
 Untuk informasi pasar, IPO, pengumuman layanan, atau promo ke banyak nasabah sekaligus. Butuh API key dengan izin `notify` **dan** `notify_broadcast` (Super Admin memberi izin ini secara terpisah karena bisa menjangkau semua pengguna).
 
@@ -214,6 +214,39 @@ Nasabah mengatur notifikasi OLT per jenis di aplikasi (kotak masuk dan push terp
 - `info` (default): mengikuti preferensi jenisnya dan jam tenang (push ditunda sampai jam tenang selesai).
 - `promo`: mengikuti preferensi `olt.promo` (push opt-in) dan jam tenang.
 - Nasabah yang sebelum perubahan ini mematikan push `olt.trade` (dulu mencakup semua `olt.*`) otomatis juga mematikan push Dana, Pasar, dan Info.
+
+## 2c. Satu login: `target.olt_user_id` (alert harga)
+
+Untuk notifikasi pribadi yang terikat ke login, bukan ke rekening, misalnya alert harga yang dipasang pengguna di app OLT. Sejak `0171`.
+
+| Hal | `{"olt_user_id": "1001"}` | `{"olt_user_ids": [...]}` (siaran) |
+|---|---|---|
+| Izin key | `notify` saja | `notify` + `notify_broadcast` |
+| Pengiriman | Sinkron, langsung saat request (seperti `cust_id`) | Asinkron lewat cron tiap 15 detik |
+| Batas 3 siaran per hari | Tidak berlaku | Berlaku, kecuali `important` |
+| Jawaban | `queued` + `devices` (+ `inbox`), atau `no_recipient` | `accepted` + `broadcast_id` |
+| Tercatat di daftar siaran Hub | Tidak | Ya |
+
+- Nilai `olt_user_id` = `sub` token sosial login itu. String atau angka, `^[A-Za-z0-9._-]{1,64}$`. Login yang belum punya profil sosial aktif atau akunnya sudah dihapus dijawab `no_recipient`.
+- Tidak boleh digabung dengan `cust_id` atau target lain di pesan yang sama (`invalid_target`).
+- Preferensi dan jam tenang berlaku seperti biasa. `kind` berawalan `olt.price_alert` masuk preferensi **Pasar**, jadi nasabah yang mematikannya mendapat `no_recipient`. Jangan pakai `important` untuk alert harga.
+- Data push tidak memuat `cust_id`. Isi `data` sendiri (mis. `stock`, `alert_id`) agar app bisa membuka layar yang tepat lewat `onOltNotificationTap`.
+- Disarankan `collapse_key` per saham (alert yang lebih baru menimpa yang lama di HP), `ttl_seconds` pendek (mis. `3600`), dan `id` yang unik per pemicu (mis. `pa-<alert_id>-<YYYYMMDD>`) supaya kirim ulang tidak membuat push ganda.
+
+```bash
+curl -sS -X POST "https://api.contoh.co.id/integration/v1/notify/messages" \
+  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $OLT_INTEGRATION_KEY" -H "Content-Type: application/json" \
+  -d '{"messages":[{"id":"pa-8812-20261118","target":{"olt_user_id":"1001"},"kind":"olt.price_alert.above",
+        "title":"BBCA menyentuh 10.000","body":"Harga BBCA naik ke 10.000 (target ≥ 10.000)",
+        "data":{"stock":"BBCA","alert_id":"8812"},"collapse_key":"pa-BBCA","ttl_seconds":3600}]}'
+```
+
+Jawaban:
+
+```json
+{"results":[{"index":0,"id":"pa-8812-20261118","status":"queued","devices":2,"inbox":1}],
+ "queued":1,"devices":2,"no_recipient":0,"duplicate":0,"invalid":0,"accepted":0,"inbox":1}
+```
 
 ## 3. Idempotensi dan kirim ulang
 

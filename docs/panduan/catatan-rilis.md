@@ -4,6 +4,14 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 18 November 2026
+
+### Notifikasi ke satu login untuk alert harga (migrasi `0171`)
+
+- API notifikasi OLT menerima target baru `{"olt_user_id": "..."}`: satu login, dikirim langsung, cukup izin `notify`, dan tidak kena batas 3 siaran per hari. Dipakai untuk alert harga yang dipasang pengguna di app OLT. Rinciannya untuk tim OLT ada di [docs/integration](../integration/README.md#2c-satu-login-targetolt_user_id-alert-harga).
+- Migrasi berjalan otomatis lewat `make up`. Tidak ada pengaturan, container, atau API key baru; key `notify` yang sudah ada langsung bisa dipakai.
+- Target lama (`cust_id`, `olt_user_ids`, `audience`) tidak berubah. Aplikasi tidak perlu diperbarui.
+
 ## 17 November 2026
 
 ### Kontrol komentar (migrasi `0169`, library 1.31.0)
