@@ -355,7 +355,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | | **Jam layanan & libur** | Jam buka CS (WIB) dan hari libur | Awal tahun, perubahan jam kerja |
 | | **Pesan otomatis** | Pesan sistem ke nasabah (ID/EN) | Mengubah kata-kata pesan sistem |
 | | **Penugasan, tiket & alert** | Mode penugasan, lepas otomatis, tutup otomatis, batas alert | Mengatur alur kerja tim |
-| **Komunitas** | **Aturan persetujuan** | Aturan empat mata postingan/notifikasi dan kebijakan konten | Jarang; atas permintaan Kepatuhan |
+| **Persetujuan** | **Aturan empat mata** | Empat mata Komunitas, kebijakan konten, dan notifikasi info Banner & Popup | Jarang; atas permintaan Kepatuhan |
 | **Integrasi** | **Integrasi API Nasabah** | Sambungan menu Akun Nasabah | Pemasangan awal bersama IT |
 | | **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
 | | **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
@@ -427,10 +427,11 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 
 **Pengaturan → Survei kepuasan** (Super Admin, form terkunci dengan konfirmasi): pertanyaan (Indonesia/Inggris), **Skala** 3 (wajah) atau 5 (bintang), **Batas nilai rendah** (1–4), dan sampai 8 **Alasan** (kode dan label dua bahasa) yang ditawarkan ke nasabah bila nilainya rendah. Hasilnya di **Laporan → Alasan nilai rendah**.
 
-#### Aturan persetujuan (empat mata)
+#### Aturan empat mata (grup Persetujuan)
 
-- **Aturan empat mata**: default aktif. Postingan dan notifikasi resmi wajib disetujui staf lain, bukan pembuatnya.
+- **Empat mata Komunitas**: default aktif. Postingan dan notifikasi resmi Komunitas wajib disetujui staf lain, bukan pembuatnya.
 - **Empat mata kebijakan konten**: default aktif. Perubahan kebijakan konten wajib disetujui staf Kepatuhan lain.
+- **Empat mata notifikasi info Banner & Popup**: default mati. Bila mati, notifikasi info dari banner langsung dikirim setelah pembuatnya mengonfirmasi jumlah penerima. Bila dinyalakan, notifikasi baru dikirim setelah disetujui Super Admin atau staf Fitur & Banner lain, langsung dari baris banner di menu Banner & Popup.
 - **Risiko:** mematikan empat mata membuat satu orang bisa langsung menerbitkan ke semua pengguna. Biarkan aktif kecuali tim memang hanya satu orang, dan catat alasannya.
 
 #### Integrasi API Nasabah
@@ -529,7 +530,14 @@ Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi
    - **Gambar (opsional)**: JPEG, PNG, atau WebP. Pilih **Rasio potong** **4:5 (disarankan)** atau **1:1**, geser dan perbesar gambar, lalu **Pakai gambar**. Gambar dikecilkan otomatis sampai di bawah 2 MB dan baru diunggah saat banner disimpan. **Ganti gambar** atau **Hapus gambar** bisa dilakukan kapan saja; gambar lama dibersihkan otomatis.
 4. **Frekuensi** (strip dan popup): **Sekali per pengguna**, **Sekali sehari**, atau **Setiap buka aplikasi**. Popup muncul paling banyak sekali per buka aplikasi. Strip yang sudah muncul tetap tampil sampai aplikasi ditutup, lalu mengikuti frekuensinya; strip yang ditutup pengguna tidak muncul lagi di perangkat itu. Strip lama dari sebelum pembaruan ini diset **Setiap buka aplikasi** supaya perilakunya tidak berubah; ubah bila perlu. Butuh library 1.39.0 di aplikasi; aplikasi lama tetap menampilkan strip setiap kali.
 5. **Sasaran**: **Semua pengguna** atau **Pengguna baru ≤ N hari** (1–90 hari sejak profil dibuat). Pengunjung yang belum login hanya melihat banner untuk semua pengguna.
-6. **Kirim juga sebagai notifikasi** (khusus banner baru, bawaan menyala): saat banner disimpan, Hub sekaligus membuat ajuan kampanye notifikasi dengan judul, isi, dan tautan yang sama, atas nama akun resmi aktif yang paling lama dibuat, ke sasaran yang sama (semua pengguna, pengguna baru ≤ N hari, atau satu platform bila banner hanya untuk satu platform). Notifikasi ini masuk ke kotak notifikasi nasabah dan push setelah **disetujui staf lain** di **Komunitas → Notifikasi**, dan dikirim pada waktu mulai banner bila banner dijadwalkan. Deep link aplikasi (mis. `olt://…`) tidak ikut; tautan `https://` ikut. Judul minimal 3 karakter, isi panjang dipotong 240 karakter, dan kata terlarang ditolak. Matikan sakelar ini untuk banner yang tidak perlu masuk notifikasi, misalnya gangguan singkat. Mengubah banner tidak membuat notifikasi baru.
+6. **Kirim juga sebagai notifikasi** (khusus banner baru, bawaan menyala): judul, isi, gambar, dan tautan banner dikirim sebagai **notifikasi info** ke daftar notifikasi dan push semua nasabah sasaran banner. Notifikasi info tidak lewat Komunitas, tidak memakai akun resmi, dan tidak terkait Stream.
+   - Sebelum disimpan, Hub menampilkan konfirmasi berisi perkiraan jumlah penerima. Notifikasi yang sudah terkirim tidak bisa ditarik.
+   - Notifikasi dikirim saat banner mulai berlaku. Banner yang dijadwalkan besok mengirim notifikasinya besok.
+   - Bila nasabah mengetuk notifikasinya, aplikasi membuka **halaman info** berisi judul, waktu kirim, gambar, isi, dan tombol tautan banner. Deep link seperti `olt://mock-trading` dan tautan `https://` sama-sama bisa dipakai.
+   - Baris banner menampilkan status notifikasinya: menunggu persetujuan, terjadwal, sedang dikirim, **terkirim ke N nasabah · dibuka · diketuk**, ditolak (beserta alasan), dibatalkan, atau gagal.
+   - **Batalkan notifikasi** tersedia selama notifikasi belum selesai terkirim. Menghapus banner juga membatalkan notifikasinya yang belum terkirim.
+   - Bila **Empat mata notifikasi info** dinyalakan di Pengaturan → Persetujuan → Aturan empat mata, staf lain (Super Admin atau Fitur & Banner) menekan **Setujui** atau **Tolak** (wajib beralasan) di baris banner. Pembuat tidak bisa menyetujui buatannya sendiri.
+   - Mengubah banner tidak membuat notifikasi baru. Matikan sakelar ini untuk banner yang tidak perlu masuk notifikasi.
 7. Periksa **Pratinjau** di sisi kanan (strip, atau ponsel kecil untuk popup), lalu simpan.
 8. Daftar banner menampilkan jenis (**Strip**/**Popup**), status (**Terjadwal**, **Aktif**, **Selesai**), dan ringkasan statistik (tayang, klik, CTR). Tombol grafik di setiap baris membuka **Statistik**: tayang, klik, tutup, pengguna unik, CTR, dan rincian 7 hari terakhir. Satu pengguna dihitung paling banyak sekali per hari (WIB) untuk setiap jenis event; data disimpan 180 hari. Statistik strip (tayang, klik tombol, tutup) baru tercatat dari aplikasi dengan library 1.39.0; sebelumnya hanya popup yang tercatat.
 9. **Skema deep link**: tautan banner boleh `https://` atau deep link aplikasi dengan skema yang diizinkan (ditampilkan di bawah kolom tautan). Daftar skemanya diatur Super Admin di **Pengaturan → Integrasi → Integrasi aplikasi**.
@@ -707,7 +715,6 @@ Lainnya: **Lepas sematan**, **Sematkan lagi**, **Batalkan** (postingan tidak ter
 4. **Waktu kirim**: **Segera setelah disetujui** atau **Jadwalkan**.
 5. **Simpan & ajukan**. Staf lain menyetujui dengan **Setujui & kirim**, atau **Tolak**.
 6. Setelah terkirim, detail menampilkan jumlah push **terkirim**, **menunggu**, dan **gagal**.
-7. Banner yang dibuat dengan **Kirim juga sebagai notifikasi** (bagian 3.5) muncul di sini sebagai notifikasi yang menunggu persetujuan. Setujui atau tolak seperti notifikasi lain.
 
 > Notifikasi ke **Semua pengguna** sampai ke seluruh pengguna aplikasi. Periksa ejaan, tautan, dan jadwal sebelum menyetujui. Notifikasi yang sudah terkirim tidak bisa ditarik.
 

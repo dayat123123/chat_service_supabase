@@ -158,6 +158,23 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 - Disembunyikan: akun terhapus, tamu, staf CS, akun yang di-ban, dan akun yang saling blokir dengan pembaca. Karena itu jumlah baris bisa lebih sedikit dari `follower_count`/`following_count`.
 - Error: `400 invalid_kind`, `400 invalid_cursor`, `404 user_not_found` (pengguna tidak ada, terhapus, tamu, atau saling blokir dengan pembaca), `401 not_authenticated`.
 
+### Notifikasi info Banner & Popup (`0182`)
+
+`admin_save_banner(..., p_notify => true)` pada banner baru membuat baris `private.app_notices` (judul, isi, tautan, label tombol, gambar, level, sasaran). Notifikasi ini terpisah dari kampanye Komunitas: `cs.banner_campaign` dari `0180` dihapus, dan kampanye dari banner yang belum terkirim dibatalkan.
+
+- **Status:** `pending` (bila `banners.notice_four_eyes` = true), `scheduled` (banner belum mulai), `queued`, `sending`, `sent`, `rejected`, `cancelled`, atau `failed`.
+- **Pengiriman:** cron `app-notices` (15 detik) mengirim bertahap (`integration.broadcast_batch_size`) ke profil aktif sesuai sasaran (`all`/`new_users`), tanpa akun `official:%` dan `cs-staff:%`.
+  - Setiap penerima mendapat `public.notifications` bertipe `announcement` dengan payload `notice_id`, `banner_id`, `title`, `body`, `level`, `link_url`, `cta_label`, `image_url`, dan `sent_at`.
+  - Push dikirim lewat pemicu notifikasi biasa (data membawa `notice_id`), dan preferensi notifikasi pengumuman milik nasabah tetap dihormati.
+- **RPC Hub** (Super Admin dan `product`):
+  - `admin_banner_notices(p_limit)` dan `admin_banner_notice_preview(p_audience, p_audience_days)` → `{recipients, four_eyes}`.
+  - `admin_review_banner_notice(p_id, p_approve, p_note)`: bukan pembuatnya; penolakan wajib alasan 5–500 karakter.
+  - `admin_cancel_banner_notice(p_id)`.
+  - `admin_banners()` memuat `notice` terbaru per banner, termasuk `recipients`, `opened`, dan `tapped`.
+  - Menghapus banner membatalkan notifikasinya yang belum terkirim.
+- **RPC aplikasi:** `get_app_notice(p_id)` (authenticated) mengembalikan isi info hanya bagi pengguna yang menerimanya; selain itu `404 notice_not_found`.
+- **Audit:** `banner.notice_create`, `banner.notice_approve`, `banner.notice_reject`, `banner.notice_cancel`. Pengaturan `banners.notice_four_eyes` hanya bisa diubah Super Admin lewat `admin_set_setting`.
+
 ### Tab filter Stream dari server (`0149`, `0152`, `0180`)
 
 Tab Stream disimpan di `public.feed_filters` dan sejak `0180` tetap empat tab bawaan: `latest` (Terbaru), `top` (Teratas), `media` (Grafik & Media), `polls` (Polling), dengan constraint `feed_filters_builtin`. Tab tidak bisa ditambah, dihapus, diubah, atau diurutkan; Hub (**Komunitas → Tab Stream**, peran `cs_super_admin`/`product`) hanya bisa menyalakan atau mematikannya, tanpa rilis library atau aplikasi. Tabel tidak bisa dibaca langsung (RLS, tanpa grant).
