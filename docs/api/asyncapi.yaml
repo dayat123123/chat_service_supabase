@@ -1,0 +1,588 @@
+asyncapi: 3.0.0
+info:
+  title: Rendezvous Chat Realtime
+  version: "2026.11.18"
+  description: |
+    Event realtime chat lewat WebSocket Supabase Realtime (protokol Phoenix, `vsn=1.0.0`). Klien **hanya
+    mendengarkan**: semua event dikirim database setelah aksi lewat RPC (`openapi.yaml`). Klien tidak boleh dan
+    tidak bisa menyiarkan event sendiri ke topik chat.
+
+    ## Siklus koneksi
+
+    1. Buka `wss://{host}/realtime/v1/websocket?apikey={ANON_KEY}&vsn=1.0.0`.
+    2. Kirim `phx_join` untuk setiap topik dengan `config.private = true` dan `access_token` dari `/bridge/v1/exchange`.
+       Hanya anggota room yang diterima; selain itu `phx_reply` berstatus `error`.
+    3. Kirim `heartbeat` ke topik `phoenix` setiap ±25 detik. Tanpa heartbeat koneksi ditutup server.
+    4. Sebelum `access_token` kedaluwarsa, kirim event `access_token` berisi token baru ke setiap topik yang aktif.
+    5. Saat koneksi putus lalu tersambung lagi: join ulang, lalu isi celah pesan dengan RPC `get_message_ids`
+       (cursor pesan terakhir yang dimiliki) dan `get_messages_by_ids`. Realtime tidak menyimpan event yang terlewat.
+
+    ## Bingkai (frame)
+
+    Setiap pesan WebSocket adalah objek JSON `{topic, event, payload, ref, join_ref}`. Nama topik di frame
+    berawalan `realtime:`, misalnya `realtime:room:<id>`. `join_ref` setiap pesan klien wajib sama dengan `ref`
+    dari `phx_join` topik itu; pesan dengan `join_ref` yang salah diabaikan server tanpa error.
+
+    Event dari database tiba sebagai `event: "broadcast"` dengan nama event aslinya di `payload.event` dan isinya di
+    `payload.payload`. Skema di dokumen ini menjelaskan `payload.payload` per event.
+
+    ## Topik
+
+    | Topik | Siapa yang boleh join | Isi |
+    |---|---|---|
+    | `room:{room_id}` | Anggota room | Pesan, edit, hapus, reaksi, tanda baca, mengetik, status room |
+    | `user:{user_id}` | Pengguna itu sendiri | Aktivitas di semua DM, grup, dan chat CS saya (untuk daftar chat dan badge) |
+    | `cs:room:{room_id}` | Pemilik tiket dan agen | Sinyal pesan chat CS |
+servers:
+  production:
+    host: "{host}"
+    pathname: /realtime/v1/websocket
+    protocol: wss
+    description: Tambahkan query `apikey={ANON_KEY}&vsn=1.0.0`
+    variables:
+      host:
+        default: api.contoh.co.id
+  dev:
+    host: localhost:8000
+    pathname: /realtime/v1/websocket
+    protocol: ws
+
+channels:
+  phoenix:
+    address: phoenix
+    description: Topik khusus heartbeat koneksi
+    messages:
+      heartbeat: {$ref: "#/components/messages/Heartbeat"}
+      heartbeatReply: {$ref: "#/components/messages/PhxReply"}
+  room:
+    address: "realtime:room:{roomId}"
+    description: Satu room chat
+    parameters:
+      roomId: {$ref: "#/components/parameters/roomId"}
+    messages:
+      join: {$ref: "#/components/messages/PhxJoin"}
+      joinReply: {$ref: "#/components/messages/PhxReply"}
+      leave: {$ref: "#/components/messages/PhxLeave"}
+      accessToken: {$ref: "#/components/messages/AccessToken"}
+      message: {$ref: "#/components/messages/MessageEvent"}
+      messageEdited: {$ref: "#/components/messages/MessageEditedEvent"}
+      messageHidden: {$ref: "#/components/messages/MessageHiddenEvent"}
+      reaction: {$ref: "#/components/messages/ReactionEvent"}
+      receipt: {$ref: "#/components/messages/ReceiptEvent"}
+      typing: {$ref: "#/components/messages/TypingEvent"}
+      typingSummary: {$ref: "#/components/messages/TypingSummaryEvent"}
+      roomState: {$ref: "#/components/messages/RoomStateEvent"}
+      roomDeleted: {$ref: "#/components/messages/RoomDeletedEvent"}
+  user:
+    address: "realtime:user:{userId}"
+    description: Saluran pribadi pengguna (id profil dari `/bridge/v1/exchange`)
+    parameters:
+      userId: {$ref: "#/components/parameters/userId"}
+    messages:
+      join: {$ref: "#/components/messages/PhxJoin"}
+      joinReply: {$ref: "#/components/messages/PhxReply"}
+      leave: {$ref: "#/components/messages/PhxLeave"}
+      accessToken: {$ref: "#/components/messages/AccessToken"}
+      roomActivity: {$ref: "#/components/messages/RoomActivityEvent"}
+      roomRemoved: {$ref: "#/components/messages/RoomRemovedEvent"}
+  csRoom:
+    address: "realtime:cs:room:{roomId}"
+    description: Sinyal tambahan untuk chat CS
+    parameters:
+      roomId: {$ref: "#/components/parameters/roomId"}
+    messages:
+      join: {$ref: "#/components/messages/PhxJoin"}
+      joinReply: {$ref: "#/components/messages/PhxReply"}
+      leave: {$ref: "#/components/messages/PhxLeave"}
+      accessToken: {$ref: "#/components/messages/AccessToken"}
+      ticketMessage: {$ref: "#/components/messages/CsMessageEvent"}
+
+operations:
+  sendHeartbeat:
+    action: send
+    channel: {$ref: "#/channels/phoenix"}
+    summary: Heartbeat tiap ±25 detik
+    messages:
+      - {$ref: "#/channels/phoenix/messages/heartbeat"}
+    reply:
+      channel: {$ref: "#/channels/phoenix"}
+      messages:
+        - {$ref: "#/channels/phoenix/messages/heartbeatReply"}
+  joinRoom:
+    action: send
+    channel: {$ref: "#/channels/room"}
+    summary: Mulai mendengarkan room (saat layar room dibuka)
+    messages:
+      - {$ref: "#/channels/room/messages/join"}
+    reply:
+      channel: {$ref: "#/channels/room"}
+      messages:
+        - {$ref: "#/channels/room/messages/joinReply"}
+  leaveRoom:
+    action: send
+    channel: {$ref: "#/channels/room"}
+    summary: Berhenti mendengarkan room (saat layar room ditutup)
+    messages:
+      - {$ref: "#/channels/room/messages/leave"}
+  refreshRoomToken:
+    action: send
+    channel: {$ref: "#/channels/room"}
+    summary: Perbarui access_token di topik room
+    messages:
+      - {$ref: "#/channels/room/messages/accessToken"}
+  receiveRoomEvents:
+    action: receive
+    channel: {$ref: "#/channels/room"}
+    summary: Event dari database untuk satu room
+    messages:
+      - {$ref: "#/channels/room/messages/message"}
+      - {$ref: "#/channels/room/messages/messageEdited"}
+      - {$ref: "#/channels/room/messages/messageHidden"}
+      - {$ref: "#/channels/room/messages/reaction"}
+      - {$ref: "#/channels/room/messages/receipt"}
+      - {$ref: "#/channels/room/messages/typing"}
+      - {$ref: "#/channels/room/messages/typingSummary"}
+      - {$ref: "#/channels/room/messages/roomState"}
+      - {$ref: "#/channels/room/messages/roomDeleted"}
+  joinUser:
+    action: send
+    channel: {$ref: "#/channels/user"}
+    summary: Mendengarkan saluran pribadi (selama aplikasi aktif)
+    messages:
+      - {$ref: "#/channels/user/messages/join"}
+    reply:
+      channel: {$ref: "#/channels/user"}
+      messages:
+        - {$ref: "#/channels/user/messages/joinReply"}
+  refreshUserToken:
+    action: send
+    channel: {$ref: "#/channels/user"}
+    messages:
+      - {$ref: "#/channels/user/messages/accessToken"}
+  receiveUserEvents:
+    action: receive
+    channel: {$ref: "#/channels/user"}
+    messages:
+      - {$ref: "#/channels/user/messages/roomActivity"}
+      - {$ref: "#/channels/user/messages/roomRemoved"}
+  joinCsRoom:
+    action: send
+    channel: {$ref: "#/channels/csRoom"}
+    messages:
+      - {$ref: "#/channels/csRoom/messages/join"}
+    reply:
+      channel: {$ref: "#/channels/csRoom"}
+      messages:
+        - {$ref: "#/channels/csRoom/messages/joinReply"}
+  receiveCsEvents:
+    action: receive
+    channel: {$ref: "#/channels/csRoom"}
+    messages:
+      - {$ref: "#/channels/csRoom/messages/ticketMessage"}
+
+components:
+  parameters:
+    roomId:
+      description: UUID room
+    userId:
+      description: UUID profil pengguna
+
+  messages:
+    PhxJoin:
+      name: phx_join
+      title: Join topik
+      payload:
+        type: object
+        required: [topic, event, payload, ref, join_ref]
+        properties:
+          topic: {type: string, examples: ["realtime:room:a3e0c1f2-7d4b-4c55-9a51-0f8a3f7c1d20"]}
+          event: {const: phx_join}
+          ref: {type: string, description: Nomor urut unik per koneksi}
+          join_ref: {type: string, description: Sama dengan `ref` pesan ini}
+          payload:
+            type: object
+            required: [config, access_token]
+            properties:
+              access_token: {type: string}
+              config:
+                type: object
+                required: [private]
+                properties:
+                  private: {const: true}
+                  broadcast:
+                    type: object
+                    properties:
+                      self: {type: boolean, default: false}
+                      ack: {type: boolean, default: false}
+                  presence:
+                    type: object
+                    properties:
+                      key: {type: string, description: "Id saya bila memakai presence (status online di DM); selain itu string kosong"}
+      examples:
+        - payload:
+            topic: "realtime:room:a3e0c1f2-7d4b-4c55-9a51-0f8a3f7c1d20"
+            event: phx_join
+            ref: "1"
+            join_ref: "1"
+            payload:
+              access_token: eyJhbGciOi...
+              config: {private: true, broadcast: {self: false}, presence: {key: ""}}
+
+    PhxReply:
+      name: phx_reply
+      title: Balasan server
+      payload:
+        type: object
+        properties:
+          topic: {type: string}
+          event: {const: phx_reply}
+          ref: {type: string}
+          payload:
+            type: object
+            properties:
+              status: {type: string, enum: [ok, error]}
+              response: {type: object, additionalProperties: true}
+
+    PhxLeave:
+      name: phx_leave
+      payload:
+        type: object
+        properties:
+          topic: {type: string}
+          event: {const: phx_leave}
+          payload: {type: object}
+          ref: {type: string}
+          join_ref: {type: string}
+
+    Heartbeat:
+      name: heartbeat
+      payload:
+        type: object
+        properties:
+          topic: {const: phoenix}
+          event: {const: heartbeat}
+          payload: {type: object}
+          ref: {type: string}
+      examples:
+        - payload: {topic: phoenix, event: heartbeat, payload: {}, ref: "42"}
+
+    AccessToken:
+      name: access_token
+      title: Ganti token di topik yang sudah join
+      payload:
+        type: object
+        properties:
+          topic: {type: string}
+          event: {const: access_token}
+          payload:
+            type: object
+            required: [access_token]
+            properties:
+              access_token: {type: string}
+          ref: {type: string}
+          join_ref: {type: string}
+
+    MessageEvent:
+      name: message
+      title: Pesan baru atau berubah
+      summary: |
+        Isi lengkap pesan (tanpa `reactions` dan `shared_post`). Bila `ref: true`, isi tidak disiarkan karena aturan
+        blokir: ambil pesannya dengan `get_messages_by_ids`. Cocokkan `client_id` dengan pesan sementara milik
+        pengirim. Event yang sama juga dikirim saat pesan dihapus (`is_deleted: true`).
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: message}
+                  payload: {$ref: "#/components/schemas/MessagePayload"}
+      examples:
+        - payload:
+            topic: "realtime:room:a3e0c1f2-7d4b-4c55-9a51-0f8a3f7c1d20"
+            event: broadcast
+            ref: null
+            payload:
+              type: broadcast
+              event: message
+              payload:
+                id: 71b0d4c2-1f6e-4a7a-9c3d-5e2b8f0a6d11
+                room_id: a3e0c1f2-7d4b-4c55-9a51-0f8a3f7c1d20
+                sender_id: 6f1c2b9e-0d1a-4b8e-a4f5-2d7c9e3b1a60
+                sender_username: budi_santoso
+                sender_display_name: Budi
+                body: Ada yang pegang @andi BBCA?
+                is_deleted: false
+                attachments: [{type: stock, code: BBCA}]
+                client_id: 5b9f2c1e-3a77-4f0c-8d2e-91c3a0b7e6f4
+                created_at: "2026-11-18T02:10:04.512Z"
+                cursor: "…"
+                kind: text
+                payload: {}
+
+    MessageEditedEvent:
+      name: message_edited
+      summary: Pesan terakhir room diedit (pratinjau daftar chat ikut berubah). Isi lengkap datang lewat `message`.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: message_edited}
+                  payload:
+                    type: object
+                    properties:
+                      room_id: {type: string, format: uuid}
+                      message_id: {type: string, format: uuid}
+                      preview: {type: string}
+                      edited_at: {type: string, format: date-time}
+
+    MessageHiddenEvent:
+      name: message_hidden
+      summary: Pesan disembunyikan moderator. Hapus dari tampilan.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: message_hidden}
+                  payload:
+                    type: object
+                    properties:
+                      room_id: {type: string, format: uuid}
+                      message_id: {type: string, format: uuid}
+                      user_id: {type: [string, "null"], format: uuid, description: Pengirim pesan}
+
+    ReactionEvent:
+      name: reaction
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: reaction}
+                  payload:
+                    type: object
+                    properties:
+                      message_id: {type: string, format: uuid}
+                      user_id: {type: string, format: uuid, description: Yang memberi reaksi}
+                      emoji: {type: [string, "null"], description: "`null` = reaksi dihapus"}
+                      reactions:
+                        type: array
+                        description: Ringkasan terbaru (tanpa `me`; hitung sendiri dari `user_id`)
+                        items:
+                          type: object
+                          properties:
+                            emoji: {type: string}
+                            count: {type: integer}
+
+    ReceiptEvent:
+      name: receipt
+      summary: Tanda sampai/dibaca. Pesan saya dengan `created_at` ≤ waktu ini berstatus sampai/dibaca oleh `user_id`.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: receipt}
+                  payload:
+                    type: object
+                    properties:
+                      user_id: {type: string, format: uuid}
+                      last_delivered_at: {type: [string, "null"], format: date-time}
+                      last_read_at: {type: [string, "null"], format: date-time}
+
+    TypingEvent:
+      name: typing
+      summary: Room kecil (< 50 anggota) dan chat CS. Anggap berhenti mengetik bila tidak ada event ±5 detik.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: typing}
+                  payload:
+                    type: object
+                    properties:
+                      user_id: {type: string, format: uuid}
+                      username: {type: string}
+                      display_name: {type: [string, "null"]}
+                      typing: {type: boolean}
+
+    TypingSummaryEvent:
+      name: typing_summary
+      summary: Room besar (50–1.999 anggota). Tampilkan "N orang mengetik" selama `ttl_ms`.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: typing_summary}
+                  payload:
+                    type: object
+                    properties:
+                      room_id: {type: string, format: uuid}
+                      count: {type: integer, minimum: 1, maximum: 99}
+                      ttl_ms: {type: integer}
+
+    RoomStateEvent:
+      name: room_state
+      summary: Status room saham berubah (slow mode, pesan tersemat, moderator). Bentuk sama dengan `get_stock_room_state`.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: room_state}
+
+    RoomDeletedEvent:
+      name: room_deleted
+      summary: Grup dihapus pemiliknya. Tutup layar room.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: room_deleted}
+                  payload: {$ref: "#/components/schemas/RoomRemovalPayload"}
+
+    RoomActivityEvent:
+      name: room_activity
+      summary: |
+        Pesan baru di salah satu DM, grup, atau chat CS saya. Naikkan room ke atas daftar dan perbarui badge.
+        Room saham tidak mengirim event ini (pakai polling `get_room_previews`).
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: room_activity}
+                  payload:
+                    type: object
+                    properties:
+                      id: {type: string, format: uuid, description: Id event}
+                      room_id: {type: string, format: uuid}
+                      room_type: {type: string, enum: [direct, group, support]}
+                      message_id: {type: string, format: uuid}
+                      sender_id: {type: [string, "null"], format: uuid}
+                      created_at: {type: string, format: date-time}
+                      preview: {type: string, description: "Cuplikan ≤ 120 karakter atau `[lampiran]`"}
+
+    RoomRemovedEvent:
+      name: room_removed
+      summary: Room hilang dari daftar saya (saya menghapus chat, keluar, atau grup dihapus).
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: room_removed}
+                  payload: {$ref: "#/components/schemas/RoomRemovalPayload"}
+
+    CsMessageEvent:
+      name: message
+      title: Pesan chat CS
+      summary: Sinyal ringan; isi lengkap pesan datang di topik `room:{room_id}`.
+      payload:
+        allOf:
+          - {$ref: "#/components/schemas/BroadcastFrame"}
+          - type: object
+            properties:
+              payload:
+                type: object
+                properties:
+                  event: {const: message}
+                  payload:
+                    type: object
+                    properties:
+                      id: {type: string, format: uuid}
+                      room_id: {type: string, format: uuid}
+                      ticket_id: {type: string, format: uuid}
+                      client_id: {type: [string, "null"], format: uuid}
+
+  schemas:
+    BroadcastFrame:
+      type: object
+      description: Bingkai event dari database. Isi event ada di `payload.payload`.
+      required: [topic, event, payload]
+      properties:
+        topic: {type: string}
+        event: {const: broadcast}
+        ref: {type: ["string", "null"]}
+        payload:
+          type: object
+          required: [type, event, payload]
+          properties:
+            type: {const: broadcast}
+            event:
+              type: string
+              enum: [message, message_edited, message_hidden, reaction, receipt, typing, typing_summary,
+                     room_state, room_deleted, room_activity, room_removed]
+            payload: {type: object, additionalProperties: true}
+
+    MessagePayload:
+      type: object
+      required: [id, room_id, created_at]
+      description: Sama dengan `ChatMessage` di `openapi.yaml`; field kosong tidak dikirim.
+      properties:
+        id: {type: string, format: uuid}
+        room_id: {type: string, format: uuid}
+        ref: {type: boolean, description: "`true` = hanya penanda; ambil isi lewat `get_messages_by_ids`"}
+        sender_id: {type: string, format: uuid}
+        sender_username: {type: string}
+        sender_display_name: {type: string}
+        sender_avatar_url: {type: string}
+        sender_role: {type: string}
+        body: {type: string}
+        is_deleted: {type: boolean}
+        reply_to_id: {type: string, format: uuid}
+        reply_to_body: {type: string}
+        reply_to_sender_username: {type: string}
+        attachments: {type: array, items: {type: object, additionalProperties: true}}
+        client_id: {type: string, format: uuid}
+        edited_at: {type: string, format: date-time}
+        created_at: {type: string, format: date-time}
+        cursor: {type: string}
+        kind: {type: string}
+        payload: {type: object, additionalProperties: true}
+        session_id: {type: string, format: uuid}
+
+    RoomRemovalPayload:
+      type: object
+      properties:
+        room_id: {type: string, format: uuid}
+        reason: {type: string, enum: [hidden, left, group_deleted]}
+        actor_id: {type: string, format: uuid, description: Hanya untuk `group_deleted`}
+        actor_name: {type: string, description: Hanya untuk `group_deleted`}
