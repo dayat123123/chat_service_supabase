@@ -43,7 +43,7 @@ Super Admin memberi setiap akun **peran** dan, bila perlu, **izin tambahan**:
 | **CS** | Agen yang menangani tiket chat nasabah |
 | **Super Admin** | Supervisor / admin operasional CS. Memantau tiket dan CS, tidak membalas nasabah. Mengelola akun staf dan semua pengaturan |
 | **Kepatuhan** | Tim kepatuhan: pengaduan, penipuan, audit, kebijakan, dokumen hukum, bukti |
-| **Komunitas** | Tim riset/marketing/moderasi yang tidak menangani tiket. Menunya ditentukan **Izin Komunitas** |
+| **Komunitas** | Tim riset/marketing/moderasi yang tidak menangani tiket. Peran ini **tidak dipilih manual**: akun yang hanya diberi **Izin Komunitas** otomatis menjadi staf Komunitas, dan menunya ditentukan izin itu |
 | **Fitur & Banner** | Tim produk/marketing yang mengelola fitur sosial, kill switch, versi minimum aplikasi, dan tab Stream (di menu **Komunitas**), serta banner dan popup (menu **Banner & Popup**). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
 | **Pusat Bantuan** | Tim yang mengelola isi bantuan untuk nasabah di aplikasi: topik chat CS dan artikel bantuan (FAQ). Tidak bisa membuka Pengaturan, Dashboard, Laporan, atau tiket |
 
@@ -366,12 +366,18 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 
 #### Akun CS
 
-1. Klik **Tambah akun**. Isi email kerja, **Nama tampilan** (2–40 karakter, **terlihat oleh nasabah**), **Peran**, **Tim**, dan **Batas tiket aktif (1–20)**.
-2. Bila perlu, centang **Izin Komunitas** (bagian 5) dan **Akses Akun Nasabah** (hanya untuk akun berperan CS).
-3. Klik **Buat akun**. **Password sementara hanya ditampilkan sekali.** Serahkan email dan password lewat jalur aman (bukan grup chat). CS wajib menggantinya saat login pertama.
-4. **Reset password**: password lama langsung tidak berlaku; password sementara baru hanya ditampilkan sekali.
-5. Menonaktifkan akun (matikan **Akun aktif**): akun langsung tidak bisa login, tiket aktifnya kembali ke antrean dengan tanda "Akun CS dinonaktifkan", dan transfer yang menunggunya dibatalkan. Lakukan di hari terakhir staf bekerja.
-6. Anda tidak bisa menonaktifkan akun sendiri atau melepas peran Super Admin Anda sendiri.
+1. Klik **Tambah akun**. Isi email kerja dan **Nama tampilan** (2–40 karakter, **terlihat oleh nasabah**).
+2. **Peran**: centang semua yang sesuai. Setiap kartu menjelaskan menu yang dibukanya. Menu akun adalah gabungan dari semua peran dan izin.
+   - **Super Admin** sudah termasuk **Fitur & Banner** dan **Pusat Bantuan**. Saat Super Admin dicentang, kedua kartu itu tampil tercentang dan terkunci dengan tulisan "Sudah termasuk dalam Super Admin", dan tidak disimpan terpisah.
+   - Super Admin tanpa **CS** hanya memantau tiket. Centang CS juga bila Super Admin ikut membalas nasabah.
+   - Tidak ada kartu **Komunitas**. Akun yang hanya diberi Izin Komunitas otomatis menjadi staf Komunitas.
+   - Akun wajib punya minimal satu peran atau satu Izin Komunitas.
+3. **Pengaturan CS** hanya muncul bila peran **CS** dicentang. Isinya **Tim**, **Batas tiket aktif (1–20)**, dan **Akses Akun Nasabah**. Di tabel akun, kolom Tim dan Batas tiket bertanda "–" untuk akun non-CS.
+4. **Izin Komunitas** (bagian 5) bisa diberikan ke peran apa pun. Setiap grup izin punya tombol **Pilih semua** dan **Kosongkan** serta hitungan izin yang dipilih.
+5. Klik **Buat akun**. **Password sementara hanya ditampilkan sekali.** Serahkan email dan password lewat jalur aman (bukan grup chat). CS wajib menggantinya saat login pertama.
+6. **Reset password**: password lama langsung tidak berlaku; password sementara baru hanya ditampilkan sekali.
+7. Menonaktifkan akun (matikan **Akun aktif**): akun langsung tidak bisa login, tiket aktifnya kembali ke antrean dengan tanda "Akun CS dinonaktifkan", dan transfer yang menunggunya dibatalkan. Lakukan di hari terakhir staf bekerja.
+8. Anda tidak bisa menonaktifkan akun sendiri atau melepas peran Super Admin Anda sendiri.
 
 #### Quick reply
 

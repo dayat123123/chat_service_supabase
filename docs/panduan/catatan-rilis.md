@@ -6,6 +6,16 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Form akun staf dirapikan (Hub)
+
+- Setiap kartu **Peran** kini menjelaskan menu yang dibukanya.
+- **Super Admin** sudah termasuk **Fitur & Banner** dan **Pusat Bantuan**. Saat Super Admin dicentang, kedua peran itu tampil terkunci dan tidak disimpan terpisah. Akses tidak berubah, karena server memang sudah menerima Super Admin untuk menu tersebut.
+- Kartu **Komunitas** dihapus. Akun yang hanya diberi Izin Komunitas otomatis menjadi staf Komunitas.
+- **Tim**, **Batas tiket aktif**, dan **Akses Akun Nasabah** dikelompokkan di **Pengaturan CS** dan hanya muncul untuk peran CS.
+- Grup **Akses Akun Nasabah**, **Izin Komunitas**, dan **Izin Berbagi Trade** punya tombol **Pilih semua** dan **Kosongkan**.
+- Peran lama yang tersimpan berlebih, misalnya Super Admin yang juga punya Fitur & Banner, dirapikan saat akun itu disimpan lagi.
+- Cukup perbarui Hub (`git -C ~/rendezvous_hub pull --ff-only && make up`). Tidak ada perubahan server.
+
 ### Banner sekaligus notifikasi, Tab Stream tetap empat tab (migrasi `0180`, Hub)
 
 - **Banner baru bisa sekaligus menjadi notifikasi.** Form Tambah banner punya sakelar **Kirim juga sebagai notifikasi**, bawaan menyala. Saat disimpan, server membuat ajuan kampanye notifikasi dengan judul, isi, tautan `https://`, dan sasaran yang sama. Pengirimnya akun resmi aktif yang paling lama dibuat. Notifikasi baru masuk ke kotak notifikasi dan push nasabah setelah disetujui staf lain di **Komunitas → Notifikasi**. Deep link aplikasi tidak ikut.
