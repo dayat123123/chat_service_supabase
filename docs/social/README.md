@@ -310,6 +310,7 @@ Sebelum `0174`, blokir dan mute dari orang lain ikut terhapus, sehingga orang ya
 - **Penegakan:** `upsert_olt_profile` tidak mengaktifkan kembali profil yang `deleted_at + jeda > now()`. Fungsi ini mengembalikan profil yang masih terhapus beserta `rejoin_at`, dan tidak menyimpan ulang email. Auth-bridge lalu menolak login dengan `403 account_rejoin_cooldown` (`retry_at`, header `Retry-After`) tanpa menautkan rekening OLT. Bila akun juga di-ban, yang dikembalikan `user_banned`.
 - **Klien:** `get_client_config().config.account_rejoin_cooldown_hours` dipakai library 1.38.0 untuk menyebut lama jeda di dialog hapus akun. Saat login ditolak, library menampilkan sisa waktu dan tombol Hubungi CS (pengaduan tamu), lalu mengingat penolakan itu sampai `retry_at` supaya tidak memanggil auth-bridge berulang kali.
 - **CS:** selama jeda, chat CS di dalam app ikut tertutup (sama seperti akun yang di-ban). Nasabah tetap bisa menghubungi CS lewat pengaduan tamu tanpa login.
+- **Sesi dari cache (`0177`):** auth-bridge menyimpan hasil penukaran token selama `VERIFY_CACHE_TTL` (60 detik), jadi tepat setelah hapus akun ia masih bisa menerbitkan JWT untuk profil yang sudah terhapus. `private.check_request` menolak setiap request PostgREST (selain `cs_api`) dari profil yang `deleted_at`-nya terisi dengan `403 account_rejoin_cooldown`. Tes: `supabase/tests/154_deleted_profile_requests_test.sql`.
 - Tes: `supabase/tests/152_account_rejoin_cooldown_test.sql`, dan tes Go di `services/auth-bridge`.
 
 ### Kelola grup (`0146`)

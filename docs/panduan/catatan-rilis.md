@@ -6,6 +6,18 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Kata terlarang yang sudah disetujui tetap lolos (migrasi `0178`)
+
+- Pola pencocokan kata terlarang, frasa promosi, pengecualian, dan domain (`private.policy_patterns`, `private.policy_forms`) bisa tertinggal dari isi daftar. Penyebabnya percobaan yang gagal sebelum `0176`, atau data hasil restore/seed. Akibatnya kata yang sudah disetujui tetap lolos di Uji teks dan di app.
+- `0178` membangun ulang semua pola saat `make up`. Tes `155` memastikan pola selalu sesuai dengan daftar.
+- Untuk memperbaiki tanpa menunggu update: `docker exec olt-social-db-1 psql -U postgres -c "select private.rebuild_policy_patterns(p) from unnest(array['words', 'promo', 'allow', 'domains']) p"`
+
+### Akun yang baru dihapus tidak bisa muncul lagi lewat Coba lagi (migrasi `0177`)
+
+- Sebelumnya, dalam 60 detik setelah hapus akun, menekan Coba lagi di app bisa membuka komunitas lagi dengan akun yang sudah terhapus. Penyebabnya: auth-bridge menyimpan hasil login sebentar di cache (`VERIFY_CACHE_TTL`, 60 detik), jadi masa tunggu baru terasa setelah login ulang.
+- Sekarang server menolak setiap request dari akun komunitas yang sudah dihapus (`403 account_rejoin_cooldown`), dari mana pun sesinya didapat. App menampilkan "Akun komunitas Anda baru saja dihapus" dan tombol Hubungi CS sampai masa tunggu habis.
+- Migrasi berjalan otomatis lewat `make up`. Aplikasi tidak perlu diperbarui.
+
 ### Perbaikan kebijakan konten di Hub (migrasi `0176`, Hub, library 1.38.1)
 
 - **Error "UPDATE requires a WHERE clause" diperbaiki.** Sebelumnya setiap perubahan Kata terlarang, frasa promosi, pengecualian, atau domain dari Hub gagal dengan error ini, jadi daftarnya tidak pernah bertambah. Setelah update, **tambahkan ulang** kata atau domain yang tadi gagal disimpan.
@@ -16,7 +28,7 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
   - kartu itu menampilkan nilai yang berlaku sekarang di samping nilai di draf;
   - ada terjemahan jam ke hari (72 jam = 3 hari) dan tombol pilihan cepat;
   - Uji teks menampilkan kesimpulan dalam bahasa biasa, menyebut jumlah kata dan frasa di daftar, dan memberi peringatan bila ada draf yang belum berlaku.
-- **App yang sedang terbuka** (library 1.38.1) kini memeriksa ulang jeda paling lama tiap 5 menit, jadi perubahan jeda di Hub cepat terasa. Layar "akun baru dihapus" punya tombol Coba lagi di samping Hubungi CS.
+- **App yang sedang terbuka** (library 1.38.2) memeriksa ulang jeda paling lama 30 detik setelah penolakan terakhir, atau saat nasabah menekan Coba lagi setelah itu. Dengan 1.38.1, Coba lagi dalam 5 menit masih memakai penolakan lama. Layar "akun baru dihapus" punya tombol Coba lagi di samping Hubungi CS.
 - `make up` memasang migrasi dan membangun ulang Hub. Tidak ada pengaturan baru.
 
 ### Jeda bergabung lagi setelah hapus akun (migrasi `0175`, auth-bridge, library 1.38.0, Hub)
