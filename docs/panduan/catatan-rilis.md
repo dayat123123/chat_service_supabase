@@ -6,6 +6,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Pengaturan mention (migrasi `0172`, library 1.35.0)
+
+- Pengguna bisa memilih siapa yang boleh menyebut dirinya: semua orang (bawaan), hanya yang ia ikuti, atau tidak ada. Mention dari orang yang tidak diizinkan tidak memberi notifikasi, dan namanya tidak muncul di saran `@`. Teks `@nama` di postingan tetap tampil apa adanya.
+- Migrasi berjalan otomatis lewat `make up`. Tidak ada pengaturan, container, atau API key baru.
+- Pasang server lebih dulu, baru aplikasi dengan library 1.35.0. Aplikasi lama tetap jalan tanpa pilihan ini, dan aturan notifikasi sudah berlaku untuk semua aplikasi karena ditegakkan di server.
+- Di library 1.35.0, mention `@` dan `$KODE` hanya aktif di room saham. Di chat langsung, grup, dan chat CS keduanya menjadi teks biasa.
+
 ### Notifikasi ke satu login untuk alert harga (migrasi `0171`)
 
 - API notifikasi OLT menerima target baru `{"olt_user_id": "..."}`: satu login, dikirim langsung, cukup izin `notify`, dan tidak kena batas 3 siaran per hari. Dipakai untuk alert harga yang dipasang pengguna di app OLT. Rinciannya untuk tim OLT ada di [docs/integration](../integration/README.md#2c-satu-login-targetolt_user_id-alert-harga).

@@ -261,6 +261,24 @@ Pemilik post bisa mematikan komentar atau membatasi siapa yang boleh berkomentar
 - **Ekspor data:** `export_my_data` menyertakan `comment_audience` (pengaturan akun) dan `comment_audience` tiap post.
 - **Tes:** `supabase/tests/146_comment_controls_test.sql`.
 
+### Siapa yang bisa menyebut saya (`0172`)
+
+Pengguna memilih siapa yang boleh menyebutnya dengan `@`. Library: `rendezvous_community` 1.35.0.
+
+| `policy` | Yang mention-nya memberi notifikasi |
+|---|---|
+| `everyone` (bawaan) | Semua orang yang tidak saling memblokir |
+| `following` | Orang yang diikuti pemilik (`follows.follower_id = pemilik`) |
+| `none` | Tidak ada |
+
+- **Penyimpanan:** tabel `private.mention_preferences` (satu baris per user, hanya untuk `following`/`none`; memilih `everyone` menghapus baris), RLS aktif, hanya lewat RPC.
+- **Penegakan:** `private.notify` membuang notifikasi bertipe `mention` bila `private.mention_allowed(pelaku, penerima)` false. Ini satu titik untuk semua sumber mention: post (`post_mentions`), komentar, dan room saham. Staf dan akun resmi (`private.safety_exempt`) selalu diizinkan.
+- **Teks tidak diubah:** `@nama` tetap tersimpan dan tampil apa adanya, dan baris `post_mentions` tetap dibuat. Yang dicegah hanya notifikasi (in-app dan push). Mention di komentar untuk pemilik post atau penulis komentar induk tetap sampai sebagai notifikasi `reply`.
+- **Autocomplete:** `search_profiles` mendapat kolom `can_mention boolean`. Pengguna yang membatasi mention tetap muncul di pencarian (misalnya untuk diajak chat atau ditambahkan ke grup). Saran `@` di klien menyaring baris yang `can_mention = false`.
+- **RPC:** `get_mention_policy()` → `{"policy"}`; `set_mention_policy(p_policy text)` → `{"policy"}`, `400 invalid_policy` untuk nilai lain atau null. Keduanya `authenticated`. `export_my_data` menyertakan `mention_policy`.
+- **Chat:** sejak library 1.35.0, mention dan cashtag hanya aktif di room saham. Di DM, grup, dan chat CS, kolom ketik tidak memberi saran `@`/`$` dan bubble tidak menautkannya. Server memang hanya membuat notifikasi mention untuk room saham.
+- **Tes:** `supabase/tests/149_mention_policy_test.sql`.
+
 ### Kelola grup (`0146`)
 
 Peran anggota grup ada di `chat_members.role`: `owner` (pembuat), `admin`, `member`. Semua RPC di bawah `authenticated`, hanya untuk room `type = 'group'` (selain itu `404 room_not_found`), dan bukan anggota ditolak `403 not_member`.
