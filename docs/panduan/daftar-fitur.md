@@ -112,7 +112,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 
 | Menu | Deskripsi singkat |
 |---|---|
-| **Banner & Popup** | Kampanye banner strip dan popup promo: jadwal, platform, prioritas, gambar, tombol CTA, frekuensi, serta statistik tampil, klik, dan tutup. Banner baru bisa sekaligus dikirim sebagai notifikasi (lewat persetujuan) |
+| **Banner & Popup** | Kampanye banner strip dan popup promo: jadwal, platform, prioritas, gambar, tombol CTA, frekuensi, serta statistik tampil, klik, dan tutup. Banner baru bisa sekaligus dikirim sebagai notifikasi info ke semua nasabah sasaran, dengan halaman info di aplikasi dan empat mata opsional |
 | **Komunitas → Postingan resmi** | Postingan dan pengumuman resmi dengan persetujuan empat mata, jadwal terbit, dan sematan |
 | **Komunitas → Notifikasi** | Kampanye notifikasi atau push ke segmen nasabah, dengan statistik dibuka dan diketuk |
 | **Komunitas → Moderasi** | Antrean laporan, konten dan gambar yang ditahan, indikasi manipulasi pasar, banding, dan sanksi user |

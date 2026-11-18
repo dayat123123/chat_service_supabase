@@ -6,11 +6,31 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Notifikasi info dari Banner & Popup (migrasi `0182`, Hub, library 1.40.0)
+
+- **Notifikasi dari banner tidak lagi lewat Komunitas.** Sakelar **Kirim juga sebagai notifikasi** kini mengirim notifikasi info langsung ke daftar notifikasi dan push semua nasabah sasaran banner, tanpa akun resmi dan tanpa persetujuan di Komunitas → Notifikasi. Ajuan lama dari banner yang masih menunggu di Komunitas dibatalkan otomatis oleh migrasi.
+- **Konfirmasi dan status:**
+  - Sebelum simpan, Hub menampilkan perkiraan jumlah penerima.
+  - Baris banner menampilkan status notifikasinya (terjadwal, sedang dikirim, terkirim ke N nasabah, dibuka, diketuk), dengan tombol **Batalkan notifikasi** selama belum selesai.
+- **Halaman info di aplikasi:** mengetuk notifikasinya, dari daftar maupun dari push, membuka halaman info berisi judul, waktu, gambar, isi, dan tombol tautan banner (termasuk deep link aplikasi). Tampilannya bisa diganti lewat builder `system.notice` di library.
+- **Empat mata opsional:**
+  - Ada sakelar baru di **Pengaturan → Persetujuan → Aturan empat mata**, bawaannya mati.
+  - Bila dinyalakan, Super Admin atau staf Fitur & Banner lain menyetujui atau menolak dari baris banner.
+  - Menu Pengaturan "Aturan persetujuan" kini bernama **Aturan empat mata** di grup **Persetujuan**, dan kartu empat mata Komunitas bernama **Empat mata Komunitas**.
+- **Peran:**
+  - Tidak ada peran baru. Yang bisa mengirim, menyetujui, dan membatalkan sama dengan yang bisa mengelola banner: Super Admin dan Fitur & Banner.
+  - Yang mengubah aturan empat matanya hanya Super Admin. Semua tindakan tercatat di Jejak Audit (`banner.notice_*`).
+- **Penerima:** semua nasabah yang pernah membuka fitur komunitas di aplikasi (punya profil), sesuai sasaran banner (semua pengguna atau pengguna baru). Akun resmi dan akun staf tidak menerima.
+- **Cara pasang:**
+  1. Perbarui server dan Hub, lalu jalankan `make up`:
+     `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`
+  2. App OLT pindah ke library `ref: v1.40.0`.
+  App lama tetap menampilkan notifikasinya di daftar notifikasi, tetapi mengetuknya tidak membuka halaman info.
+
 ### Frekuensi dan statistik banner strip (migrasi `0181`, Hub, library 1.39.0)
 
 - **Strip punya frekuensi seperti popup:** Sekali per pengguna, Sekali sehari, atau Setiap buka aplikasi. Strip yang sudah muncul tetap tampil sampai aplikasi ditutup, setelah itu mengikuti frekuensinya. Migrasi menyetel strip lama ke **Setiap buka aplikasi** supaya perilakunya tidak berubah diam-diam; ubah lewat Hub bila perlu.
 - **Statistik tayang strip kini bertambah:** sebelumnya library hanya mencatat popup, jadi strip selalu 0 tayang. Library 1.39.0 mencatat tayang (sekali per banner per buka aplikasi), klik tombol, dan tutup.
-- **Notifikasi dari banner** (sakelar Kirim juga sebagai notifikasi) sudah ditangani library: tampil di daftar notifikasi dan push dengan judul dan isi banner. Mengetuknya membuka tautan https, atau profil akun resmi pengirim bila tidak ada tautan.
 - **Bilah menu atas Hub:** kotak cari mengecil bila menu banyak, lalu menjadi ikon saja. Tanda Ctrl K tidak lagi terpotong. Ctrl K tetap bisa dipakai kapan saja.
 - **Cara pasang:**
   1. Perbarui server dan Hub, lalu jalankan `make up`:
