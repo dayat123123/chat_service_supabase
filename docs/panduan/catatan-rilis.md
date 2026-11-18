@@ -6,6 +6,18 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Frekuensi dan statistik banner strip (migrasi `0181`, Hub, library 1.39.0)
+
+- **Strip punya frekuensi seperti popup:** Sekali per pengguna, Sekali sehari, atau Setiap buka aplikasi. Strip yang sudah muncul tetap tampil sampai aplikasi ditutup, setelah itu mengikuti frekuensinya. Migrasi menyetel strip lama ke **Setiap buka aplikasi** supaya perilakunya tidak berubah diam-diam; ubah lewat Hub bila perlu.
+- **Statistik tayang strip kini bertambah:** sebelumnya library hanya mencatat popup, jadi strip selalu 0 tayang. Library 1.39.0 mencatat tayang (sekali per banner per buka aplikasi), klik tombol, dan tutup.
+- **Notifikasi dari banner** (sakelar Kirim juga sebagai notifikasi) sudah ditangani library: tampil di daftar notifikasi dan push dengan judul dan isi banner. Mengetuknya membuka tautan https, atau profil akun resmi pengirim bila tidak ada tautan.
+- **Bilah menu atas Hub:** kotak cari mengecil bila menu banyak, lalu menjadi ikon saja. Tanda Ctrl K tidak lagi terpotong. Ctrl K tetap bisa dipakai kapan saja.
+- **Cara pasang:**
+  1. Perbarui server dan Hub, lalu jalankan `make up`:
+     `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`
+  2. App OLT pindah ke library `v1.39.0` (`ref: v1.39.0`).
+  App lama tetap menampilkan strip setiap kali dan tidak mengirim statistik strip.
+
 ### Form akun staf dirapikan (Hub)
 
 - Setiap kartu **Peran** kini menjelaskan menu yang dibukanya.

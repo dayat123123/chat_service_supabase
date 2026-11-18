@@ -127,7 +127,7 @@ select is(:'popup'::jsonb - array['id', 'starts_at', 'ends_at', 'created_by', 'u
   'Popup tersimpan lengkap dengan statistik kosong');
 select cs_api.admin_save_banner(null, 'Strip info', p_frequency => 'every_open', p_audience => 'all',
                                 p_audience_days => 30, p_priority => 5) as strip \gset
-select is(:'strip'::jsonb ->> 'frequency', 'once', 'Frekuensi strip selalu once');
+select is(:'strip'::jsonb ->> 'frequency', 'every_open', 'Strip menyimpan frekuensi pilihannya');
 select is((:'strip'::jsonb ->> 'audience_days')::integer, 7, 'Hari sasaran diabaikan untuk semua pengguna');
 select cs_api.admin_save_banner(null, 'Belum mulai', p_display => 'popup', p_starts_at => now() + interval '1 day') as later \gset
 reset role;
