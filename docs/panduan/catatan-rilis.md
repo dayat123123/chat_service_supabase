@@ -6,10 +6,23 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Perbaikan kebijakan konten di Hub (migrasi `0176`, Hub, library 1.38.1)
+
+- **Error "UPDATE requires a WHERE clause" diperbaiki.** Sebelumnya setiap perubahan Kata terlarang, frasa promosi, pengecualian, atau domain dari Hub gagal dengan error ini, jadi daftarnya tidak pernah bertambah. Setelah update, **tambahkan ulang** kata atau domain yang tadi gagal disimpan.
+- **Kata terlarang tidak terisi otomatis.** Uji teks dan penyaringan hanya mencocokkan kata yang ada di daftar. Kata kasar, porno, atau judi yang belum dimasukkan ke menu Kata terlarang tetap lolos.
+- **Draf belum berlaku.** Semua perubahan kebijakan masuk ke draf. Draf baru berlaku setelah diajukan di tab Versi & persetujuan dan disetujui staf Kepatuhan lain (empat mata). Selama itu, nilai lama tetap berlaku, misalnya jeda 72 jam walaupun draf berisi 0.
+- **Tampilan lebih jelas:**
+  - kartu Masa akun baru dan Jeda bergabung lagi kini menjelaskan dampaknya bagi nasabah;
+  - kartu itu menampilkan nilai yang berlaku sekarang di samping nilai di draf;
+  - ada terjemahan jam ke hari (72 jam = 3 hari) dan tombol pilihan cepat;
+  - Uji teks menampilkan kesimpulan dalam bahasa biasa, menyebut jumlah kata dan frasa di daftar, dan memberi peringatan bila ada draf yang belum berlaku.
+- **App yang sedang terbuka** (library 1.38.1) kini memeriksa ulang jeda paling lama tiap 5 menit, jadi perubahan jeda di Hub cepat terasa. Layar "akun baru dihapus" punya tombol Coba lagi di samping Hubungi CS.
+- `make up` memasang migrasi dan membangun ulang Hub. Tidak ada pengaturan baru.
+
 ### Jeda bergabung lagi setelah hapus akun (migrasi `0175`, auth-bridge, library 1.38.0, Hub)
 
 - Setelah menghapus akun komunitas, login yang sama baru bisa membuka komunitas lagi setelah **72 jam**. Saat bergabung lagi, akun dimulai sebagai akun baru.
-- Lama jeda diatur di Hub: **Kepatuhan → Kebijakan konten → Aturan → Jeda bergabung lagi setelah hapus akun** (0–720 jam, 0 = tanpa jeda). Perubahannya lewat draf dan persetujuan staf Kepatuhan lain, sama seperti kebijakan konten lain.
+- Lama jeda diatur di Hub: menu **Kebijakan konten** (`/compliance/content`) → tab **Kategori** → kartu **Jeda bergabung lagi setelah hapus akun**, di bawah kartu "Masa akun baru" (0–720 jam, 0 = tanpa jeda). Perubahannya lewat draf dan persetujuan staf Kepatuhan lain, sama seperti kebijakan konten lain.
 - Selama jeda, app menampilkan sisa waktunya dan tombol **Hubungi CS** yang membuka pengaduan tamu. Chat CS di dalam app ikut tertutup, sama seperti akun yang di-ban. Akun yang di-ban kini juga mendapat pesan yang jelas, bukan error umum.
 - `make up` memasang migrasi dan membangun ulang auth-bridge sekaligus. Tidak ada pengaturan di `docker/.env` atau container baru. Pasang server lebih dulu, baru aplikasi dengan library 1.38.0. Aplikasi lama tetap ditolak selama jeda, hanya saja dengan pesan error umum.
 - Jeda berlaku juga untuk akun yang dihapus sebelum rilis ini, dihitung dari waktu hapusnya.
