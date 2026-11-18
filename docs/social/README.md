@@ -158,13 +158,13 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 - Disembunyikan: akun terhapus, tamu, staf CS, akun yang di-ban, dan akun yang saling blokir dengan pembaca. Karena itu jumlah baris bisa lebih sedikit dari `follower_count`/`following_count`.
 - Error: `400 invalid_kind`, `400 invalid_cursor`, `404 user_not_found` (pengguna tidak ada, terhapus, tamu, atau saling blokir dengan pembaca), `401 not_authenticated`.
 
-### Tab filter Stream dari server (`0149`, `0152`)
+### Tab filter Stream dari server (`0149`, `0152`, `0180`)
 
-Tab Stream (Terbaru, Teratas, Grafik & Media, Polling) disimpan di `public.feed_filters`. Tab baru bisa ditambah, dimatikan, atau diurutkan dari Hub (**Komunitas → Tab Stream**, peran `cs_super_admin`/`product`) tanpa rilis library atau aplikasi. Tabel tidak bisa dibaca langsung (RLS, tanpa grant).
+Tab Stream disimpan di `public.feed_filters` dan sejak `0180` tetap empat tab bawaan: `latest` (Terbaru), `top` (Teratas), `media` (Grafik & Media), `polls` (Polling), dengan constraint `feed_filters_builtin`. Tab tidak bisa ditambah, dihapus, diubah, atau diurutkan; Hub (**Komunitas → Tab Stream**, peran `cs_super_admin`/`product`) hanya bisa menyalakan atau mematikannya, tanpa rilis library atau aplikasi. Tabel tidak bisa dibaca langsung (RLS, tanpa grant).
 
 | Kolom | Isi |
 |---|---|
-| `key` | `^[a-z][a-z0-9_]{1,31}$`, tetap setelah dibuat |
+| `key` | `latest`, `top`, `media`, atau `polls` |
 | `label_en`, `label_id` | label tab, 1–40 karakter |
 | `sort` | `latest` atau `top` |
 | `content` | `media` (lampiran dengan `path`), `poll` (punya polling), atau null (semua post) |
@@ -173,7 +173,7 @@ Tab Stream (Terbaru, Teratas, Grafik & Media, Polling) disimpan di `public.feed_
 
 - `get_feed_filters()` → `table(key, label_en, label_id, sort, content, icon, position)` (authenticated): filter aktif urut `position`.
 - `get_feed(..., p_filter text = null)`: parameter ke-9 yang baru. Bila diisi, urutan dan isi diambil dari baris filter. `p_sort` dan `p_media_only` diabaikan; filter tidak dikenal atau nonaktif ditolak `400 invalid_filter`. Filter berurutan `top` memakai cursor `o:<offset>` seperti `p_sort = 'top'`. Panggilan lama tanpa `p_filter` (4, 7, atau 8 argumen) tetap jalan.
-- RPC Hub (`cs_api`): `admin_feed_filters()`, `admin_save_feed_filter(p_key, p_label_en, p_label_id, p_sort, p_content, p_icon, p_position, p_enabled)`, `admin_reorder_feed_filters(p_keys text[])` (harus memuat setiap key tepat sekali), `admin_delete_feed_filter(p_key)`. Semua tercatat di audit (`feed_filter.save`, `feed_filter.reorder`, `feed_filter.delete`).
+- RPC Hub (`cs_api`): `admin_feed_filters()` dan `admin_set_feed_filter_enabled(p_key, p_enabled)` (audit `feed_filter.enabled`, hanya bila status berubah; key tak dikenal `404 filter_not_found`). `admin_save_feed_filter`, `admin_reorder_feed_filters`, dan `admin_delete_feed_filter` dihapus di `0180`.
 - Analitik (`0152`): `feed_open` kini menyimpan properti `filter`.
 
 ### Indeks dan kode berstrip (`0150`, `0151`, `0153`)

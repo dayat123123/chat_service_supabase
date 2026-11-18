@@ -83,17 +83,15 @@ reset role;
 
 select tests.authenticate_agent(:'product');
 select is(jsonb_array_length(cs_api.admin_feed_filters()), 4, 'Product melihat semua filter termasuk yang nonaktif');
-select is(cs_api.admin_save_feed_filter('watch_media', 'Watchlist media', 'Media pantauan', 'top', 'media', 'image') ->> 'position',
-  '4', 'Filter baru diletakkan di akhir');
-select throws_ok($$select cs_api.admin_save_feed_filter('x', 'A', 'B', 'latest')$$,
-  'PT400', 'invalid_filter_key', 'Kunci filter divalidasi');
-select throws_ok($$select cs_api.admin_save_feed_filter('video', 'Video', 'Video', 'latest', 'video')$$,
-  'PT400', 'invalid_filter_content', 'Isi filter divalidasi');
+select is((select e ->> 'enabled' from jsonb_array_elements(cs_api.admin_set_feed_filter_enabled('polls', true)) e
+            where e ->> 'key' = 'polls'), 'true', 'Filter bisa dinyalakan lagi');
+select throws_ok($$select cs_api.admin_set_feed_filter_enabled('x', true)$$,
+  'PT404', 'filter_not_found', 'Kunci filter divalidasi');
+select is(jsonb_array_length(cs_api.admin_set_feed_filter_enabled('top', false)), 4, 'Mematikan filter tidak menghapusnya');
 select results_eq(
-  $$select e ->> 'key' from jsonb_array_elements(
-      cs_api.admin_reorder_feed_filters(array['polls', 'latest', 'top', 'media', 'watch_media'])) e$$,
-  $$values ('polls'::text), ('latest'), ('top'), ('media'), ('watch_media')$$,
-  'Urutan filter bisa diubah');
+  $$select e ->> 'key' from jsonb_array_elements(cs_api.admin_feed_filters()) e$$,
+  $$values ('latest'::text), ('top'), ('media'), ('polls')$$,
+  'Urutan filter tetap bawaan');
 reset role;
 select is((select count(*)::integer from cs.cs_audit_log where action like 'feed_filter.%' and actor_id = :'product'), 2,
   'Perubahan filter tercatat di audit');

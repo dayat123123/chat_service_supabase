@@ -496,7 +496,7 @@ Untuk Super Admin dan akun berperan **Fitur & Banner**. Setiap perubahan tercata
 | Letak | Fungsi | Kapan dipakai |
 |---|---|---|
 | **Komunitas → Fitur & versi** | Kill switch, sakelar fitur aplikasi, versi minimum | Insiden, rilis aplikasi |
-| **Komunitas → Tab Stream** | Tab di atas stream aplikasi (Terbaru, Teratas, Grafik & Media, Polling, dan tab tambahan) | Menambah, mematikan, atau mengurutkan tab |
+| **Komunitas → Tab Stream** | Empat tab bawaan di atas stream aplikasi: Terbaru, Teratas, Grafik & Media, Polling | Menyembunyikan tab yang tidak dipakai |
 | **Banner & Popup** | Strip di atas atau popup di tengah aplikasi nasabah, dengan statistik tayang dan klik | Gangguan, pemeliharaan, info, promo |
 
 Peran **Fitur & Banner** yang tidak punya Izin Komunitas hanya melihat dua tab itu di menu Komunitas, tanpa angka moderasi di atasnya. Tab yang terbuka ikut tersimpan di alamat halaman, jadi tautannya bisa dibagikan ke sesama pengelola.
@@ -509,10 +509,9 @@ Peran **Fitur & Banner** yang tidak punya Izin Komunitas hanya melihat dua tab i
 
 #### Tab Stream (Komunitas)
 
-- Urutan di tabel sama dengan urutan tab di aplikasi. Pakai tombol naik/turun untuk memindah tab.
-- **Tambah tab**: isi nama tab (Indonesia dan Inggris), **Isi** (**Semua post**, **Hanya post bergambar**, atau **Hanya post polling**), cara urut (**Urut terbaru** atau **Urut teratas**), dan ikon. Periksa **Pratinjau tab di aplikasi**, lalu simpan.
-- Matikan sakelar **Aktif** untuk menyembunyikan tab tanpa menghapusnya. Bila tidak ada tab aktif, aplikasi tidak menampilkan pilihan tab.
-- Aplikasi membaca daftar tab dari server, jadi perubahan berlaku tanpa rilis aplikasi.
+- Isinya selalu empat tab bawaan dengan urutan tetap: **Terbaru**, **Teratas** (urut suka dan komentar), **Grafik & Media** (hanya post bergambar), dan **Polling** (hanya post polling). Tab tidak bisa ditambah, dihapus, diubah, atau diurutkan ulang.
+- Yang bisa dilakukan hanya menyalakan atau mematikan sakelar **Aktif**. Tab yang dimatikan disembunyikan dari aplikasi tanpa dihapus. Bila tidak ada tab aktif, aplikasi tidak menampilkan pilihan tab.
+- **Pratinjau tab di aplikasi** menampilkan tab yang sedang aktif. Perubahan berlaku saat aplikasi membaca daftar tab berikutnya, tanpa rilis aplikasi.
 
 #### Banner & Popup (menu tersendiri)
 
@@ -524,10 +523,11 @@ Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi
    - **Gambar (opsional)**: JPEG, PNG, atau WebP. Pilih **Rasio potong** **4:5 (disarankan)** atau **1:1**, geser dan perbesar gambar, lalu **Pakai gambar**. Gambar dikecilkan otomatis sampai di bawah 2 MB dan baru diunggah saat banner disimpan. **Ganti gambar** atau **Hapus gambar** bisa dilakukan kapan saja; gambar lama dibersihkan otomatis.
    - **Frekuensi**: **Sekali per pengguna**, **Sekali sehari**, atau **Setiap buka aplikasi**.
 4. **Sasaran**: **Semua pengguna** atau **Pengguna baru ≤ N hari** (1–90 hari sejak profil dibuat). Pengunjung yang belum login hanya melihat banner untuk semua pengguna.
-5. Periksa **Pratinjau** di sisi kanan (strip, atau ponsel kecil untuk popup), lalu simpan.
-6. Daftar banner menampilkan jenis (**Strip**/**Popup**), status (**Terjadwal**, **Aktif**, **Selesai**), dan ringkasan statistik (tayang, klik, CTR). Tombol grafik di setiap baris membuka **Statistik**: tayang, klik, tutup, pengguna unik, CTR, dan rincian 7 hari terakhir. Satu pengguna dihitung paling banyak sekali per hari (WIB) untuk setiap jenis event; data disimpan 180 hari.
-7. **Skema deep link**: tautan banner boleh `https://` atau deep link aplikasi dengan skema yang diizinkan (ditampilkan di bawah kolom tautan). Daftar skemanya diatur Super Admin di **Pengaturan → Integrasi → Integrasi aplikasi**.
-8. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
+5. **Kirim juga sebagai notifikasi** (khusus banner baru, bawaan menyala): saat banner disimpan, Hub sekaligus membuat ajuan kampanye notifikasi dengan judul, isi, dan tautan yang sama, atas nama akun resmi aktif yang paling lama dibuat, ke sasaran yang sama (semua pengguna, pengguna baru ≤ N hari, atau satu platform bila banner hanya untuk satu platform). Notifikasi ini masuk ke kotak notifikasi nasabah dan push setelah **disetujui staf lain** di **Komunitas → Notifikasi**, dan dikirim pada waktu mulai banner bila banner dijadwalkan. Deep link aplikasi (mis. `olt://…`) tidak ikut; tautan `https://` ikut. Judul minimal 3 karakter, isi panjang dipotong 240 karakter, dan kata terlarang ditolak. Matikan sakelar ini untuk banner yang tidak perlu masuk notifikasi, misalnya gangguan singkat. Mengubah banner tidak membuat notifikasi baru.
+6. Periksa **Pratinjau** di sisi kanan (strip, atau ponsel kecil untuk popup), lalu simpan.
+7. Daftar banner menampilkan jenis (**Strip**/**Popup**), status (**Terjadwal**, **Aktif**, **Selesai**), dan ringkasan statistik (tayang, klik, CTR). Tombol grafik di setiap baris membuka **Statistik**: tayang, klik, tutup, pengguna unik, CTR, dan rincian 7 hari terakhir. Satu pengguna dihitung paling banyak sekali per hari (WIB) untuk setiap jenis event; data disimpan 180 hari.
+8. **Skema deep link**: tautan banner boleh `https://` atau deep link aplikasi dengan skema yang diizinkan (ditampilkan di bawah kolom tautan). Daftar skemanya diatur Super Admin di **Pengaturan → Integrasi → Integrasi aplikasi**.
+9. Aplikasi menerima paling banyak 10 banner aktif, urut prioritas. Banner yang sudah ditutup pengguna tidak muncul lagi di perangkatnya; untuk menampilkan ulang ke semua orang, buat banner baru. Menghapus banner ikut menghapus statistik dan gambarnya.
 
 Data koneksi untuk tim aplikasi OLT ada di **Pengaturan → Integrasi → Integrasi aplikasi** (bagian 3.4). Tautan lama ke tab Fitur & versi atau Tab Stream dialihkan otomatis ke tab barunya di Komunitas; tautan lama berawalan `/app` dialihkan ke Komunitas, Banner & Popup, atau Pengaturan.
 
@@ -701,6 +701,7 @@ Lainnya: **Lepas sematan**, **Sematkan lagi**, **Batalkan** (postingan tidak ter
 4. **Waktu kirim**: **Segera setelah disetujui** atau **Jadwalkan**.
 5. **Simpan & ajukan**. Staf lain menyetujui dengan **Setujui & kirim**, atau **Tolak**.
 6. Setelah terkirim, detail menampilkan jumlah push **terkirim**, **menunggu**, dan **gagal**.
+7. Banner yang dibuat dengan **Kirim juga sebagai notifikasi** (bagian 3.5) muncul di sini sebagai notifikasi yang menunggu persetujuan. Setujui atau tolak seperti notifikasi lain.
 
 > Notifikasi ke **Semua pengguna** sampai ke seluruh pengguna aplikasi. Periksa ejaan, tautan, dan jadwal sebelum menyetujui. Notifikasi yang sudah terkirim tidak bisa ditarik.
 

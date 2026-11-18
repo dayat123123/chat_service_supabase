@@ -6,6 +6,18 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 18 November 2026
 
+### Banner sekaligus notifikasi, Tab Stream tetap empat tab (migrasi `0180`, Hub)
+
+- **Banner baru bisa sekaligus menjadi notifikasi.** Form Tambah banner punya sakelar **Kirim juga sebagai notifikasi**, bawaan menyala. Saat disimpan, server membuat ajuan kampanye notifikasi dengan judul, isi, tautan `https://`, dan sasaran yang sama. Pengirimnya akun resmi aktif yang paling lama dibuat. Notifikasi baru masuk ke kotak notifikasi dan push nasabah setelah disetujui staf lain di **Komunitas → Notifikasi**. Deep link aplikasi tidak ikut.
+  - Perlu minimal satu akun resmi aktif. Bila belum ada, simpan banner ditolak dengan pesan yang menjelaskannya. Buat akun resmi di **Komunitas → Akun resmi**, atau matikan sakelarnya.
+  - Mengubah banner lama tidak membuat notifikasi.
+- **Tab Stream dikunci ke empat tab bawaan**: Terbaru, Teratas, Grafik & Media, dan Polling, dengan urutan tetap. Di **Komunitas → Tab Stream** tab hanya bisa dinyalakan atau dimatikan.
+  - Migrasi menghapus tab tambahan yang pernah dibuat dan mengembalikan nama, isi, ikon, dan urutan keempat tab ke bawaan. Status nyala/mati yang sudah diatur tetap.
+  - Instalasi baru langsung berisi empat tab itu.
+- **Cara pasang:** perbarui server dan Hub bersamaan, lalu jalankan `make up`, yang memasang migrasi dulu lalu membangun ulang Hub:
+  `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`
+  Hub lama tidak bisa mengubah Tab Stream setelah migrasi ini, dan Hub baru butuh migrasi ini. Aplikasi dan library tidak perlu diperbarui.
+
 ### Nama menu Hub disesuaikan dengan isinya (Hub)
 
 - **Konten Layanan** menjadi **Pusat Bantuan** (tab **Topik chat CS** dan **Artikel bantuan**, dulu tab "Pusat Bantuan").
