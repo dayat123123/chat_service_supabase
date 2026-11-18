@@ -41,7 +41,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 | **Chat DM** | Pesan pribadi realtime dengan centang ala WhatsApp, balas, reaksi, edit/hapus, dan indikator mengetik |
 | **Permintaan pesan** | DM dari orang asing masuk ke "Permintaan pesan" dulu; bisa diterima, ditolak, atau diblokir |
 | **Grup** | Peran owner, admin, dan member. Admin mengatur info grup dan bisa membuat grup hanya-admin yang boleh kirim |
-| **Room saham** | Ruang chat per saham dengan slow mode, pesan tersemat, dan moderator room. Mention `@user` dan `$KODE` hanya ada di room saham; di DM, grup, dan chat CS keduanya tampil sebagai teks biasa |
+| **Room saham** | Ruang chat per saham dengan slow mode, pesan tersemat, dan moderator room. Mention `@user` dan `$KODE` aktif di room saham. Di grup hanya mention ke sesama anggota grup; di DM dan chat CS keduanya tampil sebagai teks biasa |
 | **Kartu saham di chat** | Kirim sampai 3 kartu saham; nama dan harga diambil dari data OLT |
 | **Hapus chat/grup, edit pesan** | Sembunyikan chat, keluar grup, dan edit pesan (riwayat edit tercatat) |
 
@@ -49,7 +49,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 *Panel Chat: room CS OLT resmi selalu di paling atas, lalu DM, grup, dan room saham.*
 
 ![Chat grup](gambar/fitur/app-grup.jpg)
-*Chat grup: postingan yang dibagikan ke chat dan centang terkirim/dibaca.*
+*Chat grup: mention sesama anggota, postingan yang dibagikan ke chat, dan centang terkirim/dibaca.*
 
 ### 1.3 Layanan nasabah
 

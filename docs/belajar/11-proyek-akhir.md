@@ -130,8 +130,8 @@ Catatan:
 ### Bila ingin dijadikan fitur sungguhan
 
 Urutan yang dipakai tim:
-1. Migrasi baru `supabase/migrations/0173_….sql` (nomor berikutnya; file `.sql` wajib LF, tanpa komentar).
-2. Tes `supabase/tests/150_…_test.sql`.
+1. Migrasi baru `supabase/migrations/NNNN_….sql`, dengan NNNN satu angka setelah migrasi terakhir (file `.sql` wajib LF, tanpa komentar).
+2. Tes `supabase/tests/NNN_…_test.sql`, juga satu angka setelah tes terakhir.
 3. Jalankan semua tes di DB sekali pakai (modul 9.4), bukan di DB dev.
 4. Perbarui dokumentasi: [docs/social](../social/README.md), [docs/api/openapi.yaml](../api/openapi.yaml), [catatan rilis](../panduan/catatan-rilis.md).
 5. Library: method repository + model + tes, lalu naikkan versi.

@@ -276,8 +276,18 @@ Pengguna memilih siapa yang boleh menyebutnya dengan `@`. Library: `rendezvous_c
 - **Teks tidak diubah:** `@nama` tetap tersimpan dan tampil apa adanya, dan baris `post_mentions` tetap dibuat. Yang dicegah hanya notifikasi (in-app dan push). Mention di komentar untuk pemilik post atau penulis komentar induk tetap sampai sebagai notifikasi `reply`.
 - **Autocomplete:** `search_profiles` mendapat kolom `can_mention boolean`. Pengguna yang membatasi mention tetap muncul di pencarian (misalnya untuk diajak chat atau ditambahkan ke grup). Saran `@` di klien menyaring baris yang `can_mention = false`.
 - **RPC:** `get_mention_policy()` → `{"policy"}`; `set_mention_policy(p_policy text)` → `{"policy"}`, `400 invalid_policy` untuk nilai lain atau null. Keduanya `authenticated`. `export_my_data` menyertakan `mention_policy`.
-- **Chat:** sejak library 1.35.0, mention dan cashtag hanya aktif di room saham. Di DM, grup, dan chat CS, kolom ketik tidak memberi saran `@`/`$` dan bubble tidak menautkannya. Server memang hanya membuat notifikasi mention untuk room saham.
+- **Chat:** di room saham, mention dan cashtag aktif. Di grup (library 1.36.0) hanya mention, dan sarannya hanya anggota grup. Di DM dan chat CS, kolom ketik tidak memberi saran `@`/`$` dan bubble tidak menautkannya (library 1.35.0).
 - **Tes:** `supabase/tests/149_mention_policy_test.sql`.
+
+### Mention di grup (`0173`)
+
+`private.messages_after_insert` kini membuat notifikasi `mention` di grup:
+
+- Yang diberi tahu hanya **anggota grup** yang disebut di `body` (maksimal `notifications.mention_room_max` nama pertama, sama dengan room saham), bukan pengirim, tidak terhapus, tidak membisukan pengirim (`public.mutes`), dan mengizinkan mention dari pengirim (`private.mention_allowed`, `0172`). Nama di luar grup diabaikan.
+- Anggota yang disebut mendapat notifikasi `mention` (payload `room_id`, `room_type: group`, `room_name`, `message_id`, `snippet`; digabung per room lewat `mention:room:<id>`) **sebagai pengganti** notifikasi `message`, termasuk saat ia membisukan grup itu, seperti di WhatsApp. Push-nya berjudul "X menyebut Anda di <nama grup>".
+- Anggota lain tetap mendapat notifikasi `message` biasa bila tidak membisukan grup. Bila mention ditolak pengaturan, atau orang yang disebut membisukan pengirim, ia diperlakukan seperti anggota lain.
+- Hanya pesan `visible` yang tidak terhapus. Event grup (`group_event`) dan DM tidak berubah.
+- **Tes:** `supabase/tests/150_group_mentions_test.sql`.
 
 ### Kelola grup (`0146`)
 
