@@ -4,6 +4,24 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 19 November 2026
+
+### Frekuensi banner berlaku per akun dan rasio gambar popup (migrasi `0183`, Hub, library 1.41.0)
+
+- **Perbaikan:** banner **Sekali per pengguna** (strip maupun popup) muncul lagi setiap nasabah logout lalu login. Penyebabnya, aplikasi hanya mencatat riwayat tayang di perangkat, dan catatan itu memang dihapus saat logout. Banner yang sudah ditutup nasabah juga muncul lagi dengan cara yang sama.
+- **Sekarang:**
+  - Server mengirim ke aplikasi kapan banner terakhir tampil dan ditutup untuk nasabah yang login, diambil dari statistik tayang yang sudah dicatat.
+  - Frekuensi **Sekali per pengguna** dan **Sekali sehari**, serta strip yang ditutup, berlaku per akun: tetap berlaku setelah login ulang, instal ulang, atau di perangkat lain.
+  - Setelah login, aplikasi menunggu data banner milik akun itu sebelum menampilkan strip atau popup.
+- **Rasio gambar popup:** pilihan **4:5** atau **1:1** saat memotong gambar kini disimpan dan dikirim ke aplikasi, sehingga bentuk popup mengikuti pilihan itu. Sebelumnya rasio hanya dipakai untuk memotong, dan aplikasi menampilkan kotak gambar dengan bentuk yang sama. Popup lama yang belum punya rasio tersimpan tetap memakai bentuk dari gambarnya; buka dan simpan ulang dengan memilih gambar lagi bila ingin rasionya pasti.
+- **Retensi statistik:** event tetap dihapus setelah 180 hari, kecuali tayang dan tutup terakhir tiap nasabah pada banner yang masih aktif, supaya banner **Sekali per pengguna** yang tayang lebih dari 180 hari tidak muncul lagi.
+- **Riwayat yang sudah ada ikut terpakai:** nasabah yang sudah melihat banner sebelum pembaruan tidak akan melihatnya lagi, selama tayangannya sudah tercatat di statistik. Tayangan strip baru tercatat sejak library 1.39.0.
+- **Cara pasang:**
+  1. Perbarui server dan Hub, lalu jalankan `make up`:
+     `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`
+  2. App OLT pindah ke library `ref: v1.41.0`.
+  Aplikasi dengan library lama tetap berjalan seperti sebelumnya.
+
 ## 18 November 2026
 
 ### Notifikasi info dari Banner & Popup (migrasi `0182`, Hub, library 1.40.0)
