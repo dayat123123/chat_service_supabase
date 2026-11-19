@@ -158,6 +158,12 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 - Disembunyikan: akun terhapus, tamu, staf CS, akun yang di-ban, dan akun yang saling blokir dengan pembaca. Karena itu jumlah baris bisa lebih sedikit dari `follower_count`/`following_count`.
 - Error: `400 invalid_kind`, `400 invalid_cursor`, `404 user_not_found` (pengguna tidak ada, terhapus, tamu, atau saling blokir dengan pembaca), `401 not_authenticated`.
 
+### Batas teks banner dan notifikasi (`0184`)
+
+- `admin_save_banner`: judul 1–120 (`invalid_title`), isi strip ≤ 300 dan popup ≤ 5000 (`invalid_body`). Constraint tabel `app_banners_body_length` mengikuti tampilan.
+- `community_save_campaign`: judul 3–120, isi 3–500.
+- Notifikasi info: `private.app_notices` judul ≤ 120 dan isi ≤ 5000. Payload `public.notifications` dan push hanya membawa `private.notice_preview(body)`, yaitu ≤ 280 karakter dan diakhiri `…` bila dipotong, ditambah `body_truncated: true`. `get_app_notice` mengembalikan judul dan isi lengkap dari `private.app_notices`.
+
 ### Riwayat banner per akun dan rasio gambar (`0183`)
 
 - `private.app_banners.image_ratio` (`portrait` 4:5 / `square` 1:1, hanya bila ada gambar). `admin_save_banner(..., p_image_ratio)` menjadi parameter terakhir; nilai lain → `400 invalid_image_ratio`. Bila tidak dikirim dan gambar sama, rasio lama dipertahankan. `admin_banners()` dan `get_client_config().banners` membawa `image_ratio` bila ada.
