@@ -158,6 +158,12 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 - Disembunyikan: akun terhapus, tamu, staf CS, akun yang di-ban, dan akun yang saling blokir dengan pembaca. Karena itu jumlah baris bisa lebih sedikit dari `follower_count`/`following_count`.
 - Error: `400 invalid_kind`, `400 invalid_cursor`, `404 user_not_found` (pengguna tidak ada, terhapus, tamu, atau saling blokir dengan pembaca), `401 not_authenticated`.
 
+### Popup dan notifikasi info saling terhubung (`0185`)
+
+- `record_banner_event`: event `click` pada banner apa pun, atau `impression` pada banner `popup`, mengisi `read_at` notifikasi `announcement` milik pengguna itu yang payload-nya membawa `banner_id` banner tersebut. Perubahan ini sampai ke klien lewat realtime (UPDATE pada `public.notifications`).
+- `seen_at` di `get_client_config().banners` kini memakai waktu terbaru antara impression dan event `opened`/`tapped` (`report_notification_event`) pada notifikasi banner itu. `read_at` tidak dipakai.
+- Indeks `notifications_banner_idx` (`user_id`, `payload ->> 'banner_id'`).
+
 ### Batas teks banner dan notifikasi (`0184`)
 
 - `admin_save_banner`: judul 1–120 (`invalid_title`), isi strip ≤ 300 dan popup ≤ 5000 (`invalid_body`). Constraint tabel `app_banners_body_length` mengikuti tampilan.
