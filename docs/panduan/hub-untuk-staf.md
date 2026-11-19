@@ -524,7 +524,7 @@ Peran **Fitur & Banner** yang tidak punya Izin Komunitas hanya melihat dua tab i
 
 Ada dua **Tampilan**: **Strip atas** (pengumuman singkat di bagian atas aplikasi, misalnya gangguan atau pemeliharaan) dan **Popup tengah** (kartu di tengah layar dengan latar gelap, cocok untuk promo).
 
-1. **Tambah banner**, pilih **Tampilan**, lalu isi **Judul**, **Isi (opsional)**, **Tautan (opsional)**, **Label tombol (opsional)**, **Sasaran**, **Tingkat** (**Info**, **Peringatan**, **Kritis**), **Mulai (WIB)**, **Berakhir (WIB)**, **Platform**, versi, **Boleh ditutup pengguna**, dan **Prioritas (0–1000)**.
+1. **Tambah banner**, pilih **Tampilan**, lalu isi **Judul**, **Isi (opsional)**, **Tautan (opsional)**, **Label tombol (opsional)**, **Sasaran**, **Tingkat** (**Info**, **Peringatan**, **Kritis**), **Mulai (WIB)**, **Berakhir (WIB)**, **Platform**, versi, **Boleh ditutup pengguna**, dan **Prioritas (0–1000)**. Batas teks: judul 120 karakter (lebih dari 65 karakter bisa terpotong di notifikasi ponsel, Hub memberi tanda), isi strip 300 karakter, isi popup 5.000 karakter. Untuk info panjang pakai popup, atau nyalakan **Kirim juga sebagai notifikasi** supaya isi lengkapnya terbaca di halaman info aplikasi.
 2. **Tautan** boleh `https://…` atau deep link aplikasi dengan skema yang diizinkan, misalnya `olt://promo/akhir-tahun` untuk membuka halaman di dalam aplikasi OLT. `http://`, `javascript:`, `intent:`, dan skema yang belum didaftarkan ditolak. **Label tombol** (maksimal 24 karakter) hanya dipakai bila ada tautan; bila kosong, aplikasi memakai label bawaan.
 3. Khusus **Popup tengah**:
    - **Gambar (opsional)**: JPEG, PNG, atau WebP. Pilih **Rasio potong** **4:5 (disarankan)** atau **1:1**, geser dan perbesar gambar, lalu **Pakai gambar**. Rasio ini disimpan bersama gambar dan dipakai aplikasi untuk bentuk popup (butuh library 1.41.0). Mengganti rasio setelah gambar dipotong membuka pemotong lagi; untuk gambar yang sudah tersimpan, pilih gambar lagi agar dipotong dengan rasio baru. Gambar dikecilkan otomatis sampai di bawah 2 MB dan baru diunggah saat banner disimpan. **Ganti gambar** atau **Hapus gambar** bisa dilakukan kapan saja; gambar lama dibersihkan otomatis.
@@ -709,7 +709,7 @@ Lainnya: **Lepas sematan**, **Sematkan lagi**, **Batalkan** (postingan tidak ter
 
 ### 5.2 Kampanye notifikasi (tab **Notifikasi**)
 
-1. Klik **Buat notifikasi**. Isi **Judul notifikasi** dan **Isi notifikasi**. Periksa **Pratinjau** (**Tampilan di layar HP**).
+1. Klik **Buat notifikasi**. Isi **Judul notifikasi** (3–120 karakter) dan **Isi notifikasi** (3–500 karakter). Periksa **Pratinjau** (**Tampilan di layar HP**).
 2. **Saat diketuk**: **Buka kotak notifikasi**, **Buka postingan resmi**, atau **Buka tautan** (https).
 3. **Segmen penerima**: **Semua pengguna**, **Pemantau saham**, **Pengguna baru**, **Pengguna tidak aktif**, **Platform**, atau **Pengikut akun resmi**. Hub menampilkan perkiraan jumlah penerima.
 4. **Waktu kirim**: **Segera setelah disetujui** atau **Jadwalkan**.

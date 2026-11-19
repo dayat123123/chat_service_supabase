@@ -6,6 +6,24 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 19 November 2026
 
+### Teks banner dan notifikasi lebih panjang (migrasi `0184`, Hub, library 1.43.0)
+
+- **Batas baru:**
+
+  | Isian | Sebelumnya | Sekarang |
+  |---|---|---|
+  | Judul banner dan notifikasi info | 80 | 120 |
+  | Isi strip | 300 | 300 (tetap) |
+  | Isi popup dan notifikasi info | 300 | 5.000 |
+  | Judul notifikasi Komunitas | 80 | 120 |
+  | Isi notifikasi Komunitas | 240 | 500 |
+
+- Hub memberi tanda bila judul lebih dari 65 karakter, karena bagian setelahnya bisa terpotong di notifikasi ponsel.
+- **Notifikasi info dengan isi panjang:** daftar notifikasi dan push hanya membawa cuplikan ±280 karakter. Saat diketuk, aplikasi (library 1.43.0) membuka halaman info dan memuat isi lengkapnya dari server. Aplikasi dengan library lama menampilkan cuplikan yang diakhiri "…". Cara ini menjaga push tetap di bawah batas 1.000 karakter dan database tidak membesar karena isi panjang disalin ke setiap nasabah.
+- **Cara pasang:** perbarui server dan Hub lalu `make up`:
+  `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`
+  App OLT pindah ke library `ref: v1.43.0`.
+
 ### Frekuensi banner berlaku per akun dan rasio gambar popup (migrasi `0183`, Hub, library 1.41.0)
 
 - **Perbaikan:** banner **Sekali per pengguna** (strip maupun popup) muncul lagi setiap nasabah logout lalu login. Penyebabnya, aplikasi hanya mencatat riwayat tayang di perangkat, dan catatan itu memang dihapus saat logout. Banner yang sudah ditutup nasabah juga muncul lagi dengan cara yang sama.
