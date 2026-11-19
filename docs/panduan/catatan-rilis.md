@@ -6,6 +6,14 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 19 November 2026
 
+### Popup dan notifikasi info saling terhubung (migrasi `0185`)
+
+- **Perbaikan:** nasabah yang sudah melihat popup Banner & Popup masih melihat notifikasi info untuk banner yang sama sebagai belum dibaca, dan angka di lonceng tidak berkurang.
+- **Sekarang:**
+  - Popup yang tampil, atau klik tombol pada banner apa pun, menandai notifikasi info banner itu sebagai terbaca, dan angka lonceng langsung berkurang. Strip yang sekadar tayang tidak menandai terbaca.
+  - Sebaliknya, nasabah yang sudah membuka notifikasi info dianggap sudah melihat popupnya, jadi popup "Sekali per pengguna" tidak muncul lagi untuknya. **Tandai semua terbaca** tidak dihitung, supaya popup yang belum pernah dilihat tetap muncul.
+- **Cara pasang:** `git pull --ff-only && make up`. Tidak perlu memperbarui aplikasi.
+
 ### Teks banner dan notifikasi lebih panjang (migrasi `0184`, Hub, library 1.43.0)
 
 - **Batas baru:**
