@@ -158,6 +158,16 @@ Akun resmi adalah baris aktif di `cs.official_accounts` (sumber yang sama dengan
 - Disembunyikan: akun terhapus, tamu, staf CS, akun yang di-ban, dan akun yang saling blokir dengan pembaca. Karena itu jumlah baris bisa lebih sedikit dari `follower_count`/`following_count`.
 - Error: `400 invalid_kind`, `400 invalid_cursor`, `404 user_not_found` (pengguna tidak ada, terhapus, tamu, atau saling blokir dengan pembaca), `401 not_authenticated`.
 
+### Riwayat banner per akun dan rasio gambar (`0183`)
+
+- `private.app_banners.image_ratio` (`portrait` 4:5 / `square` 1:1, hanya bila ada gambar). `admin_save_banner(..., p_image_ratio)` menjadi parameter terakhir; nilai lain → `400 invalid_image_ratio`. Bila tidak dikirim dan gambar sama, rasio lama dipertahankan. `admin_banners()` dan `get_client_config().banners` membawa `image_ratio` bila ada.
+- `p_app_version` boleh membawa nomor build (`0.1.53+54`); perbandingan min/maks memakai `0.1.53`.
+
+- Bila pemanggil login, setiap banner di `get_client_config().banners` membawa `seen_at` (impression terakhir user itu) dan `dismissed_at` (dismiss terakhir) bila ada, dari `private.app_banner_events`. Kunci tidak dikirim bila kosong, dan tamu tidak pernah menerimanya.
+- `get_client_config().config.viewer_id` berisi `auth.uid()` yang dipakai menyusun respons (`null` untuk tamu). Klien memakainya untuk mengabaikan konfigurasi yang disusun untuk user lain, misalnya respons tamu yang tiba setelah login.
+- `private.app_banner_maintenance()` tetap menghapus event yang lebih tua dari `banners.events_retention_days` (bawaan 180), kecuali event `impression`/`dismiss` terakhir per user pada banner yang belum berakhir.
+- Klien yang memakai riwayat ini: library `rendezvous_community` 1.41.0.
+
 ### Notifikasi info Banner & Popup (`0182`)
 
 `admin_save_banner(..., p_notify => true)` pada banner baru membuat baris `private.app_notices` (judul, isi, tautan, label tombol, gambar, level, sasaran). Notifikasi ini terpisah dari kampanye Komunitas: `cs.banner_campaign` dari `0180` dihapus, dan kampanye dari banner yang belum terkirim dibatalkan.

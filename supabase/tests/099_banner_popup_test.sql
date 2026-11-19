@@ -225,8 +225,10 @@ select is((select details #>> '{before,image_path}' from cs.cs_audit_log
   :'img', 'Audit menyimpan isi popup sebelum diubah');
 
 insert into private.app_banner_events (banner_id, user_id, event, day, created_at)
-values ((:'popup'::jsonb ->> 'id')::uuid, :'lama', 'impression', current_date - 200, now() - interval '200 days');
-select is(private.app_banner_maintenance(), 1, 'Event lebih dari 180 hari dihapus');
+values ((:'popup'::jsonb ->> 'id')::uuid, :'lama', 'impression', current_date - 200, now() - interval '200 days'),
+       ((:'popup'::jsonb ->> 'id')::uuid, :'lama', 'click', current_date - 200, now() - interval '200 days');
+select is(private.app_banner_maintenance(), 1,
+  'Event lebih dari 180 hari dihapus, kecuali tayang terakhir pengguna pada banner aktif');
 
 select * from finish();
 rollback;
