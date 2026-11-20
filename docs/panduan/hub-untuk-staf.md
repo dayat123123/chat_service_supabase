@@ -21,16 +21,25 @@ Semua tindakan penting tercatat di **Jejak Audit** dan tidak bisa dihapus.
 
 1. Buka alamat Hub yang diberikan tim IT. Hub hanya bisa dibuka dari **jaringan kantor** (atau VPN kantor bila disediakan IT). Dari jaringan lain halaman tidak terbuka.
 2. Di halaman **Masuk ke Rendezvous Hub**, isi **Email** (email kerja) dan **Password**, lalu klik **Masuk**.
-3. **Login pertama** atau setelah password direset: Hub meminta **Ganti password**.
+3. **Kode 2FA** (Super Admin, dan peran lain yang diwajibkan Super Admin): setelah password, Hub meminta **Masukkan kode 2FA**.
+   - Buka aplikasi authenticator di HP (Google Authenticator, Microsoft Authenticator, atau sejenis).
+   - Ketik 6 digit kode untuk Rendezvous Hub, lalu klik **Verifikasi**. Kode berganti setiap 30 detik, jadi pakai kode yang sedang tampil.
+4. **Belum pernah mendaftarkan 2FA**: Hub menampilkan **Aktifkan 2FA**.
+   - Pindai kode QR dengan aplikasi authenticator. Bila tidak bisa memindai, ketik kunci yang tampil di bawahnya secara manual.
+   - Ketik 6 digit kode dari aplikasi, lalu klik **Aktifkan 2FA**. Sejak itu, setiap kali masuk Anda diminta kode.
+5. **Login pertama** atau setelah password direset: Hub meminta **Ganti password**.
    - Isi **Password baru** dan **Ulangi password baru**, lalu **Simpan password**.
    - Minimal 12 karakter. Harus berbeda dari password sementara. Jangan pakai ulang password akun lain.
-4. Untuk keluar: klik avatar di kanan atas, lalu **Keluar**.
+6. Untuk keluar: klik avatar di kanan atas, lalu **Keluar**.
 
 Hal yang perlu diketahui:
 
 - **Lupa password:** minta Super Admin melakukan **Reset password**. Anda mendapat password sementara baru yang wajib diganti saat login berikutnya. Tidak ada reset mandiri lewat email.
 - **Keluar otomatis:** bila Hub tidak dipakai beberapa saat (bawaan 30 menit), muncul dialog **Masih di sana?**. Klik **Tetap masuk**, atau Hub keluar otomatis.
 - Pesan **Email atau password salah.** berarti salah ketik. Pesan **Terlalu banyak percobaan. Tunggu sebentar.** berarti tunggu sebelum mencoba lagi.
+- **Akun terkunci:** setelah 5 kali password salah (bawaan), akun dikunci 15 menit. Hub menampilkan **Akun dikunci sementara…** beserta jam kunci dibuka. Tunggu sampai jam itu, atau minta Super Admin klik **Buka kunci**. Password yang benar pun ditolak selama akun terkunci.
+- **HP hilang atau ganti HP:** minta Super Admin lain klik **Reset 2FA** untuk akun Anda. Saat masuk berikutnya, daftarkan 2FA lagi dari HP baru.
+- Pesan **Kode 2FA salah atau sudah kedaluwarsa.** berarti kode salah ketik atau sudah berganti. Masukkan kode terbaru. Bila selalu salah, periksa jam HP sudah otomatis (ikuti jaringan).
 - Pesan **Akun ini bukan akun CS aktif.** berarti akun Anda nonaktif. Hubungi Super Admin.
 - Satu browser boleh membuka beberapa akun berbeda di tab berbeda; masing-masing tab tetap memakai akunnya sendiri.
 
@@ -343,7 +352,7 @@ Diperbarui otomatis. Angka di menu **Dashboard** adalah jumlah tiket yang perlu 
 
 Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit.
 
-**Form penting terkunci.** Integrasi API Nasabah, Integrasi aplikasi (skema deep link), Push notification (kunci Firebase), Alert, Backup, Penugasan, dan Komunitas tampil terkunci. Klik **Ubah** untuk membuka, lalu **Simpan**: Hub menampilkan konfirmasi yang menjelaskan dampaknya, dan perubahan baru tersimpan setelah dikonfirmasi. **Batal** atau **Esc** mengembalikan nilai semula. Tes koneksi, Kirim uji, dan push uji tetap bisa langsung dijalankan; Backup penuh dan Uji restore meminta konfirmasi.
+**Form penting terkunci.** Integrasi API Nasabah, Integrasi aplikasi (skema deep link), Push notification (kunci Firebase), Keamanan login, Alert, Backup, Penugasan, dan Komunitas tampil terkunci. Klik **Ubah** untuk membuka, lalu **Simpan**: Hub menampilkan konfirmasi yang menjelaskan dampaknya, dan perubahan baru tersimpan setelah dikonfirmasi. **Batal** atau **Esc** mengembalikan nilai semula. Tes koneksi, Kirim uji, dan push uji tetap bisa langsung dijalankan; Backup penuh dan Uji restore meminta konfirmasi.
 
  Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Fitur sosial, versi minimum, dan tab Stream ada di menu **Komunitas**, sedangkan banner dan popup di menu **Banner & Popup** (bagian 3.5).
 
@@ -360,7 +369,8 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | | **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
 | | **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
 | | **Push notification** | Kunci Firebase dan push uji | Pemasangan awal, ganti kunci |
-| **Sistem** | **Kesehatan sistem** | Peta layanan, status layanan dan alert, restart otomatis | Saat ada alert atau diminta IT |
+| **Sistem** | **Keamanan login** | Peran yang wajib 2FA, batas password salah, dan lama kunci akun | Pemasangan awal, atas permintaan IT atau Kepatuhan |
+| | **Kesehatan sistem** | Peta layanan, status layanan dan alert, restart otomatis | Saat ada alert atau diminta IT |
 | | **Backup** | Tujuan, password, jadwal backup, uji restore | Pemasangan awal, cek mingguan |
 | | **Alert** | Kanal alert gangguan (Telegram/email) | Pemasangan awal, ganti penerima |
 
@@ -376,6 +386,10 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 4. **Izin Komunitas** (bagian 5) bisa diberikan ke peran apa pun. Setiap grup izin punya tombol **Pilih semua** dan **Kosongkan** serta hitungan izin yang dipilih.
 5. Klik **Buat akun**. **Password sementara hanya ditampilkan sekali.** Serahkan email dan password lewat jalur aman (bukan grup chat). CS wajib menggantinya saat login pertama.
 6. **Reset password**: password lama langsung tidak berlaku; password sementara baru hanya ditampilkan sekali.
+   - Kolom status juga menampilkan **2FA aktif**, **Belum daftar 2FA** (peran wajib 2FA tetapi belum mendaftar), dan **Terkunci sampai …** bila akun sedang dikunci karena password salah berulang.
+   - **Buka kunci**: hitungan password salah dihapus dan staf bisa langsung masuk lagi.
+   - **Reset 2FA** (untuk staf yang HP-nya hilang atau ganti HP): staf langsung keluar dari semua perangkat dan wajib mendaftarkan 2FA lagi saat masuk. Pastikan identitasnya dulu, misalnya lewat telepon kantor. Anda tidak bisa mereset 2FA sendiri; minta Super Admin lain.
+   - Buka kunci dan Reset 2FA tercatat di Jejak Audit.
 7. Menonaktifkan akun (matikan **Akun aktif**): akun langsung tidak bisa login, tiket aktifnya kembali ke antrean dengan tanda "Akun CS dinonaktifkan", dan transfer yang menunggunya dibatalkan. Lakukan di hari terakhir staf bekerja.
 8. Anda tidak bisa menonaktifkan akun sendiri atau melepas peran Super Admin Anda sendiri.
 
@@ -462,6 +476,20 @@ API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman)
 - Kunci Firebase diunggah sebagai file JSON (**Pilih file JSON**, lalu **Simpan kunci**). Langkahnya tertulis di layar. **Setelah diunggah, hapus file JSON dari komputer Anda.** Kunci tidak bisa diunduh lagi dari Hub.
 - **Hapus kunci** menghentikan push ke HP untuk semua pengguna. Jangan dilakukan tanpa koordinasi IT.
 - **Kirim push uji**: cari pengguna, lalu **Kirim uji**, untuk memastikan push sampai.
+
+#### Keamanan login
+
+Dua kartu, keduanya terkunci sampai Anda klik **Ubah**. Setiap perubahan meminta konfirmasi dan tercatat di Jejak Audit.
+
+1. **Wajib 2FA**: centang peran yang harus memasukkan kode authenticator setiap kali masuk.
+   - **Super Admin** selalu wajib dan tidak bisa dilepas.
+   - Staf dengan peran yang baru dicentang langsung diminta mendaftarkan 2FA, termasuk yang sedang masuk.
+   - Staf yang sudah mendaftarkan 2FA tetap diminta kodenya walau perannya tidak dicentang.
+2. **Kunci akun**: **Batas password salah (3–20 kali)**, bawaan 5, dan **Lama kunci (1–1440 menit)**, bawaan 15.
+   - Password salah dihitung dalam rentang waktu sepanjang lama kunci.
+   - Setelah batas tercapai, akun dikunci selama lama kunci. Password yang benar pun ditolak sampai kunci dibuka.
+   - Buka kunci lebih cepat dari **Akun CS** → **Buka kunci**.
+3. **Bila Super Admin terakhir kehilangan HP**, minta tim IT menjalankan `make cs-mfa-reset EMAIL=...` di server. Perintah ini menghapus 2FA akun itu dan membuka kuncinya, lalu tercatat di Jejak Audit.
 
 #### Backup
 
@@ -882,6 +910,14 @@ Menu mengikuti peran dan izin. Minta Super Admin memeriksa akun Anda di **Pengat
 #### Saya lupa password.
 
 Minta Super Admin melakukan **Reset password**. Ganti password sementara saat login berikutnya.
+
+#### Akun saya terkunci.
+
+Akun dikunci sementara setelah password salah berulang. Tunggu sampai jam yang tertulis di pesan, atau minta Super Admin klik **Buka kunci** di **Pengaturan → Akun CS**. Bila Anda tidak merasa salah ketik berkali-kali, laporkan ke Super Admin karena mungkin ada yang mencoba masuk ke akun Anda.
+
+#### HP authenticator saya hilang atau ganti HP.
+
+Minta Super Admin lain klik **Reset 2FA** untuk akun Anda. Saat masuk berikutnya, pindai kode QR baru dari HP Anda.
 
 #### Notifikasi atau suara tiket baru tidak muncul.
 

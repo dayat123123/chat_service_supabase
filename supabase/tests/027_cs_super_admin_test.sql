@@ -10,8 +10,8 @@ select throws_ok($$select tests.create_agent('Lama', '{cs_supervisor}', '{}')$$,
 select throws_ok($$select tests.create_agent('Lama', '{cs_admin}', '{}')$$, '23514', null,
   'Peran admin CS lama tidak berlaku lagi');
 
-select tests.authenticate_agent(:'sinta', 'aal1');
-select lives_ok('select cs_api.supervisor_overview()', 'Super admin memantau dashboard tanpa 2FA');
+select tests.authenticate_agent(:'sinta');
+select lives_ok('select cs_api.supervisor_overview()', 'Super admin dengan kode 2FA memantau dashboard');
 select lives_ok('select cs_api.admin_agents()', 'Super admin membuka pengelolaan akun CS');
 select is(cs_api.admin_reset_password(:'rina') ->> 'id', :'rina', 'Super admin mereset password akun CS yang lupa');
 select throws_ok(format('select cs_api.admin_reset_password(%L)', gen_random_uuid()), 'PT404', 'agent_not_found',
@@ -24,7 +24,7 @@ select is((select count(*)::integer from cs.cs_audit_log
            where action = 'agent.reset_password' and actor_id = :'sinta' and details ->> 'agent' = :'rina'), 1,
   'Reset password tercatat di audit log');
 update cs.agents set disabled_at = now() where user_id = :'dimas';
-select tests.authenticate_agent(:'sinta', 'aal1');
+select tests.authenticate_agent(:'sinta');
 select throws_ok(format('select cs_api.admin_reset_password(%L)', :'dimas'), 'PT409', 'agent_disabled',
   'Akun nonaktif harus diaktifkan dulu sebelum direset');
 

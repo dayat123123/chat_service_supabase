@@ -23,7 +23,7 @@ param(
                  'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
-                 'cs-staff', 'cs-bootstrap-admin', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
+                 'cs-staff', 'cs-bootstrap-admin', 'cs-mfa-reset', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
                  'testkit', 'test-security', 'test-zap', 'scan-deps', 'load-test', 'load-integration', 'chaos-test', 'loadtest-cleanup')]
     [string]$Target = 'help',
     [Alias('Profile')]
@@ -272,6 +272,7 @@ switch ($Target) {
   cs-demo       CS demo page (customer + agent panel) at http://localhost:8082 (needs up -DummyOlt)
   cs-staff      Dev staff accounts (CS, super admin, compliance) in scripts/cs-demo/runtime/staff.json
   cs-bootstrap-admin  First web CS super admin: -Email name@domain -Name "Name" [-Force] [-Profile single]
+  cs-mfa-reset  Emergency: clear a staff account's 2FA and login lock: -Email name@domain [-Profile single]
   cs-console-react  Rendezvous Hub (web CS, nginx container built from $env:HUB, default ..\rendezvous_hub) at http://localhost:8085 (needs up -DummyOlt)
   test-cs-console   Rendezvous Hub CI (npm run ci: lint, typecheck, unit tests, build, bundle size, licenses) in a Node container
   e2e-cs-console    Rendezvous Hub Playwright E2E against the dev stack (needs up -DummyOlt, Node 24 + Playwright Chromium)
@@ -454,6 +455,7 @@ switch ($Target) {
         if ($Force) { $arguments += '--force' }
         Invoke-Tools $arguments
     }
+    'cs-mfa-reset' { Assert-Config; Invoke-Tools @('cs-mfa-reset', $Email) }
     'cs-console-react' {
         Assert-Config
         Assert-Hub

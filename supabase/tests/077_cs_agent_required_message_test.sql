@@ -35,8 +35,8 @@ select is(tests.error_of_077($$select cs.require_agent('{cs_super_admin}')$$), '
   'Peran kurang tetap ditolak role_forbidden');
 reset role;
 
-select is((select prosrc ~ '2FA' from pg_proc where oid = 'cs.require_agent(text[])'::regprocedure), false,
-  'Definisi cs.require_agent tidak lagi menyebut 2FA');
+select is((select prosrc ~ 'aktif dengan 2FA' from pg_proc where oid = 'cs.require_agent(text[])'::regprocedure), false,
+  'Pesan agent_required tidak menyebut 2FA, kekurangan 2FA punya kode mfa_required');
 
 select * from finish();
 rollback;

@@ -17,11 +17,12 @@ case "$cmd" in
   cs-race)  bash "$SCRIPTS/cs-claim-race.sh" "$@" ;;
   cs-staff) bash "$SCRIPTS/cs-staff-setup.sh" "$@" ;;
   cs-bootstrap-admin) bash "$SCRIPTS/cs-bootstrap-admin.sh" "$@" ;;
+  cs-mfa-reset) bash "$SCRIPTS/cs-mfa-reset.sh" "$@" ;;
   backup)   bash "$SCRIPTS/backup.sh" "$@" ;;
   restore)  bash "$SCRIPTS/restore.sh" "$@" ;;
   psql)     exec psql -U postgres "$@" ;;
   *)
-    echo "Commands: migrate | seed | test-db | smoke | smoke-dummy | smoke-cs | cs-race [replica-url...] | cs-staff | cs-bootstrap-admin <email> <name> [--force] | cs-demo-config | backup | restore <file> | gen-secrets [--force] | psql" >&2
+    echo "Commands: migrate | seed | test-db | smoke | smoke-dummy | smoke-cs | cs-race [replica-url...] | cs-staff | cs-bootstrap-admin <email> <name> [--force] | cs-mfa-reset <email> | cs-demo-config | backup | restore <file> | gen-secrets [--force] | psql" >&2
     exit 2
     ;;
 esac

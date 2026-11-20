@@ -4,6 +4,21 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 20 November 2026
+
+### 2FA wajib untuk Super Admin dan kunci akun staf (migrasi `0186`, Hub, nasabah-gateway)
+
+- **Baru:**
+  - **2FA (TOTP)** wajib untuk Super Admin. Peran lain bisa ikut diwajibkan dari Hub, di **Pengaturan → Keamanan login**.
+  - Staf yang belum mendaftar diminta memindai kode QR saat login berikutnya. Staf yang sudah mendaftar diminta 6 digit kode dari aplikasi authenticator setiap kali masuk.
+  - **Kunci akun:** setelah 5 kali password salah (bawaan), akun staf dikunci 15 menit (bawaan), dan password yang benar pun ditolak. Kedua angka bisa diubah di Hub. Setiap penguncian tercatat di Jejak Audit.
+  - **Akun CS** menampilkan status 2FA dan akun terkunci, serta tombol **Buka kunci** dan **Reset 2FA** untuk staf lain.
+  - 2FA ditegakkan di server, bukan hanya di tampilan Hub: RPC staf dan menu Akun Nasabah menolak sesi Super Admin yang belum memasukkan kode.
+- **Dampak setelah pasang:** semua Super Admin, termasuk yang sedang masuk, langsung diminta mendaftarkan 2FA. Siapkan aplikasi authenticator di HP masing-masing sebelum update. Jam server harus tersinkron (NTP), karena kode berganti setiap 30 detik.
+- **Darurat** (Super Admin terakhir kehilangan HP): `make cs-mfa-reset EMAIL=nama@perusahaan.co.id` (Windows: `.\make.ps1 cs-mfa-reset -Email ...`, tambahkan `PROFILE=single` / `-Profile single` di produksi). Perintah ini menghapus 2FA dan membuka kunci akun itu, lalu tercatat di audit.
+- **Server dev:** jalankan `make cs-staff` lagi setelah update. Akun dev Super Admin (Sinta, Adi) mendapat authenticator dev yang rahasianya ditulis sebagai `totp_secret` di `scripts/cs-demo/runtime/staff.json`, dan E2E Hub memakainya otomatis.
+- **Cara pasang:** `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`. `make up` sekaligus membangun ulang `nasabah-gateway` dan menyalakan hook kunci akun di layanan login. Aplikasi nasabah tidak perlu diperbarui.
+
 ## 19 November 2026
 
 ### Popup dan notifikasi info saling terhubung (migrasi `0185`)

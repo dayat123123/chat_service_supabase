@@ -77,7 +77,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
         e2e-windows web-example license-audit perf-flutter smoke backup restore gen-secrets gen-keys psql check-config \
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
         test-media test-sentinel test-healer test-backup test-integration test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
-        smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-console-react test-cs-console e2e-cs-console \
+        smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-mfa-reset cs-console-react test-cs-console e2e-cs-console \
         testkit test-security test-zap scan-deps load-test load-integration chaos-test loadtest-cleanup
 
 help: ## List targets
@@ -251,6 +251,9 @@ cs-race: check-config ## CS ticket claim race test: direct DB + 3 test-only Post
 
 cs-bootstrap-admin: check-config ## First web CS super admin: make cs-bootstrap-admin EMAIL=name@domain NAME="Name" [FORCE=1] [PROFILE=single]
 	@$(TOOLS) cs-bootstrap-admin "$(EMAIL)" "$(NAME)" $(if $(FORCE),--force)
+
+cs-mfa-reset: check-config ## Emergency: clear a staff account's 2FA and login lock: make cs-mfa-reset EMAIL=name@domain [PROFILE=single]
+	@$(TOOLS) cs-mfa-reset "$(EMAIL)"
 
 cs-staff: check-config ## Dev staff accounts (CS, super admin, compliance) in scripts/cs-demo/runtime/staff.json
 	mkdir -p scripts/cs-demo/runtime
