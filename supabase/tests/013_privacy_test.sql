@@ -80,12 +80,12 @@ insert into notifications (user_id, actor_id, type, created_at) values
 insert into private.content_archive (target_type, target_id, author_id, body, retain_until, legal_hold) values
   ('post', gen_random_uuid(), :'budi', 'kedaluwarsa', now() - interval '1 day', false),
   ('post', gen_random_uuid(), :'budi', 'ditahan legal', now() - interval '1 day', true);
-update profiles set trust_level = 0, created_at = now() - interval '2 days' where id = :'budi';
+update profiles set trust_level = 0, created_at = now() - interval '4 days' where id = :'budi';
 select private.run_retention() as retention \gset
 select is((select count(*)::int from notifications where user_id = :'ani'), 1, 'Notifikasi lama dihapus, yang baru tetap');
 select is((select count(*)::int from private.content_archive where author_id = :'budi'), 1,
   'Arsip kedaluwarsa dihapus, kecuali yang legal hold');
-select is(private.promote_new_accounts() >= 1, true, 'Akun baru yang sudah 24 jam dipromosikan');
+select is(private.promote_new_accounts() >= 1, true, 'Akun baru yang melewati masa akun baru dipromosikan');
 select is((select trust_level from profiles where id = :'budi'), 1::smallint, 'trust_level naik ke 1');
 
 select * from finish();
