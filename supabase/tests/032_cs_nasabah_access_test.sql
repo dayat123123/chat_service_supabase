@@ -7,13 +7,13 @@ select tests.create_agent('Bima', '{cs_agent}', '{"general": 2}') as bima \gset
 select agent_code as nadia_code from cs.agents where user_id = :'nadia' \gset
 
 select tests.authenticate_service();
-select is(cs_api.nasabah_access(:'nadia'), null, 'Akun tanpa permission Nasabah tidak punya akses');
+select is(cs_api.nasabah_access(:'nadia', 'aal1'), null, 'Akun tanpa permission Nasabah tidak punya akses');
 
 select tests.authenticate_agent(:'nadia');
 select is(cs_api.agent_me() -> 'nasabah_permissions', '[]'::jsonb, 'Profil CS memuat daftar permission Nasabah');
 select throws_ok(format($$select cs_api.admin_set_nasabah_permissions(%L, '{online_user.view}')$$, :'nadia'),
   'PT403', 'role_forbidden', 'CS biasa tidak bisa memberi permission Nasabah');
-select throws_ok(format('select cs_api.nasabah_access(%L)', :'nadia'), '42501', null,
+select throws_ok(format('select cs_api.nasabah_access(%L, ''aal1'')', :'nadia'), '42501', null,
   'Akun console tidak bisa memanggil RPC khusus gateway');
 
 select tests.authenticate_agent(:'sinta');
@@ -31,9 +31,9 @@ select ok((select bool_or(a -> 'nasabah_permissions' ? 'online_user.manage') fro
   'Daftar akun CS menampilkan permission Nasabah');
 
 select tests.authenticate_service();
-select is(cs_api.nasabah_access(:'nadia') -> 'permissions', '["online_user.manage", "online_user.view"]'::jsonb,
+select is(cs_api.nasabah_access(:'nadia', 'aal1') -> 'permissions', '["online_user.manage", "online_user.view"]'::jsonb,
   'Gateway membaca permission Nasabah akun aktif');
-select is(cs_api.nasabah_access(:'nadia') ->> 'agent_code', :'nadia_code',
+select is(cs_api.nasabah_access(:'nadia', 'aal1') ->> 'agent_code', :'nadia_code',
   'Gateway mendapat kode CS untuk kolom pelaku');
 select lives_ok(format($$select cs_api.nasabah_audit(%L, 'nasabah.approval.create', '{"subject": {"LoginId": "budi"}}')$$, :'nadia'),
   'Gateway mencatat aksi Nasabah di audit log');
@@ -53,7 +53,7 @@ select is((select nasabah_permissions from cs.agents where user_id = :'bima'), '
 
 update cs.agents set disabled_at = now() where user_id = :'nadia';
 select tests.authenticate_service();
-select is(cs_api.nasabah_access(:'nadia'), null, 'Akun nonaktif langsung kehilangan akses Nasabah');
+select is(cs_api.nasabah_access(:'nadia', 'aal1'), null, 'Akun nonaktif langsung kehilangan akses Nasabah');
 
 select * from finish();
 rollback;

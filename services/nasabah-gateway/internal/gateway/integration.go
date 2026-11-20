@@ -18,7 +18,7 @@ const (
 )
 
 type Integrations interface {
-	IsSuperAdmin(ctx context.Context, userID string) (bool, error)
+	IsSuperAdmin(ctx context.Context, userID, aal string) (bool, error)
 	Integration(ctx context.Context) (csadmin.Record, error)
 	SaveIntegration(ctx context.Context, userID string, settings csadmin.Settings) (csadmin.Record, error)
 	ClearIntegration(ctx context.Context, userID string) (csadmin.Record, error)
@@ -47,7 +47,7 @@ func integrationRoute(method, path string) bool {
 }
 
 func (g *Gateway) serveIntegration(w http.ResponseWriter, r *http.Request, path string) {
-	userID, err := g.authenticate(r)
+	userID, aal, err := g.authenticate(r)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Console session is missing or expired")
 		return
@@ -57,7 +57,7 @@ func (g *Gateway) serveIntegration(w http.ResponseWriter, r *http.Request, path 
 		writeError(w, http.StatusForbidden, "permission_denied", "Only Super Admins can manage the customer admin integration")
 		return
 	}
-	admin, err := store.IsSuperAdmin(r.Context(), userID)
+	admin, err := store.IsSuperAdmin(r.Context(), userID, aal)
 	if err != nil {
 		g.unavailable(w, "Failed to check Super Admin access", err)
 		return

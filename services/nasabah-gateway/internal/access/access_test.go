@@ -32,14 +32,15 @@ func TestPostgRESTGrantUsesServiceRoleAndCSAPIProfile(t *testing.T) {
 	}))
 	defer server.Close()
 
-	grant, err := NewPostgREST(server.URL, []byte("secret"), "supabase").Grant(context.Background(), "a1")
+	grant, err := NewPostgREST(server.URL, []byte("secret"), "supabase").Grant(context.Background(), "a1", "aal2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if grant == nil || grant.AgentCode != "CS-0045" || !grant.Allows([]string{"online_user.view"}) {
 		t.Fatalf("grant = %+v", grant)
 	}
-	if seen.path != "/rpc/nasabah_access" || seen.profile != "cs_api" || seen.role != "service_role" || seen.args["p_user_id"] != "a1" {
+	if seen.path != "/rpc/nasabah_access" || seen.profile != "cs_api" || seen.role != "service_role" ||
+		seen.args["p_user_id"] != "a1" || seen.args["p_aal"] != "aal2" {
 		t.Fatalf("request = %+v", seen)
 	}
 }
@@ -49,7 +50,7 @@ func TestPostgRESTGrantTreatsNullOrEmptyPermissionsAsNoAccess(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			_, _ = w.Write([]byte(reply))
 		}))
-		grant, err := NewPostgREST(server.URL, []byte("secret"), "supabase").Grant(context.Background(), "a1")
+		grant, err := NewPostgREST(server.URL, []byte("secret"), "supabase").Grant(context.Background(), "a1", "aal1")
 		server.Close()
 		if err != nil || grant != nil {
 			t.Fatalf("%s: grant = %+v, err = %v", reply, grant, err)
@@ -62,7 +63,7 @@ func TestPostgRESTReadsSavesAndClearsTheIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var args map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&args)
-		calls = append(calls, fmt.Sprintf("%s %v %v %v", r.URL.Path, args["p_user_id"], args["p_url"], args["p_client_id"]))
+		calls = append(calls, fmt.Sprintf("%s %v %v %v %v", r.URL.Path, args["p_user_id"], args["p_url"], args["p_client_id"], args["p_aal"]))
 		switch r.URL.Path {
 		case "/rpc/nasabah_integration", "/rpc/nasabah_clear_integration":
 			_, _ = w.Write([]byte(`{"url":"","client_id":"","configured":false,"connected_at":null,"connected_by":null}`))
@@ -87,17 +88,17 @@ func TestPostgRESTReadsSavesAndClearsTheIntegration(t *testing.T) {
 	if cleared, err := store.ClearIntegration(context.Background(), "sinta"); err != nil || cleared.Configured {
 		t.Fatalf("cleared = %+v, err = %v", cleared, err)
 	}
-	sinta, _ := store.IsSuperAdmin(context.Background(), "sinta")
-	nadia, _ := store.IsSuperAdmin(context.Background(), "nadia")
+	sinta, _ := store.IsSuperAdmin(context.Background(), "sinta", "aal2")
+	nadia, _ := store.IsSuperAdmin(context.Background(), "nadia", "aal1")
 	if !sinta || nadia {
 		t.Fatalf("super admin check: sinta %v nadia %v", sinta, nadia)
 	}
 	want := []string{
-		"/rpc/nasabah_integration <nil> <nil> <nil>",
-		"/rpc/nasabah_save_integration sinta http://10.0.0.5:9001/csAdmin web-cs.prod",
-		"/rpc/nasabah_clear_integration sinta <nil> <nil>",
-		"/rpc/nasabah_is_super_admin sinta <nil> <nil>",
-		"/rpc/nasabah_is_super_admin nadia <nil> <nil>",
+		"/rpc/nasabah_integration <nil> <nil> <nil> <nil>",
+		"/rpc/nasabah_save_integration sinta http://10.0.0.5:9001/csAdmin web-cs.prod <nil>",
+		"/rpc/nasabah_clear_integration sinta <nil> <nil> <nil>",
+		"/rpc/nasabah_is_super_admin sinta <nil> <nil> aal2",
+		"/rpc/nasabah_is_super_admin nadia <nil> <nil> aal1",
 	}
 	if strings.Join(calls, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("calls = %v", calls)
@@ -109,7 +110,7 @@ type countingStore struct {
 	grant *Grant
 }
 
-func (s *countingStore) Grant(context.Context, string) (*Grant, error) {
+func (s *countingStore) Grant(context.Context, string, string) (*Grant, error) {
 	s.calls.Add(1)
 	return s.grant, nil
 }
@@ -122,22 +123,33 @@ func TestCacheReusesGrantsAndExpiresDenialsSooner(t *testing.T) {
 	cache := NewCache(store, 30*time.Second)
 	cache.now = func() time.Time { return now }
 
-	_, _ = cache.Grant(context.Background(), "a1")
-	_, _ = cache.Grant(context.Background(), "a1")
+	_, _ = cache.Grant(context.Background(), "a1", "aal2")
+	_, _ = cache.Grant(context.Background(), "a1", "aal2")
 	if store.calls.Load() != 1 {
 		t.Fatalf("calls = %d, want 1", store.calls.Load())
 	}
 	now = now.Add(31 * time.Second)
-	_, _ = cache.Grant(context.Background(), "a1")
+	_, _ = cache.Grant(context.Background(), "a1", "aal2")
 	if store.calls.Load() != 2 {
 		t.Fatalf("calls after ttl = %d, want 2", store.calls.Load())
 	}
 
 	store.grant = nil
-	_, _ = cache.Grant(context.Background(), "b2")
+	_, _ = cache.Grant(context.Background(), "b2", "aal2")
 	now = now.Add(6 * time.Second)
-	_, _ = cache.Grant(context.Background(), "b2")
+	_, _ = cache.Grant(context.Background(), "b2", "aal2")
 	if store.calls.Load() != 4 {
 		t.Fatalf("denials must expire after 5s, calls = %d", store.calls.Load())
+	}
+}
+
+func TestCacheKeepsGrantsPerAssuranceLevel(t *testing.T) {
+	store := &countingStore{grant: &Grant{Permissions: []string{"online_user.view"}}}
+	cache := NewCache(store, 30*time.Second)
+
+	_, _ = cache.Grant(context.Background(), "a1", "aal2")
+	_, _ = cache.Grant(context.Background(), "a1", "aal1")
+	if store.calls.Load() != 2 {
+		t.Fatalf("a grant checked with 2FA must not be reused for a password-only session, calls = %d", store.calls.Load())
 	}
 }

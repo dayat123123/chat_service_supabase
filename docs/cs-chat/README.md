@@ -130,7 +130,7 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 | Kata terlarang aplikasi nasabah (tambah, ubah aksi, hapus, import/unduh Excel) | – | – | – | Ya |
 | Channel realtime | `cs:room:<room miliknya>` | `cs:queue`, `cs:agent:<diri>`, `cs:room:<yang ditangani>` | Sama | `cs:room` berflag |
 
-Semua dicek di server (RLS + fungsi). Login web CS cukup email + password (tanpa TOTP); di produksi web CS hanya bisa diakses dari IP yang diizinkan (LAN kantor atau VPN). Akun nonaktif langsung kehilangan akses. Client tidak bisa mengirim broadcast ke channel `cs:*` (hanya server), sehingga event status tidak bisa dipalsukan.
+Semua dicek di server (RLS + fungsi). Login web CS memakai email + password. Super Admin dan peran lain yang dipilih di Pengaturan → Keamanan login juga wajib memasukkan kode 2FA (TOTP), dan akun dikunci sementara setelah password salah berulang (migrasi `0186`). Di produksi, web CS hanya bisa diakses dari IP yang diizinkan (LAN kantor atau VPN). Akun nonaktif langsung kehilangan akses. Client tidak bisa mengirim broadcast ke channel `cs:*` (hanya server), sehingga event status tidak bisa dipalsukan.
 
 ## API `cs_api`
 
@@ -229,9 +229,19 @@ make cs-demo                 # halaman demo (dev) di http://localhost:8082
 
 ## Web CS dan akun staf
 
-- **GoTrue:** login email + password dinyalakan khusus akun staf yang dibuat super admin. Pendaftaran publik tetap mati, password minimal 12 karakter, dan web CS tidak memakai TOTP.
-- **Super admin pertama:** `make cs-bootstrap-admin EMAIL=... NAME="..."` (Windows: `.\make.ps1 cs-bootstrap-admin -Email ... -Name "..."`) dari server, di lingkungan mana pun. Password sementara dicetak sekali dan wajib diganti saat login pertama. Akun berikutnya dibuat super admin dari Pengaturan → Akun CS.
-- **Akun staf dev:** dibuat `scripts/cs-staff-setup.sh` lewat API admin GoTrue (UUID akun = UUID agen), tanpa TOTP: Nadia, Bima, Laras (CS), Sinta dan Adi (super admin). Akun baru di luar itu dibuat super admin dari menu Pengaturan → Akun CS.
+- **GoTrue:** login email + password dinyalakan khusus akun staf yang dibuat super admin. Pendaftaran publik tetap mati dan password minimal 12 karakter.
+- **2FA dan kunci akun (migrasi `0186`, 20 Nov 2026):**
+  - Peran di `security.mfa_required_roles` wajib memasukkan kode TOTP (klaim `aal2`). Super Admin selalu termasuk, dan peran lain bisa ditambah dari Hub (Pengaturan → Keamanan login).
+  - Staf yang sudah mendaftarkan 2FA juga wajib memasukkan kodenya, walau perannya tidak diwajibkan.
+  - Server yang menegakkan aturan ini: `cs.current_agent_id()` menolak sesi tanpa `aal2`, dan RPC menjawab `mfa_required`. Gateway Akun Nasabah memakai `nasabah_access(p_user_id, p_aal)`, jadi 2FA juga berlaku di sana.
+  - Hook GoTrue `private.hook_password_verification_attempt` mengunci akun setelah `security.login_max_failures` kali password salah (bawaan 5) selama `security.login_lock_minutes` (bawaan 15 menit). Setiap penguncian tercatat di audit (`security.login_locked`).
+  - Super Admin bisa **Buka kunci** dan **Reset 2FA** staf lain dari Pengaturan → Akun CS. Reset 2FA juga mengeluarkan semua sesi staf itu.
+  - Kalau Super Admin terakhir kehilangan HP, jalankan dari server `make cs-mfa-reset EMAIL=...` (Windows: `.\make.ps1 cs-mfa-reset -Email ...`).
+- **Super admin pertama:** `make cs-bootstrap-admin EMAIL=... NAME="..."` (Windows: `.\make.ps1 cs-bootstrap-admin -Email ... -Name "..."`) dari server, di lingkungan mana pun. Password sementara dicetak sekali. Saat login pertama, super admin mendaftarkan 2FA dulu, lalu mengganti password. Akun berikutnya dibuat super admin dari Pengaturan → Akun CS.
+- **Akun staf dev:** dibuat `scripts/cs-staff-setup.sh` lewat API admin GoTrue (UUID akun = UUID agen): Nadia, Bima, Laras (CS), Sinta dan Adi (super admin), Kirana (kepatuhan).
+  - Akun dengan peran wajib 2FA mendapat authenticator dev. Rahasianya diturunkan dari JWT secret dan ditulis sebagai `totp_secret` di `scripts/cs-demo/runtime/staff.json` (di-gitignore).
+  - E2E Hub menghitung kodenya sendiri, sedangkan pengembang memasukkan rahasia itu ke aplikasi authenticator.
+  - Akun baru di luar itu dibuat super admin dari menu Pengaturan → Akun CS.
 - **Realtime:** daftar tiket dimuat ulang saat ada event `cs:queue`/`cs:agent:<id>`, ditambah polling 30 detik sebagai cadangan.
 
 **Halaman demo** (`scripts/cs-demo`) hanya alat pengembangan dan khusus profil `dev`. UI resminya adalah web CS React dan aplikasi nasabah (R3).

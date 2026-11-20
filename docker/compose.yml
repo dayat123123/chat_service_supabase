@@ -178,12 +178,16 @@ services:
       GOTRUE_SITE_URL: ${SITE_URL}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-}
       # OLT users never sign up through GoTrue; auth-bridge issues their JWTs.
-      # Email + password login is for staff accounts only. The web CS does not use TOTP; moderation admins still require TOTP (aal2).
+      # Email + password login is for staff accounts only. Hub roles listed in security.mfa_required_roles
+      # (always Super Admin) must verify TOTP (aal2); the roles and lockout limits are managed in the Hub.
       GOTRUE_DISABLE_SIGNUP: "true"
       GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
       GOTRUE_PASSWORD_MIN_LENGTH: "12"
       GOTRUE_MFA_TOTP_ENROLL_ENABLED: "true"
       GOTRUE_MFA_TOTP_VERIFY_ENABLED: "true"
+      # Locks a staff account after repeated wrong passwords (migration 0186).
+      GOTRUE_HOOK_PASSWORD_VERIFICATION_ATTEMPT_ENABLED: "true"
+      GOTRUE_HOOK_PASSWORD_VERIFICATION_ATTEMPT_URI: pg-functions://postgres/private/hook_password_verification_attempt
       GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
       GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
       GOTRUE_MAILER_AUTOCONFIRM: "false"

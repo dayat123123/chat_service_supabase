@@ -35,18 +35,26 @@ type auditEntry struct {
 type fakeStore struct {
 	grants map[string]*access.Grant
 	admins map[string]bool
+	mfa    map[string]bool
 	record csadmin.Record
 	saved  []csadmin.Settings
 	mu     sync.Mutex
 	audits []auditEntry
 }
 
-func (s *fakeStore) Grant(_ context.Context, userID string) (*access.Grant, error) {
+func (s *fakeStore) verified(userID, aal string) bool {
+	return !s.mfa[userID] || aal == "aal2"
+}
+
+func (s *fakeStore) Grant(_ context.Context, userID, aal string) (*access.Grant, error) {
+	if !s.verified(userID, aal) {
+		return nil, nil
+	}
 	return s.grants[userID], nil
 }
 
-func (s *fakeStore) IsSuperAdmin(_ context.Context, userID string) (bool, error) {
-	return s.admins[userID], nil
+func (s *fakeStore) IsSuperAdmin(_ context.Context, userID, aal string) (bool, error) {
+	return s.admins[userID] && s.verified(userID, aal), nil
 }
 
 func (s *fakeStore) Integration(context.Context) (csadmin.Record, error) {
@@ -233,6 +241,28 @@ func TestRequiresCustomerAccessWithThePermission(t *testing.T) {
 	}
 	if len(up.calls) != 0 {
 		t.Fatalf("upstream must not be called, got %d calls", len(up.calls))
+	}
+}
+
+func TestChecksAccessWithTheSessionAssuranceLevel(t *testing.T) {
+	g, store, _ := setup(t, 200, `{"message":"ok","data":[]}`)
+	store.mfa = map[string]bool{"nadia": true, "sinta": true}
+	level := func(aal string) func(map[string]any) { return func(c map[string]any) { c["aal"] = aal } }
+
+	if rec := do(g, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "nadia", level("aal1")), ""); rec.Code != http.StatusForbidden || errorCode(t, rec) != "no_access" {
+		t.Errorf("password-only session: status %d code %q", rec.Code, errorCode(t, rec))
+	}
+	if rec := do(g, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "nadia", nil), ""); rec.Code != http.StatusForbidden {
+		t.Errorf("session without aal: status %d", rec.Code)
+	}
+	if rec := do(g, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "nadia", level("aal2")), ""); rec.Code != http.StatusOK {
+		t.Errorf("session with 2FA: status %d code %q", rec.Code, errorCode(t, rec))
+	}
+	if rec := do(g, http.MethodGet, "/api-nasabah/integration", session(t, "sinta", level("aal1")), ""); rec.Code != http.StatusForbidden || errorCode(t, rec) != "permission_denied" {
+		t.Errorf("super admin without 2FA: status %d code %q", rec.Code, errorCode(t, rec))
+	}
+	if rec := do(g, http.MethodGet, "/api-nasabah/integration", session(t, "sinta", level("aal2")), ""); rec.Code != http.StatusOK {
+		t.Errorf("super admin with 2FA: status %d code %q", rec.Code, errorCode(t, rec))
 	}
 }
 

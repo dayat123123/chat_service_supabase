@@ -33,7 +33,7 @@ func (g Grant) Allows(permissions []string) bool {
 }
 
 type Store interface {
-	Grant(ctx context.Context, userID string) (*Grant, error)
+	Grant(ctx context.Context, userID, aal string) (*Grant, error)
 	Audit(ctx context.Context, userID, action string, details map[string]any) error
 }
 
@@ -55,9 +55,9 @@ func NewPostgREST(baseURL string, jwtSecret []byte, issuer string) *PostgREST {
 	}
 }
 
-func (p *PostgREST) Grant(ctx context.Context, userID string) (*Grant, error) {
+func (p *PostgREST) Grant(ctx context.Context, userID, aal string) (*Grant, error) {
 	var grant *Grant
-	if err := p.rpc(ctx, "nasabah_access", map[string]any{"p_user_id": userID}, &grant); err != nil {
+	if err := p.rpc(ctx, "nasabah_access", map[string]any{"p_user_id": userID, "p_aal": aal}, &grant); err != nil {
 		return nil, err
 	}
 	if grant == nil || len(grant.Permissions) == 0 {
@@ -93,9 +93,9 @@ func (p *PostgREST) record(ctx context.Context, fn string, args map[string]any) 
 	return record, nil
 }
 
-func (p *PostgREST) IsSuperAdmin(ctx context.Context, userID string) (bool, error) {
+func (p *PostgREST) IsSuperAdmin(ctx context.Context, userID, aal string) (bool, error) {
 	var admin bool
-	if err := p.rpc(ctx, "nasabah_is_super_admin", map[string]any{"p_user_id": userID}, &admin); err != nil {
+	if err := p.rpc(ctx, "nasabah_is_super_admin", map[string]any{"p_user_id": userID, "p_aal": aal}, &admin); err != nil {
 		return false, err
 	}
 	return admin, nil
@@ -177,16 +177,17 @@ func NewCache(store Store, ttl time.Duration) *Cache {
 	return &Cache{store: store, ttl: ttl, denialTTL: min(ttl, 5*time.Second), now: time.Now, entries: map[string]entry{}}
 }
 
-func (c *Cache) Grant(ctx context.Context, userID string) (*Grant, error) {
+func (c *Cache) Grant(ctx context.Context, userID, aal string) (*Grant, error) {
 	now := c.now()
+	key := userID + "|" + aal
 	c.mu.Lock()
-	if e, ok := c.entries[userID]; ok && now.Before(e.expires) {
+	if e, ok := c.entries[key]; ok && now.Before(e.expires) {
 		c.mu.Unlock()
 		return e.grant, nil
 	}
 	c.mu.Unlock()
 
-	grant, err := c.store.Grant(ctx, userID)
+	grant, err := c.store.Grant(ctx, userID, aal)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +199,7 @@ func (c *Cache) Grant(ctx context.Context, userID string) (*Grant, error) {
 	if len(c.entries) > 10_000 {
 		clear(c.entries)
 	}
-	c.entries[userID] = entry{grant: grant, expires: now.Add(ttl)}
+	c.entries[key] = entry{grant: grant, expires: now.Add(ttl)}
 	c.mu.Unlock()
 	return grant, nil
 }

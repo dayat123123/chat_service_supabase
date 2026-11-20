@@ -113,12 +113,12 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusServiceUnavailable, "not_configured", "Customer admin service is not configured")
 		return
 	}
-	userID, err := g.authenticate(r)
+	userID, aal, err := g.authenticate(r)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthorized", "Console session is missing or expired")
 		return
 	}
-	grant, err := g.opts.Grants.Grant(r.Context(), userID)
+	grant, err := g.opts.Grants.Grant(r.Context(), userID, aal)
 	if err != nil {
 		g.opts.Log.Error("Failed to load customer access", "action", route.Action, "error", err)
 		writeError(w, http.StatusServiceUnavailable, "access_unavailable", "Customer access check is unavailable")
@@ -250,20 +250,21 @@ func (g *Gateway) fail(w http.ResponseWriter, route Route, err error) {
 	}
 }
 
-func (g *Gateway) authenticate(r *http.Request) (string, error) {
+func (g *Gateway) authenticate(r *http.Request) (string, string, error) {
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if !ok || token == "" {
-		return "", errors.New("missing bearer token")
+		return "", "", errors.New("missing bearer token")
 	}
 	claims, err := jwt.Verify(token, g.opts.JWTSecret, g.opts.Now())
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	sub, _ := claims["sub"].(string)
 	if claims["role"] != "authenticated" || !jwt.HasAudience(claims, "authenticated") || sub == "" {
-		return "", errors.New("token is not an authenticated user session")
+		return "", "", errors.New("token is not an authenticated user session")
 	}
-	return sub, nil
+	aal, _ := claims["aal"].(string)
+	return sub, aal, nil
 }
 
 func readFields(r *http.Request) (map[string]any, error) {

@@ -230,7 +230,7 @@ select tests.authenticate_as(:'budi');
 select throws_ok('select cs_api.admin_agents()', 'PT403', 'agent_required', 'Nasabah tidak bisa membuka pengaturan admin');
 reset role;
 select tests.authenticate_agent(:'adi', 'aal1');
-select lives_ok('select cs_api.admin_settings()', 'Super admin cukup login email + password, tanpa 2FA');
+select throws_ok('select cs_api.admin_settings()', 'PT401', 'mfa_required', 'Super admin wajib memasukkan kode 2FA (0186)');
 
 select * from finish();
 rollback;

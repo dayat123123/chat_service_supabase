@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Dev profile only. Passwords are derived from this environment's JWT secret and the printed JSON
-# is stored in the gitignored scripts/cs-demo/runtime/staff.json.
+# Dev profile only. Passwords and the TOTP secrets of roles that must use 2FA are derived from this
+# environment's JWT secret; the printed JSON is stored in the gitignored scripts/cs-demo/runtime/staff.json.
 set -euo pipefail
 source "$(dirname "$0")/cs-lib.sh"
 : "${ANON_KEY:?ANON_KEY is required}"
@@ -38,10 +38,17 @@ for row in "${STAFF[@]}"; do
   for factor in $(admin GET "users/$id/factors" | jq -r 'if type == "array" then .[].id else empty end'); do
     admin DELETE "users/$id/factors/$factor" > /dev/null
   done
+  totp=''
+  if [ "$(sql "select '$roles'::text[] && cs.mfa_required_roles()")" = t ]; then
+    totp=$(printf 'cs-staff-totp:%s' "$id" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | base32 | tr -d '=\n' | head -c 32)
+    sql "insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, secret, created_at, updated_at)
+         values (gen_random_uuid(), '$id', 'Dev authenticator', 'totp', 'verified', '$totp', now(), now())" > /dev/null
+  fi
   code=$(sql "select agent_code from cs.agents where user_id = '$id'")
   entries+=("$(jq -cn --arg id "$id" --arg name "$name" --arg code "$code" --arg email "$email" --arg password "$password" \
-    --arg roles "$roles" \
-    '{id: $id, name: $name, agent_code: $code, email: $email, password: $password, roles: $roles}')")
+    --arg roles "$roles" --arg totp "$totp" \
+    '{id: $id, name: $name, agent_code: $code, email: $email, password: $password, roles: $roles,
+      totp_secret: (if $totp == "" then null else $totp end)}')")
 done
 
 sql "insert into cs.quick_replies (scope, shortcut, title, body, language)
