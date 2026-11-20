@@ -6,6 +6,20 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 20 November 2026
 
+### Satu pengaturan untuk semua batasan akun baru (migrasi `0187`, Hub)
+
+- **Sebelumnya:** walaupun **Masa akun baru** diisi 0 hari, akun yang baru daftar atau bergabung lagi tetap dibatasi 24 jam pertama (tingkat kepercayaan 0). Angka 24 jam itu tidak ada di Hub, sehingga misalnya Share P/L dari akun yang baru daftar ditolak sehari.
+- **Sekarang:** kartu **Masa akun baru** (Kepatuhan → Kebijakan konten → tab Kategori) mengatur semuanya:
+  - gambar di postingan, komentar, DM, grup, dan room saham, termasuk Share P/L;
+  - tautan selain domain tepercaya;
+  - DM ke orang yang tidak saling mengikuti lewat Permintaan pesan;
+  - batas kecepatan kirim separuh dari akun biasa.
+- **0 hari** berarti akun baru langsung bebas sejak daftar. Masa dihitung sejak daftar, atau sejak bergabung lagi setelah dihapus. Kartu di Hub kini menyebut semua yang dikendalikan, yang tetap boleh, dan siapa yang tidak terkena.
+- **Dampak setelah pasang:**
+  - Server dengan masa 0 hari: akun yang sedang tertahan di masa 24 jam langsung bebas.
+  - Server dengan masa lebih dari 0 (bawaan 3 hari): batas kecepatan separuh kini berlaku selama masa itu, bukan hanya 24 jam pertama.
+- **Cara pasang:** `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`. Aplikasi nasabah tidak perlu diperbarui.
+
 ### 2FA wajib untuk Super Admin dan kunci akun staf (migrasi `0186`, Hub, nasabah-gateway)
 
 - **Baru:**

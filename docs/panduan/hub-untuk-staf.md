@@ -646,7 +646,7 @@ Aturan keamanan konten komunitas. Tabnya:
 | Tab | Isi |
 |---|---|
 | **Kata terlarang** | Daftar kata dan frasa yang disensor atau diblokir (bagian 4.5) |
-| **Kategori** | Aksi per kategori (**Judi**, **Pornografi**, **Phishing & IP logger**, **Pemendek tautan**, **Grup chat & messenger**, **Nomor HP**, **Frasa promosi**, **Tautan lain**, dll.): **Izinkan**, **Sensor**, **Tahan** (ditinjau moderator), atau **Blokir**, dengan cakupan **Publik saja** atau **Publik + DM & grup**. Juga **Masa akun baru** |
+| **Kategori** | Aksi per kategori (**Judi**, **Pornografi**, **Phishing & IP logger**, **Pemendek tautan**, **Grup chat & messenger**, **Nomor HP**, **Frasa promosi**, **Tautan lain**, dll.): **Izinkan**, **Sensor**, **Tahan** (ditinjau moderator), atau **Blokir**, dengan cakupan **Publik saja** atau **Publik + DM & grup**. Juga **Masa akun baru**: satu angka hari untuk semua batasan akun yang baru daftar atau bergabung lagi (gambar termasuk Share P/L, tautan, DM lewat Permintaan pesan, batas kecepatan separuh). **0 hari** = akun baru langsung bebas |
 | **Domain** | **Domain diblokir** (domain atau kata kunci) dan **Domain tepercaya** (selalu lolos) |
 | **Frasa & pengecualian** | **Frasa promosi** dan **Istilah pengecualian** (mis. istilah wajar yang mengandung kata terlarang) |
 | **Ambang gambar** | Skor classifier per kategori: **Tahan ≥** dan **Blokir ≥**. Pornografi wajib punya ambang |

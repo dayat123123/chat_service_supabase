@@ -106,13 +106,23 @@ saham tidak memuat pesan yang ditahan, link preview tidak dibuat. Moderator meli
 
 ## 4. Akun baru
 
-Akun baru = `trust_level = 0`, **atau** `trust_level = 1` yang mendaftar (profil dibuat dengan trust 0
-oleh auth-bridge) kurang dari `safety.new_account_days` hari (default 3). Akun yang dibuat staf/seed
-dengan trust ≥ 1 tidak dihitung dari umur. Akun baru:
+Sejak `0187`, satu angka `safety.new_account_days` (default 3, Hub: Kebijakan konten → Kategori → Masa
+akun baru) mengatur semua batasan akun baru. Akun baru = `trust_level` 0 atau 1 yang mendaftar, atau
+bergabung lagi setelah dihapus, kurang dari `safety.new_account_days` hari lalu. Waktunya diambil dari
+`private.account_signups` (dan `profiles.created_at` untuk trust 0). Akun yang dibuat staf/seed dengan
+trust ≥ 1 tidak dihitung dari umur, dan trust ≥ 2 tidak pernah dianggap baru. Nilai 0 berarti tanpa
+batasan sama sekali. Akun baru:
 
-- tidak boleh melampirkan gambar (`new_account_restricted`, detail `image`);
+- tidak boleh melampirkan gambar di postingan, komentar, dan pesan (`new_account_restricted`, detail
+  `image`), termasuk kartu bergambar dari aplikasi seperti Share P/L;
 - tidak boleh membagikan tautan selain domain tepercaya (detail `link`);
-- DM ke orang yang tidak saling mengikuti selalu lewat permintaan pesan.
+- DM ke orang yang tidak saling mengikuti selalu lewat permintaan pesan;
+- batas kecepatan semua aksi dikali `rate_limit.new_account_factor` (0,5).
+
+Job `olt-promote-new-accounts` (tiap 15 menit) menaikkan trust 0 ke 1 setelah masa yang sama. Pengaturan
+lama `trust.new_account_hours` (24 jam) dihapus di `0187`. Bobot trending (`trending.new_account_days`)
+dan umur akun baru untuk alert manipulasi (`manipulation.new_account_age_days`) tetap terpisah karena
+hanya dipakai untuk deteksi.
 
 ## 5. Permintaan pesan DM
 
