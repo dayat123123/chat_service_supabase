@@ -4,6 +4,19 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 22 November 2026
+
+### Lampiran PDF, gambar, dan video di artikel Pusat Bantuan (migrasi `0188`, Hub, library 1.49.0)
+
+- **Baru:** di **Pusat Bantuan → Artikel bantuan**, editor artikel punya bagian **Lampiran**. Staf bisa memasang sampai **10 file** per artikel:
+  - PDF, maksimal 10 MB;
+  - gambar JPEG, PNG, atau WebP, maksimal 5 MB (gambar yang lebih besar diperkecil otomatis);
+  - video MP4, WebM, atau MOV, maksimal 25 MB.
+- Nama lampiran bisa diubah, urutannya bisa dinaikkan atau diturunkan, dan lampiran bisa dihapus. Lampiran tampil di **Pratinjau di aplikasi** dan di dialog **Sisipkan artikel FAQ** milik agen CS. Lampiran sama untuk kedua bahasa dan ikut tersimpan di riwayat versi, sehingga **Pulihkan** versi lama membawa lampirannya kembali.
+- **Di aplikasi nasabah** (library 1.49.0): lampiran tampil di bawah jawaban. Gambar dibuka di layar penuh, video diputar di aplikasi, PDF dibuka dengan aplikasi bawaan perangkat. Aplikasi yang belum diperbarui tetap menampilkan artikel seperti biasa, hanya tanpa lampiran.
+- **Keamanan:** file disimpan di bucket publik baru `faq-files` dengan nama acak. Hanya staf Super Admin dan Pusat Bantuan yang bisa mengunggah. Server memeriksa jenis, ukuran, dan keberadaan setiap file saat artikel disimpan, sehingga tautan ke situs lain tidak bisa dipasang sebagai lampiran.
+- **Cara pasang:** `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`. Agar nasabah bisa melihat lampiran, aplikasi OLT perlu memakai library `v1.49.0`.
+
 ## 20 November 2026
 
 ### Satu pengaturan untuk semua batasan akun baru (migrasi `0187`, Hub)
