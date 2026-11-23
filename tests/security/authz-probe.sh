@@ -281,7 +281,7 @@ for a in anon customer; do
 done
 expect_auth_denied anon "integration notify with wrong key" POST /integration/v1/notify/messages "$NOTIFY" -H "Authorization: Bearer olt_int_$(openssl rand -hex 24)"
 expect_auth_denied anon "integration notify with anon key as Bearer" POST /integration/v1/notify/messages "$NOTIFY" -H "Authorization: Bearer $ANON_KEY"
-expect_auth_denied anon "integration without Kong apikey" POST /integration/v1/notify/messages "$NOTIFY" -H 'apikey:'
+expect_auth_denied anon "integration without any credentials" POST /integration/v1/notify/messages "$NOTIFY" -H 'apikey:'
 expect_auth_denied anon "integration bot_post with wrong key" POST /integration/v1/bot/posts '{"posts":[]}' -H 'Authorization: Bearer wrong'
 
 echo "== Realtime: DM room channel of two lt_sec* test users"

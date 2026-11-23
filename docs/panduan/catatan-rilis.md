@@ -12,6 +12,7 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 - **Yang tidak dikirim keluar:** alamat internal probe, lokasi backup, dan detail kanal alert (email, host SMTP, chat ID Telegram).
 - **API key:** di Hub, menu **Pengaturan → API Notifikasi** kini bernama **API Integrasi** dan punya izin baru **Baca kesehatan sistem**. Setelah key dibuat, Hub langsung menampilkan alamat endpoint dan contoh request. Key hanya bisa membaca, bisa dibatasi IP, dan dicabut kapan saja.
 - **Kontrak:** tag **Kesehatan sistem** di `docs/api/openapi.yaml` dan bagian 4a [docs/integration/README.md](../integration/README.md).
+- **Lebih sederhana untuk semua API integrasi:** `/integration/v1` (notifikasi, bot, kesehatan sistem) kini cukup memakai header `Authorization: Bearer oik_…`. Header `apikey` (anon key) tidak wajib lagi. Sistem yang masih mengirimnya, seperti notifEngine OLT, tetap berjalan tanpa perubahan.
 - **Cara pasang:** `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`. `make up` membangun ulang image `integration` 0.3.0. Aplikasi nasabah tidak perlu diperbarui.
 
 ## 22 November 2026

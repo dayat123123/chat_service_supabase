@@ -70,7 +70,7 @@ Tambahkan satu klaim opsional di payload token sosial (format token lengkap: [do
 | Item | Nilai |
 |---|---|
 | URL produksi | `https://<domain API sosial>/integration/v1/notify/messages` |
-| Header wajib | `apikey: <ANON_KEY>` (sama dengan app), `Authorization: Bearer <API key integrasi>`, `Content-Type: application/json` |
+| Header wajib | `Authorization: Bearer <API key integrasi>` dan `Content-Type: application/json`. Header `apikey` (anon key) tidak diperlukan sejak 23 November 2026; bila masih dikirim, diabaikan |
 | API key integrasi | Dibuat Super Admin di web CS. Berawalan `oik_`, **hanya ditampilkan sekali**. Simpan di konfigurasi rahasia notifEngine, jangan di kode atau log |
 | Izin (scope) | `notify`. Target selain `cust_id` dan `olt_user_id` (siaran) butuh izin tambahan `notify_broadcast` |
 | IP pengirim | Bila Super Admin mengisi daftar IP/CIDR pada key, request dari IP lain ditolak `403 ip_not_allowed` |
@@ -117,7 +117,6 @@ Tanpa `channels`, push transaksi **hanya** dikirim ke HP dan tidak masuk kotak n
 
 ```bash
 curl -sS -X POST "https://api.contoh.co.id/integration/v1/notify/messages" \
-  -H "apikey: $ANON_KEY" \
   -H "Authorization: Bearer $OLT_INTEGRATION_KEY" \
   -H "Content-Type: application/json" \
   -H "X-Request-Id: notif-batch-000123" \
@@ -182,18 +181,18 @@ Untuk informasi pasar, IPO, pengumuman layanan, atau promo ke banyak nasabah sek
 
 ```bash
 curl -sS -X POST "https://api.contoh.co.id/integration/v1/notify/messages" \
-  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $OLT_BROADCAST_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OLT_BROADCAST_KEY" -H "Content-Type: application/json" \
   -d '{"messages":[{"id":"ipo-ABCD-20261103","target":{"audience":"all"},"kind":"olt.ipo.offer","category":"promo",
         "title":{"id":"IPO ABCD dibuka","en":"ABCD IPO is open"},"body":"Masa penawaran 3–5 Nov 2026","ttl_seconds":86400}]}'
 
 curl -sS -X POST "https://api.contoh.co.id/integration/v1/notify/messages" \
-  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $OLT_BROADCAST_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OLT_BROADCAST_KEY" -H "Content-Type: application/json" \
   -d '{"messages":[{"id":"ca-BBCA-suspend-20261103","target":{"audience":"stock_watchers","stock":"BBCA"},
         "kind":"olt.corporate_action.suspend","category":"important","channels":["push","inbox"],
         "title":"BBCA disuspensi bursa","body":"Perdagangan BBCA dihentikan sementara mulai sesi I."}]}'
 
 curl -sS -X POST "https://api.contoh.co.id/integration/v1/notify/messages" \
-  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $OLT_BROADCAST_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OLT_BROADCAST_KEY" -H "Content-Type: application/json" \
   -d '{"messages":[{"id":"rdn-maint-20261103","target":{"olt_user_ids":["1001","1002"]},"kind":"olt.rdn.maintenance",
         "title":"Pemeliharaan RDN","body":"Top up RDN tidak tersedia pukul 23.00–24.00 WIB."}]}'
 ```
@@ -235,7 +234,7 @@ Untuk notifikasi pribadi yang terikat ke login, bukan ke rekening, misalnya aler
 
 ```bash
 curl -sS -X POST "https://api.contoh.co.id/integration/v1/notify/messages" \
-  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $OLT_INTEGRATION_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OLT_INTEGRATION_KEY" -H "Content-Type: application/json" \
   -d '{"messages":[{"id":"pa-8812-20261118","target":{"olt_user_id":"1001"},"kind":"olt.price_alert.above",
         "title":"BBCA menyentuh 10.000","body":"Harga BBCA naik ke 10.000 (target ≥ 10.000)",
         "data":{"stock":"BBCA","alert_id":"8812"},"collapse_key":"pa-BBCA","ttl_seconds":3600}]}'
@@ -263,7 +262,7 @@ Untuk sistem otomatis (berita pasar, aksi korporasi) yang memposting atas nama *
 
 ```bash
 curl -sS -X POST "https://api.contoh.co.id/integration/v1/bot/posts" \
-  -H "apikey: $ANON_KEY" -H "Authorization: Bearer $BOT_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $BOT_KEY" -H "Content-Type: application/json" \
   -d '{"posts":[{"id":"ca-BBCA-20261103-dividen","body":"Aksi korporasi $BBCA: dividen tunai Rp 270/saham, cum date 10 Nov 2026."}]}'
 ```
 
@@ -294,7 +293,7 @@ Untuk aplikasi internal yang ingin menampilkan kesehatan sistem sendiri, misalny
 |---|---|
 | URL | `https://<domain API sosial>/integration/v1/system/health` dan `https://<domain API sosial>/integration/v1/system/nodes` |
 | Metode | `GET`, tanpa body |
-| Header wajib | `apikey: <ANON_KEY>` dan `Authorization: Bearer <API key integrasi>` |
+| Header wajib | `Authorization: Bearer <API key integrasi>` saja. Header `apikey` (anon key) tidak diperlukan |
 | Izin (scope) | `health_read`. Buat key khusus di Hub, **Pengaturan → API Integrasi → Buat API key**, centang **Baca kesehatan sistem**. Setelah dibuat, Hub langsung menampilkan alamat dan contoh request dengan key itu |
 | Dari mana dipanggil | Dari **backend** aplikasi Anda, bukan dari browser, supaya key tidak bocor. Batasi IP key ke IP server itu bila bisa |
 | Frekuensi | Kesehatan sistem dievaluasi ±30 detik sekali dan peta layanan ±10 detik sekali; memanggil setiap 15–30 detik sudah cukup. Batas per key tetap `rate_limit_per_minute` |
@@ -318,7 +317,6 @@ Yang sengaja **tidak** dikirim keluar walau tampil di Hub:
 
 ```bash
 curl -sS "https://api.contoh.co.id/integration/v1/system/health" \
-  -H "apikey: $ANON_KEY" \
   -H "Authorization: Bearer $INTEGRATION_KEY"
 ```
 

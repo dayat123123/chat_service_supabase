@@ -1214,8 +1214,7 @@ paths:
         | `{"olt_user_id"}` | Sinkron ke satu login (mis. alert harga) | `notify` |
         | `{"olt_user_ids"}`, `{"audience": "all"}`, `{"audience": "stock_watchers"}` | Siaran asinkron | `notify` + `notify_broadcast` |
       security:
-        - anonKey: []
-          integrationKey: []
+        - integrationKey: []
       parameters:
         - name: X-Request-Id
           in: header
@@ -1272,8 +1271,7 @@ paths:
         Field baru bisa ditambah tanpa pemberitahuan; abaikan field yang tidak dikenal. `api_version` naik bila ada
         perubahan yang tidak kompatibel.
       security:
-        - anonKey: []
-          integrationKey: []
+        - integrationKey: []
       parameters:
         - name: X-Request-Id
           in: header
@@ -1303,8 +1301,7 @@ paths:
         usage CPU dan memori beserta batasnya), hasil probe, restart 24 jam terakhir, dan versi tiap layanan. Laporan
         diperbarui sekitar setiap 10 detik; `stale` bernilai true bila pemantau berhenti melapor.
       security:
-        - anonKey: []
-          integrationKey: []
+        - integrationKey: []
       parameters:
         - name: X-Request-Id
           in: header
@@ -1339,7 +1336,7 @@ components:
     integrationKey:
       type: http
       scheme: bearer
-      description: API key integrasi `oik_…` dari Hub. Rahasiakan di server, jangan dipasang di aplikasi.
+      description: API key integrasi `oik_…` dari Hub. Rahasiakan di server, jangan dipasang di aplikasi. Endpoint `/integration/v1` hanya butuh key ini; header `apikey` tidak diperlukan.
 
   requestBodies:
     RoomId:

@@ -546,26 +546,16 @@ services:
             - admin
             - anon
 
-  ## OLT integration gateway: the integration service verifies its own API key in the Authorization
-  ## header; Kong still requires the anon apikey.
+  ## Integration gateway: the integration service verifies its own oik_ API key (Authorization header,
+  ## per-IP auth-failure limit, per-key rate limit and CIDR), so Kong does not require the anon apikey.
   - name: integration-v1
-    _comment: 'Integrasi OLT: /integration/v1/* -> http://integration:8080/*'
+    _comment: 'Integrasi: /integration/v1/* -> http://integration:8080/*'
     url: http://integration:8080/
     routes:
       - name: integration-v1-all
         strip_path: true
         paths:
           - /integration/v1/
-    plugins:
-      - name: key-auth
-        config:
-          hide_credentials: true
-      - name: acl
-        config:
-          hide_groups_header: true
-          allow:
-            - admin
-            - anon
 
   ## Protected Dashboard - catch all remaining routes
   - name: dashboard
