@@ -285,7 +285,7 @@ Batch ditolak `409 official_inactive` bila akun resminya dinonaktifkan. Staf bis
 
 ## 4a. Kesehatan sistem untuk aplikasi lain: `GET /integration/v1/system/health` dan `/system/nodes`
 
-Untuk aplikasi internal yang ingin menampilkan kesehatan sistem sendiri, misalnya dasbor kantor. Isinya sama dengan halaman **Kesehatan sistem** dan **Peta layanan** di Hub, karena keduanya dibuat oleh fungsi database yang sama. Hanya baca: tidak bisa menandai alert atau mengubah pengaturan.
+Untuk aplikasi internal yang ingin menampilkan kesehatan sistem sendiri, misalnya dasbor kantor. **Panduan lengkap khusus fitur ini, termasuk arti setiap field dan contoh kode: [kesehatan-sistem.md](kesehatan-sistem.md).** Isinya sama dengan halaman **Kesehatan sistem** dan **Peta layanan** di Hub, karena keduanya dibuat oleh fungsi database yang sama. Hanya baca: tidak bisa menandai alert atau mengubah pengaturan.
 
 ### Akses
 
@@ -347,6 +347,7 @@ RPC untuk web CS (semua tercatat di Kepatuhan → Jejak Audit sebagai `integrati
 | `cs_api.integration_key_create(name, scopes, official_account_id, allowed_cidrs, rate_limit_per_minute)` | Membuat key. `scopes` ⊂ {`notify`, `notify_broadcast`, `bot_post`, `health_read`}; `notify_broadcast` wajib disertai `notify`. Respons memuat `key` **sekali saja**; yang disimpan hanya hash SHA-256 |
 | `cs_api.integration_key_update(id, name, scopes, official_account_id, allowed_cidrs, rate_limit_per_minute, enabled)` | Ubah atau nonaktifkan sementara (`enabled=false`) |
 | `cs_api.integration_key_revoke(id, reason)` | Cabut permanen, alasan 5–500 karakter |
+| `cs_api.integration_key_delete(id)` | Hapus key yang **sudah dicabut** dari daftar dan statistik (sejak `0190`). Datanya disembunyikan, bukan dibuang, supaya label Bot pada postingan lama dan jejak audit tetap utuh. Key aktif ditolak `409 key_not_revoked` |
 | `cs_api.integration_stats(days)` | Per key: diterima, masuk antrean, perangkat, tanpa penerima, duplikat, tidak valid, siaran diterima (`accepted`), kotak masuk (`inbox`), postingan bot, ringkasan siaran (`broadcasts`: total, aktif, selesai, gagal, penerima, perangkat, kotak masuk, `capped`, `pref_skipped`), serta hasil kirim FCM (terkirim, gagal, token mati, kedaluwarsa, menunggu). Juga total siaran semua key dan jumlah rekening/profil tertaut |
 | `cs_api.integration_stats_daily(days, key_id)` | Statistik per hari per key, dipotong per tanggal WIB |
 | `cs_api.integration_broadcasts(key_id = null, limit = 50)` | Daftar siaran terbaru (maks 200): key, `message_id`, `kind`, judul, kategori, kanal, ringkasan target (`olt_user_ids` + jumlah, `all`, `stock_watchers` + kode), status, penghitung, `opened`/`tapped` (pengguna unik) dan `open_rate`/`tap_rate` (persen dari `recipients`, `null` bila 0), error, waktu dibuat/mulai/selesai |

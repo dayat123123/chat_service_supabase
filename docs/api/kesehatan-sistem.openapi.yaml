@@ -1,0 +1,394 @@
+openapi: 3.1.0
+info:
+  title: Rendezvous System Health API
+  version: "2026.11.23"
+  summary: Kesehatan sistem dan peta layanan Rendezvous untuk aplikasi internal.
+  description: |
+    Dua endpoint baca saja yang isinya sama dengan halaman **Kesehatan sistem** dan **Peta layanan** di
+    Rendezvous Hub. Panduan lengkap: `docs/integration/kesehatan-sistem.md`.
+
+    - Autentikasi hanya `Authorization: Bearer oik_…`, API key dengan izin `health_read` yang dibuat Super Admin di
+      Hub (Pengaturan → API Integrasi). Header `apikey` tidak diperlukan.
+    - Panggil dari backend, bukan browser. Polling 15–30 detik sudah cukup.
+    - Abaikan field yang tidak dikenal; `api_version` naik bila ada perubahan yang tidak kompatibel.
+    - Error memakai `{"error": "<kode>", "message": "..."}` dan header `X-Request-Id`.
+  license:
+    name: Proprietary
+servers:
+  - url: https://{host}
+    description: Produksi
+    variables:
+      host:
+        default: api.contoh.co.id
+        description: Domain API sosial
+  - url: http://192.168.0.235:8000
+    description: Server dev kantor
+  - url: http://localhost:8000
+    description: Lingkungan dev lokal
+security:
+  - integrationKey: []
+tags:
+  - name: Kesehatan sistem
+    description: Baca saja, butuh izin `health_read`
+
+paths:
+  /integration/v1/system/health:
+    get:
+      tags: [Kesehatan sistem]
+      operationId: systemHealth
+      summary: Kesehatan sistem
+      description: |
+        Status keseluruhan, pemeriksaan yang sedang gagal, alert aktif dan riwayat 7 hari, instance layanan, probe,
+        disk, database, antrean, cron, backup, dan ringkasan kanal alert. Dievaluasi sekitar setiap 30 detik.
+
+        Tidak dikirim: alamat internal probe, lokasi backup, serta email, host SMTP, dan chat ID Telegram kanal alert.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Kesehatan sistem saat ini
+          headers:
+            Cache-Control: {$ref: "#/components/headers/NoStore"}
+            X-Request-Id: {$ref: "#/components/headers/RequestId"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SystemHealth"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "405": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "503": {$ref: "#/components/responses/Error"}
+
+  /integration/v1/system/nodes:
+    get:
+      tags: [Kesehatan sistem]
+      operationId: systemNodes
+      summary: Peta layanan
+      description: |
+        Setiap container (status, health, replika, restart, CPU, memori), probe, restart otomatis 24 jam terakhir, dan
+        versi tiap layanan. Laporan container diperbarui sekitar setiap 10 detik; `stale` true bila pemantau berhenti.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      responses:
+        "200":
+          description: Peta layanan saat ini
+          headers:
+            Cache-Control: {$ref: "#/components/headers/NoStore"}
+            X-Request-Id: {$ref: "#/components/headers/RequestId"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SystemNodes"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "405": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "503": {$ref: "#/components/responses/Error"}
+
+components:
+  securitySchemes:
+    integrationKey:
+      type: http
+      scheme: bearer
+      description: API key integrasi `oik_…` dengan izin `health_read`. Rahasiakan di backend.
+
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      description: Opsional, untuk melacak request di log server
+      schema: {type: string, pattern: "^[A-Za-z0-9._-]{1,64}$"}
+
+  headers:
+    NoStore:
+      schema: {type: string, const: no-store}
+    RequestId:
+      description: Sama dengan yang dikirim, atau dibuat server
+      schema: {type: string}
+    RetryAfter:
+      description: Detik sebelum boleh mencoba lagi
+      schema: {type: integer}
+
+  responses:
+    Error:
+      description: |
+        | HTTP | `error` |
+        |---|---|
+        | 401 | `missing_key`, `invalid_key` |
+        | 403 | `scope_forbidden`, `ip_not_allowed` |
+        | 404 | `not_found` |
+        | 405 | `method_not_allowed` (header `Allow: GET`) |
+        | 429 | `rate_limited`, `too_many_auth_failures` |
+        | 503 | `unavailable`, `busy` |
+      headers:
+        Retry-After: {$ref: "#/components/headers/RetryAfter"}
+        X-Request-Id: {$ref: "#/components/headers/RequestId"}
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+
+  schemas:
+    Timestamp:
+      type: string
+      format: date-time
+    NullableTimestamp:
+      oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]
+
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          examples: [missing_key, invalid_key, scope_forbidden, ip_not_allowed, rate_limited, unavailable]
+        message: {type: string, description: Penjelasan berbahasa Indonesia}
+
+    HealthStatus:
+      type: string
+      enum: [ok, warning, critical]
+      description: "`critical` bila ada pemeriksaan kritis yang gagal, `warning` bila ada yang gagal, selain itu `ok`"
+
+    HealthCheck:
+      type: object
+      required: [key, severity, title]
+      properties:
+        key:
+          type: string
+          description: "Kunci stabil, mis. `service:rest`, `probe:realtime`, `disk:data`, `db:connections`, `backup:base`"
+        severity: {type: string, enum: [warning, critical]}
+        title: {type: string, description: "Judul berbahasa Indonesia, sama dengan Hub"}
+        detail: {type: ["string", "null"]}
+        failing_since: {$ref: "#/components/schemas/Timestamp"}
+
+    HealthAlert:
+      type: object
+      required: [id, key, severity, title, opened_at]
+      properties:
+        id: {type: integer}
+        key: {type: string}
+        severity: {type: string, enum: [warning, critical]}
+        title: {type: string}
+        detail: {type: ["string", "null"]}
+        opened_at: {$ref: "#/components/schemas/Timestamp"}
+        resolved_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        acknowledged_by: {type: ["string", "null"], description: Nama staf yang menandai sedang ditangani}
+        acknowledged_at: {$ref: "#/components/schemas/NullableTimestamp"}
+
+    ServiceInstance:
+      type: object
+      properties:
+        instance: {type: string}
+        version: {type: ["string", "null"]}
+        started_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        last_seen_at: {$ref: "#/components/schemas/Timestamp"}
+        status: {type: string, examples: [ok, degraded, error]}
+        error: {type: ["string", "null"]}
+        detail: {type: object, additionalProperties: true}
+        live: {type: boolean, description: Heartbeat diterima dalam 90 detik terakhir}
+
+    Probe:
+      type: object
+      properties:
+        name: {type: string}
+        label: {type: string}
+        ok: {type: boolean}
+        status: {type: ["integer", "null"], description: Kode HTTP}
+        latency_ms: {type: ["integer", "null"]}
+        error: {type: ["string", "null"]}
+        checked_at: {$ref: "#/components/schemas/Timestamp"}
+        last_ok_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        stale: {type: boolean, description: Hasil lebih tua dari 90 detik}
+
+    AlertChannelSummary:
+      type: object
+      properties:
+        enabled: {type: boolean}
+        configured: {type: boolean}
+        last:
+          type: ["object", "null"]
+          properties:
+            kind: {type: string}
+            status: {type: string}
+            at: {$ref: "#/components/schemas/Timestamp"}
+            error: {type: ["string", "null"]}
+
+    SystemHealth:
+      type: object
+      required: [api_version, status, now, checks, alerts]
+      additionalProperties: true
+      properties:
+        api_version: {type: integer, const: 1}
+        status: {$ref: "#/components/schemas/HealthStatus"}
+        now: {$ref: "#/components/schemas/Timestamp"}
+        evaluated_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        checks:
+          type: array
+          description: Pemeriksaan yang sedang gagal, kritis lebih dulu. Kosong berarti semua sehat.
+          items: {$ref: "#/components/schemas/HealthCheck"}
+        alerts:
+          type: object
+          properties:
+            open: {type: array, items: {$ref: "#/components/schemas/HealthAlert"}}
+            recent:
+              type: array
+              description: Selesai dalam 7 hari terakhir, maks. 30
+              items: {$ref: "#/components/schemas/HealthAlert"}
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              service: {type: string}
+              label: {type: string}
+              instances: {type: array, items: {$ref: "#/components/schemas/ServiceInstance"}}
+        probes: {type: array, items: {$ref: "#/components/schemas/Probe"}}
+        disks:
+          type: array
+          items:
+            type: object
+            properties:
+              name: {type: string}
+              total_bytes: {type: integer}
+              avail_bytes: {type: integer}
+              used_ratio: {type: ["number", "null"], description: "0–1"}
+              checked_at: {$ref: "#/components/schemas/Timestamp"}
+        database:
+          type: object
+          properties:
+            size_bytes: {type: integer}
+            connections: {type: integer}
+            max_connections: {type: integer}
+            slots:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: {type: string}
+                  type: {type: string}
+                  active: {type: boolean}
+                  wal_status: {type: ["string", "null"]}
+                  retained_bytes: {type: ["number", "null"]}
+        queues:
+          type: object
+          properties:
+            push:
+              type: object
+              properties:
+                queued: {type: integer}
+                oldest_at: {$ref: "#/components/schemas/NullableTimestamp"}
+            storage_cleanup:
+              type: object
+              properties:
+                pending: {type: integer}
+                failing: {type: integer}
+                oldest_at: {$ref: "#/components/schemas/NullableTimestamp"}
+            alerts:
+              type: object
+              properties:
+                pending: {type: integer}
+                failed_24h: {type: integer}
+        cron:
+          type: array
+          items:
+            type: object
+            properties:
+              job: {type: string}
+              schedule: {type: string, description: Ekspresi cron dalam UTC}
+              active: {type: boolean}
+              last_status: {type: ["string", "null"], examples: [succeeded, failed, running]}
+              last_start: {$ref: "#/components/schemas/NullableTimestamp"}
+              last_message: {type: ["string", "null"]}
+        backup:
+          type: object
+          additionalProperties: true
+          description: Status backup tanpa lokasi penyimpanan
+          properties:
+            configured: {type: boolean}
+            kind: {type: ["string", "null"], examples: [s3, local]}
+            live: {type: boolean}
+            state: {type: ["object", "null"], additionalProperties: true}
+            last_base: {type: ["object", "null"], additionalProperties: true}
+            last_files: {type: ["object", "null"], additionalProperties: true}
+            last_restore_test: {type: ["object", "null"], additionalProperties: true}
+        channels:
+          type: object
+          properties:
+            telegram: {$ref: "#/components/schemas/AlertChannelSummary"}
+            email: {$ref: "#/components/schemas/AlertChannelSummary"}
+
+    NodeHost:
+      type: object
+      properties:
+        name: {type: string}
+        cpus: {type: integer}
+        memory_bytes: {type: integer}
+        os: {type: string}
+        docker_version: {type: string}
+
+    NodeContainer:
+      type: object
+      properties:
+        service: {type: string, examples: [rest, realtime, db]}
+        name: {type: string}
+        replica: {type: integer, minimum: 1}
+        host: {type: string}
+        state: {type: string, examples: [running, exited, restarting, created, paused, dead]}
+        health: {type: string, description: "`healthy`, `unhealthy`, `starting`, atau kosong bila tanpa healthcheck"}
+        started_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        finished_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        exit_code: {type: integer}
+        restarts: {type: integer, description: Restart oleh Docker sejak container dibuat}
+        image: {type: string}
+        autoheal: {type: boolean, description: Healer boleh me-restart otomatis bila macet}
+        cpu_percent:
+          type: ["number", "null"]
+          description: 100 = satu core penuh (seperti docker stats); null pada laporan pertama setelah start
+        memory_bytes: {type: ["integer", "null"]}
+        memory_limit_bytes: {type: ["integer", "null"], description: Null bila tidak dibatasi}
+
+    NodeReport:
+      type: object
+      additionalProperties: true
+      properties:
+        version: {type: string, description: Versi healer}
+        project: {type: string}
+        checked_at: {$ref: "#/components/schemas/Timestamp"}
+        host: {$ref: "#/components/schemas/NodeHost"}
+        containers: {type: array, items: {$ref: "#/components/schemas/NodeContainer"}}
+        error: {type: string, description: Ada bila pembuatan laporan gagal}
+        read_error: {type: string, description: Ada bila laporan tidak terbaca}
+
+    SystemNodes:
+      type: object
+      required: [api_version, now, stale, report]
+      additionalProperties: true
+      properties:
+        api_version: {type: integer, const: 1}
+        now: {$ref: "#/components/schemas/Timestamp"}
+        reported_at: {$ref: "#/components/schemas/NullableTimestamp"}
+        stale: {type: boolean, description: Laporan lebih tua dari 45 detik (bawaan)}
+        report: {$ref: "#/components/schemas/NodeReport"}
+        probes:
+          type: array
+          items:
+            type: object
+            properties:
+              name: {type: string}
+              ok: {type: boolean}
+              latency_ms: {type: ["integer", "null"]}
+              checked_at: {$ref: "#/components/schemas/Timestamp"}
+              failing_since: {$ref: "#/components/schemas/NullableTimestamp"}
+        restarts:
+          type: array
+          description: Restart otomatis oleh healer dalam 24 jam terakhir
+          items:
+            type: object
+            properties:
+              service: {type: string}
+              count: {type: integer}
+              last_at: {$ref: "#/components/schemas/Timestamp"}
+        versions:
+          type: object
+          additionalProperties: {type: string}
+          description: Versi terakhir yang dilaporkan tiap layanan

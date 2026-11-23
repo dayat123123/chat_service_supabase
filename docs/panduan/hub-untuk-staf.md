@@ -468,8 +468,9 @@ API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman)
 2. **Key hanya ditampilkan sekali.** Salin dan serahkan ke pemilik sistem pengirim lewat jalur aman. Jangan tempel di chat, tiket, email, atau dokumen.
 3. **Notifikasi massal** bisa mengirim ke SEMUA pengguna. Berikan hanya ke sistem tepercaya dan batasi IP-nya.
 4. **Rotasi:** buat key baru, pasang di sistem pengirim, pastikan **Terakhir dipakai** key baru bergerak, baru **Cabut** key lama.
-5. **Cabut** bersifat permanen. Untuk berhenti sementara, matikan **Key aktif**.
-6. **Baca kesehatan sistem** untuk aplikasi internal yang ingin menampilkan isi **Kesehatan sistem** dan **Peta layanan** (dasbor kantor, misalnya). Izin ini hanya membaca, tidak bisa menandai alert atau mengubah pengaturan. Buat key tersendiri untuk keperluan ini. Setelah key dibuat, dialognya menampilkan alamat endpoint dan contoh request yang bisa langsung diserahkan ke tim aplikasi; kartu **API kesehatan sistem** di halaman yang sama juga selalu menampilkan alamatnya.
+5. **Cabut** bersifat permanen. Untuk berhenti sementara, matikan **Key aktif**. Key yang sudah dicabut bisa dirapikan dengan **Hapus**: key hilang dari daftar dan statistik, sedangkan catatannya tetap ada di Jejak Audit.
+6. Di bawah tabel key ada dua bagian yang bisa dipilih: **Notifikasi & bot** (statistik pengiriman, grafik, dan contoh request notifikasi) dan **Kesehatan sistem** (alamat dan contoh request untuk aplikasi pemantau). Key baca kesehatan sistem tidak muncul di statistik notifikasi.
+7. **Baca kesehatan sistem** untuk aplikasi internal yang ingin menampilkan isi **Kesehatan sistem** dan **Peta layanan** (dasbor kantor, misalnya). Izin ini hanya membaca, tidak bisa menandai alert atau mengubah pengaturan. Buat key tersendiri untuk keperluan ini. Setelah key dibuat, dialognya menampilkan alamat endpoint dan contoh request yang bisa langsung diserahkan ke tim aplikasi; kartu **API kesehatan sistem** di halaman yang sama juga selalu menampilkan alamatnya.
 
 #### Push notification
 
