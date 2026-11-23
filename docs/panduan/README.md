@@ -6,6 +6,7 @@ Kumpulan panduan untuk menjalankan server sosial (OLT Social) dan Rendezvous Hub
 
 | Saya ingin… | Buka |
 |---|---|
+| Memahami sistem secara utuh: node, teknologi, server | [pengetahuan-sistem.md](pengetahuan-sistem.md) |
 | Melihat semua fitur yang tersedia | [daftar-fitur.md](daftar-fitur.md) |
 | Menyiapkan server baru | [spesifikasi-server.md](spesifikasi-server.md), lalu [instalasi-server.md](instalasi-server.md) |
 | Memastikan semua siap sebelum dibuka ke nasabah | [checklist-go-live.md](checklist-go-live.md) |
@@ -19,6 +20,7 @@ Kumpulan panduan untuk menjalankan server sosial (OLT Social) dan Rendezvous Hub
 
 | Panduan | Untuk | Isi |
 |---|---|---|
+| [pengetahuan-sistem.md](pengetahuan-sistem.md) ([PDF](pengetahuan-sistem.pdf)) | Developer baru, tim IT, manajemen teknis | Gambaran sistem: empat bagian dan repo-nya, teknologi dan versinya, fungsi setiap node, database, alur penting, jaringan dan keamanan, profil dan ukuran server |
 | [daftar-fitur.md](daftar-fitur.md) ([PDF](Daftar%20fitur%20Rendezvous%20Community.pdf)) | Manajemen, tim OLT, tim aplikasi | Semua fitur aplikasi nasabah, Rendezvous Hub, layanan server, dan integrasi ke aplikasi OLT |
 | [spesifikasi-server.md](spesifikasi-server.md) ([PDF](spesifikasi-server.pdf)) | Vendor IT | Kebutuhan CPU, RAM, disk, sistem operasi, dan jaringan |
 | [instalasi-server.md](instalasi-server.md) ([PDF](instalasi-server.pdf)) | Vendor IT, tim IT | Pemasangan server baru sampai bisa diakses publik, dengan skrip `scripts/server-install.sh` |

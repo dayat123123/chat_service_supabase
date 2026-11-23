@@ -2,6 +2,8 @@
 
 ## Panduan (mulai dari sini)
 
+Baru mengenal sistem? Mulai dari [**panduan/pengetahuan-sistem.md**](panduan/pengetahuan-sistem.md): bagian-bagian sistem, fungsi setiap node, teknologi, dan susunan server.
+
 [**panduan/**](panduan/README.md): pegangan untuk tim IT, Super Admin, dan staf. Isinya spesifikasi dan instalasi server, operasional harian, pembaruan dan rollback, catatan rilis, backup dan pemulihan, penanganan gangguan, checklist go-live, dan pelatihan Hub.
 
 ## Belajar
