@@ -135,7 +135,7 @@ services:
         parallelism: 1
         order: stop-first
   integration:
-    image: ${REGISTRY}/olt-social/integration:0.2.0
+    image: ${REGISTRY}/olt-social/integration:0.3.0
     deploy:
       <<: *deploy
       replicas: 2

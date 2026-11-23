@@ -125,3 +125,23 @@ func TestNotifyAndBotPostsSendArguments(t *testing.T) {
 		t.Fatalf("seen = %v", seen)
 	}
 }
+
+func TestSystemHealthAndNodesCallTheirRPCs(t *testing.T) {
+	var seen []string
+	p := fakeREST(t, func(fn string, body map[string]any) (int, string) {
+		seen = append(seen, fn)
+		if body["p_key_id"] != "k1" || body["p_ip"] != "10.0.0.1" {
+			t.Errorf("%s body = %v", fn, body)
+		}
+		return 200, `{"api_version":1}`
+	})
+	for _, call := range []func(context.Context, string, string) (json.RawMessage, error){p.SystemHealth, p.SystemNodes} {
+		out, err := call(context.Background(), "k1", "10.0.0.1")
+		if err != nil || string(out) != `{"api_version":1}` {
+			t.Fatalf("out = %s err = %v", out, err)
+		}
+	}
+	if strings.Join(seen, ",") != "integration_system_health,integration_system_nodes" {
+		t.Fatalf("seen = %v", seen)
+	}
+}

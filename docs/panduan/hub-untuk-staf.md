@@ -367,7 +367,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | **Persetujuan** | **Aturan empat mata** | Empat mata Komunitas, kebijakan konten, dan notifikasi info Banner & Popup | Jarang; atas permintaan Kepatuhan |
 | **Integrasi** | **Integrasi API Nasabah** | Sambungan menu Akun Nasabah | Pemasangan awal bersama IT |
 | | **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
-| | **API Notifikasi** | API key untuk sistem lain yang mengirim notifikasi | Sistem baru, rotasi key |
+| | **API Integrasi** | API key untuk sistem lain yang mengirim notifikasi, memposting sebagai bot, atau membaca kesehatan sistem | Sistem baru, rotasi key |
 | | **Push notification** | Kunci Firebase dan push uji | Pemasangan awal, ganti kunci |
 | **Sistem** | **Keamanan login** | Peran yang wajib 2FA, batas password salah, dan lama kunci akun | Pemasangan awal, atas permintaan IT atau Kepatuhan |
 | | **Kesehatan sistem** | Peta layanan, status layanan dan alert, restart otomatis | Saat ada alert atau diminta IT |
@@ -460,15 +460,16 @@ Data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Sta
 
 **Batas rekening per nasabah** (terkunci, **Ubah** → **Simpan** → konfirmasi): jumlah maksimal rekening (cust id) dari token login OLT yang ditautkan ke satu nasabah untuk notifikasi transaksi. Bawaan dan nilai tertinggi 200, paling kecil 1. Rekening di atas batas diabaikan mulai login berikutnya dan tidak menerima notifikasi transaksi. Hanya Super Admin yang bisa mengubahnya, dan perubahannya tercatat di Jejak Audit.
 
-#### API Notifikasi
+#### API Integrasi
 
-API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman) atau memposting sebagai bot resmi.
+API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman), memposting sebagai bot resmi, atau membaca kesehatan sistem untuk ditampilkan di aplikasinya sendiri.
 
-1. **Buat API key**: beri **Nama key**, pilih **Izin** (**Notifikasi per rekening**, **Notifikasi massal**, **Postingan bot**), isi **IP atau CIDR yang diizinkan** dan **Batas request per menit**.
+1. **Buat API key**: beri **Nama key**, pilih **Izin** (**Notifikasi per rekening**, **Notifikasi massal**, **Postingan bot**, **Baca kesehatan sistem**), isi **IP atau CIDR yang diizinkan** dan **Batas request per menit**.
 2. **Key hanya ditampilkan sekali.** Salin dan serahkan ke pemilik sistem pengirim lewat jalur aman. Jangan tempel di chat, tiket, email, atau dokumen.
 3. **Notifikasi massal** bisa mengirim ke SEMUA pengguna. Berikan hanya ke sistem tepercaya dan batasi IP-nya.
 4. **Rotasi:** buat key baru, pasang di sistem pengirim, pastikan **Terakhir dipakai** key baru bergerak, baru **Cabut** key lama.
 5. **Cabut** bersifat permanen. Untuk berhenti sementara, matikan **Key aktif**.
+6. **Baca kesehatan sistem** untuk aplikasi internal yang ingin menampilkan isi **Kesehatan sistem** dan **Peta layanan** (dasbor kantor, misalnya). Izin ini hanya membaca, tidak bisa menandai alert atau mengubah pengaturan. Buat key tersendiri untuk keperluan ini. Setelah key dibuat, dialognya menampilkan alamat endpoint dan contoh request yang bisa langsung diserahkan ke tim aplikasi; kartu **API kesehatan sistem** di halaman yang sama juga selalu menampilkan alamatnya.
 
 #### Push notification
 

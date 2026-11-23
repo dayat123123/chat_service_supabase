@@ -4,7 +4,7 @@ Kontrak standar untuk tim yang ingin menghubungkan aplikasi atau layanannya ke c
 
 | File | Standar | Isi |
 |---|---|---|
-| [openapi.yaml](openapi.yaml) | OpenAPI 3.1 | Semua panggilan HTTP: tukar token, RPC chat (room, pesan, reaksi, tanda baca, mengetik, permintaan DM, grup, room saham), upload lampiran, push, konfigurasi klien, dan API notifikasi server |
+| [openapi.yaml](openapi.yaml) | OpenAPI 3.1 | Semua panggilan HTTP: tukar token, RPC chat (room, pesan, reaksi, tanda baca, mengetik, permintaan DM, grup, room saham), upload lampiran, push, konfigurasi klien, API notifikasi server, dan API kesehatan sistem untuk aplikasi internal |
 | [asyncapi.yaml](asyncapi.yaml) | AsyncAPI 3.0 | Event realtime lewat WebSocket: cara join, heartbeat, ganti token, dan isi setiap event |
 
 Kedua file bisa dibuka di editor apa pun yang mendukung standarnya. Misalnya, tempel isinya ke [Swagger Editor](https://editor.swagger.io) atau [AsyncAPI Studio](https://studio.asyncapi.com), atau pakai generator klien OpenAPI/AsyncAPI untuk bahasa yang dipakai.
