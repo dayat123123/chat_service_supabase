@@ -21,6 +21,7 @@ Baru mengenal sistem? Mulai dari [**panduan/pengetahuan-sistem.md**](panduan/pen
 | [olt-integration.md](olt-integration.md) | Token sosial bertanda tangan untuk tim backend OLT |
 | [api/](api/README.md) | Spesifikasi OpenAPI dan AsyncAPI chat untuk klien non-Flutter dan layanan lain |
 | [integration/](integration/README.md) | API notifikasi transaksi dan bot resmi (`/integration/v1`) |
+| [integration/kesehatan-sistem.md](integration/kesehatan-sistem.md) | API kesehatan sistem untuk aplikasi internal (dasbor monitoring) |
 | [rendezvous-community/](rendezvous-community/README.md) | Library Flutter untuk aplikasi OLT |
 
 ## Desain per fitur

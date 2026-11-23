@@ -6,14 +6,16 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 23 November 2026
 
-### API kesehatan sistem untuk aplikasi lain (migrasi `0189`, layanan `integration` 0.3.0, Hub)
+### API kesehatan sistem untuk aplikasi lain (migrasi `0189` dan `0190`, layanan `integration` 0.3.0, Hub)
 
 - **Baru:** aplikasi internal bisa membaca isi **Kesehatan sistem** dan **Peta layanan** Hub lewat `GET /integration/v1/system/health` dan `GET /integration/v1/system/nodes`. Isinya sama dengan Hub karena memakai fungsi database yang sama: status, pemeriksaan, alert, layanan, probe, disk, database, antrean, cron, backup, serta container dengan usage CPU dan memorinya.
 - **Yang tidak dikirim keluar:** alamat internal probe, lokasi backup, dan detail kanal alert (email, host SMTP, chat ID Telegram).
 - **API key:** di Hub, menu **Pengaturan → API Notifikasi** kini bernama **API Integrasi** dan punya izin baru **Baca kesehatan sistem**. Setelah key dibuat, Hub langsung menampilkan alamat endpoint dan contoh request. Key hanya bisa membaca, bisa dibatasi IP, dan dicabut kapan saja.
 - **Kontrak:** tag **Kesehatan sistem** di `docs/api/openapi.yaml` dan bagian 4a [docs/integration/README.md](../integration/README.md).
+- **Halaman API Integrasi dirapikan (migrasi `0190`):** tabel API key tetap satu, sedangkan statistik dan panduan dipisah menjadi bagian **Notifikasi & bot** dan **Kesehatan sistem**. Statistik notifikasi hanya menghitung key notifikasi dan bot. Key yang sudah dicabut kini bisa **Dihapus** dari daftar; datanya disembunyikan, bukan dibuang, dan penghapusan tercatat di Jejak Audit.
+- **Panduan khusus:** [docs/integration/kesehatan-sistem.md](../integration/kesehatan-sistem.md) (ada versi PDF) dan kontrak [docs/api/kesehatan-sistem.openapi.yaml](../api/kesehatan-sistem.openapi.yaml).
 - **Lebih sederhana untuk semua API integrasi:** `/integration/v1` (notifikasi, bot, kesehatan sistem) kini cukup memakai header `Authorization: Bearer oik_…`. Header `apikey` (anon key) tidak wajib lagi. Sistem yang masih mengirimnya, seperti notifEngine OLT, tetap berjalan tanpa perubahan.
-- **Cara pasang:** `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`. `make up` membangun ulang image `integration` 0.3.0. Aplikasi nasabah tidak perlu diperbarui.
+- **Cara pasang:** `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`. `make up` membangun ulang image `integration` 0.3.0. Karena konfigurasi Kong berubah, buat ulang Kong sekali sesudahnya: `docker compose -f docker/compose.yml -f docker/compose.dev.yml up -d --force-recreate kong` (profil produksi: `compose.prod.yml`). Aplikasi nasabah tidak perlu diperbarui.
 
 ## 22 November 2026
 
