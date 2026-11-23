@@ -78,6 +78,14 @@ func (p *PostgREST) BotPosts(ctx context.Context, keyID string, posts json.RawMe
 	return p.call(ctx, "integration_bot_post", map[string]any{"p_key_id": keyID, "p_posts": posts, "p_ip": nullable(ip)})
 }
 
+func (p *PostgREST) SystemHealth(ctx context.Context, keyID, ip string) (json.RawMessage, error) {
+	return p.call(ctx, "integration_system_health", map[string]any{"p_key_id": keyID, "p_ip": nullable(ip)})
+}
+
+func (p *PostgREST) SystemNodes(ctx context.Context, keyID, ip string) (json.RawMessage, error) {
+	return p.call(ctx, "integration_system_nodes", map[string]any{"p_key_id": keyID, "p_ip": nullable(ip)})
+}
+
 func (p *PostgREST) Heartbeat(ctx context.Context, beat heartbeat.Beat) error {
 	detail := beat.Detail
 	if detail == nil {

@@ -284,6 +284,61 @@ Maks 50 postingan per request dan `integration.bot_posts_per_hour` (default 30) 
 
 Batch ditolak `409 official_inactive` bila akun resminya dinonaktifkan. Staf bisa menyematkan atau menghapus postingan bot dari menu Komunitas seperti postingan resmi lain.
 
+## 4a. Kesehatan sistem untuk aplikasi lain: `GET /integration/v1/system/health` dan `/system/nodes`
+
+Untuk aplikasi internal yang ingin menampilkan kesehatan sistem sendiri, misalnya dasbor kantor. Isinya sama dengan halaman **Kesehatan sistem** dan **Peta layanan** di Hub, karena keduanya dibuat oleh fungsi database yang sama. Hanya baca: tidak bisa menandai alert atau mengubah pengaturan.
+
+### Akses
+
+| Item | Nilai |
+|---|---|
+| URL | `https://<domain API sosial>/integration/v1/system/health` dan `https://<domain API sosial>/integration/v1/system/nodes` |
+| Metode | `GET`, tanpa body |
+| Header wajib | `apikey: <ANON_KEY>` dan `Authorization: Bearer <API key integrasi>` |
+| Izin (scope) | `health_read`. Buat key khusus di Hub, **Pengaturan → API Integrasi → Buat API key**, centang **Baca kesehatan sistem**. Setelah dibuat, Hub langsung menampilkan alamat dan contoh request dengan key itu |
+| Dari mana dipanggil | Dari **backend** aplikasi Anda, bukan dari browser, supaya key tidak bocor. Batasi IP key ke IP server itu bila bisa |
+| Frekuensi | Kesehatan sistem dievaluasi ±30 detik sekali dan peta layanan ±10 detik sekali; memanggil setiap 15–30 detik sudah cukup. Batas per key tetap `rate_limit_per_minute` |
+
+### Isi respons
+
+| Endpoint | Isi |
+|---|---|
+| `/system/health` | `status` (`ok`, `warning`, `critical`), `checks` (pemeriksaan yang sedang gagal), `alerts.open` dan `alerts.recent` (7 hari), `services` (instance per layanan + heartbeat), `probes`, `disks`, `database` (ukuran, koneksi, replication slot), `queues` (push, pembersihan file, alert), `cron`, `backup` (status dan run terakhir), `channels` (ringkasan kanal alert) |
+| `/system/nodes` | `report` (container per layanan dari healer: status, health, replika, restart, usage CPU dan memori beserta batasnya), `stale` (true bila pemantau berhenti melapor), `probes`, `restarts` (24 jam), `versions` |
+
+Kedua respons membawa `api_version: 1`. Field baru bisa ditambah tanpa pemberitahuan, jadi abaikan field yang tidak dikenal; `api_version` naik bila ada perubahan yang tidak kompatibel. Skema lengkap: tag **Kesehatan sistem** di [docs/api/openapi.yaml](../api/openapi.yaml).
+
+Yang sengaja **tidak** dikirim keluar walau tampil di Hub:
+
+- alamat internal probe (`target`, mis. `http://rest:3000/ready`);
+- lokasi backup (`backup.target`: endpoint dan bucket S3 atau folder lokal);
+- detail kanal alert: alamat email, host dan username SMTP, chat ID Telegram. Yang dikirim hanya `enabled`, `configured`, dan hasil pengiriman terakhir.
+
+### Contoh
+
+```bash
+curl -sS "https://api.contoh.co.id/integration/v1/system/health" \
+  -H "apikey: $ANON_KEY" \
+  -H "Authorization: Bearer $INTEGRATION_KEY"
+```
+
+```json
+{
+  "api_version": 1,
+  "status": "warning",
+  "now": "2026-11-23T08:30:00Z",
+  "evaluated_at": "2026-11-23T08:29:45Z",
+  "checks": [
+    {"key": "disk:data", "severity": "warning", "title": "Disk data hampir penuh", "detail": "Terpakai 86%, sisa 69 GB dari 500 GB", "failing_since": "2026-11-23T07:10:00Z"}
+  ],
+  "alerts": {"open": [], "recent": []},
+  "services": [], "probes": [], "disks": [], "database": {}, "queues": {}, "cron": [], "backup": {},
+  "channels": {"telegram": {"enabled": true, "configured": true, "last": null}, "email": {"enabled": false, "configured": false, "last": null}}
+}
+```
+
+Error memakai format yang sama dengan bagian 2 (`missing_key`, `invalid_key`, `scope_forbidden` bila key tanpa `health_read`, `ip_not_allowed`, `rate_limited`, `unavailable`). Metode selain `GET` dijawab `405` dengan header `Allow: GET`.
+
 ## 5. Mengelola API key (Super Admin)
 
 RPC untuk web CS (semua tercatat di Kepatuhan → Jejak Audit sebagai `integration.key_create`, `integration.key_update`, `integration.key_revoke`, tanpa isi key; pemberian/pencabutan `notify_broadcast` terlihat di perubahan `scopes`):
@@ -291,7 +346,7 @@ RPC untuk web CS (semua tercatat di Kepatuhan → Jejak Audit sebagai `integrati
 | RPC | Isi |
 |---|---|
 | `cs_api.integration_keys()` | Daftar key: nama, prefix (`oik_AbCdEfGh…`), izin, akun resmi, CIDR, batas, status, terakhir dipakai + IP |
-| `cs_api.integration_key_create(name, scopes, official_account_id, allowed_cidrs, rate_limit_per_minute)` | Membuat key. `scopes` ⊂ {`notify`, `notify_broadcast`, `bot_post`}; `notify_broadcast` wajib disertai `notify`. Respons memuat `key` **sekali saja**; yang disimpan hanya hash SHA-256 |
+| `cs_api.integration_key_create(name, scopes, official_account_id, allowed_cidrs, rate_limit_per_minute)` | Membuat key. `scopes` ⊂ {`notify`, `notify_broadcast`, `bot_post`, `health_read`}; `notify_broadcast` wajib disertai `notify`. Respons memuat `key` **sekali saja**; yang disimpan hanya hash SHA-256 |
 | `cs_api.integration_key_update(id, name, scopes, official_account_id, allowed_cidrs, rate_limit_per_minute, enabled)` | Ubah atau nonaktifkan sementara (`enabled=false`) |
 | `cs_api.integration_key_revoke(id, reason)` | Cabut permanen, alasan 5–500 karakter |
 | `cs_api.integration_stats(days)` | Per key: diterima, masuk antrean, perangkat, tanpa penerima, duplikat, tidak valid, siaran diterima (`accepted`), kotak masuk (`inbox`), postingan bot, ringkasan siaran (`broadcasts`: total, aktif, selesai, gagal, penerima, perangkat, kotak masuk, `capped`, `pref_skipped`), serta hasil kirim FCM (terkirim, gagal, token mati, kedaluwarsa, menunggu). Juga total siaran semua key dan jumlah rekening/profil tertaut |
@@ -302,7 +357,7 @@ RPC untuk web CS (semua tercatat di Kepatuhan → Jejak Audit sebagai `integrati
 
 Isi `allowed_cidrs` dengan IP server notifEngine sebagaimana terlihat dari server sosial (mis. `10.20.0.0/16`, `203.0.113.7`).
 
-Beri `notify_broadcast` hanya ke key sistem OLT yang tepercaya dan dibatasi IP; key itu bisa mengirim notifikasi ke semua pengguna. Sebaiknya pisahkan key transaksi (`notify`) dari key siaran (`notify` + `notify_broadcast`).
+Beri `notify_broadcast` hanya ke key sistem OLT yang tepercaya dan dibatasi IP; key itu bisa mengirim notifikasi ke semua pengguna. Sebaiknya pisahkan key transaksi (`notify`) dari key siaran (`notify` + `notify_broadcast`), dan buat key tersendiri untuk aplikasi yang hanya membaca kesehatan sistem (`health_read`).
 
 ## 6. Yang bisa dihapus dari notifEngine
 

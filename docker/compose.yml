@@ -1079,7 +1079,7 @@ services:
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/integration
-    image: olt-social/integration:0.2.0
+    image: olt-social/integration:0.3.0
     networks: [app]
     depends_on:
       migrate:

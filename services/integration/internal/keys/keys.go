@@ -14,6 +14,7 @@ const (
 	ScopeNotify          = "notify"
 	ScopeNotifyBroadcast = "notify_broadcast"
 	ScopeBotPost         = "bot_post"
+	ScopeHealthRead      = "health_read"
 
 	maxKeyLength = 200
 	maxEntries   = 10_000

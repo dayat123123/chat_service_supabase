@@ -4,6 +4,16 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 23 November 2026
+
+### API kesehatan sistem untuk aplikasi lain (migrasi `0189`, layanan `integration` 0.3.0, Hub)
+
+- **Baru:** aplikasi internal bisa membaca isi **Kesehatan sistem** dan **Peta layanan** Hub lewat `GET /integration/v1/system/health` dan `GET /integration/v1/system/nodes`. Isinya sama dengan Hub karena memakai fungsi database yang sama: status, pemeriksaan, alert, layanan, probe, disk, database, antrean, cron, backup, serta container dengan usage CPU dan memorinya.
+- **Yang tidak dikirim keluar:** alamat internal probe, lokasi backup, dan detail kanal alert (email, host SMTP, chat ID Telegram).
+- **API key:** di Hub, menu **Pengaturan → API Notifikasi** kini bernama **API Integrasi** dan punya izin baru **Baca kesehatan sistem**. Setelah key dibuat, Hub langsung menampilkan alamat endpoint dan contoh request. Key hanya bisa membaca, bisa dibatasi IP, dan dicabut kapan saja.
+- **Kontrak:** tag **Kesehatan sistem** di `docs/api/openapi.yaml` dan bagian 4a [docs/integration/README.md](../integration/README.md).
+- **Cara pasang:** `git pull --ff-only && git -C ~/rendezvous_hub pull --ff-only && make up`. `make up` membangun ulang image `integration` 0.3.0. Aplikasi nasabah tidak perlu diperbarui.
+
 ## 22 November 2026
 
 ### Lampiran PDF, gambar, dan video di artikel Pusat Bantuan (migrasi `0188`, Hub, library 1.49.0)

@@ -33,6 +33,8 @@ const (
 type Store interface {
 	Notify(ctx context.Context, keyID string, messages json.RawMessage, ip string) (json.RawMessage, error)
 	BotPosts(ctx context.Context, keyID string, posts json.RawMessage, ip string) (json.RawMessage, error)
+	SystemHealth(ctx context.Context, keyID, ip string) (json.RawMessage, error)
+	SystemNodes(ctx context.Context, keyID, ip string) (json.RawMessage, error)
 }
 
 type Keys interface {
@@ -55,17 +57,21 @@ type Options struct {
 }
 
 type endpoint struct {
-	name  string
-	scope string
-	field string
-	max   int
-	call  func(ctx context.Context, keyID string, items json.RawMessage, ip string) (json.RawMessage, error)
+	name   string
+	scope  string
+	method string
+	field  string
+	max    int
+	call   func(ctx context.Context, keyID string, items json.RawMessage, ip string) (json.RawMessage, error)
+	read   func(ctx context.Context, keyID, ip string) (json.RawMessage, error)
 }
 
 type Server struct {
 	opts      Options
 	notify    endpoint
 	botPosts  endpoint
+	health    endpoint
+	nodes     endpoint
 	slots     chan struct{}
 	perKey    *ratelimit.Limiter
 	failures  *ratelimit.Limiter
@@ -98,8 +104,12 @@ func New(opts Options) *Server {
 		messages: map[string]uint64{},
 		posts:    map[string]uint64{},
 	}
-	s.notify = endpoint{name: "notify", scope: keys.ScopeNotify, field: "messages", max: MaxMessages, call: opts.Store.Notify}
-	s.botPosts = endpoint{name: "bot_posts", scope: keys.ScopeBotPost, field: "posts", max: MaxPosts, call: opts.Store.BotPosts}
+	s.notify = endpoint{name: "notify", scope: keys.ScopeNotify, method: http.MethodPost, field: "messages", max: MaxMessages,
+		call: opts.Store.Notify}
+	s.botPosts = endpoint{name: "bot_posts", scope: keys.ScopeBotPost, method: http.MethodPost, field: "posts", max: MaxPosts,
+		call: opts.Store.BotPosts}
+	s.health = endpoint{name: "system_health", scope: keys.ScopeHealthRead, method: http.MethodGet, read: opts.Store.SystemHealth}
+	s.nodes = endpoint{name: "system_nodes", scope: keys.ScopeHealthRead, method: http.MethodGet, read: opts.Store.SystemNodes}
 	s.lastError.Store("")
 	return s
 }
@@ -126,13 +136,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ep = &s.notify
 	case "/bot/posts":
 		ep = &s.botPosts
+	case "/system/health":
+		ep = &s.health
+	case "/system/nodes":
+		ep = &s.nodes
 	default:
 		writeError(w, http.StatusNotFound, codeNotFound, "")
 		return
 	}
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		writeError(w, http.StatusMethodNotAllowed, codeMethodNotAllowed, "")
+	if r.Method != ep.method {
+		w.Header().Set("Allow", ep.method)
+		writeError(w, http.StatusMethodNotAllowed, codeMethodNotAllowed, "Gunakan metode "+ep.method+".")
 		return
 	}
 	s.handle(ep, w, r, log)
@@ -204,6 +218,9 @@ func (s *Server) process(ep *endpoint, w http.ResponseWriter, r *http.Request, i
 	if ok, retry := s.perKey.Allow("key:"+key.ID, max(1, key.RateLimit)); !ok {
 		return s.fail(w, http.StatusTooManyRequests, codeRateLimited, "", retry, key)
 	}
+	if ep.read != nil {
+		return s.serveRead(ep, w, r, hash, ip, key)
+	}
 
 	items, count, status, code := s.readBatch(ep, w, r)
 	if status != 0 {
@@ -251,6 +268,42 @@ func (s *Server) process(ep *endpoint, w http.ResponseWriter, r *http.Request, i
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(out)
 	return outcome{status: http.StatusOK, code: "ok", key: key, items: count, counts: summary(out)}
+}
+
+func (s *Server) serveRead(ep *endpoint, w http.ResponseWriter, r *http.Request, hash, ip string, key *keys.Key) outcome {
+	select {
+	case s.slots <- struct{}{}:
+	case <-time.After(s.opts.QueueWait):
+		return s.fail(w, http.StatusServiceUnavailable, codeBusy, "", 2*time.Second, key)
+	case <-r.Context().Done():
+		return outcome{status: 499, code: codeCanceled, key: key}
+	}
+	defer func() { <-s.slots }()
+
+	ctx, cancel := context.WithTimeout(r.Context(), s.opts.RequestTimeout)
+	defer cancel()
+	out, err := ep.read(ctx, key.ID, ip)
+	var api *store.APIError
+	switch {
+	case errors.As(err, &api):
+		s.storeOK()
+		if api.Status == http.StatusUnauthorized {
+			s.opts.Keys.Forget(hash)
+		}
+		return s.fail(w, apiStatus(api.Status), api.Code, api.Detail, 0, key)
+	case err != nil:
+		if r.Context().Err() != nil {
+			return outcome{status: 499, code: codeCanceled, key: key}
+		}
+		s.storeFailed(err)
+		return s.fail(w, http.StatusServiceUnavailable, codeUnavailable, "", 5*time.Second, key)
+	}
+	s.storeOK()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(out)
+	return outcome{status: http.StatusOK, code: "ok", key: key}
 }
 
 func (s *Server) readBatch(ep *endpoint, w http.ResponseWriter, r *http.Request) (json.RawMessage, int, int, string) {

@@ -27,6 +27,7 @@ const (
 	botKey    = "oik_BotPostKey00000000000000000000000000000000"
 	lanKey    = "oik_LanOnlyKey00000000000000000000000000000000"
 	wideKey   = "oik_BroadcastKey000000000000000000000000000000"
+	healthKey = "oik_HealthReadKey00000000000000000000000000000"
 )
 
 type fakeKeys struct {
@@ -44,6 +45,7 @@ func newFakeKeys() *fakeKeys {
 		hash(botKey):    {ID: "k-bot", Prefix: "BotPostK", Scopes: []string{keys.ScopeBotPost}, RateLimit: 100},
 		hash(lanKey):    {ID: "k-lan", Prefix: "LanOnlyK", Scopes: []string{keys.ScopeNotify}, RateLimit: 100},
 		hash(wideKey):   {ID: "k-wide", Prefix: "Broadcas", Scopes: []string{keys.ScopeNotify, keys.ScopeNotifyBroadcast}, RateLimit: 100},
+		hash(healthKey): {ID: "k-health", Prefix: "HealthRe", Scopes: []string{keys.ScopeHealthRead}, RateLimit: 2},
 	}}
 }
 
@@ -102,6 +104,14 @@ func (f *fakeStore) Notify(_ context.Context, keyID string, items json.RawMessag
 
 func (f *fakeStore) BotPosts(_ context.Context, keyID string, items json.RawMessage, ip string) (json.RawMessage, error) {
 	return f.do("bot_posts", keyID, items, ip)
+}
+
+func (f *fakeStore) SystemHealth(_ context.Context, keyID, ip string) (json.RawMessage, error) {
+	return f.do("system_health", keyID, nil, ip)
+}
+
+func (f *fakeStore) SystemNodes(_ context.Context, keyID, ip string) (json.RawMessage, error) {
+	return f.do("system_nodes", keyID, nil, ip)
 }
 
 type harness struct {
@@ -435,5 +445,74 @@ func TestBearer(t *testing.T) {
 		if got != want || ok != (want != "") {
 			t.Errorf("bearer(%q) = %q %v", header, got, ok)
 		}
+	}
+}
+
+func TestSystemHealthAndNodesReturnTheDatabasePayload(t *testing.T) {
+	for path, fn := range map[string]string{"/system/health": "system_health", "/system/nodes": "system_nodes"} {
+		h := newHarness(t, nil)
+		h.store.out = `{"api_version":1,"status":"ok","checks":[]}`
+		rec := h.do("GET", path, healthKey, "")
+		if rec.Code != http.StatusOK {
+			t.Fatalf("%s: status = %d body = %s", path, rec.Code, rec.Body.String())
+		}
+		if rec.Body.String() != h.store.out {
+			t.Fatalf("%s: body = %s", path, rec.Body.String())
+		}
+		if rec.Header().Get("Cache-Control") != "no-store" || rec.Header().Get("Content-Type") != "application/json" {
+			t.Fatalf("%s: headers = %v", path, rec.Header())
+		}
+		if len(h.store.calls) != 1 || h.store.calls[0].fn != fn || h.store.calls[0].keyID != "k-health" ||
+			h.store.calls[0].ip != "203.0.113.10" {
+			t.Fatalf("%s: calls = %+v", path, h.store.calls)
+		}
+	}
+}
+
+func TestSystemEndpointsNeedTheHealthReadScopeAndGet(t *testing.T) {
+	h := newHarness(t, nil)
+	if rec := h.do("GET", "/system/health", notifyKey, ""); rec.Code != http.StatusForbidden || errorCode(t, rec) != "scope_forbidden" {
+		t.Fatalf("notify key: %d %s", rec.Code, rec.Body.String())
+	}
+	rec := h.do("POST", "/system/nodes", healthKey, "{}")
+	if rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "GET" || errorCode(t, rec) != "method_not_allowed" {
+		t.Fatalf("POST: %d %v %s", rec.Code, rec.Header(), rec.Body.String())
+	}
+	if rec := h.do("GET", "/notify/messages", healthKey, ""); rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "POST" {
+		t.Fatalf("GET notify: %d %v", rec.Code, rec.Header())
+	}
+	if rec := h.do("GET", "/system/health", "", ""); rec.Code != http.StatusUnauthorized || errorCode(t, rec) != "missing_key" {
+		t.Fatalf("no key: %d %s", rec.Code, rec.Body.String())
+	}
+	if len(h.store.calls) != 0 {
+		t.Fatalf("calls = %+v", h.store.calls)
+	}
+}
+
+func TestSystemEndpointsShareTheKeyRateLimit(t *testing.T) {
+	h := newHarness(t, nil)
+	h.store.out = `{"status":"ok"}`
+	for i := 0; i < 2; i++ {
+		if rec := h.do("GET", "/system/health", healthKey, ""); rec.Code != http.StatusOK {
+			t.Fatalf("request %d: %d", i, rec.Code)
+		}
+	}
+	rec := h.do("GET", "/system/nodes", healthKey, "")
+	if rec.Code != http.StatusTooManyRequests || rec.Header().Get("Retry-After") == "" || errorCode(t, rec) != "rate_limited" {
+		t.Fatalf("third: %d %v %s", rec.Code, rec.Header(), rec.Body.String())
+	}
+}
+
+func TestSystemEndpointsMapDatabaseErrors(t *testing.T) {
+	h := newHarness(t, nil)
+	h.store.err = &store.APIError{Status: http.StatusUnauthorized, Code: "invalid_key", Detail: "API key sudah dicabut"}
+	rec := h.do("GET", "/system/health", healthKey, "")
+	if rec.Code != http.StatusUnauthorized || errorCode(t, rec) != "invalid_key" || len(h.keys.forgot) != 1 {
+		t.Fatalf("revoked: %d %s forgot=%v", rec.Code, rec.Body.String(), h.keys.forgot)
+	}
+	h.store.err = errors.New("dial tcp: connection refused")
+	rec = h.do("GET", "/system/nodes", healthKey, "")
+	if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Retry-After") != "5" || errorCode(t, rec) != "unavailable" {
+		t.Fatalf("down: %d %v %s", rec.Code, rec.Header(), rec.Body.String())
 	}
 }

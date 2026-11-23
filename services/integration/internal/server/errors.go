@@ -36,7 +36,7 @@ var messages = map[string]string{
 	codeInvalidBatch:        "Body harus memuat array messages (1–500 pesan) atau posts (1–50 postingan).",
 	codeBodyTooLarge:        "Ukuran body melebihi batas. Pecah menjadi beberapa batch.",
 	codeBusy:                "Server sedang sibuk. Coba lagi setelah Retry-After.",
-	codeUnavailable:         "Database sedang tidak bisa dihubungi. Kirim ulang batch yang sama setelah Retry-After.",
+	codeUnavailable:         "Database sedang tidak bisa dihubungi. Coba lagi setelah Retry-After.",
 	codeInternal:            "Terjadi kesalahan di server. Kirim ulang batch yang sama.",
 }
 
