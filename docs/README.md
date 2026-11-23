@@ -6,6 +6,10 @@ Baru mengenal sistem? Mulai dari [**panduan/pengetahuan-sistem.md**](panduan/pen
 
 [**panduan/**](panduan/README.md): pegangan untuk tim IT, Super Admin, dan staf. Isinya spesifikasi dan instalasi server, operasional harian, pembaruan dan rollback, catatan rilis, backup dan pemulihan, penanganan gangguan, checklist go-live, dan pelatihan Hub.
 
+## Spesifikasi kebutuhan
+
+[spesifikasi/](spesifikasi/README.md): BRD (kebutuhan bisnis) dan SRS (spesifikasi kebutuhan perangkat lunak) lengkap untuk seluruh sistem, dengan kode modul yang saling terlacak.
+
 ## Belajar
 
 [belajar/](belajar/README.md): modul belajar 11 bagian, dari SQL lanjutan, fungsi dan trigger, RLS, PostgREST/JWT, transaksi dan PgBouncer, Realtime, sampai infrastruktur, pengujian, klien Flutter, dan proyek akhir. Latihannya bisa langsung dicoba di server dev.
