@@ -123,10 +123,10 @@ update private.notification_actors set created_at = now() - interval '2 hours'
  where notification_id = (select id from public.notifications where user_id = :'ani' and type = 'like');
 delete from public.reactions where user_id = :'budi';
 insert into public.reactions (user_id, target_type, target_id) values (:'budi', 'post', '00000000-0000-4000-8000-00000000f601');
-select is((select count(*)::integer from public.notifications where user_id = :'ani' and type = 'like'), 2,
-  'Like setelah jendela satu jam membuat notifikasi baru');
+select is((select count(*)::integer from public.notifications where user_id = :'ani' and type = 'like'), 1,
+  'Like lebih dari satu jam kemudian tetap digabung ke notifikasi yang sama');
 select is((select count(*)::integer from public.notifications where user_id = :'ani' and type = 'like' and group_key is not null), 1,
-  'Hanya notifikasi terbaru yang memegang kunci grup');
+  'Notifikasi like tetap memegang kunci grup');
 
 select tests.authenticate_as(:'ani');
 select ok(public.toggle_bookmark('00000000-0000-4000-8000-00000000f601'), 'Bookmark dibuat sebelum hapus akun');
