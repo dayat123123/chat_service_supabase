@@ -6,6 +6,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 24 November 2026
 
+### Notifikasi chat hanya di daftar chat (migrasi `0194`)
+
+- Pesan chat (DM, grup, balasan CS) dan mention di chat yang diikuti tidak lagi muncul di panel notifikasi dan tidak menambah angka lonceng. Chat cukup terlihat di daftar chat, seperti WhatsApp.
+- Push chat tetap dikirim seperti biasa, dan pengaturan push per jenis tidak berubah.
+- Mention di room saham yang tidak diikuti tetap muncul di panel notifikasi.
+- **Cara pasang:** `git pull --ff-only && make up`. Tidak ada perubahan Kong, layanan Go, Hub, atau aplikasi.
+
 ### Sematkan chat (migrasi `0193`)
 
 - Pengguna bisa menyematkan sampai 3 chat di daftar chat, seperti WhatsApp. Chat CS tetap paling atas, lalu chat tersemat, lalu chat lain. Pesan baru tidak mengubah urutan chat tersemat.

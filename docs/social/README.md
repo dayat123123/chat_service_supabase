@@ -421,6 +421,16 @@ Semua event membawa `actor_id` dan `actor_name`. Pesan sistem dibuat dengan klai
   - `actor_count` dan `actors` (≤ 3 pelaku terbaru) tersedia untuk `like`, `follow`, dan `reply`. Judul push "X dan N lainnya …" memakai jumlah pelaku, bukan jumlah kejadian.
   - `get_notifications` menambahkan `payload.post_attachment` saat dibaca: objek lampiran gambar pertama post (`{path, mime, …}`) untuk tipe `like`, `reply`, `mention`, `followed_post`, dan (sejak `0192`) `announcement` kampanye Komunitas yang membawa `payload.post_id`, selama post belum dihapus dan masih terlihat. Pakai sebagai thumbnail; tidak ada kunci ini bila post tanpa gambar.
   - `notifications.aggregate_minutes` tidak dipakai lagi (nilainya tetap dikirim di `config` untuk klien lama).
+- **Notifikasi chat hanya di daftar chat (sejak `0194`, ala WhatsApp):**
+  - Baris notifikasi chat tetap dibuat, sehingga push, toast, dan pembaruan badge chat lewat `postgres_changes` tetap jalan.
+  - `get_notifications` dan `get_notification_unread_count` tidak memuat dan tidak menghitung:
+    - semua `type = 'message'` (DM, grup, dan balasan CS);
+    - `mention` dari room (punya `room_id`, tanpa `post_id`) bila saya anggota room itu.
+  - Mention di room saham yang tidak saya ikuti tetap tampil, karena room itu tidak ada di daftar chat saya.
+  - Penyaringan terjadi di dalam query, jadi halaman tetap penuh dan cursor tetap berurutan.
+  - `mark_room_read` kini juga menandai mention room itu terbaca, tidak hanya pesan.
+  - Tidak dihitung ulang: `mark_notifications_read(null)` tetap menandai semua, dan badge ikon aplikasi di push tetap menghitung semua notifikasi belum dibaca, termasuk chat.
+  - Tes: `supabase/tests/172_chat_notifications_hidden_test.sql`.
 
 ### RPC
 
