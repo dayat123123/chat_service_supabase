@@ -6,11 +6,11 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 24 November 2026
 
-### Notifikasi dikelompokkan ala Instagram (migrasi `0191`)
+### Notifikasi dikelompokkan ala Instagram (migrasi `0191` dan `0192`)
 
 - **Like** ke post atau komentar yang sama selalu masuk ke satu notifikasi. Like baru membuat notifikasi itu belum dibaca lagi dan naik ke atas. Unlike menghapus orangnya dari daftar; bila semua unlike, notifikasinya hilang.
 - **Follow** digabung selama belum dibaca, tanpa batas waktu. **Komentar** di post digabung per post, **balasan** ke komentar digabung per komentar. Mention tetap satu per kejadian. **Postingan akun yang diikuti** digabung per penulis per hari.
-- Daftar notifikasi menampilkan gambar pertama post sebagai thumbnail (perlu versi library yang mendukungnya).
+- Daftar notifikasi menampilkan gambar pertama post sebagai thumbnail (perlu versi library yang mendukungnya), termasuk pengumuman kampanye Komunitas yang menautkan postingan (`0192`).
 - **Data lama dirapikan saat migrasi:** notifikasi like ganda untuk konten yang sama dilebur menjadi satu (yang terbaru dipertahankan, pelakunya digabung). Push tidak dikirim saat migrasi.
 - **Cara pasang:** `git pull --ff-only && make up`. Tidak ada perubahan Kong atau layanan Go. Aplikasi lama tetap jalan; tampilan pengelompokan dan thumbnail mengikuti pembaruan library.
 

@@ -402,7 +402,7 @@ Semua event membawa `actor_id` dan `actor_name`. Pesan sistem dibuat dengan klai
   - **Komentar dan balasan** digabung selama belum dibaca: penulis post menerima `comments:post:<post_id>` dengan `payload.scope = "post"`; penulis komentar induk menerima `replies:comment:<parent_id>` dengan `payload.scope = "comment"`. Mention tetap satu notifikasi per kejadian.
   - **Postingan akun yang diikuti** digabung per penulis per hari (WIB).
   - `actor_count` dan `actors` (≤ 3 pelaku terbaru) tersedia untuk `like`, `follow`, dan `reply`. Judul push "X dan N lainnya …" memakai jumlah pelaku, bukan jumlah kejadian.
-  - `get_notifications` menambahkan `payload.post_attachment` saat dibaca: objek lampiran gambar pertama post (`{path, mime, …}`) untuk tipe `like`, `reply`, `mention`, dan `followed_post`, selama post belum dihapus dan masih terlihat. Pakai sebagai thumbnail; tidak ada kunci ini bila post tanpa gambar.
+  - `get_notifications` menambahkan `payload.post_attachment` saat dibaca: objek lampiran gambar pertama post (`{path, mime, …}`) untuk tipe `like`, `reply`, `mention`, `followed_post`, dan (sejak `0192`) `announcement` kampanye Komunitas yang membawa `payload.post_id`, selama post belum dihapus dan masih terlihat. Pakai sebagai thumbnail; tidak ada kunci ini bila post tanpa gambar.
   - `notifications.aggregate_minutes` tidak dipakai lagi (nilainya tetap dikirim di `config` untuk klien lama).
 
 ### RPC
