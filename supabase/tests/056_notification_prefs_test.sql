@@ -113,8 +113,8 @@ select is((select actor_count || '|' || event_count || '|' || (actors -> 0 ->> '
   '3|3|np_dodi|3', 'Notifikasi like memuat jumlah pelaku dan pelaku terbaru');
 select is((select actor_count || '|' || actor_username from public.get_notifications() where type = 'follow'),
   '2|np_dodi', 'Follow dari beberapa orang digabung');
-select is((select count(*)::integer from public.get_notifications(null, 100)), 5,
-  'Pemanggilan lama get_notifications tetap jalan');
+select is((select count(*)::integer from public.get_notifications(null, 100)), 4,
+  'Pemanggilan lama get_notifications tetap jalan tanpa notifikasi pesan chat');
 reset role;
 select is((select count(*)::integer from private.push_queue where user_id = :'ani' and kind = 'follow'), 2,
   'Follow yang digabung tidak mengirim push berulang');

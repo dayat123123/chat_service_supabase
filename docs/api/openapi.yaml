@@ -588,7 +588,7 @@ paths:
       tags: [Status baca dan mengetik]
       operationId: markRoomRead
       summary: Tandai room sudah dibaca
-      description: Event `receipt` ke `room:{room_id}`.
+      description: Event `receipt` ke `room:{room_id}`. Notifikasi pesan dan mention room ini ikut ditandai terbaca (`0194`).
       requestBody: {$ref: "#/components/requestBodies/RoomId"}
       responses:
         "204": {description: Berhasil}
