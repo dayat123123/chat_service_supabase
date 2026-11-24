@@ -394,7 +394,16 @@ Semua event membawa `actor_id` dan `actor_name`. Pesan sistem dibuat dengan klai
 - **Jam tenang** (WIB, bawaan mati): push yang dibuat di dalam jam tenang **ditunda** sampai jam tenang selesai (`available_at`), masa berlaku ikut digeser. Push tertunda dengan `collapse_key` sama hanya menyisakan yang terbaru. Notifikasi in-app tetap masuk seketika. Mendukung lintas tengah malam (22:00–06:00).
 - Ditegakkan di trigger `push_queue_40_preferences` (BEFORE INSERT `private.push_queue`) dan `notifications_40_preferences`, jadi berlaku untuk semua jalur push (notifikasi, kampanye, API integrasi OLT) tanpa mengubah `push_enqueue`.
 - `private.push_allowed(p_profile, p_kind) → boolean` (definer, untuk layanan internal seperti `integration_notify`): `false` hanya bila pengguna mematikan push jenis itu. `private.push_allowed_for(p_profile, p_kind, p_category)` (sejak `0086`) menambahkan kategori OLT: `important` selalu `true`, `promo` memakai `olt.promo`, selain itu sama dengan `push_allowed`. Trigger `push_queue_40_preferences` membaca kategori dari `data.category` baris push `olt.*`, trigger `notifications_40_preferences` dari `payload.kind`/`payload.category` notifikasi OLT, jadi keduanya memakai pemetaan yang sama.
-- **Penggabungan like/follow**: like ke konten yang sama, atau follow dari siapa pun, dalam `notifications.aggregate_minutes` (60) menit sejak notifikasi pertama digabung ke satu baris belum dibaca (`event_count` +1, `actor_id` = pelaku terbaru, naik ke atas). Push hanya untuk yang pertama; push memakai `collapse_key` = `group_key`. Setelah lewat jendela atau setelah dibaca, notifikasi baru dibuat.
+- **Penggabungan like/follow**: like ke konten yang sama, atau follow dari siapa pun, dalam `notifications.aggregate_minutes` (60) menit sejak notifikasi pertama digabung ke satu baris belum dibaca (`event_count` +1, `actor_id` = pelaku terbaru, naik ke atas). Push hanya untuk yang pertama; push memakai `collapse_key` = `group_key`. Setelah lewat jendela atau setelah dibaca, notifikasi baru dibuat. *Diganti `0191`, lihat di bawah.*
+- **Pengelompokan notifikasi (sejak `0191`, ala Instagram):**
+  - **Like**: satu notifikasi per post/komentar selamanya (`group_key` `like:<target_type>:<target_id>`). Like baru menggabung ke notifikasi itu walau sudah dibaca: `actor_id` dan `payload` jadi yang terbaru, `event_count` +1, `read_at` kembali kosong, dan notifikasi naik ke atas. Push dikirim lagi hanya bila notifikasi yang sudah dibaca hidup kembali; like yang masuk ke notifikasi belum dibaca tetap diam.
+  - **Unlike** menghapus pelaku itu dari daftar pelaku. Bila tidak ada pelaku tersisa, notifikasinya dihapus; bila pelaku terbaru yang unlike, `actor_id` pindah ke pelaku terbaru berikutnya.
+  - **Follow**: digabung ke notifikasi follow yang belum dibaca, tanpa batas waktu.
+  - **Komentar dan balasan** digabung selama belum dibaca: penulis post menerima `comments:post:<post_id>` dengan `payload.scope = "post"`; penulis komentar induk menerima `replies:comment:<parent_id>` dengan `payload.scope = "comment"`. Mention tetap satu notifikasi per kejadian.
+  - **Postingan akun yang diikuti** digabung per penulis per hari (WIB).
+  - `actor_count` dan `actors` (≤ 3 pelaku terbaru) tersedia untuk `like`, `follow`, dan `reply`. Judul push "X dan N lainnya …" memakai jumlah pelaku, bukan jumlah kejadian.
+  - `get_notifications` menambahkan `payload.post_attachment` saat dibaca: objek lampiran gambar pertama post (`{path, mime, …}`) untuk tipe `like`, `reply`, `mention`, dan `followed_post`, selama post belum dihapus dan masih terlihat. Pakai sebagai thumbnail; tidak ada kunci ini bila post tanpa gambar.
+  - `notifications.aggregate_minutes` tidak dipakai lagi (nilainya tetap dikirim di `config` untuk klien lama).
 
 ### RPC
 
@@ -596,7 +605,7 @@ Notifikasi masuk lewat `get_notifications` seperti biasa (tipe baru di kolom `ty
 
 - Saat pengguna memposting konten yang langsung terlihat (`visible`), pengikutnya diberi notifikasi oleh job `social-followed-posts` (tiap 30 detik, `notifications.followed_post_batch` = 5000 pengikut per putaran). Dilewati: pengikut yang membisukan/saling blokir dengan penulis, profil terhapus, postingan yang ditahan/dihapus sebelum job berjalan, postingan lebih dari 1 hari.
 - **Akun resmi, staf, dan postingan bot integrasi tidak memicu notifikasi ini**; mereka memakai pengumuman/kampanye Komunitas (opsi "beri notifikasi") agar pengikut tidak menerima dobel.
-- `payload`: `{"post_id", "author_id", "snippet"}`; `actor_id` = penulis. Digabung per penulis per jam (UTC) selama belum dibaca: `event_count` = jumlah postingan, `payload.post_id` = postingan terbaru. Push hanya untuk postingan pertama dalam jam itu ("Budi membuat postingan baru").
+- `payload`: `{"post_id", "author_id", "snippet"}`; `actor_id` = penulis. Digabung per penulis per hari (WIB, sejak `0191`; sebelumnya per jam UTC) selama belum dibaca: `event_count` = jumlah postingan, `payload.post_id` = postingan terbaru. Push hanya untuk postingan pertama hari itu ("Budi membuat postingan baru").
 
 ### Ringkasan saham pantauan (tipe `watchlist_digest`; bawaan in-app dan push aktif)
 
