@@ -73,8 +73,9 @@ Menu di bar atas mengikuti peran dan izin. Satu akun bisa punya lebih dari satu 
 | **Pusat Bantuan** | – | Ya | – | – | – | Ya |
 | **Banner & Popup** | – | Ya | – | – | Ya | – |
 | **Pengaturan** | – | Ya | – | – | – | – |
-| **Kepatuhan** ▾: **Ringkasan**, **Kasus**, **Kebijakan konten** (termasuk tab **Kata terlarang**), **Tenggat & retensi**, **Dokumen hukum**, **Jejak Audit** | – | – | Ya | – | – | – |
+| **Kepatuhan** ▾: **Ringkasan**, **Kasus**, **Kebijakan konten** (termasuk tab **Kata terlarang**), **Tenggat pengaduan**, **Dokumen hukum**, **Jejak Audit** | – | – | Ya | – | – | – |
 | **Bukti** | – | Hanya baca, lewat Ctrl K | Ya | – | – | – |
+| **Retensi data** | – | Lewat Ctrl K: menyetujui perubahan, menahan data, dan **Jalankan sekarang** | Ya | – | – | – |
 
 Akun Kepatuhan yang juga punya menu lain (misalnya Super Admin) melihat menu Kepatuhan sebagai satu menu bertingkat **Kepatuhan ▾** supaya bilah atas tidak terpotong. Akun yang hanya Kepatuhan melihatnya berjajar.
 
@@ -588,7 +589,7 @@ Kepatuhan **mengawasi**, tidak menangani tiket. Akun Kepatuhan langsung membuka 
 - Angka: **Pengaduan aktif**, **Jatuh tempo ≤ 1 hari kerja**, **Lewat tenggat**, **Tepat waktu (30 hari)**, **Penipuan aktif**, **Belum ditinjau**.
 - Daftar: **Tenggat pengaduan terdekat**, **Kasus penipuan aktif**, **Selesai, belum ditinjau**.
 - **Sinyal keamanan (30 hari)**: **Laporan CS palsu** dan **Permintaan data rahasia diblokir**, dengan tabel CS yang mencoba meminta PIN, OTP, atau password. Klik **Buka di Jejak Audit** untuk detail.
-- Bila ada spanduk kebijakan belum dikonfirmasi, klik **Buka Tenggat & retensi** (bagian 4.4).
+- Bila ada spanduk kebijakan belum dikonfirmasi, klik **Buka Tenggat pengaduan** (bagian 4.4).
 - **Notifikasi kasus baru**: ikon perisai di bilah atas (Kepatuhan dan Super Admin) menunjukkan jumlah kasus pengaduan atau penipuan baru yang belum dilihat, termasuk yang ditandai CS beserta alasannya. Klik untuk melihat daftar dan membuka kasusnya.
 
 ### 4.2 Kasus
@@ -614,7 +615,7 @@ Catatan semua aksi CS, Super Admin, Kepatuhan, nasabah, dan sistem. **Catatan ti
 - **Ekspor CSV** untuk pemeriksaan.
 - Dipakai juga saat gangguan: melihat siapa mengubah pengaturan apa dan kapan.
 
-### 4.4 Tenggat & retensi
+### 4.4 Tenggat pengaduan
 
 Nilai yang wajib dikonfirmasi Kepatuhan. **Super Admin tidak bisa mengubahnya.**
 
@@ -622,11 +623,12 @@ Nilai yang wajib dikonfirmasi Kepatuhan. **Super Admin tidak bisa mengubahnya.**
 |---|---|
 | **Tenggat pengaduan** | Hari kerja sejak pengaduan diterima (1–20) |
 | **Perpanjangan tenggat** | Hari kerja tambahan, paling banyak sekali per pengaduan (0–20; 0 = tidak bisa diperpanjang) |
-| **Retensi riwayat chat** | Lama riwayat chat CS disimpan sejak tiket terakhir ditutup (5–30 tahun) |
 
 1. Periksa nilai yang berstatus **Belum dikonfirmasi** (nilai usulan sedang dipakai).
 2. Ubah bila perlu, isi **Dasar ketentuan (opsional)**, lalu **Konfirmasi nilai ini** atau **Simpan & konfirmasi**.
 3. Perubahan hanya berlaku untuk pengaduan baru. Lihat **Riwayat perubahan** di bawahnya.
+
+Masa simpan riwayat chat CS dan data lain kini diatur di **Retensi data** (bagian 4.10).
 
 ### 4.5 Kata terlarang
 
@@ -701,6 +703,16 @@ Di **Kebijakan konten → Anti-manipulasi**, Kepatuhan mengatur:
 - **Slow mode jam ramai**: jeda dan rentang jam ramai (WIB), hanya di hari bursa.
 
 Alert ditinjau moderator di **Komunitas → Moderasi → Indikasi manipulasi** (bagian 5.3).
+
+### 4.10 Retensi data
+
+Batas berapa lama post, komentar, chat, chat CS, arsip, notifikasi, dan log disimpan sebelum dihapus otomatis setiap hari pukul 02.41 WIB. Panduan lengkap: [retensi-data.md](retensi-data.md).
+
+- Tab **Aturan**: nilai yang berlaku, bawaan, rentang, dan perubahan yang sedang menunggu. Klik **Ajukan perubahan**, isi **Nilai baru** dan **Alasan perubahan** (10–500 karakter).
+- Tab **Permintaan**: permintaan dari staf lain bisa **Setujui** atau **Tolak** (wajib sesi 2FA). Pengaju tidak bisa menyetujui permintaannya sendiri. Perubahan yang membuat data **terhapus lebih cepat** baru berlaku 7 hari setelah disetujui dan bisa **Dibatalkan** selama masa tunggu. Perubahan yang membuat data **disimpan lebih lama** langsung berlaku.
+- Tab **Penahanan**: **Tambah penahanan** untuk akun (`@username`), room, post, komentar, atau pesan yang tidak boleh dihapus, misalnya karena permintaan penyidik. Penahanan hanya bisa dilepas staf lain.
+- Tab **Riwayat run**: hasil setiap run dan **Hitung sekarang** untuk melihat berapa data yang akan dihapus. Super Admin bisa **Jalankan sekarang**.
+- Konten yang dilaporkan, sedang dibanding, legal hold di Bukti, dan post resmi perusahaan tidak pernah dihapus penjaga.
 
 ## 5. Untuk moderator Komunitas
 

@@ -6,6 +6,15 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 24 November 2026
 
+### Penjaga retensi data (migrasi `0195`, Hub)
+
+- Post, komentar, chat DM/grup, chat room saham, dan chat CS yang melewati batas umur kini **dihapus permanen otomatis setiap hari pukul 02.41 WIB**, beserta file lampirannya (lewat janitor). Bawaan: konten komunitas dan chat 5 tahun, chat CS 10 tahun sejak tiket terakhir ditutup. Konten yang ditahan, dilaporkan, dibanding, legal hold, dan post resmi perusahaan tidak dihapus.
+- Semua batas retensi, termasuk yang sudah ada (notifikasi, arsip, bukti, log), kini diatur di Hub **Kepatuhan → Retensi data**. Setiap perubahan wajib disetujui staf lain dengan 2FA, dan perubahan yang mempercepat penghapusan baru berlaku 7 hari kemudian. Ubahan langsung lewat SQL ditolak.
+- **Audit log admin** kini disimpan 5 tahun (sebelumnya 365 hari) bila nilainya belum pernah diubah.
+- Menu **Tenggat & retensi** berganti nama menjadi **Tenggat pengaduan**. Retensi chat CS pindah ke **Retensi data**.
+- **Sebelum memasang:** Kepatuhan perlu meninjau batas bawaan ([retensi-data.md](retensi-data.md)). Run pertama setelah pemasangan bisa menghapus banyak data lama sekaligus, paling banyak 20.000 baris per jenis per malam; sisanya dilanjutkan malam berikutnya. Bila ingin menunda, hentikan penjaga dari Hub sebelum pukul 02.41 WIB (perlu persetujuan staf kedua; penghentian langsung berlaku).
+- **Cara pasang:** `git pull --ff-only && make up` di server, lalu perbarui Hub seperti biasa. Tidak ada perubahan Kong atau layanan Go. Periksa tab **Riwayat run** keesokan harinya.
+
 ### Notifikasi chat hanya di daftar chat (migrasi `0194`)
 
 - Pesan chat (DM, grup, balasan CS) dan mention di chat yang diikuti tidak lagi muncul di panel notifikasi dan tidak menambah angka lonceng. Chat cukup terlihat di daftar chat, seperti WhatsApp.
