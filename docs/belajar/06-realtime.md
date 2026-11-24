@@ -122,6 +122,7 @@ rollback;
 | `room:` | `room_state` | `private.broadcast_room_state` (room saham) |
 | `user:` | `room_activity` | `private.broadcast_room_activity` |
 | `user:` | `room_removed` | `hide_room`, `leave_room`, `delete_group` |
+| `user:` | `room_pinned` | `set_room_pinned` |
 
 ### Detail yang menarik
 

@@ -259,6 +259,23 @@ Room CS (`type = 'support'`, termasuk semua pesan yang punya `session_id`) tetap
 - **Keluar room (`0157`):** setelah `leave_room` berhasil, event `room_removed` (`reason: left`) dikirim ke topik `user:<uid>` supaya perangkat lain milik pengguna yang sama ikut membuang room dari daftar.
 - **Analitik:** event `hide_room`, `delete_group`, dan `edit_message` diterima.
 
+### Sematkan chat (`0193`)
+
+Sematan bersifat pribadi per anggota (`chat_members.pinned_at`) dan tidak bisa diubah langsung lewat tabel.
+
+- `set_room_pinned(p_room_id, p_pinned boolean)` → `timestamptz`: `pinned_at` baru, atau `null` setelah dilepas.
+  - Menyematkan room yang sudah tersemat mengembalikan `pinned_at` awal; melepas yang tidak tersemat mengembalikan `null`. Keduanya tanpa event.
+  - Bukan anggota, atau room yang sedang tersembunyi bagi pemanggil, ditolak `404 not_member`. Room CS ditolak `400 cannot_pin` karena selalu di atas. `p_pinned` kosong ditolak `400 invalid_pinned`.
+  - Maksimal `rooms.pin_limit` (bawaan 3) room di luar CS. Sematan berikutnya ditolak `409 pin_limit`.
+  - Setiap perubahan mengirim event `room_pinned` (`room_id`, `pinned_at`, `null` bila dilepas) ke topik `user:<uid>`.
+- `hide_room` melepas sematan. Keluar room, dikeluarkan, hapus grup, dan hapus akun menghapus baris anggotanya, jadi sematannya ikut hilang.
+- `chat_room_summary.pinned_at` dikirim oleh `get_my_rooms` dan `get_my_room` (selalu `null` untuk room CS). `get_room_previews` juga membawa `pinned_at` dan `cursor` yang sama.
+- **Urutan `get_my_rooms`:** room CS, lalu room tersemat urut `pinned_at` terbaru (tidak naik-turun karena pesan baru), lalu room lain urut `coalesce(last_message_at, created_at)` terbaru dan `id`.
+- **Halaman:** tanpa cursor, hasilnya semua room tersemat ditambah paling banyak `p_limit` room CS dan room tak tersemat. Room tersemat tidak memakan limit. Dengan cursor, hanya room CS dan room tak tersemat yang dimuat. Halaman berikutnya tetap memakai `cursor` baris terakhir.
+  - Format `cursor`: room CS `1|<waktu>|<id>`, room tak tersemat `0|<waktu>|<id>`, dan room tersemat `1|1970-01-01T00:00:00.000000Z|00000000-0000-0000-0000-000000000000`. Cursor room tersemat berarti "lanjut dari room tak tersemat paling atas", sehingga baris tersemat di posisi terakhir tetap aman dipakai sebagai cursor.
+  - Klien sebaiknya mengurutkan sendiri dengan aturan yang sama, bukan dengan string `cursor`.
+- Tes: `supabase/tests/171_room_pins_test.sql`.
+
 ### Komentar dihapus tanpa jejak (`0155`)
 
 - Komentar yang dihapus, oleh penulis maupun moderator, tidak lagi dikirim ke klien. `get_comment_thread` (semua urutan `0142`) dan `private.thread_comments` tidak memuat placeholder. Membuka thread dari komentar terhapus ditolak `404 comment_not_found`.

@@ -117,8 +117,9 @@ paths:
       operationId: getMyRooms
       summary: Daftar room saya
       description: |
-        Chat CS di atas, lalu urut dari aktivitas terbaru. Halaman berikutnya dengan `p_cursor` = `cursor`
-        room terakhir.
+        Chat CS di atas, lalu chat tersemat (urut `pinned_at` terbaru), lalu chat lain urut aktivitas terbaru.
+        Tanpa cursor: semua chat tersemat ditambah paling banyak `p_limit` chat CS dan chat tak tersemat.
+        Halaman berikutnya dengan `p_cursor` = `cursor` room terakhir, dan hanya memuat chat tak tersemat (`0193`).
       requestBody:
         content:
           application/json:
@@ -250,6 +251,34 @@ paths:
       requestBody: {$ref: "#/components/requestBodies/RoomId"}
       responses:
         "204": {description: Berhasil}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/set_room_pinned:
+    post:
+      tags: [Room]
+      operationId: setRoomPinned
+      summary: Sematkan atau lepas sematan chat
+      description: |
+        Sematan pribadi per pengguna, maksimal `rooms.pin_limit` (bawaan 3) chat di luar CS (`pin_limit`).
+        Chat CS ditolak `cannot_pin`; bukan anggota atau chat tersembunyi ditolak `not_member`.
+        Menyematkan ulang mengembalikan `pinned_at` awal. Setiap perubahan mengirim event `room_pinned`
+        (`room_id`, `pinned_at`) ke `user:{saya}`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_room_id, p_pinned]
+              properties:
+                p_room_id: {$ref: "#/components/schemas/Uuid"}
+                p_pinned: {type: boolean}
+      responses:
+        "200":
+          description: "`pinned_at` baru, atau `null` setelah dilepas"
+          content:
+            application/json:
+              schema: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}]}
         default: {$ref: "#/components/responses/RpcError"}
 
   /rest/v1/rpc/leave_room:
@@ -1687,6 +1716,7 @@ components:
         other_is_verified: {type: ["boolean", "null"]}
         only_admins_send: {type: ["boolean", "null"]}
         only_admins_edit: {type: ["boolean", "null"]}
+        pinned_at: {oneOf: [{$ref: "#/components/schemas/Timestamp"}, {type: "null"}], description: "Waktu saya menyematkan chat ini (`0193`); selalu `null` untuk chat CS"}
         cursor: {$ref: "#/components/schemas/Cursor"}
 
     RoomMember:

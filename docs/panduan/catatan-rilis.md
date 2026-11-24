@@ -6,6 +6,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 24 November 2026
 
+### Sematkan chat (migrasi `0193`)
+
+- Pengguna bisa menyematkan sampai 3 chat di daftar chat, seperti WhatsApp. Chat CS tetap paling atas, lalu chat tersemat, lalu chat lain. Pesan baru tidak mengubah urutan chat tersemat.
+- Batasnya bisa diubah lewat pengaturan `rooms.pin_limit` (SQL operasional, tanpa menu Hub).
+- Menghapus chat untuk diri sendiri, keluar grup, atau grup dihapus ikut melepas sematannya.
+- **Cara pasang:** `git pull --ff-only && make up`. Tidak ada perubahan Kong, layanan Go, atau Hub. Aplikasi lama tetap jalan; tombol sematkan mengikuti pembaruan library.
+
 ### Notifikasi dikelompokkan ala Instagram (migrasi `0191` dan `0192`)
 
 - **Like** ke post atau komentar yang sama selalu masuk ke satu notifikasi. Like baru membuat notifikasi itu belum dibaca lagi dan naik ke atas. Unlike menghapus orangnya dari daftar; bila semua unlike, notifikasinya hilang.
