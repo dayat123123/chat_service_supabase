@@ -29,6 +29,7 @@ Kumpulan panduan untuk menjalankan server sosial (OLT Social) dan Rendezvous Hub
 | [pembaruan-sistem.md](pembaruan-sistem.md) ([PDF](pembaruan-sistem.pdf)) | Tim IT | Update versi, pemeriksaan sesudahnya, dan rollback |
 | [catatan-rilis.md](catatan-rilis.md) | Tim IT | Langkah tambahan per rilis, terbaru di atas |
 | [backup.md](backup.md) ([PDF](backup.pdf)) | Super Admin, tim IT | Persiapan, pengaturan backup di Hub, pemeriksaan rutin, pemulihan per kejadian |
+| [retensi-data.md](retensi-data.md) | Kepatuhan, Super Admin, tim IT | Batas simpan data dan alasannya, persetujuan perubahan, penahanan, dan cara memastikan pembersihan otomatis berjalan |
 | [gangguan.md](gangguan.md) ([PDF](gangguan.pdf)) | Tim IT | Langkah saat gangguan: triase, gejala per layanan, pemulihan |
 | [produksi.md](produksi.md) | Tim IT, pengembang | Arsitektur produksi, deploy pertama, moderasi, rotasi kunci, monitoring, checklist rilis |
 | [skalabilitas.md](skalabilitas.md) | Pengembang | Replika, pool koneksi, dan rencana single → cluster |

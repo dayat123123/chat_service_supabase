@@ -140,8 +140,8 @@ select throws_ok($$select cs_api.compliance_confirm_policy('complaint.days', '30
   'Tenggat pengaduan di luar 1–20 hari kerja ditolak');
 select throws_ok($$select cs_api.compliance_confirm_policy('assignment.mode', '"claim"')$$, 'PT403', 'policy_locked',
   'Kepatuhan hanya mengubah kebijakan kepatuhan');
-select is(cs_api.compliance_confirm_policy('retention.chat_years', '7') ->> 'value', '7',
-  'Kepatuhan mengubah retensi chat');
+select throws_ok($$select cs_api.compliance_confirm_policy('retention.chat_years', '7')$$, 'PT403', 'policy_locked',
+  'Retensi chat diatur lewat Retensi data dengan persetujuan staf lain');
 select is((cs_api.compliance_overview() ->> 'policies_unconfirmed')::integer, 1,
   'Ringkasan menghitung kebijakan yang belum dikonfirmasi');
 

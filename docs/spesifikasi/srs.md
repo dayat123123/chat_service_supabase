@@ -4644,7 +4644,7 @@ Semua RPC Kepatuhan memakai `cs.require_agent`: sesi dicabut `401 session_revoke
 | Deskripsi | Sistem harus memungkinkan Kepatuhan mengonfirmasi atau mengubah tenggat pengaduan, perpanjangan tenggat, dan retensi chat CS, dengan riwayat konfirmasi per versi. |
 | Aktor | Staf Kepatuhan |
 | Prakondisi | — |
-| Proses dan aturan | 1) Kebijakan: `complaint.days` 1–20 hari kerja (bawaan 5), `complaint.extension_days` 0–20 hari kerja (bawaan 10), `retention.chat_years` 5–30 tahun (bawaan 10) (0027, 0042). <br>2) `compliance_confirm_policy(p_key, p_value, p_note)`; nilai bilangan bulat dalam rentang; catatan dasar ketentuan ≤ 500. <br>3) Konfirmasi tercatat di `cs.policy_confirmations` (unik per versi pengaturan, append-only) dan perubahan di `cs_settings_history`. <br>4) Perubahan hanya berlaku untuk pengaduan baru. <br>5) Super Admin tidak bisa mengubah ketiga nilai ini. <br>6) `compliance_policies()` mengembalikan status konfirmasi versi terkini dan 30 riwayat perubahan terakhir. |
+| Proses dan aturan | 1) Kebijakan: `complaint.days` 1–20 hari kerja (bawaan 5), `complaint.extension_days` 0–20 hari kerja (bawaan 10) (0027, 0042). Sejak 0195 `retention.chat_years` keluar dari daftar ini dan diatur lewat Retensi data dengan persetujuan staf lain. <br>2) `compliance_confirm_policy(p_key, p_value, p_note)`; nilai bilangan bulat dalam rentang; catatan dasar ketentuan ≤ 500. <br>3) Konfirmasi tercatat di `cs.policy_confirmations` (unik per versi pengaturan, append-only) dan perubahan di `cs_settings_history`. <br>4) Perubahan hanya berlaku untuk pengaduan baru. <br>5) Super Admin tidak bisa mengubah kedua nilai ini. <br>6) `compliance_policies()` mengembalikan status konfirmasi versi terkini dan 30 riwayat perubahan terakhir. |
 | Keluaran | Tampilan kebijakan; audit `compliance.policy_confirm` (`changed` true/false). |
 | Kode error | `403 policy_locked`; `400 invalid_policy`; `400 invalid_note` |
 | Antarmuka | RPC `cs_api.compliance_policies`, `cs_api.compliance_confirm_policy`; Hub: Kepatuhan → Tenggat & retensi (Konfirmasi nilai ini, Simpan & konfirmasi) |
@@ -6122,7 +6122,7 @@ Modul ini mencakup cara server dipasang, diperbarui, dipantau, dipulihkan, dan d
 | Deskripsi | Sistem harus menghapus data sosial yang melewati masa simpan secara terjadwal, kecuali arsip yang berada dalam legal hold. |
 | Aktor | Job `olt-retention` |
 | Prakondisi | — |
-| Proses dan aturan | 1) Notifikasi > `retention.notifications_days` (90). <br>2) Pesan yang sudah dihapus > `retention.deleted_messages_days` (30). <br>3) Arsip konten dengan `retain_until` lewat dan `legal_hold = false`. <br>4) Audit log admin (`private.admin_audit_log`) > `retention.audit_log_days` (365). <br>5) Log akses data pribadi > `retention.access_log_days` (730). <br>6) Event rate limit > `retention.rate_limit_events_days` (2). <br>7) Hasil hitungan per jenis dicatat di log (`olt.retention`). <br>8) Retensi riwayat chat CS (5–30 tahun) ditetapkan Kepatuhan (PATUH). |
+| Proses dan aturan | 1) Notifikasi > `retention.notifications_days` (90). <br>2) Pesan yang sudah dihapus > `retention.deleted_messages_days` (30). <br>3) Arsip konten dengan `retain_until` lewat dan `legal_hold = false`. <br>4) Audit log admin (`private.admin_audit_log`) > `retention.audit_log_days` (1825 sejak 0195). <br>5) Log akses data pribadi > `retention.access_log_days` (730). <br>6) Event rate limit > `retention.rate_limit_events_days` (2). <br>7) Hasil hitungan per jenis dicatat di log (`olt.retention`). <br>8) Retensi konten aktif dan chat CS dijalankan penjaga retensi (0195, lihat 6.3). |
 | Keluaran | Objek JSON jumlah baris terhapus per jenis |
 | Kode error | — |
 | Antarmuka | `private.run_retention()` (0015); cron `olt-retention` |
@@ -6704,13 +6704,21 @@ Bucket `care-documents` (0022) sudah dihapus di 0026.
 
 ### 6.3 Retensi dan pembersihan
 
+Sejak 0195 semua kunci `retention.*` di bawah dijaga trigger `settings_05_retention_guard` / `cs_settings_05_retention_guard`: nilai di luar rentang `private.retention_rules()` ditolak `400 invalid_retention`, dan perubahan tanpa permintaan yang disetujui ditolak `409 retention_locked`. Perubahan lewat `cs_api.retention_request_change` → `retention_decide_change` (staf lain, aal2); yang mempercepat penghapusan berlaku 7 hari setelah disetujui (`retention-apply-due` tiap jam). Riwayat di `private.retention_history` (append-only). Panduan: docs/panduan/retensi-data.md.
+
 | Data | Aturan | Pengaturan (bawaan) | Pelaksana | Sumber |
 |---|---|---|---|---|
+| Post aktif | Dihapus N tahun setelah dibuat beserta komentar, reaksi, dan lampiran; dilewati bila ditahan, dilaporkan, dibanding, legal hold, atau post resmi | `retention.posts_years` (5; 0 = tidak pernah) | `private.retention_guard_run`, cron `retention-guard` 19:41 UTC (02.41 WIB) | 0195 |
+| Komentar aktif | Dihapus N tahun setelah dibuat; komentar yang masih punya balasan menunggu | `retention.comments_years` (5) | `retention-guard` | 0195 |
+| Chat DM & grup | Pesan dihapus N tahun setelah dikirim; pratinjau room dikosongkan bila semua pesan habis | `retention.direct_chat_years` (5) | `retention-guard` | 0195 |
+| Chat room saham | Sama seperti DM | `retention.stock_chat_years` (5) | `retention-guard` | 0195 |
+| Chat CS | Pesan room support dihapus bila tidak ada tiket aktif dan tiket terakhir ditutup lebih dari N tahun | `retention.chat_years` (10, 5–30, di `cs.cs_settings`) | `retention-guard` | 0027, 0195 |
+| Batas per run | Maksimal N baris per jenis per run, sisanya run berikutnya; penjaga bisa dihentikan | `retention.max_rows_per_run` (20000), `retention.purge_enabled` (1) | `retention-guard` | 0195 |
 | Notifikasi | Dihapus setelah N hari | `retention.notifications_days` (90) | `private.run_retention`, cron `olt-retention` 03:17 | 0015 |
 | Pesan yang dihapus | Baris dengan `deleted_at` dihapus permanen setelah N hari | `retention.deleted_messages_days` (30) | `run_retention` | 0015 |
 | Arsip konten (`content_archive`) | Salinan post/komentar/pesan yang dihapus atau dari akun yang dihapus, disimpan sampai `retain_until`; tidak dihapus selama `legal_hold` | `retention.archive_days` (1825) | `run_retention` | 0013, 0015 |
 | Riwayat edit konten | Disimpan sampai `retain_until` (sama dengan masa arsip); dikecualikan bila `legal_hold` | `retention.archive_days` (1825) | cron `social-content-edits-retention` | 0075, 0081 |
-| Audit admin lama | Dihapus setelah N hari | `retention.audit_log_days` (365) | `run_retention` | 0015 |
+| Audit admin lama | Dihapus setelah N hari | `retention.audit_log_days` (1825 sejak 0195; sebelumnya 365) | `run_retention` | 0015, 0195 |
 | Log akses data pribadi | Dihapus setelah N hari | `retention.access_log_days` (730) | `run_retention` | 0015 |
 | Event rate limit | Dihapus setelah N hari | `retention.rate_limit_events_days` (2) | `run_retention` | 0015 |
 | Tanda terima pesan (`message_receipts`) | Dihapus setelah 30 hari; status tetap tampil dengan "Waktu tidak tercatat" | tetap 30 hari | cron `message-receipts-retention` 03:43 | 0122, doc/features.md |
