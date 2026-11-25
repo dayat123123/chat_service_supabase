@@ -110,6 +110,16 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 - Disiarkan seperti tanda baca: `realtime.send` event **`reaction`** ke channel privat `room:<room_id>` dengan payload `{message_id, user_id, emoji, reactions: [{emoji, count}]}` (tanpa `me`; klien menghitung sendiri dari `user_id`).
 - Tidak tersedia di chat CS (`400 reactions_not_supported`). Error lain: `400 invalid_emoji`, `404 message_not_found` (bukan anggota, pesan dihapus/tidak terlihat, atau saling blokir), `429 rate_limited` (`message_reaction` 60/menit).
 
+### Reaksi emoji pada post (`0196`)
+
+- Satu reaksi per orang per post, dari emoji yang sama dengan reaksi pesan (`get_client_config().config.post_reactions`). `👍` disimpan sebagai `like` di `public.reactions.type`, jadi like dari klien lama otomatis menjadi jempol. `❤` tanpa variation selector dinormalkan. Komentar tetap hanya menerima `like`.
+- `set_post_reaction(p_post_id, p_emoji)` → `setof feed_post` (satu baris). `null` atau string kosong melepas reaksi; emoji lain memasang atau mengganti. Memilih emoji yang sedang aktif tidak mengubah apa pun. Error: `400 invalid_reaction`, `404 target_not_found` (post tidak ada, dihapus, atau disembunyikan moderator dan bukan milik sendiri), `403 blocked`, `429 rate_limited` (`reaction`). Melepas reaksi selalu berhasil; bila post sudah tidak terlihat, hasilnya kosong.
+- `feed_post` (semua RPC yang mengembalikan post) kini membawa `my_reaction` (emoji saya atau `null`) dan `reaction_summary` (`[{emoji, count}]`, urut jumlah terbanyak lalu urutan daftar emoji, hanya yang `count > 0`). `like_count` = total semua reaksi dan `liked_by_me` = true untuk reaksi apa pun, sehingga klien lama tetap benar.
+- `posts.reaction_summary` dipelihara trigger bersama `like_count` dalam satu UPDATE, jadi event Realtime `UPDATE` pada `posts` ikut membawanya.
+- `post_reactors(p_post_id, p_emoji = null, p_limit = 30, p_cursor = null)` → `id, username, display_name, avatar_url, is_verified, is_official, is_me, is_following, emoji, reacted_at, cursor`, terbaru dulu (`p_limit` 1–50). Pengguna terhapus, tamu, staf, dibanned, atau saling blokir dengan penonton tidak ditampilkan. Post yang tidak terlihat ditolak `404 target_not_found`.
+- Notifikasi tetap tipe `like` dan dikelompokkan per post. Payload membawa `reaction` (`like` atau emoji) dan `emoji` (`👍` untuk like). Mengganti emoji hanya memperbarui `payload.emoji` di notifikasi yang sama tanpa menambah kejadian atau push. Push reaksi selain jempol berbunyi "X menanggapi konten Anda dengan ❤️".
+- Masih bisa lewat REST: `INSERT`/`DELETE` `public.reactions`, dan `UPDATE reactions set type` memakai aturan yang sama.
+
 ### Info pesan (`0122`)
 
 - Seperti "Info pesan" WhatsApp: pengirim melihat kapan pesannya **terkirim** ke perangkat dan **dibaca** tiap penerima. Ada di DM, grup, dan chat CS; room saham tidak.

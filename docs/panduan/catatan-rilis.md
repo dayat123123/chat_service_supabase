@@ -4,6 +4,15 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 25 November 2026
+
+### Reaksi emoji pada postingan (migrasi `0196`)
+
+- Postingan Stream kini bisa diberi reaksi emoji seperti pesan chat (👍 ❤️ 😂 😮 😢 🔥), satu reaksi per orang. Like yang sudah ada otomatis menjadi 👍, dan jumlah suka sekarang menghitung semua reaksi.
+- Penulis tetap mendapat satu notifikasi per postingan. Mengganti emoji tidak mengirim notifikasi atau push lagi.
+- Komentar tetap hanya bisa di-like.
+- **Cara pasang:** `git pull --ff-only && make up`. Migrasi mengisi ringkasan reaksi untuk postingan yang sudah punya like. Tidak ada perubahan Kong, layanan Go, atau Hub. Aplikasi lama tetap jalan dan tetap mengirim like; pilihan emoji mengikuti pembaruan library.
+
 ## 24 November 2026
 
 ### Penjaga retensi data (migrasi `0195`, Hub)

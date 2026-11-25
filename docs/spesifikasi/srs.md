@@ -1241,7 +1241,7 @@ Modul KOM mencakup fitur komunitas di aplikasi nasabah: Stream (feed Terbaru, Me
 | Deskripsi | Sistem harus mengizinkan nasabah menyukai dan batal menyukai postingan atau komentar. |
 | Aktor | Nasabah |
 | Prakondisi | Konten ada, belum terhapus, dan tidak saling blokir. |
-| Proses dan aturan | 1) Suka lewat REST `INSERT public.reactions (user_id, target_type 'post'/'comment', target_id)` dengan jenis tetap `like`; batal lewat `DELETE`; satu suka per user per konten (primary key) (0006). <br>2) Rate limit `reaction` 60 per menit (0012). <br>3) Penghitung `like_count` diperbarui trigger; `liked_by_me` ada di `feed_post`. <br>4) Library memakai optimistic update. <br>5) Kill switch tidak memblokir suka. |
+| Proses dan aturan | 1) Suka lewat REST `INSERT public.reactions (user_id, target_type 'post'/'comment', target_id)` dengan jenis tetap `like`; batal lewat `DELETE`; satu suka per user per konten (primary key) (0006). <br>2) Rate limit `reaction` 60 per menit (0012). <br>3) Penghitung `like_count` diperbarui trigger; `liked_by_me` ada di `feed_post`. <br>4) Library memakai optimistic update. <br>5) Kill switch tidak memblokir suka. <br>6) Sejak 0196 post bisa diberi reaksi emoji (👍 ❤️ 😂 😮 😢 🔥, satu per orang) lewat `set_post_reaction(p_post_id, p_emoji)`; `👍` = `like`. `feed_post` membawa `my_reaction` dan `reaction_summary`; `like_count` menghitung semua reaksi; `post_reactors` menampilkan siapa memberi reaksi. Komentar tetap hanya `like`. |
 | Keluaran | Jumlah suka terbaru. |
 | Kode error | `404 target_not_found`; `403 blocked`; `429 rate_limited` |
 | Antarmuka | REST `public.reactions`; Library: tombol suka di kartu postingan dan komentar |
