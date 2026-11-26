@@ -204,10 +204,7 @@ func build(contexts map[string]context, numbers map[string][]fact, dei map[strin
 	if err != nil {
 		yearEnd = start.AddDate(0, 0, -1)
 	}
-	name := strings.TrimSpace(dei["EntityName"])
-	if name == "" {
-		name = code
-	}
+	name := entityName(dei["EntityName"], code)
 	report := &Report{
 		EntityCode:  code,
 		EntityName:  name,
@@ -280,6 +277,21 @@ func periodOf(label string, months int) string {
 		return "FY"
 	}
 	return ""
+}
+
+func entityName(raw, code string) string {
+	words := strings.Fields(raw)
+	if len(words) == 0 {
+		return code
+	}
+	for len(words) > 1 && isTbk(words[len(words)-1]) && isTbk(words[len(words)-2]) {
+		words = words[:len(words)-1]
+	}
+	return strings.Join(words, " ")
+}
+
+func isTbk(word string) bool {
+	return strings.EqualFold(strings.TrimSuffix(word, "."), "tbk")
 }
 
 func auditOf(label string) string {

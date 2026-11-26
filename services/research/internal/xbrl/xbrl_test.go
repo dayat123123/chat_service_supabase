@@ -187,3 +187,21 @@ func TestMonthsBetween(t *testing.T) {
 		}
 	}
 }
+
+func TestEntityNameIsTidied(t *testing.T) {
+	cases := map[string]string{
+		"Akasha Wira International Tbk  Tbk": "Akasha Wira International Tbk",
+		"PT Bank Contoh Tbk.":                "PT Bank Contoh Tbk.",
+		"  PT  Contoh	Industri Tbk TBK. ":    "PT Contoh Industri Tbk",
+		"Indo Tambangraya Megah Tbk":         "Indo Tambangraya Megah Tbk",
+		"   ":                                "ABCD",
+		"Tbk":                                "Tbk",
+	}
+	for raw, want := range cases {
+		spec := xbrltest.BankQ3()
+		spec.Name = raw
+		if got := parse(t, spec).EntityName; got != want {
+			t.Errorf("name %q = %q, want %q", raw, got, want)
+		}
+	}
+}

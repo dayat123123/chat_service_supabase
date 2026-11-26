@@ -1119,7 +1119,7 @@ services:
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/research
-    image: olt-social/research:0.3.0
+    image: olt-social/research:0.3.1
     networks: [app]
     depends_on:
       migrate:
