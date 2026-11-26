@@ -843,6 +843,16 @@ File juga bisa masuk lewat API dari sistem lain; kolom **Sumber** menunjukkan **
 2. Cocokkan angka penting dengan laporan aslinya bila ada peringatan. Lalu klik **Buka di Postingan resmi** dan setujui seperti postingan resmi biasa (empat mata: bukan pembuat postingan). Postingan dari API dibuat atas nama pembuat API key; postingan dari unggahan Hub atas nama pengunggah.
 3. Bila postingan ditolak, dibatalkan, atau belum dibuat (misalnya akun resmi belum diatur saat itu), klik **Buat postingan** di detail laporan.
 
+**Dokumen sumber** (laporan asli untuk dibaca nasabah):
+
+1. Unduh PDF laporan keuangan, atau file `FinancialStatement-….xlsx`, dari halaman yang sama di situs IDX.
+2. Di detail laporan, bagian **Dokumen sumber**, klik **Tambah dokumen** dan pilih PDF atau XLSX (maksimal 20 MB, 3 dokumen per laporan). Nama tampilan boleh diubah sebelum mengunggah; bila dikosongkan, nama dibuat dari kode emiten dan periode.
+3. Dokumen berstatus **Diperiksa** lalu **Siap**. Pemeriksaannya mencakup jenis file, JavaScript di PDF, makro di Excel, dan antivirus. Dokumen yang **Siap** otomatis ikut di postingan, juga bila postingannya sudah terbit.
+4. Dokumen yang **Ditolak** tidak tampil di aplikasi; alasannya tertulis di bawah nama dokumen. Hapus dokumen itu, lalu unggah file yang benar.
+5. Klik nama dokumen untuk membukanya, atau ikon tempat sampah untuk menghapusnya dari laporan dan dari postingannya.
+
+Dokumen yang dikirim sistem lain lewat API juga muncul di bagian ini.
+
 | Peringatan | Arti | Yang perlu dilakukan |
 |---|---|---|
 | **Disajikan ulang** | Angka tahun lalu di laporan ini berbeda lebih dari 0,5% dari laporan tahun lalu yang tersimpan (emiten mereklasifikasi). Ringkasan memakai angka laporan terbaru | Periksa pos yang disebut sebelum menyetujui |

@@ -70,7 +70,7 @@ func TestGeneralAnnualSummary(t *testing.T) {
 	want := strings.Join([]string{
 		"$WXYZ — Laporan Keuangan Tahunan 2025 (diaudit)",
 		"Laba bersih setahun Rp4,50 T, turun 10,0% YoY. EPS setahun Rp113 (tahun lalu Rp125).",
-		"Pendapatan setahun Rp40,00 T (+11,1% YoY). Marjin kotor 30,0%, marjin bersih 11,3% setahun. " +
+		"Pendapatan setahun Rp40,00 T (+11,1% YoY). Margin kotor 30,0%, margin bersih 11,3% setahun. " +
 			"Arus kas operasi setahun Rp6,00 T (1,33x laba bersih).",
 		"Total aset Rp60,00 T (+9,1% YoY), ekuitas Rp35,00 T (+9,4% YoY). DER 0,67x, rasio lancar 2,00x.",
 		"ROE 13,4%.",

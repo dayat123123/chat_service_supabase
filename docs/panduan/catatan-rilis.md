@@ -6,6 +6,17 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 26 November 2026
 
+### Riset: dokumen sumber ikut di postingan (migrasi `0201`, layanan `research` 0.3.0, Hub)
+
+- Postingan riset kini bisa membawa **laporan aslinya**, berupa PDF atau Excel (`.xlsx`) dari IDX, sampai 3 dokumen per laporan, maksimal 20 MB per file. Nasabah membukanya dari aplikasi dengan library yang sudah mendukung dokumen postingan (v1.61.0).
+- Dokumen bisa masuk dari tiga jalur:
+  - Pengirim API memakai `POST /integration/v1/research/{id}/documents`.
+  - Skrip `kirim-riset.ps1` mengirim PDF/XLSX yang namanya diawali nama zip-nya.
+  - Staf menambahkannya di **Komunitas → Riset → detail laporan → Dokumen sumber**.
+- Setiap dokumen diperiksa sebelum tampil: isinya harus benar-benar PDF atau XLSX, PDF tidak boleh berisi JavaScript, Excel tidak boleh berisi makro, dan file harus lolos antivirus. Dokumen yang lolos ditambahkan ke postingannya, termasuk postingan yang sudah terbit.
+- Batas unggahan di edge untuk rute riset naik dari 8 MiB ke 20 MiB (`EDGE_BODY_MAX_RESEARCH`). Batas file zip tetap 8 MiB.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up`. Perintah ini membangun image `olt-social/research:0.3.0` dan menjalankan migrasi; Traefik membaca batas barunya sendiri. Kong tidak berubah.
+
 ### Dokumen di postingan resmi (migrasi `0200`, Hub)
 
 - Postingan resmi bisa membawa sampai 5 dokumen: PDF, Excel (`.xlsx`), CSV, Word (`.docx`), dan PowerPoint (`.pptx`), maksimal 20 MB per file (CSV 10 MB). Format lama yang bisa memuat makro (`.xls`, `.doc`, `.ppt`, `.xlsm`) tidak diterima.

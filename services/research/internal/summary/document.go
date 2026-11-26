@@ -272,7 +272,7 @@ func (w writer) takeaway() string {
 				if now < before {
 					dir = "menyempit"
 				}
-				notes = append(notes, fmt.Sprintf("Marjin kotor %s dari %s menjadi %s.", dir, percent(before), percent(now)))
+				notes = append(notes, fmt.Sprintf("Margin kotor %s dari %s menjadi %s.", dir, percent(before), percent(now)))
 			}
 		}
 	}

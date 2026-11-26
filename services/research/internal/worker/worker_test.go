@@ -38,6 +38,38 @@ type fakeStore struct {
 	completeOut string
 	completed   []payload
 	fails       []failCall
+	docs        []*store.DocumentJob
+	docDoneErr  error
+	docsDone    []string
+	docFails    []failCall
+}
+
+func (f *fakeStore) ClaimDocument(context.Context, string, time.Duration) (*store.DocumentJob, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if len(f.docs) == 0 {
+		return nil, nil
+	}
+	job := f.docs[0]
+	f.docs = f.docs[1:]
+	return job, nil
+}
+
+func (f *fakeStore) CompleteDocument(_ context.Context, id, _, sha string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.docDoneErr != nil {
+		return f.docDoneErr
+	}
+	f.docsDone = append(f.docsDone, id+":"+sha)
+	return nil
+}
+
+func (f *fakeStore) FailDocument(_ context.Context, _, _, code, detail string, retry bool) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.docFails = append(f.docFails, failCall{code: code, detail: detail, retry: retry})
+	return nil
 }
 
 func (f *fakeStore) Claim(context.Context, string, time.Duration) (*store.Job, error) {
@@ -93,6 +125,13 @@ func (o fakeObjects) Download(context.Context, string, int64) ([]byte, error) {
 	return o.data, o.err
 }
 
+func (o fakeObjects) Get(_ context.Context, bucket, _ string, _ int64) ([]byte, error) {
+	if bucket != storage.PostFiles {
+		return nil, errors.New("unexpected bucket " + bucket)
+	}
+	return o.data, o.err
+}
+
 type fakeScanner struct {
 	res clamd.Result
 	err error
@@ -107,7 +146,7 @@ func newWorker(st *fakeStore, objects Objects, scanner Scanner) *Worker {
 		Store: st, Objects: objects, Scanner: scanner,
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Instance: "test-1", PollInterval: time.Hour, Lease: time.Minute, JobTimeout: 10 * time.Second,
-		MaxFileBytes: 8 << 20, Limits: xbrl.DefaultLimits(),
+		MaxFileBytes: 8 << 20, MaxDocumentBytes: 20 << 20, Limits: xbrl.DefaultLimits(),
 	})
 }
 
@@ -147,7 +186,7 @@ func TestProcessBuildsTheReportPayload(t *testing.T) {
 		!strings.Contains(string(body), `"kind":"financial_report"`) || !strings.Contains(string(body), `"document":{"version":1`) {
 		t.Fatalf("payload JSON = %.300s", body)
 	}
-	if counts, busy := w.Counts(); counts[ResultDone] != 1 || busy {
+	if counts, _, busy := w.Counts(); counts[ResultDone] != 1 || busy {
 		t.Fatalf("counts %v busy %v", counts, busy)
 	}
 }
@@ -205,13 +244,13 @@ func TestLostLeaseAndDuplicatesAreNotFailures(t *testing.T) {
 	lost := &fakeStore{completeErr: &store.APIError{Status: http.StatusConflict, Code: "not_claimed"}}
 	w := newWorker(lost, fakeObjects{data: data}, nil)
 	w.process(context.Background(), &store.Job{ID: "f1"})
-	if counts, _ := w.Counts(); len(lost.fails) != 0 || counts[ResultLost] != 1 {
+	if counts, _, _ := w.Counts(); len(lost.fails) != 0 || counts[ResultLost] != 1 {
 		t.Fatalf("lost lease: fails %+v counts %v", lost.fails, counts)
 	}
 	dup := &fakeStore{completeOut: `{"status":"duplicate","report_id":"r1"}`}
 	w = newWorker(dup, fakeObjects{data: data}, nil)
 	w.process(context.Background(), &store.Job{ID: "f2"})
-	if counts, _ := w.Counts(); len(dup.fails) != 0 || counts[ResultDuplicate] != 1 {
+	if counts, _, _ := w.Counts(); len(dup.fails) != 0 || counts[ResultDuplicate] != 1 {
 		t.Fatalf("duplicate: fails %+v counts %v", dup.fails, counts)
 	}
 }

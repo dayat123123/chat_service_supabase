@@ -11,6 +11,8 @@ info:
     - Autentikasi hanya `Authorization: Bearer oik_…`, API key dengan izin `research` yang dibuat Super Admin
       di Hub (Pengaturan → API Integrasi). Header `apikey` tidak diperlukan.
     - Mengirim ulang file yang sama aman: dijawab dengan `id` lama.
+    - Dokumen sumber (PDF/XLSX laporan dari IDX) bisa dilampirkan ke file laporan lewat
+      `POST /integration/v1/research/{id}/documents`; setelah lolos pemeriksaan, dokumen ikut tampil di postingan.
     - Abaikan field yang tidak dikenal; `api_version` naik bila ada perubahan yang tidak kompatibel.
     - Error memakai `{"error": "<kode>", "message": "..."}` dan header `X-Request-Id`.
   license:
@@ -105,6 +107,62 @@ paths:
         "429": {$ref: "#/components/responses/Error"}
         "503": {$ref: "#/components/responses/Error"}
 
+  /integration/v1/research/{id}/documents:
+    post:
+      tags: [Riset]
+      operationId: submitResearchDocument
+      summary: Lampirkan dokumen sumber ke file laporan
+      description: |
+        Body adalah isi PDF atau XLSX apa adanya (bukan JSON, bukan multipart), maksimal 20 MiB, `Content-Length`
+        wajib. Maksimal 3 dokumen per laporan dan 120 dokumen per key per jam. Dokumen diperiksa (isi sesuai jenis,
+        PDF tanpa JavaScript/peluncuran, XLSX tanpa makro, antivirus) sebelum ikut tampil di postingan riset, termasuk
+        postingan yang sudah terbit.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          description: Id file laporan dari `POST /integration/v1/research`.
+          schema: {type: string, format: uuid}
+        - name: name
+          in: query
+          required: false
+          description: Nama yang tampil di aplikasi, maksimal 120 karakter tanpa garis miring. Bila kosong, dibuat dari emiten dan periode.
+          schema: {type: string, maxLength: 120}
+      requestBody:
+        required: true
+        content:
+          application/pdf:
+            schema: {type: string, format: binary}
+          application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+            schema: {type: string, format: binary}
+      responses:
+        "202":
+          description: Dokumen baru masuk antrean pemeriksaan.
+          headers:
+            X-Request-Id: {$ref: "#/components/headers/RequestId"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentSubmission"}
+        "200":
+          description: Dokumen yang sama sudah pernah dikirim untuk file ini (`resubmitted` true).
+          headers:
+            X-Request-Id: {$ref: "#/components/headers/RequestId"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/DocumentSubmission"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "405": {$ref: "#/components/responses/Error"}
+        "409": {$ref: "#/components/responses/Error"}
+        "411": {$ref: "#/components/responses/Error"}
+        "413": {$ref: "#/components/responses/Error"}
+        "415": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "503": {$ref: "#/components/responses/Error"}
+
 components:
   securitySchemes:
     integrationKey:
@@ -133,13 +191,15 @@ components:
       description: |
         | HTTP | `error` |
         |---|---|
-        | 400 | `not_zip`, `no_instance`, `zip_unsafe`, `empty_body`, `invalid_id` |
+        | 400 | `not_zip`, `no_instance`, `zip_unsafe`, `empty_body`, `invalid_id`, `invalid_document`, `invalid_document_name`, `incomplete_body`, `invalid_sha256` |
         | 401 | `missing_key`, `invalid_key` |
         | 403 | `scope_forbidden`, `ip_not_allowed` |
         | 404 | `not_found`, `file_not_found` |
         | 405 | `method_not_allowed` (header `Allow`) |
+        | 409 | `file_rejected`, `too_many_documents` |
+        | 411 | `length_required` |
         | 413 | `body_too_large` |
-        | 415 | `unsupported_media_type` |
+        | 415 | `unsupported_media_type`, `unsupported_document_type` |
         | 429 | `rate_limited`, `too_many_auth_failures` |
         | 503 | `busy`, `unavailable` |
       headers:
@@ -203,6 +263,51 @@ components:
           oneOf:
             - type: "null"
             - $ref: "#/components/schemas/Report"
+        documents:
+          type: array
+          description: Dokumen sumber yang dilampirkan ke file ini, urut waktu terima.
+          items: {$ref: "#/components/schemas/Document"}
+
+    DocumentSubmission:
+      allOf:
+        - $ref: "#/components/schemas/Document"
+        - type: object
+          required: [resubmitted]
+          properties:
+            resubmitted:
+              type: boolean
+              description: true bila dokumen yang sama sudah pernah dikirim untuk file ini; `id` adalah kiriman pertama.
+
+    Document:
+      type: object
+      required: [id, status, mime, size_bytes, received_at]
+      properties:
+        id: {type: string, format: uuid}
+        status:
+          type: string
+          enum: [queued, processing, ready, rejected]
+          description: "`ready`: lolos pemeriksaan dan ikut tampil di postingan."
+        name:
+          type: [string, "null"]
+          description: Nama yang tampil di aplikasi. `null` bila tidak diisi dan laporannya belum selesai diurai.
+        mime:
+          type: string
+          enum: [application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet]
+        size_bytes: {type: integer, maximum: 20971520}
+        sha256: {type: [string, "null"], pattern: "^[0-9a-f]{64}$"}
+        received_at: {type: string, format: date-time}
+        finished_at: {type: [string, "null"], format: date-time}
+        error:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  enum: [invalid_document, active_content, macro_not_allowed, infected, checksum_mismatch,
+                         object_missing, file_too_large, too_many_attempts]
+                detail: {type: [string, "null"]}
 
     Report:
       type: object

@@ -17,6 +17,7 @@ import (
 
 const (
 	Bucket      = "financial-reports"
+	PostFiles   = "post-files"
 	maxReason   = 64 << 10
 	contentType = "application/zip"
 )
@@ -46,12 +47,21 @@ func New(baseURL string, jwtSecret []byte, issuer string, timeout time.Duration)
 }
 
 func (c *Client) Upload(ctx context.Context, name string, body []byte) error {
-	req, err := c.request(ctx, http.MethodPost, c.baseURL+"/object/"+objectPath(name), bytes.NewReader(body))
+	return c.put(ctx, Bucket, name, contentType, bytes.NewReader(body), int64(len(body)), true)
+}
+
+func (c *Client) Put(ctx context.Context, bucket, name, mime string, body io.Reader, size int64) error {
+	return c.put(ctx, bucket, name, mime, body, size, false)
+}
+
+func (c *Client) put(ctx context.Context, bucket, name, mime string, body io.Reader, size int64, upsert bool) error {
+	req, err := c.request(ctx, http.MethodPost, c.baseURL+"/object/"+objectPath(bucket, name), body)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("x-upsert", "true")
+	req.ContentLength = size
+	req.Header.Set("Content-Type", mime)
+	req.Header.Set("x-upsert", fmt.Sprint(upsert))
 	resp, err := c.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("%w: upload: %v", ErrUnavailable, err)
@@ -65,7 +75,11 @@ func (c *Client) Upload(ctx context.Context, name string, body []byte) error {
 }
 
 func (c *Client) Download(ctx context.Context, name string, limit int64) ([]byte, error) {
-	req, err := c.request(ctx, http.MethodGet, c.baseURL+"/object/authenticated/"+objectPath(name), nil)
+	return c.Get(ctx, Bucket, name, limit)
+}
+
+func (c *Client) Get(ctx context.Context, bucket, name string, limit int64) ([]byte, error) {
+	req, err := c.request(ctx, http.MethodGet, c.baseURL+"/object/authenticated/"+objectPath(bucket, name), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +103,23 @@ func (c *Client) Download(ctx context.Context, name string, limit int64) ([]byte
 		return nil, ErrTooLarge
 	}
 	return data, nil
+}
+
+func (c *Client) Remove(ctx context.Context, bucket, name string) error {
+	req, err := c.request(ctx, http.MethodDelete, c.baseURL+"/object/"+objectPath(bucket, name), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return fmt.Errorf("%w: remove: %v", ErrUnavailable, err)
+	}
+	defer resp.Body.Close()
+	data, _ := io.ReadAll(io.LimitReader(resp.Body, maxReason))
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 || missing(resp.StatusCode, data) {
+		return nil
+	}
+	return fmt.Errorf("%w: remove status %d%s", ErrUnavailable, resp.StatusCode, reason(data))
 }
 
 func (c *Client) Ping(ctx context.Context) error {
@@ -121,12 +152,12 @@ func (c *Client) request(ctx context.Context, method, endpoint string, body io.R
 	return req, nil
 }
 
-func objectPath(name string) string {
+func objectPath(bucket, name string) string {
 	parts := strings.Split(name, "/")
 	for i, part := range parts {
 		parts[i] = url.PathEscape(part)
 	}
-	return Bucket + "/" + strings.Join(parts, "/")
+	return bucket + "/" + strings.Join(parts, "/")
 }
 
 func missing(status int, data []byte) bool {

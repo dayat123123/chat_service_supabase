@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -26,10 +27,12 @@ import (
 )
 
 const (
-	basePath      = "/research"
-	EndpointPost  = "submit"
-	EndpointGet   = "status"
-	degradedAfter = 3
+	basePath         = "/research"
+	documentsSegment = "documents"
+	EndpointPost     = "submit"
+	EndpointGet      = "status"
+	EndpointDocument = "document"
+	degradedAfter    = 3
 )
 
 var fileID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
@@ -37,10 +40,13 @@ var fileID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4
 type Store interface {
 	Submit(ctx context.Context, keyID, sha string, size int64, ip string) (json.RawMessage, error)
 	File(ctx context.Context, keyID, id, ip string) (json.RawMessage, error)
+	SubmitDocument(ctx context.Context, keyID, fileID, object, sha, name, ip string) (json.RawMessage, error)
 }
 
 type Objects interface {
 	Upload(ctx context.Context, name string, body []byte) error
+	Put(ctx context.Context, bucket, name, mime string, body io.Reader, size int64) error
+	Remove(ctx context.Context, bucket, name string) error
 }
 
 type Keys interface {
@@ -56,6 +62,7 @@ type Options struct {
 	Keys                  Keys
 	ClientIP              func(*http.Request) string
 	MaxFileBytes          int64
+	MaxDocumentBytes      int64
 	MaxUploads            int
 	AuthFailuresPerMinute int
 	RequestTimeout        time.Duration
@@ -162,8 +169,16 @@ func route(path string) (endpoint, method, target string) {
 	if path == basePath || path == basePath+"/" {
 		return EndpointPost, http.MethodPost, ""
 	}
-	if rest, ok := strings.CutPrefix(path, basePath+"/"); ok && rest != "" && !strings.Contains(rest, "/") {
-		return EndpointGet, http.MethodGet, rest
+	rest, ok := strings.CutPrefix(path, basePath+"/")
+	if !ok || rest == "" {
+		return "", "", ""
+	}
+	id, tail, nested := strings.Cut(rest, "/")
+	switch {
+	case !nested:
+		return EndpointGet, http.MethodGet, id
+	case tail == documentsSegment && id != "":
+		return EndpointDocument, http.MethodPost, id
 	}
 	return "", "", ""
 }
@@ -173,8 +188,11 @@ func (s *Server) process(endpoint, target string, w http.ResponseWriter, r *http
 	if key == nil {
 		return res
 	}
-	if endpoint == EndpointGet {
+	switch endpoint {
+	case EndpointGet:
 		return s.status(w, r, key, hash, target, ip)
+	case EndpointDocument:
+		return s.document(w, r, key, hash, target, ip)
 	}
 	return s.submit(w, r, key, hash, ip)
 }

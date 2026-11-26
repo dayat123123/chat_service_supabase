@@ -39,10 +39,14 @@ type Store interface {
 	Related(ctx context.Context, kind, entity string, start, end time.Time) (*store.Related, error)
 	Complete(ctx context.Context, fileID, instance string, report any) (json.RawMessage, error)
 	Fail(ctx context.Context, fileID, instance, code, detail string, retry bool) error
+	ClaimDocument(ctx context.Context, instance string, lease time.Duration) (*store.DocumentJob, error)
+	CompleteDocument(ctx context.Context, id, instance, sha string) error
+	FailDocument(ctx context.Context, id, instance, code, detail string, retry bool) error
 }
 
 type Objects interface {
 	Download(ctx context.Context, name string, limit int64) ([]byte, error)
+	Get(ctx context.Context, bucket, name string, limit int64) ([]byte, error)
 }
 
 type Scanner interface {
@@ -50,16 +54,17 @@ type Scanner interface {
 }
 
 type Options struct {
-	Store        Store
-	Objects      Objects
-	Scanner      Scanner
-	Log          *slog.Logger
-	Instance     string
-	PollInterval time.Duration
-	Lease        time.Duration
-	JobTimeout   time.Duration
-	MaxFileBytes int64
-	Limits       xbrl.Limits
+	Store            Store
+	Objects          Objects
+	Scanner          Scanner
+	Log              *slog.Logger
+	Instance         string
+	PollInterval     time.Duration
+	Lease            time.Duration
+	JobTimeout       time.Duration
+	MaxFileBytes     int64
+	MaxDocumentBytes int64
+	Limits           xbrl.Limits
 }
 
 type Worker struct {
@@ -68,13 +73,14 @@ type Worker struct {
 
 	mu        sync.Mutex
 	results   map[string]uint64
+	documents map[string]uint64
 	failing   int
 	lastError string
 	busy      bool
 }
 
 func New(opts Options) *Worker {
-	return &Worker{opts: opts, wake: make(chan struct{}, 1), results: map[string]uint64{}}
+	return &Worker{opts: opts, wake: make(chan struct{}, 1), results: map[string]uint64{}, documents: map[string]uint64{}}
 }
 
 func (w *Worker) Wake() {
@@ -86,14 +92,7 @@ func (w *Worker) Wake() {
 
 func (w *Worker) Run(ctx context.Context) {
 	for ctx.Err() == nil {
-		job, err := w.opts.Store.Claim(ctx, w.opts.Instance, w.opts.Lease)
-		w.claimed(err)
-		if err != nil {
-			if ctx.Err() == nil {
-				w.opts.Log.Warn("Could not claim a research file; retrying after the poll interval", "error", err)
-			}
-		} else if job != nil {
-			w.process(ctx, job)
+		if w.step(ctx) {
 			continue
 		}
 		select {
@@ -103,6 +102,34 @@ func (w *Worker) Run(ctx context.Context) {
 		case <-time.After(w.opts.PollInterval):
 		}
 	}
+}
+
+func (w *Worker) step(ctx context.Context) bool {
+	job, err := w.opts.Store.Claim(ctx, w.opts.Instance, w.opts.Lease)
+	w.claimed(err)
+	if err != nil {
+		if ctx.Err() == nil {
+			w.opts.Log.Warn("Could not claim a research file; retrying after the poll interval", "error", err)
+		}
+		return false
+	}
+	if job != nil {
+		w.process(ctx, job)
+		return true
+	}
+	doc, err := w.opts.Store.ClaimDocument(ctx, w.opts.Instance, w.opts.Lease)
+	w.claimed(err)
+	if err != nil {
+		if ctx.Err() == nil {
+			w.opts.Log.Warn("Could not claim a research document; retrying after the poll interval", "error", err)
+		}
+		return false
+	}
+	if doc != nil {
+		w.processDocument(ctx, doc)
+		return true
+	}
+	return false
 }
 
 var transientDetail = map[string]string{
@@ -163,28 +190,14 @@ func (w *Worker) process(parent context.Context, job *store.Job) {
 		result, err = w.complete(ctx, job, report)
 	}
 	var f *failure
-	switch {
-	case err == nil:
-	case errors.As(err, &f):
-		result = ResultRejected
-		if f.retry {
-			result = ResultRetry
-		}
-		if parent.Err() != nil {
+	if err != nil {
+		var stop bool
+		result, f, stop = w.recordFailure(parent, err, log, func(ctx context.Context, code, detail string, retry bool) error {
+			return w.opts.Store.Fail(ctx, job.ID, w.opts.Instance, code, detail, retry)
+		})
+		if stop {
 			return
 		}
-		detail := f.err.Error()
-		if f.retry {
-			detail = transientDetail[f.code]
-		}
-		failCtx, stop := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
-		ferr := w.opts.Store.Fail(failCtx, job.ID, w.opts.Instance, f.code, detail, f.retry)
-		stop()
-		if ferr != nil {
-			log.Warn("Could not record the failure; the lease will expire and the file will be retried", "error", ferr)
-		}
-	default:
-		result = ResultLost
 	}
 	w.count(result)
 	attrs := []any{"result", result, "duration_ms", time.Since(start).Milliseconds()}
@@ -201,6 +214,28 @@ func (w *Worker) process(parent context.Context, job *store.Job) {
 	default:
 		log.Info("Research file processed", attrs...)
 	}
+}
+
+func (w *Worker) recordFailure(parent context.Context, err error, log *slog.Logger,
+	fail func(ctx context.Context, code, detail string, retry bool) error) (string, *failure, bool) {
+	var f *failure
+	if !errors.As(err, &f) {
+		return ResultLost, nil, false
+	}
+	if parent.Err() != nil {
+		return "", f, true
+	}
+	result, detail := ResultRejected, f.err.Error()
+	if f.retry {
+		result, detail = ResultRetry, transientDetail[f.code]
+	}
+	failCtx, stop := context.WithTimeout(context.WithoutCancel(parent), 10*time.Second)
+	ferr := fail(failCtx, f.code, detail, f.retry)
+	stop()
+	if ferr != nil {
+		log.Warn("Could not record the failure; the lease will expire and the job will be retried", "error", ferr)
+	}
+	return result, f, false
 }
 
 func (w *Worker) prepare(ctx context.Context, job *store.Job) (*payload, error) {
@@ -343,14 +378,24 @@ func (w *Worker) setBusy(v bool) {
 	w.busy = v
 }
 
-func (w *Worker) Counts() (map[string]uint64, bool) {
+func (w *Worker) countDocument(result string) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	out := make(map[string]uint64, len(w.results))
-	for k, v := range w.results {
+	w.documents[result]++
+}
+
+func (w *Worker) Counts() (map[string]uint64, map[string]uint64, bool) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return clone(w.results), clone(w.documents), w.busy
+}
+
+func clone(in map[string]uint64) map[string]uint64 {
+	out := make(map[string]uint64, len(in))
+	for k, v := range in {
 		out[k] = v
 	}
-	return out, w.busy
+	return out
 }
 
 func (w *Worker) Report() heartbeat.Report {
@@ -359,6 +404,9 @@ func (w *Worker) Report() heartbeat.Report {
 	detail := map[string]any{"busy": w.busy}
 	for k, v := range w.results {
 		detail["reports_"+k] = v
+	}
+	for k, v := range w.documents {
+		detail["documents_"+k] = v
 	}
 	if w.failing >= degradedAfter {
 		return heartbeat.Report{Status: heartbeat.StatusDegraded,

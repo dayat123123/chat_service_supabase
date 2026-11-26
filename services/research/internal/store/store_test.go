@@ -82,10 +82,56 @@ func TestClaimRelatedAndComplete(t *testing.T) {
 	}
 }
 
+func TestDocuments(t *testing.T) {
+	var calls []string
+	p := server(t, func(fn string, args map[string]any) (int, string) {
+		calls = append(calls, fn)
+		switch fn {
+		case "research_document_submit":
+			if args["p_key_id"] != "k" || args["p_file"] != "f1" || args["p_object"] != "research/x/file.pdf" ||
+				args["p_sha256"] != "ab" || args["p_name"] != nil || args["p_ip"] != "1.2.3.4" {
+				t.Errorf("submit args = %v", args)
+			}
+			return 200, `{"id":"d1","status":"queued","resubmitted":false}`
+		case "research_document_claim":
+			return 200, `{"id":"d1","object_name":"research/x/file.pdf","mime":"application/pdf","sha256":"ab","size_bytes":9,"attempts":1}`
+		case "research_document_done":
+			if args["p_id"] != "d1" || args["p_instance"] != "w1" || args["p_sha256"] != "ab" {
+				t.Errorf("done args = %v", args)
+			}
+			return 200, `{"status":"ready"}`
+		case "research_document_fail":
+			if args["p_code"] != "infected" || args["p_retry"] != false || args["p_detail"] != "Eicar" {
+				t.Errorf("fail args = %v", args)
+			}
+			return 200, `{"status":"rejected"}`
+		}
+		return 404, `{}`
+	})
+	ctx := context.Background()
+	out, err := p.SubmitDocument(ctx, "k", "f1", "research/x/file.pdf", "ab", "", "1.2.3.4")
+	if err != nil || !strings.Contains(string(out), `"d1"`) {
+		t.Fatalf("submit = %s, %v", out, err)
+	}
+	job, err := p.ClaimDocument(ctx, "w1", 2*time.Minute)
+	if err != nil || job.ID != "d1" || job.Mime != "application/pdf" || job.SizeBytes != 9 || job.Attempts != 1 {
+		t.Fatalf("claim = %+v, %v", job, err)
+	}
+	if err := p.CompleteDocument(ctx, "d1", "w1", "ab"); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.FailDocument(ctx, "d1", "w1", "infected", "Eicar", false); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(calls, ",") != "research_document_submit,research_document_claim,research_document_done,research_document_fail" {
+		t.Fatalf("calls = %v", calls)
+	}
+}
+
 func TestEmptyClaimAndErrors(t *testing.T) {
 	p := server(t, func(fn string, _ map[string]any) (int, string) {
 		switch fn {
-		case "research_claim":
+		case "research_claim", "research_document_claim":
 			return 200, `null`
 		case "research_submit":
 			return 429, `{"code":"PT429","message":"rate_limited","details":"Maksimal 120 file"}`
@@ -97,6 +143,9 @@ func TestEmptyClaimAndErrors(t *testing.T) {
 	ctx := context.Background()
 	if job, err := p.Claim(ctx, "w1", time.Minute); job != nil || err != nil {
 		t.Fatalf("empty claim = %+v, %v", job, err)
+	}
+	if job, err := p.ClaimDocument(ctx, "w1", time.Minute); job != nil || err != nil {
+		t.Fatalf("empty document claim = %+v, %v", job, err)
 	}
 	var api *APIError
 	if _, err := p.Submit(ctx, "k", "ab", 10, "1.2.3.4"); !errors.As(err, &api) || api.Status != 429 ||

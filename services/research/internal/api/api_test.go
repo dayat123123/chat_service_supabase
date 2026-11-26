@@ -49,6 +49,19 @@ type fakeStore struct {
 	fileOut   string
 	fileErr   error
 	submitted []string
+	docOut    string
+	docErr    error
+	docs      []string
+}
+
+func (s *fakeStore) SubmitDocument(_ context.Context, keyID, fileID, object, sha, name, _ string) (json.RawMessage, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.docs = append(s.docs, strings.Join([]string{keyID, fileID, object, sha, name}, "|"))
+	if s.docErr != nil {
+		return nil, s.docErr
+	}
+	return json.RawMessage(s.docOut), nil
 }
 
 func (s *fakeStore) Submit(_ context.Context, keyID, sha string, size int64, _ string) (json.RawMessage, error) {
@@ -69,10 +82,36 @@ func (s *fakeStore) File(_ context.Context, _, id, _ string) (json.RawMessage, e
 }
 
 type fakeObjects struct {
-	mu    sync.Mutex
-	names []string
-	block chan struct{}
-	err   error
+	mu      sync.Mutex
+	names   []string
+	block   chan struct{}
+	err     error
+	puts    []put
+	removed []string
+}
+
+type put struct {
+	bucket, name, mime string
+	data               []byte
+	size               int64
+}
+
+func (o *fakeObjects) Put(_ context.Context, bucket, name, mime string, body io.Reader, size int64) error {
+	data, err := io.ReadAll(body)
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.puts = append(o.puts, put{bucket: bucket, name: name, mime: mime, data: data, size: size})
+	if err != nil {
+		return err
+	}
+	return o.err
+}
+
+func (o *fakeObjects) Remove(_ context.Context, bucket, name string) error {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.removed = append(o.removed, bucket+"/"+name)
+	return nil
 }
 
 func (o *fakeObjects) Upload(_ context.Context, name string, _ []byte) error {
@@ -94,7 +133,7 @@ func newServer(k fakeKeys, st *fakeStore, objects *fakeObjects, accepted *atomic
 		Log:   slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Store: st, Objects: objects, Keys: k,
 		ClientIP:     func(*http.Request) string { return "10.0.0.5" },
-		MaxFileBytes: 1 << 20, MaxUploads: 1, AuthFailuresPerMinute: 5, RequestTimeout: 5 * time.Second,
+		MaxFileBytes: 1 << 20, MaxDocumentBytes: 1 << 20, MaxUploads: 1, AuthFailuresPerMinute: 5, RequestTimeout: 5 * time.Second,
 		QueueWait: 50 * time.Millisecond, Limits: xbrl.DefaultLimits(),
 		Accepted: func() { accepted.Add(1) },
 	})
