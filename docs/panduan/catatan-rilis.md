@@ -6,6 +6,14 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 26 November 2026
 
+### Dokumen di postingan resmi (migrasi `0200`, Hub)
+
+- Postingan resmi bisa membawa sampai 5 dokumen: PDF, Excel (`.xlsx`), CSV, Word (`.docx`), dan PowerPoint (`.pptx`), maksimal 20 MB per file (CSV 10 MB). Format lama yang bisa memuat makro (`.xls`, `.doc`, `.ppt`, `.xlsm`) tidak diterima.
+- Staf menambahkannya di **Komunitas → Postingan resmi → Buat postingan → Dokumen**. Peninjau bisa membuka dokumen sebelum menyetujui.
+- Nasabah membuka dokumen dari aplikasi setelah library diperbarui. Aplikasi lama tetap menampilkan postingannya tanpa dokumen.
+- File yang diunggah tetapi tidak jadi dipakai dihapus otomatis setiap hari.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up`. Tidak ada perubahan Kong atau layanan Go.
+
 ### Riset: pipeline umum dan kartu riset di aplikasi (migrasi `0199`, layanan `research`, Hub)
 
 - Fitur laporan keuangan dari rilis `0197` kini menjadi fitur **Riset** yang umum. Laporan keuangan emiten adalah jenis pertama; jenis lain menyusul satu per satu dengan alur yang sama.

@@ -752,6 +752,8 @@ Semua tindakan yang meminta **Alasan** (5–500 karakter) tercatat di Jejak Audi
 
 Blok bisa dipindah naik/turun dan dihapus. **Tampilan di aplikasi** menunjukkan kartu persis seperti yang dilihat nasabah. **Teks untuk aplikasi lama** adalah teks yang dibuat otomatis dari kartu untuk aplikasi yang belum diperbarui; teks ini ikut diperiksa daftar kata terlarang. Gambar tetap bisa ditambahkan. Peninjau juga melihat pratinjau kartu saat menyetujui.
 
+**Dokumen:** di bagian **Dokumen**, klik **Tambah dokumen** untuk melampirkan PDF, Excel (`.xlsx`), CSV, Word (`.docx`), atau PowerPoint (`.pptx`), maksimal 5 file dan 20 MB per file (CSV 10 MB). Nama tampilan dokumen bisa diubah. Pilih akun resmi **sebelum** mengunggah; bila akunnya diganti, unggah ulang dokumennya. Format lama (`.xls`, `.doc`, `.ppt`) tidak diterima: simpan ulang sebagai format baru.
+
 **Menyetujui (empat mata):**
 
 1. Saring **Perlu ditinjau**. Buka postingan.

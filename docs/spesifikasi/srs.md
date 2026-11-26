@@ -1611,6 +1611,19 @@ Modul KOM mencakup fitur komunitas di aplikasi nasabah: Stream (feed Terbaru, Me
 | Antarmuka | Library: `CommunityAnalytics`, `RendezvousCommunity.instance.trackOrderTap` |
 | Lacak | BR-KOM |
 
+#### FR-KOM-60 Dokumen pada postingan resmi
+
+| Atribut | Isi |
+|---|---|
+| Deskripsi | Sistem harus memungkinkan staf melampirkan dokumen (PDF, XLSX, CSV, DOCX, PPTX) pada postingan resmi, dan nasabah membukanya dari aplikasi. |
+| Aktor | Staf berizin Komunitas **Buat postingan**; nasabah |
+| Prakondisi | Akun resmi aktif |
+| Proses dan aturan | 1) Unggah ke bucket privat `post-files` di `<akun>/<uuid>/file.<ext>`; RLS hanya untuk staf `community.post` pada folder akun resmi (0200). <br>2) Maks. 5 dokumen per postingan; PDF/XLSX/DOCX/PPTX ≤ 20 MB, CSV ≤ 10 MB; format lama yang bisa memuat makro ditolak. <br>3) `community_save_post` memeriksa folder, keberadaan file, ukuran, dan jenis dari metadata storage; nama 1–120 karakter. <br>4) Lampiran `{type: file, file: {bucket, path, name, mime, size}}` tanpa `path` di tingkat atas sehingga aplikasi lama mengabaikannya. <br>5) Nasabah membuka file lewat signed URL. <br>6) File yatim dihapus otomatis setelah sehari. |
+| Keluaran | Postingan resmi dengan lampiran dokumen |
+| Kode error | `400 too_many_files`, `400 invalid_file`, `404 file_not_found`, `400 file_too_large`, `400 invalid_file_type`, `400 duplicate_file`, `400 invalid_file_name` |
+| Antarmuka | Hub **Komunitas → Postingan resmi → Buat postingan**; RPC `cs_api.community_save_post`; bucket `post-files` |
+| Lacak | BR-KOM |
+
 ### 4.3 Chat (CHAT)
 
 Modul ini mencakup chat sosial nasabah di dalam aplikasi OLT: pesan langsung (DM) beserta permintaan pesan, grup dengan peran owner/admin/member, dan room diskusi per saham atau indeks. Di dalamnya ada mekanisme pesan yang juga dipakai ulang oleh chat CS: kirim, balas, lampiran, reaksi, edit, hapus, info pesan, tanda terima, mengetik, presence, pengiriman realtime lewat Broadcast, pengisian celah, pratinjau daftar chat, dan antrean offline di library. Logika tiket CS ditulis di modul CS; di modul ini room CS (`type = 'support'`) hanya disebut sebagai room yang terkunci di server. Moderasi isi pesan (kata terlarang, kategori tautan, akun baru, slow mode dari sisi staf) ditulis di modul MOD.
