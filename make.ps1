@@ -20,7 +20,7 @@ param(
                  'e2e-windows', 'web-example', 'license-audit', 'perf-flutter', 'smoke', 'backup', 'restore',
                  'gen-secrets', 'gen-keys', 'anon-key', 'admin-up', 'admin-down', 'psql',
                  'dummy-token', 'smoke-dummy', 'test-dummy-olt', 'test-nasabah-gateway', 'test-notifier', 'test-janitor', 'test-flutter-it-dummy', 'e2e-windows-dummy',
-                 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
+                 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-finreport', 'test-link-preview', 'test-classifier', 'check-go-comments', 'secrets-scan',
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-mfa-reset', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
@@ -257,6 +257,7 @@ switch ($Target) {
   test-healer    Unhealthy container auto-restart unit tests (Go, in a container)
   test-backup    Backup service unit tests (Go, in a container)
   test-integration  OLT integration gateway unit tests (Go, in a container)
+  test-finreport  Financial report research service unit tests (Go, in a container)
   test-link-preview  Link preview unit tests (Go, in a container)
   test-classifier  NSFW classifier unit tests (Go + cgo, in a container)
   check-go-comments  Ensure Go code has no comments (other than directives)
@@ -336,6 +337,7 @@ switch ($Target) {
         & $PSCommandPath test-healer
         & $PSCommandPath test-backup
         & $PSCommandPath test-integration
+        & $PSCommandPath test-finreport
         & $PSCommandPath test-link-preview
         & $PSCommandPath test-classifier
         & $PSCommandPath check-go-comments
@@ -492,7 +494,7 @@ switch ($Target) {
         $src = Join-Path $PSScriptRoot 'services/janitor'
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }
-    { $_ -in 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-link-preview' } {
+    { $_ -in 'test-media', 'test-sentinel', 'test-healer', 'test-backup', 'test-integration', 'test-finreport', 'test-link-preview' } {
         $src = Join-Path $PSScriptRoot ('services/' + $Target.Substring(5))
         Invoke-Docker @('run', '--rm', '-v', "${src}:/src", '-w', '/src', $GoImage, 'go', 'test', './...')
     }

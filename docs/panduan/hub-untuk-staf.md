@@ -465,13 +465,15 @@ Data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Sta
 
 API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman), memposting sebagai bot resmi, atau membaca kesehatan sistem untuk ditampilkan di aplikasinya sendiri.
 
-1. **Buat API key**: beri **Nama key**, pilih **Izin** (**Notifikasi per rekening**, **Notifikasi massal**, **Postingan bot**, **Baca kesehatan sistem**), isi **IP atau CIDR yang diizinkan** dan **Batas request per menit**.
+1. **Buat API key**: beri **Nama key**, pilih **Izin** (**Notifikasi per rekening**, **Notifikasi massal**, **Postingan bot**, **Baca kesehatan sistem**, **Kirim laporan keuangan**), isi **IP atau CIDR yang diizinkan** dan **Batas request per menit**.
 2. **Key hanya ditampilkan sekali.** Salin dan serahkan ke pemilik sistem pengirim lewat jalur aman. Jangan tempel di chat, tiket, email, atau dokumen.
 3. **Notifikasi massal** bisa mengirim ke SEMUA pengguna. Berikan hanya ke sistem tepercaya dan batasi IP-nya.
 4. **Rotasi:** buat key baru, pasang di sistem pengirim, pastikan **Terakhir dipakai** key baru bergerak, baru **Cabut** key lama.
 5. **Cabut** bersifat permanen. Untuk berhenti sementara, matikan **Key aktif**. Key yang sudah dicabut bisa dirapikan dengan **Hapus**: key hilang dari daftar dan statistik, sedangkan catatannya tetap ada di Jejak Audit.
-6. Di bawah tabel key ada dua bagian yang bisa dipilih: **Notifikasi & bot** (statistik pengiriman, grafik, dan contoh request notifikasi) dan **Kesehatan sistem** (alamat dan contoh request untuk aplikasi pemantau). Key baca kesehatan sistem tidak muncul di statistik notifikasi.
+6. Di bawah tabel key ada tiga bagian yang bisa dipilih: **Notifikasi & bot** (statistik pengiriman, grafik, dan contoh request notifikasi), **Kesehatan sistem** (alamat dan contoh request untuk aplikasi pemantau), dan **Laporan keuangan** (alamat, batas, dan contoh pengiriman file laporan). Key baca kesehatan sistem dan key laporan keuangan tidak muncul di statistik notifikasi.
 7. **Baca kesehatan sistem** untuk aplikasi internal yang ingin menampilkan isi **Kesehatan sistem** dan **Peta layanan** (dasbor kantor, misalnya). Izin ini hanya membaca, tidak bisa menandai alert atau mengubah pengaturan. Buat key tersendiri untuk keperluan ini. Setelah key dibuat, dialognya menampilkan alamat endpoint dan contoh request yang bisa langsung diserahkan ke tim aplikasi; kartu **API kesehatan sistem** di halaman yang sama juga selalu menampilkan alamatnya.
+
+8. **Kirim laporan keuangan** untuk sistem yang mengirim file XBRL laporan keuangan emiten (backend OLT, vendor data, atau skrip di PC kantor). Key ini hanya bisa mengirim dan membaca status file yang dikirimnya sendiri. Setelah key dibuat, dialognya menampilkan alamat dan contoh pengiriman. Panduan untuk pengirim: [laporan-keuangan.md](../integration/laporan-keuangan.md).
 
 #### Push notification
 
@@ -720,7 +722,7 @@ Menu **Komunitas** mengelola stream komunitas di aplikasi nasabah. Tab yang tamp
 
 | Izin | Boleh | Tab |
 |---|---|---|
-| **Tulis postingan resmi** | Membuat draf postingan, pengumuman, dan notifikasi atas nama akun resmi | **Postingan resmi**, **Notifikasi** |
+| **Tulis postingan resmi** | Membuat draf postingan, pengumuman, dan notifikasi atas nama akun resmi; mengunggah dan memproses ulang laporan keuangan | **Postingan resmi**, **Notifikasi**, **Laporan keuangan** |
 | **Setujui & terbitkan** | Menyetujui, menerbitkan, menjadwalkan, menyematkan, dan menghapus postingan resmi; menyetujui notifikasi | **Postingan resmi**, **Notifikasi** |
 | **Moderasi konten** | Antrean laporan, konten dan gambar ditahan, indikasi manipulasi, banding konten, serta slow mode dan pin room saham | **Moderasi**, **Room saham** |
 | **Sanksi pengguna** | Peringatan, bisukan, blokir, cabut sesi, banding sanksi, dan toleransi nol | **Moderasi** |
@@ -810,6 +812,42 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 - Mengganti username: mention lama tidak lagi mengarah ke akun ini.
 - **Nonaktifkan**: akun tidak bisa dipakai untuk postingan atau notifikasi baru; postingan lamanya tetap tampil. **Aktifkan** untuk memakainya lagi.
 - **Badge verifikasi pengguna**: **Verifikasi** atau **Cabut verifikasi** untuk analis/tokoh yang identitasnya sudah diperiksa.
+
+### 5.6 Laporan keuangan (tab **Laporan keuangan**)
+
+Ringkasan laporan keuangan emiten dibuat otomatis dari file XBRL bursa (`instance.zip`) dan menjadi postingan resmi yang **menunggu persetujuan** di tab **Postingan resmi**. Tidak ada AI: angka diambil dari file dan dihitung dengan rumus tetap. Tab ini tampil untuk semua staf yang punya Izin Komunitas.
+
+**Mengunggah laporan** (izin **Tulis postingan resmi**):
+
+1. Unduh `instance.zip` dari halaman Laporan Keuangan dan Tahunan situs IDX lewat browser.
+2. Di **Unggah laporan**, seret file ke kotak atau klik **Pilih file**. Beberapa file sekaligus boleh, maksimal 8 MiB per file. Nama file tidak penting; kode emiten dan periode dibaca dari isinya.
+3. File muncul di **File yang diterima** dengan status **Dalam antrean** → **Diproses** → **Selesai**. Daftar diperbarui otomatis selama ada file yang diproses.
+4. Untuk ringkasan yang lengkap, unggah juga laporan kuartal sebelumnya dan laporan periode yang sama tahun lalu satu kali di awal. Setelah itu pembanding tersimpan dengan sendirinya.
+
+File juga bisa masuk lewat API dari sistem lain; kolom **Sumber** menunjukkan **API · nama key** atau **Hub · nama staf**.
+
+**Memeriksa dan menerbitkan:**
+
+1. Klik baris laporan untuk membuka **Detail laporan**: **Ringkasan** (teks persis yang akan terbit), **Peringatan**, tabel **Angka**, **File sumber**, dan laporan lain emiten yang sama.
+2. Cocokkan angka penting dengan laporan aslinya bila ada peringatan. Lalu klik **Buka di Postingan resmi** dan setujui seperti postingan resmi biasa (empat mata: bukan pembuat postingan). Postingan dari API dibuat atas nama pembuat API key; postingan dari unggahan Hub atas nama pengunggah.
+3. Bila postingan ditolak, dibatalkan, atau belum dibuat (misalnya akun resmi belum diatur saat itu), klik **Buat postingan** di detail laporan.
+
+| Peringatan | Arti | Yang perlu dilakukan |
+|---|---|---|
+| **Disajikan ulang** | Angka tahun lalu di laporan ini berbeda lebih dari 0,5% dari laporan tahun lalu yang tersimpan (emiten mereklasifikasi). Ringkasan memakai angka laporan terbaru | Periksa pos yang disebut sebelum menyetujui |
+| **Revisi** | Laporan ini menggantikan versi sebelumnya untuk periode yang sama. Postingan versi lama yang belum terbit dibatalkan otomatis | Periksa ringkasan baru. Bila versi lama sudah terbit, pertimbangkan menghapusnya dari stream |
+| **Template dasar** | Jenis industri tidak dikenali (misalnya asuransi atau sekuritas), hanya laba, EPS, aset, ekuitas, dan ROE | Pastikan ringkasan masih layak terbit |
+| **Pos kurang** | Pos utama tidak ditemukan di file | Periksa file aslinya |
+| **Tanpa akun resmi** | Akun resmi belum diatur saat laporan diproses | Minta Super Admin mengatur akun, lalu **Buat postingan** |
+| **Teks ditolak** | Teks ditolak pemeriksaan konten | Laporkan ke IT |
+
+**File ditolak:** alasannya tertulis di kolom **Status file** (misalnya **Bukan file zip yang valid** atau **XBRL rusak**). Unggah file yang benar. Bila masalahnya sementara atau sudah diperbaiki IT, klik **Proses ulang** (tidak tersedia untuk file yang ditandai antivirus, karena file itu langsung dihapus).
+
+**Pengaturan posting** (hanya Super Admin; staf lain melihatnya saja):
+
+- **Akun resmi** yang memposting ringkasan. Tanpa akun resmi yang aktif, file tetap diurai tetapi postingan tidak dibuat.
+- **Posting otomatis**: ringkasan langsung terbit tanpa persetujuan, **hanya** untuk laporan tanpa peringatan. Bawaannya **Mati**. Nyalakan hanya setelah ringkasan beberapa musim laporan terbukti selalu benar.
+- Setiap perubahan tercatat di Jejak Audit.
 
 ## 6. Situasi darurat
 

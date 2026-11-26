@@ -22,6 +22,7 @@ Baru mengenal sistem? Mulai dari [**panduan/pengetahuan-sistem.md**](panduan/pen
 | [api/](api/README.md) | Spesifikasi OpenAPI dan AsyncAPI chat untuk klien non-Flutter dan layanan lain |
 | [integration/](integration/README.md) | API notifikasi transaksi dan bot resmi (`/integration/v1`) |
 | [integration/kesehatan-sistem.md](integration/kesehatan-sistem.md) | API kesehatan sistem untuk aplikasi internal (dasbor monitoring) |
+| [integration/laporan-keuangan.md](integration/laporan-keuangan.md) | API kirim laporan keuangan emiten (XBRL IDX) untuk diringkas dan diposting di Stream |
 | [rendezvous-community/](rendezvous-community/README.md) | Library Flutter untuk aplikasi OLT |
 
 ## Desain per fitur
@@ -37,6 +38,7 @@ Baru mengenal sistem? Mulai dari [**panduan/pengetahuan-sistem.md**](panduan/pen
 | [push/](push/README.md) | Push notification ke HP |
 | [backup/](backup/README.md) | Arsitektur backup dan pemulihan |
 | [system-health/](system-health/README.md) | Kesehatan sistem, peta layanan, dan alert |
+| [laporan-keuangan/](laporan-keuangan/README.md) | Riset laporan keuangan emiten: urai XBRL, ringkasan tanpa AI, postingan resmi, isolasi beban |
 | [sdk-mobile/](sdk-mobile/rencana.md) | Rencana SDK native Android dan iOS untuk klien non-Flutter (masih diskusi) |
 | [berbagi-trade/](berbagi-trade/operasional.md) | Berbagi Trade dan relay trade (dijeda): [rencana](berbagi-trade/rencana.md), [operasional](berbagi-trade/operasional.md), [draf dokumen hukum](berbagi-trade/draf-dokumen-hukum.md) |
 

@@ -70,6 +70,14 @@ http:
       tls:
         certResolver: le
       priority: 85
+    finreport:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "PROXY_DOMAIN" }}`) && PathPrefix(`/integration/v1/financial-reports`)
+      service: kong
+      middlewares: [rate-limit, body-finreport, hsts, security-headers]
+      tls:
+        certResolver: le
+      priority: 86
 
     storage:
       entryPoints: [websecure]

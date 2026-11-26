@@ -5739,6 +5739,32 @@ Modul ini mengatur semua titik temu antara Rendezvous dan sistem OLT. Prinsipnya
 | Antarmuka | `services/dummy-olt` (WebSocket pesan `social_token`, `POST /api/social-token`, `GET /api/users`); `make smoke-dummy` |
 | Lacak | BR-INT |
 
+#### FR-INT-23 Penerimaan laporan keuangan emiten (XBRL)
+
+| Atribut | Isi |
+|---|---|
+| Deskripsi | Sistem harus menerima file XBRL laporan keuangan emiten dari IDX lewat API atau unggahan Hub, lalu memprosesnya secara asinkron di layanan terpisah tanpa membebani layanan lain. |
+| Aktor | Sistem pengirim (backend OLT, vendor data, skrip kantor); staf berizin Komunitas **Buat postingan** |
+| Prakondisi | Key berizin `financial_report`, atau staf dengan izin `community.post` |
+| Proses dan aturan | 1) Body = isi `instance.zip` apa adanya, `Content-Type` zip, maks 8 MiB; zip maks 16 entri, tepat satu `.xbrl`, maks 32 MiB setelah dibuka, rasio kompresi maks 200:1 (services/finreport/README.md). <br>2) Maks 2 unggahan bersamaan (`503 busy`), `rate_limit_per_minute` per key, dan `finreport.files_per_hour` (120) per key per jam. <br>3) Kiriman ulang file yang sama oleh key yang sama dijawab dengan `id` lama (`resubmitted`); isi yang sudah pernah diurai ditandai `duplicate` (0197). <br>4) Worker memproses satu file sekali jalan: SHA-256, ClamAV, urai XBRL mengalir; gagal sementara dicoba ulang dengan jeda 1, 4, 9, 16 menit lalu ditolak `too_many_attempts`. <br>5) Layanan `finreport` dibatasi CPU 0,25, memori 128 MB, `cpu_shares` 256; Kong dan Traefik hanya memindahkan rute `/integration/v1/financial-reports`. <br>6) File terinfeksi dan file yatim dihapus lewat janitor; file ditolak disimpan `finreport.rejected_keep_days` (30) hari untuk diproses ulang. |
+| Keluaran | `202` (antre) / `200` (`resubmitted` atau `duplicate`); status `queued`, `processing`, `done`, `duplicate`, `rejected` + `error` |
+| Kode error | `400 not_zip`, `400 no_instance`, `400 zip_unsafe`, `403 scope_forbidden`, `404 file_not_found`, `413 body_too_large`, `415 unsupported_media_type`, `429 rate_limited`, `503 busy`; penolakan: `invalid_xbrl`, `unknown_entity`, `infected`, `checksum_mismatch`, `too_many_attempts` |
+| Antarmuka | `POST /integration/v1/financial-reports`, `GET /integration/v1/financial-reports/{id}`; RPC `public.finreport_submit`, `public.finreport_file`, `public.finreport_claim`, `public.finreport_complete`, `public.finreport_fail`, `cs_api.finreport_upload`, `cs_api.finreport_retry`; docs/integration/laporan-keuangan.md |
+| Lacak | BR-INT |
+
+#### FR-INT-24 Ringkasan laporan keuangan menjadi postingan resmi
+
+| Atribut | Isi |
+|---|---|
+| Deskripsi | Sistem harus menghitung angka dan rasio laporan, menyusun ringkasan berbahasa Indonesia dengan template tetap (tanpa AI), dan menjadikannya postingan resmi yang menunggu persetujuan empat mata. |
+| Aktor | Layanan `finreport`; staf Komunitas; Super Admin (pengaturan) |
+| Prakondisi | Laporan berhasil diurai; akun resmi aktif dipilih di pengaturan riset |
+| Proses dan aturan | 1) Template `bank` bila ada pos bunga dan kredit, `general` bila ada penjualan, selain itu `basic` + peringatan `template_basic`. <br>2) Pembanding: laporan kumulatif sebelumnya di tahun buku yang sama (kuartal tunggal, QoQ) dan laporan periode yang sama tahun lalu (neraca YoY, rasio tahun lalu); laba rugi YoY dari angka pembanding di laporan terbaru. <br>3) Selisih > 0,5% antara angka tahun lalu di laporan baru dan laporan tahun lalu yang tersimpan diberi peringatan `restated`. <br>4) Laporan baru untuk emiten dan periode yang sama menggantikan versi lama (`revision`) dan membatalkan postingannya yang belum terbit. <br>5) Teks maks 2000 karakter, diawali `$KODE`, melewati `private.validate_text` dan `private.apply_content_policy`. <br>6) Postingan `pending` dibuat atas nama akun resmi oleh pembuat key atau pengunggah; posting otomatis (`auto_publish`) hanya untuk laporan tanpa peringatan. <br>7) Pengaturan hanya Super Admin dan tercatat `finreport.config` di jejak audit. |
+| Keluaran | `private.finreport_reports` (angka, metrik, ringkasan, peringatan) dan `cs.community_posts` `pending` atau `published` |
+| Kode error | `409 post_exists`, `409 superseded`, `400 official_inactive`; peringatan `no_official_account`, `post_rejected` |
+| Antarmuka | Hub **Komunitas → Laporan keuangan**; RPC `cs_api.finreport_files`, `cs_api.finreport_report`, `cs_api.finreport_create_post`, `cs_api.finreport_config`, `cs_api.finreport_save_config`; docs/laporan-keuangan/README.md |
+| Lacak | BR-INT, BR-KOM |
+
 ### 4.11 Operasional (OPS)
 
 Modul ini mencakup cara server dipasang, diperbarui, dipantau, dipulihkan, dan dibersihkan. Server berjalan di Docker dengan tiga profil (`dev`, `single`, `cluster`) yang memakai image dan nama layanan yang sama; perbedaan hanya di file override compose (docs/panduan/skalabilitas.md). Profil `single` siap produksi, profil `cluster` (Docker Swarm) masih kerangka, dan database cloud terkelola tidak didukung karena sistem memakai role, ekstensi, dan Vault milik image Supabase. Logika bisnis dan aturan pemantauan berada di Postgres (fungsi SQL dan pg_cron); layanan Go buatan sendiri (sentinel, healer, backup, janitor, media, classifier, link-preview) hanya mengumpulkan data, menjalankan pekerjaan, dan melapor lewat RPC `service_role`. Kredensial operasional (tujuan dan password backup, kanal alert) dikelola Super Admin di Hub, disimpan di Vault, dan diaudit; kunci dasar infrastruktur tetap di `docker/secrets/`.

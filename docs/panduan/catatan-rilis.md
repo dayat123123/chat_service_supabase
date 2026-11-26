@@ -4,6 +4,18 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 26 November 2026
+
+### Riset laporan keuangan emiten (migrasi `0197`, layanan `finreport`, Hub)
+
+- File XBRL laporan keuangan dari IDX (`instance.zip`) kini bisa dikirim lewat API `POST /integration/v1/financial-reports` atau diunggah di Hub **Komunitas → Laporan keuangan**. Server mengurainya, menghitung angka dan rasio (template bank, perusahaan umum, dan dasar), menyusun ringkasan berbahasa Indonesia tanpa AI, lalu membuat **postingan resmi berstatus menunggu persetujuan** dengan cashtag emiten. Staf lain menyetujuinya di **Postingan resmi** seperti biasa.
+- Layanan baru **`finreport`** berjalan di container sendiri dengan batas ketat (CPU 0,25, memori 128 MB, bobot CPU rendah, satu file sekali jalan, 2 unggahan bersamaan, 8 MiB per file), jadi lonjakan kiriman laporan tidak memperlambat layanan lain. Layanan `integration` tidak berubah; Kong dan Traefik hanya memindahkan rute `/integration/v1/financial-reports`.
+- Izin API key baru **Kirim laporan keuangan** (`financial_report`). Bucket storage baru `financial-reports` (privat, zip saja). Pembersihan file yatim dan file terinfeksi berjalan tiap jam (`finreport-maintenance`).
+- Kesehatan sistem sekarang mengharapkan heartbeat dari layanan **Riset laporan keuangan**. Bila container belum jalan, akan muncul alert layanan hilang.
+- Situs IDX memblokir unduhan otomatis, jadi server **tidak** mengambil laporan sendiri. File dikirim oleh sistem yang punya datanya, atau diunduh staf lewat browser lalu dikirim dengan skrip `scripts/finreport/kirim-laporan.ps1` atau diunggah di Hub.
+- **Cara pasang:** `git pull --ff-only && make up` (atau `.\make.ps1 up`) di server, lalu perbarui Hub seperti biasa. `make up` membangun image `olt-social/finreport:0.1.0`; Traefik membaca rute barunya sendiri. Karena konfigurasi Kong berubah, buat ulang Kong sekali sesudahnya: `docker compose -f docker/compose.yml -f docker/compose.dev.yml up -d --force-recreate kong` (profil produksi: `compose.prod.yml`). Aplikasi nasabah tidak perlu diperbarui.
+- **Setelah pasang:** Super Admin memilih akun resmi di **Komunitas → Laporan keuangan → Pengaturan posting**, lalu membuat API key berizin **Kirim laporan keuangan** bila ada sistem pengirim. Periksa **Kesehatan sistem**: layanan **Riset laporan keuangan** harus hijau. Panduan pengirim: [docs/integration/laporan-keuangan.md](../integration/laporan-keuangan.md).
+
 ## 25 November 2026
 
 ### Reaksi emoji pada postingan (migrasi `0196`)
