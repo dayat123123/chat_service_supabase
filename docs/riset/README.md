@@ -41,7 +41,8 @@ Hub (unggah) ────┘                               │
 
 | Hal | Aturan |
 |---|---|
-| Masuk dari | `POST /integration/v1/research/{id}/documents` (body PDF/XLSX apa adanya, dialirkan ke storage tanpa ditampung) atau Hub **Riset → detail laporan → Dokumen sumber** (`cs_api.research_add_document`) |
+| Masuk dari | `POST /integration/v1/research/{id}/documents` (body PDF/XLSX apa adanya, dialirkan ke storage tanpa ditampung), Hub **Unggah laporan** bersama zip-nya (`cs_api.research_upload(p_object, p_documents)`, satu transaksi, `0202`), atau Hub **Riset → detail laporan → Dokumen sumber** (`cs_api.research_add_document`) |
+| Urutan | `public.research_claim` melewati zip yang masih punya dokumen `queued`/`processing` (`0202`), jadi dokumen yang terdaftar sebelum zip diproses selalu ikut di postingan sejak dibuat, termasuk saat posting otomatis menyala |
 | Jenis dan ukuran | PDF atau XLSX, maks. 20 MiB, maks. 3 per laporan |
 | Penyimpanan | Bucket privat `post-files`, path `research/<uuid>/file.pdf|xlsx`; dibuka nasabah lewat signed URL seperti dokumen postingan resmi lain (`0200`) |
 | Pemeriksaan | Worker, satu dokumen sekali jalan dan hanya saat antrean file kosong: SHA-256, isi sesuai jenis, PDF tanpa `/JavaScript`, `/JS`, `/Launch`, XLSX tanpa makro, ClamAV. Status `queued` → `processing` → `ready` / `rejected` |

@@ -830,10 +830,15 @@ Ringkasan riset dibuat otomatis dan menjadi postingan resmi yang **menunggu pers
 
 **Mengunggah laporan** (izin **Tulis postingan resmi**):
 
-1. Unduh `instance.zip` dari halaman Laporan Keuangan dan Tahunan situs IDX lewat browser.
-2. Di **Unggah laporan**, seret file ke kotak atau klik **Pilih file**. Beberapa file sekaligus boleh, maksimal 8 MiB per file. Nama file tidak penting; kode emiten dan periode dibaca dari isinya.
-3. File muncul di **File yang diterima** dengan status **Dalam antrean** → **Diproses** → **Selesai**. Daftar diperbarui otomatis selama ada file yang diproses.
-4. Untuk ringkasan yang lengkap, unggah juga laporan kuartal sebelumnya dan laporan periode yang sama tahun lalu satu kali di awal. Setelah itu pembanding tersimpan dengan sendirinya.
+1. Unduh `instance.zip` dari halaman Laporan Keuangan dan Tahunan situs IDX lewat browser, bersama PDF laporan keuangannya (dan file Excel `.xlsx` bila ingin).
+2. Di **Unggah laporan**, seret zip beserta PDF/Excel-nya ke kotak, atau klik **Pilih file**. File **belum** diunggah; semuanya masuk daftar **Siap diunggah** dulu. Zip maksimal 8 MiB, dokumen maksimal 20 MB, 3 dokumen per laporan. Kode emiten dan periode dibaca dari isi zip.
+3. Periksa daftarnya:
+   - Bila hanya satu zip, semua PDF/Excel otomatis menjadi lampirannya.
+   - Bila ada beberapa zip, pilih laporan untuk tiap dokumen di kolom pilihan di sampingnya. Dokumen yang namanya diawali nama zip dipasangkan otomatis.
+   - File yang bermasalah diberi tanda merah dan tidak ikut diunggah. Klik ✕ untuk membuangnya dari daftar.
+4. Klik **Unggah N laporan**. Zip dan dokumennya dikirim bersama. Postingan baru dibuat setelah dokumennya lolos pemeriksaan, jadi postingan langsung membawa lampirannya sejak awal (juga bila posting otomatis menyala).
+5. File muncul di **File yang diterima** dengan status **Dalam antrean** → **Diproses** → **Selesai**. Daftar diperbarui otomatis selama ada file yang diproses.
+6. Untuk ringkasan yang lengkap, unggah juga laporan kuartal sebelumnya dan laporan periode yang sama tahun lalu satu kali di awal. Setelah itu pembanding tersimpan dengan sendirinya.
 
 File juga bisa masuk lewat API dari sistem lain; kolom **Sumber** menunjukkan **API · nama key** atau **Hub · nama staf**.
 

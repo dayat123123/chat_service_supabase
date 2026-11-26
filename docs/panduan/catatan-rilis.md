@@ -6,6 +6,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 26 November 2026
 
+### Riset: unggah zip bersama dokumennya (migrasi `0202`, layanan `research` 0.3.1, Hub)
+
+- Di **Komunitas → Riset → Unggah laporan**, file yang diseret atau dipilih kini masuk daftar **Siap diunggah** dulu. Zip laporan dan PDF/Excel-nya diperiksa di daftar, dokumen dipasangkan ke laporannya, lalu semuanya dikirim bersama dengan tombol **Unggah**.
+- Server menahan zip sampai dokumennya selesai diperiksa, jadi postingan riset langsung membawa lampirannya sejak dibuat, juga saat posting otomatis menyala.
+- Nama emiten yang di file XBRL-nya tertulis ganda (misalnya "Tbk  Tbk") kini dirapikan menjadi satu. Laporan yang sudah ada tidak berubah.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up`. Perintah ini membangun image `olt-social/research:0.3.1` dan menjalankan migrasi. Kong tidak berubah.
+
 ### Riset: dokumen sumber ikut di postingan (migrasi `0201`, layanan `research` 0.3.0, Hub)
 
 - Postingan riset kini bisa membawa **laporan aslinya**, berupa PDF atau Excel (`.xlsx`) dari IDX, sampai 3 dokumen per laporan, maksimal 20 MB per file. Nasabah membukanya dari aplikasi dengan library yang sudah mendukung dokumen postingan (v1.61.0).

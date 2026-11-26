@@ -165,7 +165,7 @@ Melampirkan dokumen sumber ke file laporan `{id}` yang dikirim dengan key yang s
 | Ukuran | Maksimal 20 MiB, header `Content-Length` wajib |
 | Nama | Query `name` opsional, maksimal 120 karakter tanpa garis miring (URL-encode). Bila kosong, nama dibuat dari emiten dan periode, misalnya `BBCA Laporan Keuangan Kuartal III 2026.pdf` |
 | Jumlah | Maksimal 3 dokumen per laporan (`409 too_many_documents`) |
-| Waktu | Boleh dikirim kapan saja setelah zip diterima, termasuk sebelum zip selesai diurai atau setelah postingannya terbit |
+| Waktu | Boleh dikirim kapan saja setelah zip diterima, termasuk setelah postingannya terbit. Zip yang masih punya dokumen dalam pemeriksaan menunggu sampai dokumennya selesai, jadi dokumen yang tiba sebelum zip diproses ikut di postingan sejak awal; yang tiba sesudahnya ditambahkan ke postingan yang sama |
 | Kirim ulang | Aman. Dokumen yang sama (SHA-256 sama) untuk file yang sama dijawab dengan `id` lama dan `resubmitted: true` |
 | Batas per jam | 120 dokumen per key per jam (`research.documents_per_hour`) |
 

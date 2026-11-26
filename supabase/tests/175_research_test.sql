@@ -253,7 +253,7 @@ reset role;
 
 select ok(not has_function_privilege('authenticated', 'public.research_claim(text, integer)', 'execute')
           and not has_function_privilege('anon', 'public.research_submit(uuid, text, integer, text)', 'execute')
-          and has_function_privilege('authenticated', 'cs_api.research_upload(text)', 'execute'),
+          and has_function_privilege('authenticated', 'cs_api.research_upload(text, jsonb)', 'execute'),
   'RPC worker hanya untuk service_role, RPC Hub untuk staf');
 select ok(exists (select 1 from cron.job where jobname = 'research-maintenance'), 'Pembersih file laporan dijadwalkan tiap jam');
 
