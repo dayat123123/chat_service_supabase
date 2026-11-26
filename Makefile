@@ -76,7 +76,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
 .PHONY: help check-hub up down logs ps reset migrate seed test test-db test-bridge test-flutter test-flutter-it \
         e2e-windows web-example license-audit perf-flutter smoke backup restore gen-secrets gen-keys psql check-config \
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
-        test-media test-sentinel test-healer test-backup test-integration test-finreport test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
+        test-media test-sentinel test-healer test-backup test-integration test-research test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-mfa-reset cs-console-react test-cs-console e2e-cs-console \
         testkit test-security test-zap scan-deps load-test load-integration chaos-test loadtest-cleanup
 
@@ -139,7 +139,7 @@ migrate: check-config ## Apply new migrations from supabase/migrations
 seed: check-config ## Load development dummy data
 	$(TOOLS) seed
 
-test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-media test-sentinel test-healer test-backup test-integration test-finreport test-link-preview test-classifier check-go-comments ## Backend tests (pgTAP + Go)
+test: test-db test-bridge test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-media test-sentinel test-healer test-backup test-integration test-research test-link-preview test-classifier check-go-comments ## Backend tests (pgTAP + Go)
 
 test-db: check-config ## pgTAP tests (supabase/tests)
 	$(TOOLS) test-db
@@ -305,8 +305,8 @@ test-backup: ## Backup service unit tests (Go, in a container)
 test-integration: ## OLT integration gateway unit tests (Go, in a container)
 	docker run --rm -v "$(CURDIR)/services/integration:/src" -w /src $(GO_IMG) go test ./...
 
-test-finreport: ## Financial report research service unit tests (Go, in a container)
-	docker run --rm -v "$(CURDIR)/services/finreport:/src" -w /src $(GO_IMG) go test ./...
+test-research: ## Research service unit tests (Go, in a container)
+	docker run --rm -v "$(CURDIR)/services/research:/src" -w /src $(GO_IMG) go test ./...
 
 test-link-preview: ## Link preview unit tests (Go, in a container)
 	docker run --rm -v "$(CURDIR)/services/link-preview:/src" -w /src $(GO_IMG) go test ./...

@@ -179,7 +179,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 | **link-preview** | Membuat pratinjau tautan dengan aman |
 | **notifier** | Mengirim push ke HP lewat Firebase |
 | **integration** | API untuk sistem OLT: notifikasi transaksi dan bot resmi |
-| **finreport** | Ringkasan otomatis laporan keuangan emiten dari file XBRL bursa, diposting sebagai postingan resmi setelah disetujui |
+| **research** | Riset otomatis tanpa AI (saat ini laporan keuangan emiten dari XBRL bursa), diposting sebagai kartu riset setelah disetujui |
 | **nasabah-gateway** | Jembatan aman dari Hub ke csAdmin OLT |
 | **janitor** | Membersihkan file milik akun yang dihapus |
 | **backup** | Backup otomatis database dan file, serta pemulihan ke titik waktu tertentu |
@@ -197,7 +197,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 | **Push** | `registerPushToken`. Push transaksi (`olt.*`) dibuka oleh layar OLT, push komunitas oleh library |
 | **API notifEngine** | `POST /integration/v1/notify/messages` untuk notifikasi transaksi, dana, pasar, info, dan promo dari sistem OLT ke nasabah, per nasabah atau siaran |
 | **Bot resmi** | `POST /integration/v1/bot/posts` agar sistem OLT bisa memposting otomatis atas nama akun resmi |
-| **Laporan keuangan** | `POST /integration/v1/financial-reports` untuk mengirim file XBRL laporan keuangan emiten; ringkasannya menjadi postingan resmi di Stream setelah disetujui staf |
+| **Riset** | `POST /integration/v1/research` untuk mengirim data riset (saat ini XBRL laporan keuangan emiten); hasilnya tampil sebagai kartu riset di Stream setelah disetujui staf |
 | **Pengaduan tamu** | Tombol "Tidak bisa masuk? Hubungi CS" di halaman login memanggil `openCommunityGuestSupport` |
 | **Kill switch & update paksa** | `appVersion` dan `onUpdateRequired` agar Hub bisa memaksa update atau mematikan fitur sosial |
 | **Gateway csAdmin** | Hub memanggil csAdmin OLT dengan token Ed25519, hanya untuk endpoint `/online/*` |

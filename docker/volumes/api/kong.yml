@@ -548,16 +548,16 @@ services:
 
   ## Integration gateway: the integration service verifies its own oik_ API key (Authorization header,
   ## per-IP auth-failure limit, per-key rate limit and CIDR), so Kong does not require the anon apikey.
-  ## Financial report intake lives in its own service (finreport) so uploads and XBRL parsing never
-  ## share capacity with the integration service. Kong prefers the longer prefix, so only these paths move.
-  - name: finreport-v1
-    _comment: 'Laporan keuangan: /integration/v1/financial-reports* -> http://finreport:8080/financial-reports*'
-    url: http://finreport:8080/financial-reports
+  ## Research intake lives in its own service (research) so uploads and parsing never share capacity
+  ## with the integration service. Kong prefers the longer prefix, so only these paths move.
+  - name: research-v1
+    _comment: 'Riset: /integration/v1/research* -> http://research:8080/research*'
+    url: http://research:8080/research
     routes:
-      - name: finreport-v1-all
+      - name: research-v1-all
         strip_path: true
         paths:
-          - /integration/v1/financial-reports
+          - /integration/v1/research
 
   - name: integration-v1
     _comment: 'Integrasi: /integration/v1/* -> http://integration:8080/*'

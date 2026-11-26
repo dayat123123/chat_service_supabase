@@ -465,15 +465,15 @@ Data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Sta
 
 API key untuk sistem lain yang mengirim push ke aplikasi (transaksi, pengumuman), memposting sebagai bot resmi, atau membaca kesehatan sistem untuk ditampilkan di aplikasinya sendiri.
 
-1. **Buat API key**: beri **Nama key**, pilih **Izin** (**Notifikasi per rekening**, **Notifikasi massal**, **Postingan bot**, **Baca kesehatan sistem**, **Kirim laporan keuangan**), isi **IP atau CIDR yang diizinkan** dan **Batas request per menit**.
+1. **Buat API key**: beri **Nama key**, pilih **Izin** (**Notifikasi per rekening**, **Notifikasi massal**, **Postingan bot**, **Baca kesehatan sistem**, **Kirim riset**), isi **IP atau CIDR yang diizinkan** dan **Batas request per menit**.
 2. **Key hanya ditampilkan sekali.** Salin dan serahkan ke pemilik sistem pengirim lewat jalur aman. Jangan tempel di chat, tiket, email, atau dokumen.
 3. **Notifikasi massal** bisa mengirim ke SEMUA pengguna. Berikan hanya ke sistem tepercaya dan batasi IP-nya.
 4. **Rotasi:** buat key baru, pasang di sistem pengirim, pastikan **Terakhir dipakai** key baru bergerak, baru **Cabut** key lama.
 5. **Cabut** bersifat permanen. Untuk berhenti sementara, matikan **Key aktif**. Key yang sudah dicabut bisa dirapikan dengan **Hapus**: key hilang dari daftar dan statistik, sedangkan catatannya tetap ada di Jejak Audit.
-6. Di bawah tabel key ada tiga bagian yang bisa dipilih: **Notifikasi & bot** (statistik pengiriman, grafik, dan contoh request notifikasi), **Kesehatan sistem** (alamat dan contoh request untuk aplikasi pemantau), dan **Laporan keuangan** (alamat, batas, dan contoh pengiriman file laporan). Key baca kesehatan sistem dan key laporan keuangan tidak muncul di statistik notifikasi.
+6. Di bawah tabel key ada tiga bagian yang bisa dipilih: **Notifikasi & bot** (statistik pengiriman, grafik, dan contoh request notifikasi), **Kesehatan sistem** (alamat dan contoh request untuk aplikasi pemantau), dan **Riset** (alamat, batas, dan contoh pengiriman data riset). Key baca kesehatan sistem dan key riset tidak muncul di statistik notifikasi.
 7. **Baca kesehatan sistem** untuk aplikasi internal yang ingin menampilkan isi **Kesehatan sistem** dan **Peta layanan** (dasbor kantor, misalnya). Izin ini hanya membaca, tidak bisa menandai alert atau mengubah pengaturan. Buat key tersendiri untuk keperluan ini. Setelah key dibuat, dialognya menampilkan alamat endpoint dan contoh request yang bisa langsung diserahkan ke tim aplikasi; kartu **API kesehatan sistem** di halaman yang sama juga selalu menampilkan alamatnya.
 
-8. **Kirim laporan keuangan** untuk sistem yang mengirim file XBRL laporan keuangan emiten (backend OLT, vendor data, atau skrip di PC kantor). Key ini hanya bisa mengirim dan membaca status file yang dikirimnya sendiri. Setelah key dibuat, dialognya menampilkan alamat dan contoh pengiriman. Panduan untuk pengirim: [laporan-keuangan.md](../integration/laporan-keuangan.md).
+8. **Kirim riset** untuk sistem yang mengirim data riset, saat ini file XBRL laporan keuangan emiten (backend OLT, vendor data, atau skrip di PC kantor). Key ini hanya bisa mengirim dan membaca status kiriman miliknya sendiri. Setelah key dibuat, dialognya menampilkan alamat dan contoh pengiriman. Panduan untuk pengirim: [riset.md](../integration/riset.md).
 
 #### Push notification
 
@@ -722,7 +722,7 @@ Menu **Komunitas** mengelola stream komunitas di aplikasi nasabah. Tab yang tamp
 
 | Izin | Boleh | Tab |
 |---|---|---|
-| **Tulis postingan resmi** | Membuat draf postingan, pengumuman, dan notifikasi atas nama akun resmi; mengunggah dan memproses ulang laporan keuangan | **Postingan resmi**, **Notifikasi**, **Laporan keuangan** |
+| **Tulis postingan resmi** | Membuat draf postingan, pengumuman, dan notifikasi atas nama akun resmi; mengunggah dan memproses ulang data riset | **Postingan resmi**, **Notifikasi**, **Riset** |
 | **Setujui & terbitkan** | Menyetujui, menerbitkan, menjadwalkan, menyematkan, dan menghapus postingan resmi; menyetujui notifikasi | **Postingan resmi**, **Notifikasi** |
 | **Moderasi konten** | Antrean laporan, konten dan gambar ditahan, indikasi manipulasi, banding konten, serta slow mode dan pin room saham | **Moderasi**, **Room saham** |
 | **Sanksi pengguna** | Peringatan, bisukan, blokir, cabut sesi, banding sanksi, dan toleransi nol | **Moderasi** |
@@ -742,6 +742,15 @@ Semua tindakan yang meminta **Alasan** (5–500 karakter) tercatat di Jejak Audi
 4. Opsional: **Kirim notifikasi saat terbit**.
 5. **Waktu terbit**: **Segera setelah disetujui** atau **Jadwalkan**.
 6. **Simpan draf** atau **Simpan & ajukan**.
+
+**Postingan berbentuk kartu:** di **Tampilan**, pilih **Kartu** alih-alih **Teks biasa**. Isi **Judul** dan **Kalimat utama** (wajib), lalu **Kode saham**, **Label kecil**, **Subjudul**, dan **Disclaimer** bila perlu. Susun isinya dengan **Tambah blok**:
+
+- **Paragraf**: teks biasa.
+- **Daftar**: **Bernomor** atau **Butir**.
+- **Kotak sorotan**: judul dan isi, misalnya "Poin utama".
+- **Deretan angka**: label, nilai, perubahan, dan arah naik/turun (maks. 6 baris).
+
+Blok bisa dipindah naik/turun dan dihapus. **Tampilan di aplikasi** menunjukkan kartu persis seperti yang dilihat nasabah. **Teks untuk aplikasi lama** adalah teks yang dibuat otomatis dari kartu untuk aplikasi yang belum diperbarui; teks ini ikut diperiksa daftar kata terlarang. Gambar tetap bisa ditambahkan. Peninjau juga melihat pratinjau kartu saat menyetujui.
 
 **Menyetujui (empat mata):**
 
@@ -813,9 +822,9 @@ Saat jam ramai atau gangguan kapasitas, moderator bisa menyalakan slow mode di r
 - **Nonaktifkan**: akun tidak bisa dipakai untuk postingan atau notifikasi baru; postingan lamanya tetap tampil. **Aktifkan** untuk memakainya lagi.
 - **Badge verifikasi pengguna**: **Verifikasi** atau **Cabut verifikasi** untuk analis/tokoh yang identitasnya sudah diperiksa.
 
-### 5.6 Laporan keuangan (tab **Laporan keuangan**)
+### 5.6 Riset (tab **Riset**)
 
-Ringkasan laporan keuangan emiten dibuat otomatis dari file XBRL bursa (`instance.zip`) dan menjadi postingan resmi yang **menunggu persetujuan** di tab **Postingan resmi**. Tidak ada AI: angka diambil dari file dan dihitung dengan rumus tetap. Tab ini tampil untuk semua staf yang punya Izin Komunitas.
+Ringkasan riset dibuat otomatis dan menjadi postingan resmi yang **menunggu persetujuan** di tab **Postingan resmi**. Di aplikasi nasabah, postingan ini tampil sebagai **kartu riset** (judul, kalimat utama, angka kunci, poin bernomor, poin utama). Tidak ada AI: angka diambil dari sumber terstruktur dan dihitung dengan rumus tetap. Jenis riset saat ini: **laporan keuangan emiten** dari file XBRL bursa (`instance.zip`); kolom **Jenis** di daftar menunjukkan jenisnya. Tab ini tampil untuk semua staf yang punya Izin Komunitas.
 
 **Mengunggah laporan** (izin **Tulis postingan resmi**):
 
@@ -828,7 +837,7 @@ File juga bisa masuk lewat API dari sistem lain; kolom **Sumber** menunjukkan **
 
 **Memeriksa dan menerbitkan:**
 
-1. Klik baris laporan untuk membuka **Detail laporan**: **Ringkasan** (teks persis yang akan terbit), **Peringatan**, tabel **Angka**, **File sumber**, dan laporan lain emiten yang sama.
+1. Klik baris laporan untuk membuka **Detail laporan**: **Tampilan di aplikasi** (kartu riset seperti yang dilihat nasabah), **Ringkasan** (teks biasa untuk aplikasi versi lama), **Peringatan**, tabel **Angka**, **File sumber**, dan laporan lain emiten yang sama.
 2. Cocokkan angka penting dengan laporan aslinya bila ada peringatan. Lalu klik **Buka di Postingan resmi** dan setujui seperti postingan resmi biasa (empat mata: bukan pembuat postingan). Postingan dari API dibuat atas nama pembuat API key; postingan dari unggahan Hub atas nama pengunggah.
 3. Bila postingan ditolak, dibatalkan, atau belum dibuat (misalnya akun resmi belum diatur saat itu), klik **Buat postingan** di detail laporan.
 

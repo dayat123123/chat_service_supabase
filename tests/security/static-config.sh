@@ -160,7 +160,7 @@ check medium "cluster sentinel does not read healer state (no false healer:stale
 autoheal=$(tr -d '\r' < $D/compose.yml | awk '/^  [a-z0-9-]+:$/{svc=$1} /olt\.autoheal=true/ && !/^ *#/{sub(":","",svc); print svc}' | sort -u)
 bad_autoheal=$(grep -xE "db|valkey|sentinel|healer|migrate|tools|volume-init|studio|meta" <<< "$autoheal" || true)
 check high "db, valkey, sentinel, healer, and one-shot services are not labeled olt.autoheal" '[ -z "$bad_autoheal" ]' "$(tr '\n' ' ' <<< "$bad_autoheal")"
-check medium "stateless services with healthchecks are labeled olt.autoheal (rest, realtime, kong, auth, pgbouncer, traefik, ...)" '[ "$(grep -cxE "traefik|kong|auth|rest|realtime|storage|imgproxy|functions|pgbouncer|auth-bridge|notifier|janitor|classifier|media|backup|integration|finreport|link-preview|cs-console|nasabah-gateway" <<< "$autoheal")" -eq 20 ]' "$(tr '\n' ' ' <<< "$autoheal")"
+check medium "stateless services with healthchecks are labeled olt.autoheal (rest, realtime, kong, auth, pgbouncer, traefik, ...)" '[ "$(grep -cxE "traefik|kong|auth|rest|realtime|storage|imgproxy|functions|pgbouncer|auth-bridge|notifier|janitor|classifier|media|backup|integration|research|link-preview|cs-console|nasabah-gateway" <<< "$autoheal")" -eq 20 ]' "$(tr '\n' ' ' <<< "$autoheal")"
 
 echo
 echo "static-config: $pass ok, $fail findings, $info notes  (detail: ${OUT#/olt/}/static-config.tsv)"

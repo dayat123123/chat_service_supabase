@@ -1107,17 +1107,17 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
-  # Financial report research (services/finreport, docs/laporan-keuangan): receives IDX XBRL zips on
-  # /integration/v1/financial-reports (API keys with the financial_report scope) and from Hub
-  # uploads, scans them with clamav, parses one file at a time, and turns each report into a
-  # pending official post. Kept apart from the integration service and capped low (a quarter of a
-  # CPU, a quarter CPU weight under contention, 128 MB) so report bursts cannot slow other services.
-  finreport:
+  # Research (services/research, docs/riset): receives research input on /integration/v1/research
+  # (API keys with the research scope) and from Hub uploads. The first kind is IDX XBRL financial
+  # reports: scanned with clamav, parsed one file at a time, and turned into a pending official post
+  # with a research card document. Kept apart from the integration service and capped low (a quarter
+  # of a CPU, a quarter CPU weight under contention, 128 MB) so bursts cannot slow other services.
+  research:
     <<: *base
     labels: ["olt.autoheal=true"]
     build:
-      context: ../services/finreport
-    image: olt-social/finreport:0.1.0
+      context: ../services/research
+    image: olt-social/research:0.2.0
     networks: [app]
     depends_on:
       migrate:
@@ -1131,17 +1131,17 @@ services:
     environment:
       PORT: 8080
       OPS_PORT: 9100
-      LOG_LEVEL: ${FINREPORT_LOG_LEVEL:-info}
+      LOG_LEVEL: ${RESEARCH_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
       STORAGE_URL: http://storage:5000
       CLAMD_ADDR: clamav:3310
-      MAX_UPLOADS: ${FINREPORT_MAX_UPLOADS:-2}
-      POLL_INTERVAL: ${FINREPORT_POLL_INTERVAL:-15s}
+      MAX_UPLOADS: ${RESEARCH_MAX_UPLOADS:-2}
+      POLL_INTERVAL: ${RESEARCH_POLL_INTERVAL:-15s}
       GOMAXPROCS: "1"
       GOMEMLIMIT: 96MiB
     healthcheck:
-      test: ["CMD", "/finreport", "healthcheck"]
+      test: ["CMD", "/research", "healthcheck"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -1150,7 +1150,7 @@ services:
     deploy:
       replicas: 1
       resources:
-        limits: {cpus: "${FINREPORT_CPUS:-0.25}", memory: 128M, pids: 64}
+        limits: {cpus: "${RESEARCH_CPUS:-0.25}", memory: 128M, pids: 64}
 
   # Link previews (services/link-preview): the only service that contacts arbitrary internet hosts.
   # SSRF protection rejects private addresses (Docker networks included), ports other than 80/443,
@@ -1224,7 +1224,7 @@ services:
       LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
-      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,finreport=http://finreport:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,clamav=tcp://clamav:3310,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
+      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,research=http://research:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,clamav=tcp://clamav:3310,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
       DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup,backup-repo=/mnt/disks/backup-repo
       # Metrics for the PostgREST pool, Realtime event rate (JWT from jwt_secret = METRICS_JWT_SECRET),
       # and PgBouncer queue (SHOW POOLS as olt_stats) alerts. See services/sentinel/README.md.

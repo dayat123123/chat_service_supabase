@@ -33,7 +33,7 @@ SERVER SOSIAL (Docker)  ◀── HTTPS ke domain CS (hanya IP kantor) ── St
     │
     ├─ Pintu      Traefik → Kong
     ├─ Layanan    REST · Realtime · Storage · media · auth-bridge
-    │             integration · finreport · nasabah-gateway · functions
+    │             integration · research · nasabah-gateway · functions
     ├─ Data       PgBouncer → Postgres 17 (semua data + aturan bisnis) · Valkey
     ├─ Latar      notifier · sentinel · healer · backup · janitor · link-preview
     │
@@ -79,7 +79,7 @@ Hubungan versinya:
 | Pool koneksi | PgBouncer | 1.24 | Membatasi koneksi ke Postgres saat layanan direplika |
 | Cache | Valkey (pengganti Redis, open source) | 9.0 | Penghitung rate limit login |
 | Antivirus | ClamAV | 1.5.4 | Memindai dokumen dan video chat CS |
-| Layanan buatan sendiri | Go | 1.24 / 1.26 | auth-bridge, media, classifier, notifier, sentinel, healer, backup, janitor, integration, finreport, nasabah-gateway, link-preview, trade-relay |
+| Layanan buatan sendiri | Go | 1.24 / 1.26 | auth-bridge, media, classifier, notifier, sentinel, healer, backup, janitor, integration, research, nasabah-gateway, link-preview, trade-relay |
 | Backup | pg_receivewal + pg_basebackup + restic | — | WAL terus-menerus + backup penuh terenkripsi ke S3 atau folder lokal |
 | Push | Firebase Cloud Messaging (FCM) | — | Push ke Android dan iOS |
 | Web staf | React, TypeScript, Vite, TanStack Query/Router, Tailwind, Radix UI, Zod | React 19, Node 24 | Hub cepat, terketik, dan teruji (±900 tes) |
@@ -119,7 +119,7 @@ Setiap node adalah satu container. Kartu yang sama tampil di Hub, **Pengaturan �
 | `classifier` (2 replika) | Model AI lokal untuk menilai gambar tidak pantas (NSFW) sebelum boleh tampil |
 | `clamav` | Antivirus untuk dokumen dan video chat CS (signature diperbarui otomatis) |
 | `integration` (2 replika) | API `/integration/v1` untuk sistem OLT: notifikasi transaksi ke nasabah dan postingan akun bot resmi, dengan API key yang dibuat di Hub |
-| `finreport` | Riset laporan keuangan: menerima file XBRL IDX di `/integration/v1/financial-reports` dan dari Hub, mengurai satu file sekali jalan, lalu membuat ringkasan sebagai postingan resmi yang menunggu persetujuan. Container sendiri dengan batas CPU dan memori kecil agar tidak membebani layanan lain |
+| `research` | Riset: menerima data riset (saat ini file XBRL laporan keuangan IDX) di `/integration/v1/research` dan dari Hub, mengurai satu file sekali jalan, lalu membuat ringkasan dan kartu riset sebagai postingan resmi yang menunggu persetujuan. Container sendiri dengan batas CPU dan memori kecil agar tidak membebani layanan lain |
 | `nasabah-gateway` | Jembatan menu **Akun Nasabah** di Hub ke csAdmin OLT dengan token integrasi Ed25519. Khusus staf, dan memeriksa 2FA |
 | `notifier` | Mengambil antrean push di database dan mengirimnya ke HP lewat FCM. Kunci Firebase diunggah Super Admin di Hub (disimpan di Vault) |
 | `link-preview` | Mengambil judul dan gambar untuk pratinjau tautan, dengan pengaman SSRF (tidak bisa diarahkan ke jaringan internal) |
