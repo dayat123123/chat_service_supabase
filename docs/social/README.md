@@ -118,7 +118,7 @@ Postingan resmi dari layanan riset atau dari editor kartu Hub membawa satu lampi
 
 Postingan resmi bisa membawa sampai 5 dokumen: `{"type": "file", "file": {"bucket": "post-files", "path": "<akun>/<uuid>/file.<ext>", "name", "mime", "size"}}`. Jenis yang diterima PDF, XLSX, CSV (≤ 10 MB), DOCX, dan PPTX (≤ 20 MB); format lama yang bisa memuat makro tidak diterima. Bucket `post-files` privat: aplikasi membuka file dengan signed URL, dan semua pengguna yang login boleh membacanya. Elemen ini sengaja tanpa `path` di tingkat atas supaya library lama tidak menganggapnya gambar.
 
-Hanya staf (lewat `cs_api.community_save_post`) yang bisa melampirkannya. Server memeriksa bahwa file ada di folder akun resmi itu, lalu mengambil jenis dan ukurannya dari metadata storage. Kode error: `400 too_many_files`, `400 invalid_file`, `404 file_not_found`, `400 file_too_large`, `400 invalid_file_type`, `400 duplicate_file`, `400 invalid_file_name`. `posts_before_write` menolak lampiran `file` dari pengguna biasa. File yang diunggah tetapi tidak dipakai postingan mana pun dibersihkan cron `post-files-maintenance` (setiap hari, file berumur lebih dari sehari).
+Hanya staf (lewat `cs_api.community_save_post`) yang bisa melampirkannya. Server memeriksa bahwa file ada di folder akun resmi itu, lalu mengambil jenis dan ukurannya dari metadata storage. Kode error: `400 too_many_files`, `400 invalid_file`, `404 file_not_found`, `400 file_too_large`, `400 invalid_file_type`, `400 duplicate_file`, `400 invalid_file_name`. `posts_before_write` menolak lampiran `file` dari pengguna biasa. File yang diunggah tetapi tidak dipakai postingan mana pun dibersihkan job `housekeeping` (setiap jam sejak `0204`, file berumur lebih dari sehari).
 
 ### Reaksi emoji pada post (`0196`)
 

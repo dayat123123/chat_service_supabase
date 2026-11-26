@@ -28,6 +28,10 @@ Panduan ini menjelaskan berapa lama data disimpan, siapa yang boleh mengubah bat
 | Audit log admin | 1.825 hari | 365–3.650 hari | Catatan dibuat |
 | Log akses data pribadi | 730 hari | 365–3.650 hari | Catatan dibuat |
 | Catatan rate limit | 2 hari | 1–30 hari | Catatan dibuat |
+| Jejak audit Hub (Audit dan riwayat sesi chat CS) | 1.825 hari | 1.095–3.650 hari | Akhir bulan catatan (dibuang per partisi bulanan) |
+| Catatan buka notifikasi | 400 hari | 90–3.650 hari | Notifikasi dibuka/diketuk; angkanya diringkas dulu sehingga statistik kampanye tetap utuh |
+| Riwayat status moderasi | 730 hari | 365–3.650 hari | Status berubah |
+| Riwayat job terjadwal (pg_cron) | 7 hari | 1–90 hari | Job selesai berjalan |
 | Batas hapus per run | 20.000 baris per jenis data | 1.000–200.000 | – |
 
 Alasan bawaan:
@@ -99,4 +103,21 @@ Job lama tetap berjalan seperti biasa dan kini memakai batas yang sama dari hala
 - `evidence-purge`: bukti karantina;
 - `social-content-edits-retention`: riwayat edit konten.
 
-Masa simpan arsip konten ditetapkan saat konten dihapus, jadi perubahan `Arsip konten yang dihapus` hanya berlaku untuk konten yang dihapus setelahnya.
+Masa simpan arsip konten ditetapkan saat konten dihapus, jadi perubahan `Arsip konten yang dihapus` hanya berlaku untuk konten yang dihapus setelahnya. Saat arsip dihapus, lampirannya (gambar, dokumen, video) ikut dijadwalkan dihapus dari storage, kecuali kontennya sudah dipulihkan lewat banding.
+
+## 8. Housekeeping tiap jam (`0204`)
+
+Job `housekeeping` berjalan setiap jam pada menit ke-51 dan mencatat hasilnya di `private.housekeeping_runs` (90 hari terakhir). Langkah yang gagal tidak menghentikan langkah lain; job yang gagal muncul di Kesehatan sistem seperti job terjadwal lain.
+
+| Langkah | Yang dibersihkan |
+|---|---|
+| `cron_history` | Riwayat eksekusi pg_cron lebih tua dari batas "Riwayat job terjadwal" (maks. 500.000 baris per run) |
+| `cs_audit` | Partisi bulanan jejak audit Hub dan riwayat sesi CS yang seluruh bulannya sudah lewat batas |
+| `notification_events` | Catatan buka/ketuk notifikasi lama; jumlahnya dipindah ke total per kampanye/broadcast sebelum dihapus |
+| `moderation_events` | Riwayat status moderasi lama |
+| `post_files` | Dokumen postingan resmi yang tidak lagi dipakai: unggahan yatim, postingan yang ditolak/dibatalkan lebih dari 90 hari, postingan yang dihapus setelah arsipnya habis (menggantikan job `post-files-maintenance`) |
+| `attachments`, `cs-documents`, `cs-videos` | Unggahan yang tidak pernah terkirim: file `posts/<user>/…` atau `rooms/<room>/<user>/…` berumur 7 hari yang tidak dipakai postingan, draf, postingan resmi, pesan, maupun arsip. Setiap file hanya diperiksa sekali (kursor per bucket), maks. 2.000 file per bucket per run |
+| `avatars` | Foto profil dan foto grup yang sudah diganti. Penggantian baru langsung dijadwalkan dihapus; sisa lama disapu dengan aturan yang sama |
+| `faq` | Lampiran dan gambar Pusat Bantuan yang tidak dipakai artikel maupun versi artikel mana pun (sekali sehari, 02.51 WIB) |
+
+File yang dijadwalkan dihapus diproses layanan `janitor`; file yang masih menunggu disalin ke bukti karantina tidak dihapus sebelum salinannya selesai. Pengaturan teknis (bukan aturan retensi) ada di `private.settings`: `storage.orphan_min_age_days` (7) dan `storage.sweep_objects_per_run` (2.000).

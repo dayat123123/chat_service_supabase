@@ -4,6 +4,17 @@ Langkah tambahan yang dibutuhkan saat memperbarui server ke rilis tertentu, terb
 
 Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
+## 27 November 2026
+
+### Pembersihan otomatis storage, database, dan image Docker (migrasi `0204`, Hub)
+
+- Job baru `housekeeping` berjalan setiap jam:
+  - **Storage**: lampiran postingan atau pesan yang dihapus kini ikut dibuang saat arsipnya habis. Foto profil dan foto grup lama dibuang saat diganti. Unggahan yang batal dikirim, lampiran Pusat Bantuan yang tidak dipakai, dan dokumen postingan resmi yang ditolak atau dihapus juga dibersihkan.
+  - **Database**: riwayat job terjadwal (puluhan ribu baris per hari) disimpan 7 hari. Jejak audit Hub dan riwayat sesi CS disimpan 5 tahun lalu dibuang per bulan. Catatan buka notifikasi diringkas lalu dihapus setelah 400 hari, tanpa mengubah statistik kampanye. Riwayat status moderasi disimpan 2 tahun.
+- Empat batas baru tampil di **Kepatuhan → Retensi data** dan diubah lewat alur persetujuan yang sama.
+- `make up` kini membuang image Docker versi lama milik stack ini dan build cache yang lebih tua dari 7 hari. Lewati dengan `NO_PRUNE=1` atau `-NoPrune`; lihat dulu dengan `make prune-images DRY_RUN=1` atau `.\make.ps1 prune-images -DryRun`.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up` (menjalankan migrasi). Kong tidak berubah.
+
 ## 26 November 2026
 
 ### Riset: notifikasi ke pemantau saham (migrasi `0203`, Hub)

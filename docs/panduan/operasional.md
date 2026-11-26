@@ -112,7 +112,10 @@ git pull && make up     # update versi (langkah lengkap dan rollback: pembaruan-
 git -C ~/rendezvous_hub pull --ff-only && make up   # update Hub (bila dipasang)
 make backup             # salinan sesaat (pg_dump + file) sebelum update besar
 make psql               # konsol SQL sebagai postgres (hati-hati)
+make prune-images DRY_RUN=1   # lihat image Docker versi lama yang akan dibuang
 ```
+
+`make up` (dan `.\make.ps1 up`) membuang image versi lama milik stack ini setelah semua layanan sehat: tag `olt-social/*` yang sudah tidak dipakai, versi lama image upstream yang tercantum di `docker/*.yml`, sisa build tanpa tag, dan build cache yang tidak dipakai 7 hari. Image yang masih dipakai container, image proyek lain, dan image dasar seperti `golang` atau `node` tidak disentuh. Lewati dengan `NO_PRUNE=1` (Makefile) atau `-NoPrune` (make.ps1).
 
 Log beberapa menit terakhir tanpa mengikuti: `docker logs olt-social-<layanan>-1 --since 15m`.
 
