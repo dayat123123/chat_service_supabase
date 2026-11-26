@@ -139,6 +139,11 @@ services:
     deploy:
       <<: *deploy
       replicas: 2
+  finreport:
+    image: ${REGISTRY}/olt-social/finreport:0.1.0
+    deploy:
+      <<: *deploy
+      replicas: 1
   link-preview:
     image: ${REGISTRY}/olt-social/link-preview:0.2.0
     deploy:

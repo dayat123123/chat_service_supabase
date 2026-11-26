@@ -29,6 +29,12 @@ http:
       service: kong
       middlewares: [rate-limit, body-integration, security-headers]
       priority: 85
+    finreport:
+      entryPoints: [web]
+      rule: PathPrefix(`/integration/v1/financial-reports`)
+      service: kong
+      middlewares: [rate-limit, body-finreport, security-headers]
+      priority: 86
 
     storage:
       entryPoints: [web]

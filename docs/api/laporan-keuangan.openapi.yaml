@@ -1,0 +1,235 @@
+openapi: 3.1.0
+info:
+  title: Rendezvous Financial Report Intake API
+  version: "2026.11.26"
+  summary: Kirim file XBRL laporan keuangan emiten untuk diringkas dan diposting di Stream.
+  description: |
+    Pengirim mengunggah `instance.zip` dari IDX apa adanya. Server menguraikannya secara asinkron, membuat ringkasan,
+    lalu menjadikannya postingan resmi yang menunggu persetujuan staf di Hub. Panduan lengkap:
+    `docs/integration/laporan-keuangan.md`.
+
+    - Autentikasi hanya `Authorization: Bearer oik_…`, API key dengan izin `financial_report` yang dibuat Super Admin
+      di Hub (Pengaturan → API Integrasi). Header `apikey` tidak diperlukan.
+    - Mengirim ulang file yang sama aman: dijawab dengan `id` lama.
+    - Abaikan field yang tidak dikenal; `api_version` naik bila ada perubahan yang tidak kompatibel.
+    - Error memakai `{"error": "<kode>", "message": "..."}` dan header `X-Request-Id`.
+  license:
+    name: Proprietary
+servers:
+  - url: https://{host}
+    description: Produksi
+    variables:
+      host:
+        default: api.contoh.co.id
+        description: Domain API sosial
+  - url: http://192.168.0.235:8000
+    description: Server dev kantor
+  - url: http://localhost:8000
+    description: Lingkungan dev lokal
+security:
+  - integrationKey: []
+tags:
+  - name: Laporan keuangan
+    description: Butuh izin `financial_report`
+
+paths:
+  /integration/v1/financial-reports:
+    post:
+      tags: [Laporan keuangan]
+      operationId: submitFinancialReport
+      summary: Kirim satu file laporan
+      description: |
+        Body adalah isi file zip (bukan JSON, bukan multipart). Maksimal 8 MiB, tepat satu file `.xbrl` di dalamnya,
+        maksimal 16 file, maksimal 32 MiB setelah dibuka. Batas 120 file per key per jam; 2 unggahan diproses
+        bersamaan di server.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+      requestBody:
+        required: true
+        content:
+          application/zip:
+            schema: {type: string, format: binary}
+          application/x-zip-compressed:
+            schema: {type: string, format: binary}
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        "202":
+          description: File baru masuk antrean.
+          headers:
+            X-Request-Id: {$ref: "#/components/headers/RequestId"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Submission"}
+        "200":
+          description: File ini sudah pernah dikirim key yang sama (`resubmitted` true), atau isinya sudah pernah diurai (`status` duplicate).
+          headers:
+            X-Request-Id: {$ref: "#/components/headers/RequestId"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/Submission"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "405": {$ref: "#/components/responses/Error"}
+        "413": {$ref: "#/components/responses/Error"}
+        "415": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "503": {$ref: "#/components/responses/Error"}
+
+  /integration/v1/financial-reports/{id}:
+    get:
+      tags: [Laporan keuangan]
+      operationId: getFinancialReportFile
+      summary: Status satu file
+      description: Hanya file yang dikirim dengan key yang sama. Polling 5–10 detik sudah cukup.
+      parameters:
+        - $ref: "#/components/parameters/RequestId"
+        - name: id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Status file.
+          headers:
+            X-Request-Id: {$ref: "#/components/headers/RequestId"}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/File"}
+        "400": {$ref: "#/components/responses/Error"}
+        "401": {$ref: "#/components/responses/Error"}
+        "403": {$ref: "#/components/responses/Error"}
+        "404": {$ref: "#/components/responses/Error"}
+        "405": {$ref: "#/components/responses/Error"}
+        "429": {$ref: "#/components/responses/Error"}
+        "503": {$ref: "#/components/responses/Error"}
+
+components:
+  securitySchemes:
+    integrationKey:
+      type: http
+      scheme: bearer
+      description: API key integrasi `oik_…` dengan izin `financial_report`. Rahasiakan di backend.
+
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Id request dari klien (`[A-Za-z0-9._-]{1,64}`), dikembalikan apa adanya. Bila tidak ada, server membuatnya.
+      schema: {type: string, maxLength: 64}
+
+  headers:
+    RequestId:
+      description: Id request untuk dicocokkan dengan log server.
+      schema: {type: string}
+    RetryAfter:
+      description: Detik sebelum mencoba lagi (pada 429 dan 503).
+      schema: {type: integer}
+
+  responses:
+    Error:
+      description: |
+        | HTTP | `error` |
+        |---|---|
+        | 400 | `not_zip`, `no_instance`, `zip_unsafe`, `empty_body`, `invalid_id` |
+        | 401 | `missing_key`, `invalid_key` |
+        | 403 | `scope_forbidden`, `ip_not_allowed` |
+        | 404 | `not_found`, `file_not_found` |
+        | 405 | `method_not_allowed` (header `Allow`) |
+        | 413 | `body_too_large` |
+        | 415 | `unsupported_media_type` |
+        | 429 | `rate_limited`, `too_many_auth_failures` |
+        | 503 | `busy`, `unavailable` |
+      headers:
+        Retry-After: {$ref: "#/components/headers/RetryAfter"}
+        X-Request-Id: {$ref: "#/components/headers/RequestId"}
+      content:
+        application/json:
+          schema: {$ref: "#/components/schemas/Error"}
+
+  schemas:
+    Error:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          examples: [not_zip]
+        message:
+          type: string
+          examples: ["File bukan zip yang valid."]
+
+    Submission:
+      allOf:
+        - $ref: "#/components/schemas/File"
+        - type: object
+          required: [resubmitted]
+          properties:
+            resubmitted:
+              type: boolean
+              description: true bila key yang sama sudah pernah mengirim file ini; `id` adalah kiriman pertama.
+
+    File:
+      type: object
+      required: [api_version, id, status, received_at]
+      properties:
+        api_version: {type: integer, const: 1}
+        id: {type: string, format: uuid}
+        status:
+          type: string
+          enum: [queued, processing, done, duplicate, rejected]
+        sha256: {type: [string, "null"], pattern: "^[0-9a-f]{64}$"}
+        size_bytes: {type: [integer, "null"]}
+        received_at: {type: string, format: date-time}
+        finished_at: {type: [string, "null"], format: date-time}
+        retry_at:
+          type: [string, "null"]
+          format: date-time
+          description: Terisi saat `queued` setelah gagal sementara; waktu percobaan berikutnya.
+        error:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  enum: [not_zip, no_instance, zip_unsafe, invalid_xbrl, unknown_entity, infected, checksum_mismatch,
+                         object_missing, too_many_attempts, invalid_report]
+                detail: {type: [string, "null"]}
+        report:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/Report"
+
+    Report:
+      type: object
+      required: [id, entity_code, entity_name, period, period_start, period_end, audit, currency, template, superseded,
+                 warnings]
+      properties:
+        id: {type: string, format: uuid}
+        entity_code: {type: string, examples: [BBCA]}
+        entity_name: {type: string}
+        period: {type: string, enum: [Q1, Q2, Q3, FY]}
+        period_start: {type: string, format: date}
+        period_end: {type: string, format: date}
+        audit: {type: string, enum: [audited, unaudited, unknown]}
+        currency: {type: string, description: Kode ISO 4217; `XXX` bila tidak dikenali}
+        template: {type: string, enum: [bank, general, basic]}
+        superseded: {type: boolean, description: true bila sudah digantikan revisi untuk periode yang sama}
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [restated, revision, template_basic, missing_lines, no_official_account, post_rejected]
+        post:
+          oneOf:
+            - type: "null"
+            - type: object
+              properties:
+                id: {type: string, format: uuid}
+                status: {type: string, enum: [draft, pending, scheduled, published, rejected, cancelled, failed]}
+                post_id: {type: [string, "null"], format: uuid, description: Id postingan di Stream setelah terbit}
+                published_at: {type: [string, "null"], format: date-time}

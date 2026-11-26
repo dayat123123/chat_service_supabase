@@ -337,6 +337,10 @@ curl -sS "https://api.contoh.co.id/integration/v1/system/health" \
 
 Error memakai format yang sama dengan bagian 2 (`missing_key`, `invalid_key`, `scope_forbidden` bila key tanpa `health_read`, `ip_not_allowed`, `rate_limited`, `unavailable`). Metode selain `GET` dijawab `405` dengan header `Allow: GET`.
 
+## 4b. Laporan keuangan emiten: `POST /integration/v1/financial-reports`
+
+Untuk sistem yang memiliki file XBRL laporan keuangan dari IDX (backend OLT, pengambil data vendor, atau skrip di PC kantor). File `instance.zip` dikirim apa adanya, diurai di layanan terpisah (`finreport`), diringkas, lalu menjadi postingan resmi yang menunggu persetujuan staf. Butuh izin **Kirim laporan keuangan** (`financial_report`). **Panduan lengkap: [laporan-keuangan.md](laporan-keuangan.md).** Rute ini dilayani layanan `finreport`, bukan `integration`, supaya unggahan dan penguraian tidak memakai kapasitas notifikasi dan bot.
+
 ## 5. Mengelola API key (Super Admin)
 
 RPC untuk web CS (semua tercatat di Kepatuhan → Jejak Audit sebagai `integration.key_create`, `integration.key_update`, `integration.key_revoke`, tanpa isi key; pemberian/pencabutan `notify_broadcast` terlihat di perubahan `scopes`):

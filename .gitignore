@@ -6,6 +6,8 @@ docker/.env.old
 docker/secrets/
 # Legacy code (csAdmin, notifEngine, csAdmin Flutter app) contains default credentials: local reference only.
 legacy/
+# Local copies of IDX XBRL reports used for manual checks; real reports never go into the repo.
+financial-reports/
 
 docker/volumes/db/data/
 docker/volumes/storage/
