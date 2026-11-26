@@ -134,6 +134,21 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 - `shared_post` di baris pesan dihitung **untuk penonton**: `{"post_id", "available": true, author_*, body (≤ 280 karakter), attachments, sentiment, stock_codes, like_count, comment_count, created_at}` bila postingan terlihat untuknya, atau `{"post_id", "available": false}` bila dihapus/ditahan/disembunyikan/saling blokir. Buka detail dengan `get_post`.
 - Pratinjau room (`last_message_preview`) untuk pesan tanpa teks tetap `[lampiran]`.
 
+#### Bagikan ke beberapa tujuan (`0198`)
+
+- `get_share_limits()` -> `{"max_targets": 10, "per_hour": 60}`. `max_targets` konstanta server (`private.share_max_targets()`), tidak bisa diubah dari Hub; `per_hour` mengikuti `private.rate_limits` aksi `post_share`.
+- `search_share_targets(p_query, p_limit = 20)` (1–50) → baris campuran `kind` (`user`, `group`, `stock`), `room_id` (chat pemanggil yang sudah ada atau `null`), `user_id`, `username`, `display_name`, `avatar_url`, `is_verified`, `is_official`, `group_name`, `stock_code`, `can_send`, `reason`. Kueri kosong → kosong.
+  - **Orang:** username (awalan) atau nama tampilan, tanpa diri sendiri, akun yang saling blokir, tamu, staf, dan profil terhapus. Akun resmi hanya tampil untuk akun resmi/staf atau bila DM-nya sudah ada. `reason`: `dm_not_allowed` (kebijakan DM menolak, `can_send` false), `cannot_send` (DM ada tapi tidak bisa dikirimi), `message_request` (`can_send` true, pesan pertama menjadi permintaan pesan).
+  - **Grup:** hanya grup yang diikuti; `group_admins_only` bila grup hanya-admin dan pemanggil anggota biasa.
+  - **Saham:** server tidak menyimpan nama saham (milik OLT), jadi yang dicocokkan adalah kueri empat huruf sebagai kode saham, indeks di `private.market_instruments` (kode atau nama), dan room saham yang sudah ada (awalan kode). Pencarian nama saham tetap lewat `stockSearch` aplikasi, lalu dikirim sebagai `stock_code`. `room_disabled` bila room kode itu ditutup.
+  - Chat CS tidak pernah ditampilkan.
+- `share_post_to_targets(p_post_id, p_targets, p_body = null)`: `p_targets` array 1–`max_targets` objek berisi tepat satu dari `room_id`, `user_id`, `stock_code`, plus `client_id` (uuid). Mengembalikan satu baris per tujuan: `target_index`, `kind` (`room`, `user`, `stock`), `target`, `room_id`, `status` (`sent`/`failed`), `error_code`, `message_id`.
+  - `user_id` memakai aturan `get_or_create_direct_room` (blokir, kebijakan DM, permintaan pesan, akun resmi), `stock_code` memakai `join_stock_room`, `room_id` harus chat yang diikuti (bukan chat CS). Setiap tujuan diproses dalam savepoint: gagal di satu tujuan tidak membatalkan yang lain, dan chat yang dibuat untuk tujuan gagal ikut dibatalkan.
+  - Idempoten per `client_id` (sama seperti `send_message`): kirim ulang mengembalikan pesan lama tanpa memakai kuota. Chat yang sama dua kali dalam satu panggilan → `duplicate_target`.
+  - Setiap tujuan yang terkirim memakai satu kuota `post_share` (60 per jam). Di dalam panggilan ini pemeriksaan konten berulang (`duplicate_content`) dilewati karena catatan yang sama ke banyak tujuan memang disengaja; pesan biasa tetap diperiksa.
+  - Error seluruh panggilan: `401 not_authenticated`, `400 invalid_post`, `400 invalid_targets`, `400 too_many_targets`. `error_code` per tujuan: `invalid_target`, `duplicate_target`, `not_member`, `blocked`, `dm_not_allowed`, `official_no_dm`, `user_not_found`, `invalid_stock_code`, `room_disabled`, `group_admins_only`, `post_not_found`, `share_not_allowed`, `rate_limited`, serta error kirim pesan lain (`user_muted`, `consent_required`, `content_blocked`, …).
+- `share_post_to_chat` (satu room) tetap ada untuk aplikasi lama.
+
 ### Baris baru
 
 - `feed_post`: `is_bookmarked`, `hashtags text[]`, `is_bot` (postingan dari API bot integrasi, dari `private.post_is_bot` milik agen P), `author_is_official`.
