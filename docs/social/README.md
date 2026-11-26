@@ -114,6 +114,12 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 
 Postingan resmi dari layanan riset atau dari editor kartu Hub membawa satu lampiran tambahan `{"type": "card", "source": "research" | "manual", "stock_code", "document"}` (riset menambah `research_id` dan `kind`) di `attachments` (lewat `feed_post`, `get_post`, pratinjau bagikan ke chat, dan realtime). `document` versi 1 berisi `badge`, `title`, `subtitle`, `headline`, `blocks` (`paragraph`, `list`, `callout`, `metrics`), dan `disclaimer`; formatnya di [docs/riset](../riset/README.md#2-kartu-riset-dokumen-versi-1). Aplikasi menampilkan kartu itu sebagai pengganti isi postingan; isi teks polos tetap ada untuk aplikasi lama, pencarian, dan notifikasi. Lampiran tanpa `path` ini diabaikan library lama. Hanya layanan riset dan staf yang bisa membuatnya: `posts_before_write` menolak lampiran `card` dari pengguna (`400 invalid_attachments`) dan hanya memeriksanya saat lampiran berubah, sehingga suka dan reaksi tetap jalan.
 
+### Dokumen di postingan resmi (`0200`)
+
+Postingan resmi bisa membawa sampai 5 dokumen: `{"type": "file", "file": {"bucket": "post-files", "path": "<akun>/<uuid>/file.<ext>", "name", "mime", "size"}}`. Jenis yang diterima PDF, XLSX, CSV (≤ 10 MB), DOCX, dan PPTX (≤ 20 MB); format lama yang bisa memuat makro tidak diterima. Bucket `post-files` privat: aplikasi membuka file dengan signed URL, dan semua pengguna yang login boleh membacanya. Elemen ini sengaja tanpa `path` di tingkat atas supaya library lama tidak menganggapnya gambar.
+
+Hanya staf (lewat `cs_api.community_save_post`) yang bisa melampirkannya. Server memeriksa bahwa file ada di folder akun resmi itu, lalu mengambil jenis dan ukurannya dari metadata storage. Kode error: `400 too_many_files`, `400 invalid_file`, `404 file_not_found`, `400 file_too_large`, `400 invalid_file_type`, `400 duplicate_file`, `400 invalid_file_name`. `posts_before_write` menolak lampiran `file` dari pengguna biasa. File yang diunggah tetapi tidak dipakai postingan mana pun dibersihkan cron `post-files-maintenance` (setiap hari, file berumur lebih dari sehari).
+
 ### Reaksi emoji pada post (`0196`)
 
 - Satu reaksi per orang per post, dari emoji yang sama dengan reaksi pesan (`get_client_config().config.post_reactions`). `👍` disimpan sebagai `like` di `public.reactions.type`, jadi like dari klien lama otomatis menjadi jempol. `❤` tanpa variation selector dinormalkan. Komentar tetap hanya menerima `like`.
