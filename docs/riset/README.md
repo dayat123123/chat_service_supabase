@@ -50,6 +50,18 @@ Hub (unggah) ────┘                               │
 | Postingan yang sudah ada | `private.research_sync_post` memperbarui lampiran `cs.community_posts` dan `public.posts` (yang sudah terbit) setiap ada dokumen lolos atau dihapus staf; lampiran dokumen lain dan kartu tidak diubah |
 | Hapus | Staf menghapus dari detail laporan (`cs_api.research_remove_document`); filenya dibersihkan cron `post-files-maintenance` setelah sehari |
 
+### Notifikasi ke pemantau saham (`0203`)
+
+| Hal | Aturan |
+|---|---|
+| Pemicu | Trigger `community_posts_research_notify` saat postingan resmi yang tertaut laporan riset berubah menjadi `published`, baik lewat posting otomatis maupun persetujuan staf |
+| Saluran | Kampanye `cs.community_campaigns` biasa: audiens `stock` = `entity_code`, tertaut ke postingan, status `scheduled` dengan `send_at` = terbit + `research.notify_delay_seconds` (bawaan 120). Dikirim cron `cs-community` sebagai notifikasi `announcement` (lonceng + push), jadi aplikasi tidak perlu diubah dan statistik bukanya ikut tercatat |
+| Dilewati | `disabled` (saklar `research_config.notify_watchers` mati), `older_period` (ada laporan jenis dan emiten sama dengan `period_end` lebih baru), `stale` (`period_end` lebih tua dari `research.notify_max_age_days`, bawaan 183), `revision` (periode yang sama sudah dikabarkan) |
+| Unggahan beruntun | Kampanye `scheduled` milik periode yang sama atau lebih lama dari emiten itu dibatalkan saat periode lebih baru terbit (`replaced`), jadi unggahan Q2 + Q3 sekaligus hanya mengabarkan Q3 |
+| Judul dan isi | `$KODE · <judul kartu>` (maks. 120) dan headline kartu (fallback nama emiten) |
+| Pengaturan | Super Admin di Hub, `cs_api.research_save_config(p_official_account, p_auto_publish, p_notify_watchers)`; `p_notify_watchers` null = tidak berubah. Tercatat `research.config`; setiap kampanye tercatat `research.notify` |
+| Gagal | Kesalahan saat membuat kampanye tidak menggagalkan terbitnya postingan; laporan ditandai `failed` dan staf bisa mengirim manual dari Komunitas → Notifikasi |
+
 ## 2. Kartu (dokumen versi 1)
 
 Dokumen adalah tata letak sebagai data: server menentukan isi dan urutannya, aplikasi merender blok-blok itu berurutan. Jenis blok baru bisa ditambahkan tanpa mengubah aplikasi lama, karena blok yang tidak dikenal dilewati. Format kartu yang sama dipakai postingan riset dan postingan resmi yang dibuat staf di Hub.

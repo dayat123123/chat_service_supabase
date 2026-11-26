@@ -873,6 +873,7 @@ Dokumen yang dikirim sistem lain lewat API juga muncul di bagian ini.
 
 - **Akun resmi** yang memposting ringkasan. Tanpa akun resmi yang aktif, file tetap diurai tetapi postingan tidak dibuat.
 - **Posting otomatis**: ringkasan langsung terbit tanpa persetujuan, **hanya** untuk laporan tanpa peringatan. Bawaannya **Mati**. Nyalakan hanya setelah ringkasan beberapa musim laporan terbukti selalu benar.
+- **Notifikasi ke pemantau saham** (bawaannya **Nyala**): 2 menit setelah postingan riset terbit, nasabah yang memantau saham itu menerima notifikasi di lonceng dan push HP. Notifikasi hanya dikirim untuk laporan periode terbaru emiten itu yang periodenya belum lewat 183 hari. Laporan periode lama, revisi periode yang sudah dikabarkan, dan laporan yang tergantikan periode lebih baru dalam 2 menit itu tidak dikabarkan. Jadwalnya muncul di **Komunitas → Notifikasi** dan bisa dibatalkan di sana sebelum waktunya. Status notifikasi tiap laporan tampil di detail laporan, di bagian **Postingan resmi**.
 - Setiap perubahan tercatat di Jejak Audit.
 
 ## 6. Situasi darurat

@@ -6,6 +6,15 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 26 November 2026
 
+### Riset: notifikasi ke pemantau saham (migrasi `0203`, Hub)
+
+- Saat postingan riset terbit, nasabah yang memantau saham itu kini menerima notifikasi (lonceng dan push) 2 menit kemudian. Ketuk notifikasinya untuk membuka postingan riset.
+- Hanya laporan periode terbaru emiten itu yang dikabarkan. Unggahan laporan periode lama, revisi, dan laporan yang periodenya sudah lewat setengah tahun tidak mengirim notifikasi.
+- Notifikasinya berupa kampanye biasa di **Komunitas → Notifikasi**, jadi bisa dibatalkan sebelum terkirim dan statistik bukanya tercatat. Detail laporan riset menampilkan status notifikasinya.
+- Super Admin bisa mematikannya di **Riset → Pengaturan posting → Notifikasi ke pemantau saham** (bawaannya menyala).
+- Aplikasi tidak perlu diperbarui.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up` (menjalankan migrasi). Kong tidak berubah.
+
 ### Riset: unggah zip bersama dokumennya (migrasi `0202`, layanan `research` 0.3.1, Hub)
 
 - Di **Komunitas → Riset → Unggah laporan**, file yang diseret atau dipilih kini masuk daftar **Siap diunggah** dulu. Zip laporan dan PDF/Excel-nya diperiksa di daftar, dokumen dipasangkan ke laporannya, lalu semuanya dikirim bersama dengan tombol **Unggah**.
