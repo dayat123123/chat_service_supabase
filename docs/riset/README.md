@@ -48,7 +48,7 @@ Hub (unggah) ────┘                               │
 | Pemeriksaan | Worker, satu dokumen sekali jalan dan hanya saat antrean file kosong: SHA-256, isi sesuai jenis, PDF tanpa `/JavaScript`, `/JS`, `/Launch`, XLSX tanpa makro, ClamAV. Status `queued` → `processing` → `ready` / `rejected` |
 | Lampiran | `{"type": "file", "file": {"bucket": "post-files", "path", "name", "mime", "size"}}` sebelum kartu. Nama default `KODE Laporan Keuangan Kuartal III 2026.pdf` |
 | Postingan yang sudah ada | `private.research_sync_post` memperbarui lampiran `cs.community_posts` dan `public.posts` (yang sudah terbit) setiap ada dokumen lolos atau dihapus staf; lampiran dokumen lain dan kartu tidak diubah |
-| Hapus | Staf menghapus dari detail laporan (`cs_api.research_remove_document`); filenya dibersihkan cron `post-files-maintenance` setelah sehari |
+| Hapus | Staf menghapus dari detail laporan (`cs_api.research_remove_document`); filenya dibersihkan job `housekeeping` setelah sehari (`0204`) |
 
 ### Notifikasi ke pemantau saham (`0203`)
 

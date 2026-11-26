@@ -7,6 +7,7 @@ Isi antrean berasal dari dua sumber:
 - **Penghapusan akun**: avatar (`avatars`), lampiran postingan dan lampiran chat (`attachments`), serta dokumen chat CS (`cs-documents`) milik akun yang dihapus.
 - **Retensi surat**: dokumen surat yang masa simpannya sudah habis (`care-documents`).
 - **Retensi bukti**: folder bucket `evidence` milik bukti karantina yang masa simpannya habis (alasan `evidence_expired`).
+- **Housekeeping** (`0204`, job `housekeeping` tiap jam): lampiran konten yang arsipnya habis (`archive_expired`), foto profil/grup yang diganti (`avatar_replaced`), unggahan yang tidak pernah terkirim (`orphan_upload`), file Pusat Bantuan yang tidak dipakai (`faq_unused`), dan dokumen postingan resmi yang tidak dipakai (`post_file_unused`). Rinciannya di [docs/panduan/retensi-data.md](../../docs/panduan/retensi-data.md#8-housekeeping-tiap-jam-0204).
 
 ## Salinan bukti (karantina bukti)
 

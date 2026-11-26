@@ -39,7 +39,7 @@ select tests.authenticate_agent(:'kirana');
 select throws_ok($$select cs_api.compliance_confirm_policy('retention.chat_years', '7')$$, 'PT403', 'policy_locked',
   'Retensi chat CS tidak lagi diubah dari tab Kebijakan');
 select cs_api.retention_overview() as overview \gset
-select is(jsonb_array_length(:'overview'::jsonb -> 'rules'), 14, 'Katalog retensi memuat empat belas aturan');
+select is(jsonb_array_length(:'overview'::jsonb -> 'rules'), 18, 'Katalog retensi memuat delapan belas aturan');
 select is((select r ->> 'value' from jsonb_array_elements(:'overview'::jsonb -> 'rules') r where r ->> 'key' = 'retention.posts_years'),
   '5', 'Post bawaan disimpan lima tahun');
 select throws_ok($$select cs_api.retention_request_change('retention.posts_years', 31, 'Penyesuaian kebijakan internal')$$,

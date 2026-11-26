@@ -78,7 +78,7 @@ SECRET_NAMES  := postgres_password jwt_secret anon_key service_role_key dashboar
         anon-key admin-up admin-down dummy-token smoke-dummy test-dummy-olt test-nasabah-gateway test-notifier test-janitor test-flutter-it-dummy e2e-windows-dummy \
         test-media test-sentinel test-healer test-backup test-integration test-research test-link-preview test-classifier check-go-comments secrets-scan backup-snapshots restore-pitr \
         smoke-cs cs-race cs-demo cs-staff cs-bootstrap-admin cs-mfa-reset cs-console-react test-cs-console e2e-cs-console \
-        testkit test-security test-zap scan-deps load-test load-integration chaos-test loadtest-cleanup
+        testkit test-security test-zap scan-deps load-test load-integration chaos-test loadtest-cleanup prune-images
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
@@ -111,9 +111,13 @@ endif
 else
 	$(COMPOSE) up -d --build --wait --wait-timeout 900 --remove-orphans
 endif
+	@$(if $(NO_PRUNE),true,bash scripts/prune-images.sh)
 	@$(COMPOSE) ps
 	@echo "API: $$(grep '^SUPABASE_PUBLIC_URL=' $(ENV) | cut -d= -f2)  (profile $(PROFILE))"
 endif
+
+prune-images: ## Remove old versions of this stack's images and build cache older than 7 days (up runs it; NO_PRUNE=1 skips, DRY_RUN=1 lists)
+	@bash scripts/prune-images.sh
 
 down: ## Stop all services (data is kept)
 ifeq ($(PROFILE),cluster)

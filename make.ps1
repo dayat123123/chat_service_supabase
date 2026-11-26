@@ -24,7 +24,8 @@ param(
                  'backup-snapshots', 'restore-pitr',
                  'smoke-cs', 'cs-race', 'cs-demo',
                  'cs-staff', 'cs-bootstrap-admin', 'cs-mfa-reset', 'cs-console-react', 'test-cs-console', 'e2e-cs-console',
-                 'testkit', 'test-security', 'test-zap', 'scan-deps', 'load-test', 'load-integration', 'chaos-test', 'loadtest-cleanup')]
+                 'testkit', 'test-security', 'test-zap', 'scan-deps', 'load-test', 'load-integration', 'chaos-test', 'loadtest-cleanup',
+                 'prune-images')]
     [string]$Target = 'help',
     [Alias('Profile')]
     [ValidateSet('dev', 'single', 'cluster')]
@@ -44,7 +45,8 @@ param(
     [string]$Experiments = '',
     [switch]$Strict,
     [switch]$ThirdParty,
-    [switch]$DryRun
+    [switch]$DryRun,
+    [switch]$NoPrune
 )
 
 $ErrorActionPreference = 'Stop'
@@ -119,6 +121,52 @@ function Remove-Containers {
     foreach ($name in $Names) {
         if (& docker ps -aq --filter "name=^$name$") { Invoke-Docker @('rm', '-f', $name) | Out-Null }
     }
+}
+
+function Get-ImageReferences {
+    $files = @(Get-ChildItem -LiteralPath 'docker' -Filter '*.yml' -File) + @(Get-Item -LiteralPath 'make.ps1', 'Makefile')
+    $files += @(Get-ChildItem -LiteralPath 'services', 'docker' -Recurse -File -Filter 'Dockerfile*' -ErrorAction SilentlyContinue)
+    $hubDockerfile = Join-Path $HubDir 'Dockerfile'
+    if (Test-Path -LiteralPath $hubDockerfile) { $files += Get-Item -LiteralPath $hubDockerfile }
+    $pattern = '([a-z0-9][a-z0-9._/-]*):([A-Za-z0-9._-]+)(@sha256:[0-9a-f]{64})?'
+    $refs = @{ Tags = @{}; Digests = @{}; Repos = @{} }
+    foreach ($file in $files) {
+        $compose = $file.Extension -eq '.yml' -and $file.DirectoryName -eq (Resolve-Path 'docker').Path
+        foreach ($m in [regex]::Matches((Get-Content -LiteralPath $file.FullName -Raw), $pattern)) {
+            $repo = $m.Groups[1].Value
+            if ($compose) { $refs.Repos[$repo] = $true }
+            $refs.Tags["${repo}:$($m.Groups[2].Value)"] = $true
+            if ($m.Groups[3].Success) { $refs.Digests["$repo$($m.Groups[3].Value)"] = $true }
+        }
+    }
+    $refs
+}
+
+# Removes old versions of this stack's images only: olt-social/* tags and pinned upstream digests that
+# no compose file, Makefile, make.ps1 or Dockerfile refers to any more, plus untagged build leftovers.
+# Images used by a container are kept (docker rmi refuses them). Build cache unused for 7 days is pruned.
+function Invoke-PruneImages {
+    $ErrorActionPreference = 'Continue'
+    $refs = Get-ImageReferences
+    $removed = 0
+    $rows = & docker image ls --digests --format '{{.Repository}}|{{.Tag}}|{{.Digest}}|{{.ID}}'
+    if ($LASTEXITCODE -ne 0) { Write-Warning 'docker image ls failed; skipping image prune'; return }
+    foreach ($row in $rows) {
+        $repo, $tag, $digest, $id = $row -split '\|'
+        $ours = $repo -like 'olt-social/*' -or $refs.Repos.ContainsKey($repo)
+        if ($repo -ne '<none>' -and -not $ours) { continue }
+        if ($tag -ne '<none>' -and $refs.Tags.ContainsKey("${repo}:$tag")) { continue }
+        if ($digest -ne '<none>' -and $refs.Digests.ContainsKey("$repo@$digest")) { continue }
+        if ($tag -eq '<none>' -and $digest -ne '<none>' -and $repo -notlike 'olt-social/*' -and
+            -not ($refs.Digests.Keys | Where-Object { $_ -like "$repo@*" })) { continue }
+        $ref = if ($tag -ne '<none>') { "${repo}:$tag" } elseif ($digest -ne '<none>' -and $repo -ne '<none>') { "$repo@$digest" } else { $id }
+        if ($DryRun) { Write-Host "would remove $ref"; continue }
+        & docker rmi $ref 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { $removed++ }
+    }
+    if ($DryRun) { return }
+    & docker builder prune -f --filter 'until=168h' 2>$null | Out-Null
+    Write-Host "Image prune: removed $removed old image reference(s); build cache older than 7 days pruned"
 }
 
 function Get-EnvValue {
@@ -222,6 +270,7 @@ switch ($Target) {
 
   up            Build and start the stack, wait until healthy
   down          Stop all services (data is kept)
+  prune-images  Remove old versions of this stack's images and build cache older than 7 days (up runs it; -NoPrune skips)
   logs          Follow logs (filter: -Service auth-bridge)
   ps            Service status
   reset         DELETE all volumes (DB & storage), then start again (-Yes)
@@ -302,10 +351,12 @@ switch ($Target) {
             if ($LASTEXITCODE -ne 0) { throw "docker compose config --services failed (exit $LASTEXITCODE)" }
         }
         Invoke-Compose $upArgs
+        if (-not $NoPrune) { Invoke-PruneImages }
         Invoke-Compose @('ps')
         Write-Host "API: $(Get-EnvValue 'SUPABASE_PUBLIC_URL')  (profile $DeployProfile)"
     }
     'down' { Invoke-Compose @('--profile', 'admin', '--profile', 'cs', 'down') }
+    'prune-images' { Invoke-PruneImages }
     'logs' {
         $logArgs = @('logs', '-f', '--tail=200')
         if ($Service) { $logArgs += $Service }
