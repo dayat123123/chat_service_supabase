@@ -461,6 +461,117 @@ paths:
               schema: {type: array, items: {$ref: "#/components/schemas/ChatMessage"}}
         default: {$ref: "#/components/responses/RpcError"}
 
+  /rest/v1/rpc/get_share_limits:
+    post:
+      tags: [Pesan]
+      operationId: getShareLimits
+      summary: Batas berbagi ke beberapa tujuan
+      responses:
+        "200":
+          description: Batas dari server
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [max_targets, per_hour]
+                properties:
+                  max_targets: {type: integer, description: Tujuan maksimal per panggilan share_post_to_targets (konstanta server)}
+                  per_hour: {type: integer, description: Tujuan terkirim maksimal per jam per pengguna}
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/search_share_targets:
+    post:
+      tags: [Pesan]
+      operationId: searchShareTargets
+      summary: Cari tujuan berbagi (orang, grup, saham)
+      description: |
+        Kueri kosong mengembalikan array kosong. Saham dicocokkan dari kode empat huruf, indeks, dan room saham yang
+        sudah ada; nama saham dicari di aplikasi. Chat CS tidak pernah ditampilkan.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_query]
+              properties:
+                p_query: {type: string}
+                p_limit: {type: integer, minimum: 1, maximum: 50, default: 20}
+      responses:
+        "200":
+          description: Tujuan campuran
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    kind: {type: string, enum: [user, group, stock]}
+                    room_id: {type: ["string", "null"], format: uuid}
+                    user_id: {type: ["string", "null"], format: uuid}
+                    username: {type: ["string", "null"]}
+                    display_name: {type: ["string", "null"]}
+                    avatar_url: {type: ["string", "null"]}
+                    is_verified: {type: ["boolean", "null"]}
+                    is_official: {type: ["boolean", "null"]}
+                    group_name: {type: ["string", "null"]}
+                    stock_code: {type: ["string", "null"]}
+                    can_send: {type: boolean}
+                    reason:
+                      type: ["string", "null"]
+                      description: "dm_not_allowed, cannot_send, message_request (can_send tetap true), group_admins_only, room_disabled"
+        default: {$ref: "#/components/responses/RpcError"}
+
+  /rest/v1/rpc/share_post_to_targets:
+    post:
+      tags: [Pesan]
+      operationId: sharePostToTargets
+      summary: Bagikan satu postingan ke beberapa tujuan
+      description: |
+        Maksimal `max_targets` (10) tujuan. Setiap tujuan berisi tepat satu dari `room_id`, `user_id`, `stock_code`
+        plus `client_id` untuk idempotensi. Hasil per tujuan; satu tujuan gagal tidak membatalkan yang lain.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [p_post_id, p_targets]
+              properties:
+                p_post_id: {$ref: "#/components/schemas/Uuid"}
+                p_body: {type: ["string", "null"]}
+                p_targets:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [client_id]
+                    properties:
+                      room_id: {$ref: "#/components/schemas/Uuid"}
+                      user_id: {$ref: "#/components/schemas/Uuid"}
+                      stock_code: {type: string}
+                      client_id: {$ref: "#/components/schemas/Uuid"}
+      responses:
+        "200":
+          description: Satu baris per tujuan, urut target_index
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    target_index: {type: integer}
+                    kind: {type: ["string", "null"], description: "room, user, stock; null bila tujuan tidak valid"}
+                    target: {type: ["string", "null"]}
+                    room_id: {type: ["string", "null"], format: uuid}
+                    status: {type: string, enum: [sent, failed]}
+                    error_code: {type: ["string", "null"]}
+                    message_id: {type: ["string", "null"], format: uuid}
+        default: {$ref: "#/components/responses/RpcError"}
+
   /rest/v1/rpc/edit_message:
     post:
       tags: [Pesan]

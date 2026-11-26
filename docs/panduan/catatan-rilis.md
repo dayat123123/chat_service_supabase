@@ -6,6 +6,11 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 26 November 2026
 
+### Bagikan postingan ke beberapa chat (migrasi `0198`)
+
+- Aplikasi bisa membagikan satu postingan ke beberapa orang, grup, atau room saham sekaligus, termasuk orang yang belum pernah dichat. Batas ditegakkan server: maksimal 10 tujuan sekali kirim dan 60 tujuan per jam per pengguna. Aturan DM, blokir, akun resmi, grup hanya-admin, dan room saham tertutup tetap berlaku per tujuan.
+- **Cara pasang:** `git pull --ff-only && make up`. Tidak ada perubahan Kong, layanan Go, atau Hub. Aplikasi lama tetap memakai cara satu chat; fitur baru mengikuti pembaruan library.
+
 ### Riset laporan keuangan emiten (migrasi `0197`, layanan `finreport`, Hub)
 
 - File XBRL laporan keuangan dari IDX (`instance.zip`) kini bisa dikirim lewat API `POST /integration/v1/financial-reports` atau diunggah di Hub **Komunitas → Laporan keuangan**. Server mengurainya, menghitung angka dan rasio (template bank, perusahaan umum, dan dasar), menyusun ringkasan berbahasa Indonesia tanpa AI, lalu membuat **postingan resmi berstatus menunggu persetujuan** dengan cashtag emiten. Staf lain menyetujuinya di **Postingan resmi** seperti biasa.

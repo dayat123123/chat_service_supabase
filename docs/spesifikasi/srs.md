@@ -1914,6 +1914,19 @@ Modul ini mencakup chat sosial nasabah di dalam aplikasi OLT: pesan langsung (DM
 | Antarmuka | RPC `share_post_to_chat`, `send_message`; Library: `showSharePostToChat`, `SharedPostCard` |
 | Lacak | BR-CHAT |
 
+#### FR-CHAT-23a Membagikan postingan ke beberapa tujuan
+
+| Atribut | Isi |
+|---|---|
+| Deskripsi | Sistem harus memungkinkan satu postingan dibagikan ke beberapa orang, grup, atau room saham sekaligus, dengan batas anti-spam yang ditegakkan server. |
+| Aktor | Nasabah |
+| Prakondisi | Postingan terlihat oleh pengirim |
+| Proses dan aturan | 1) `search_share_targets` mencari orang (tanpa saling blokir, tamu, staf, akun resmi bagi pengguna biasa), grup yang diikuti, dan kode saham/indeks; setiap baris membawa `can_send` dan `reason` (0198). <br>2) `share_post_to_targets` menerima maks. 10 tujuan (konstanta server, `400 too_many_targets`), masing-masing dengan `client_id` untuk idempotensi. <br>3) Tujuan orang mengikuti aturan DM (kebijakan DM, permintaan pesan, akun resmi), tujuan saham mengikuti `join_stock_room`, tujuan room harus chat yang diikuti dan bukan chat CS. <br>4) Setiap tujuan diproses terpisah; kegagalan satu tujuan tidak membatalkan yang lain. <br>5) Kuota `post_share` 60 tujuan per jam per pengguna; cek konten berulang dilewati di dalam satu panggilan. <br>6) `get_share_limits` membuka batas ke klien. |
+| Keluaran | Satu baris per tujuan: `status` `sent`/`failed`, `error_code`, `room_id`, `message_id` |
+| Kode error | `400 too_many_targets`, `400 invalid_targets`; per tujuan `invalid_target`, `duplicate_target`, `not_member`, `blocked`, `dm_not_allowed`, `official_no_dm`, `room_disabled`, `group_admins_only`, `rate_limited` |
+| Antarmuka | RPC `search_share_targets`, `share_post_to_targets`, `get_share_limits` |
+| Lacak | BR-CHAT |
+
 #### FR-CHAT-24 Kartu saham di chat
 
 | Atribut | Isi |
