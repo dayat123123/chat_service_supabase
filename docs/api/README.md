@@ -6,7 +6,7 @@ Kontrak standar untuk tim yang ingin menghubungkan aplikasi atau layanannya ke c
 |---|---|---|
 | [openapi.yaml](openapi.yaml) | OpenAPI 3.1 | Semua panggilan HTTP: tukar token, RPC chat (room, pesan, reaksi, tanda baca, mengetik, permintaan DM, grup, room saham), upload lampiran, push, konfigurasi klien, API notifikasi server, dan API kesehatan sistem untuk aplikasi internal |
 | [kesehatan-sistem.openapi.yaml](kesehatan-sistem.openapi.yaml) | OpenAPI 3.1 | Khusus API kesehatan sistem untuk aplikasi internal: `GET /integration/v1/system/health` dan `/system/nodes`. Panduan: [../integration/kesehatan-sistem.md](../integration/kesehatan-sistem.md) |
-| [laporan-keuangan.openapi.yaml](laporan-keuangan.openapi.yaml) | OpenAPI 3.1 | API kirim laporan keuangan: `POST /integration/v1/financial-reports` (body `instance.zip`) dan `GET /integration/v1/financial-reports/{id}`. Panduan: [../integration/laporan-keuangan.md](../integration/laporan-keuangan.md) |
+| [riset.openapi.yaml](riset.openapi.yaml) | OpenAPI 3.1 | API kirim riset: `POST /integration/v1/research` (body `instance.zip`) dan `GET /integration/v1/research/{id}`. Panduan: [../integration/riset.md](../integration/riset.md) |
 | [asyncapi.yaml](asyncapi.yaml) | AsyncAPI 3.0 | Event realtime lewat WebSocket: cara join, heartbeat, ganti token, dan isi setiap event |
 
 Kedua file bisa dibuka di editor apa pun yang mendukung standarnya. Misalnya, tempel isinya ke [Swagger Editor](https://editor.swagger.io) atau [AsyncAPI Studio](https://studio.asyncapi.com), atau pakai generator klien OpenAPI/AsyncAPI untuk bahasa yang dipakai.

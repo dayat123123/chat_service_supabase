@@ -33,9 +33,9 @@ http:
       buffering:
         maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_INTEGRATION" | default "2097152" }}
         memRequestBodyBytes: 1048576
-    body-finreport:
+    body-research:
       buffering:
-        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_FINREPORT" | default "8388608" }}
+        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_RESEARCH" | default "8388608" }}
         memRequestBodyBytes: 1048576
 
     security-headers:

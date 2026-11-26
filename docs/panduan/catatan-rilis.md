@@ -6,6 +6,24 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 26 November 2026
 
+### Riset: pipeline umum dan kartu riset di aplikasi (migrasi `0199`, layanan `research`, Hub)
+
+- Fitur laporan keuangan dari rilis `0197` kini menjadi fitur **Riset** yang umum. Laporan keuangan emiten adalah jenis pertama; jenis lain menyusul satu per satu dengan alur yang sama.
+- Postingan riset sekarang membawa **kartu**: judul, kalimat utama, paragraf pembuka, angka kunci, poin bernomor, kotak "Poin utama", dan disclaimer. Bentuknya ditentukan server, jadi tampilannya bisa diperbaiki tanpa merilis ulang aplikasi. Aplikasi yang belum memperbarui library tetap menampilkan teks biasa seperti sebelumnya.
+- Staf juga bisa membuat **postingan resmi berbentuk kartu** di **Komunitas → Postingan resmi → Buat postingan**: pilih tampilan **Kartu**, susun paragraf, daftar, kotak sorotan, dan deretan angka, lalu lihat pratinjaunya. Teks biasa untuk aplikasi lama dibuat otomatis dari isi kartu dan ikut diperiksa daftar kata terlarang.
+- Nama-nama berubah:
+  - layanan `finreport` → `research`;
+  - alamat API `/integration/v1/financial-reports` → `/integration/v1/research`;
+  - izin API key **Kirim laporan keuangan** → **Kirim riset** (key yang sudah ada otomatis ikut);
+  - tab Hub **Komunitas → Laporan keuangan** → **Komunitas → Riset**;
+  - skrip pengirim `scripts/finreport/kirim-laporan.ps1` → `scripts/research/kirim-riset.ps1`, dengan variabel lingkungan `RESEARCH_KEY`.
+  Data, pengaturan akun resmi, dan pengaturan posting otomatis tetap terbawa.
+- **Cara pasang:**
+  1. `git pull --ff-only`, lalu perbarui Hub dan jalankan `make up`. Perintah ini membangun image `olt-social/research:0.2.0`, menjalankan migrasi, dan menghapus container lama `finreport`.
+  2. Buat ulang Kong sekali: `docker compose -f docker/compose.yml -f docker/compose.dev.yml up -d --force-recreate kong` (profil produksi: `compose.prod.yml`).
+  3. Di **Kesehatan sistem**, layanan **Riset** harus hijau.
+- **Untuk pengirim API:** ganti alamat ke `/integration/v1/research`. API key yang sama tetap dipakai.
+
 ### Bagikan postingan ke beberapa chat (migrasi `0198`)
 
 - Aplikasi bisa membagikan satu postingan ke beberapa orang, grup, atau room saham sekaligus, termasuk orang yang belum pernah dichat. Batas ditegakkan server: maksimal 10 tujuan sekali kirim dan 60 tujuan per jam per pengguna. Aturan DM, blokir, akun resmi, grup hanya-admin, dan room saham tertutup tetap berlaku per tujuan.

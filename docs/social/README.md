@@ -110,6 +110,10 @@ Persentase dihitung dari postingan berlabel dengan bobot penulis (akun baru tida
 - Disiarkan seperti tanda baca: `realtime.send` event **`reaction`** ke channel privat `room:<room_id>` dengan payload `{message_id, user_id, emoji, reactions: [{emoji, count}]}` (tanpa `me`; klien menghitung sendiri dari `user_id`).
 - Tidak tersedia di chat CS (`400 reactions_not_supported`). Error lain: `400 invalid_emoji`, `404 message_not_found` (bukan anggota, pesan dihapus/tidak terlihat, atau saling blokir), `429 rate_limited` (`message_reaction` 60/menit).
 
+### Kartu di postingan (`0199`)
+
+Postingan resmi dari layanan riset atau dari editor kartu Hub membawa satu lampiran tambahan `{"type": "card", "source": "research" | "manual", "stock_code", "document"}` (riset menambah `research_id` dan `kind`) di `attachments` (lewat `feed_post`, `get_post`, pratinjau bagikan ke chat, dan realtime). `document` versi 1 berisi `badge`, `title`, `subtitle`, `headline`, `blocks` (`paragraph`, `list`, `callout`, `metrics`), dan `disclaimer`; formatnya di [docs/riset](../riset/README.md#2-kartu-riset-dokumen-versi-1). Aplikasi menampilkan kartu itu sebagai pengganti isi postingan; isi teks polos tetap ada untuk aplikasi lama, pencarian, dan notifikasi. Lampiran tanpa `path` ini diabaikan library lama. Hanya layanan riset dan staf yang bisa membuatnya: `posts_before_write` menolak lampiran `card` dari pengguna (`400 invalid_attachments`) dan hanya memeriksanya saat lampiran berubah, sehingga suka dan reaksi tetap jalan.
+
 ### Reaksi emoji pada post (`0196`)
 
 - Satu reaksi per orang per post, dari emoji yang sama dengan reaksi pesan (`get_client_config().config.post_reactions`). `👍` disimpan sebagai `like` di `public.reactions.type`, jadi like dari klien lama otomatis menjadi jempol. `❤` tanpa variation selector dinormalkan. Komentar tetap hanya menerima `like`.
