@@ -29,6 +29,7 @@ type Config struct {
 	TrustedProxies        []netip.Prefix
 	KeyCacheTTL           time.Duration
 	MaxFileBytes          int64
+	MaxDocumentBytes      int64
 	MaxUploads            int
 	AuthFailuresPerMinute int
 	RequestTimeout        time.Duration
@@ -52,6 +53,7 @@ func Load() (Config, error) {
 		InstanceID:            stringEnv("INSTANCE_ID", hostname()+"-"+suffix()),
 		KeyCacheTTL:           durationEnv("KEY_CACHE_TTL", 30*time.Second, &errs),
 		MaxFileBytes:          int64(intEnv("MAX_FILE_BYTES", 8<<20, &errs)),
+		MaxDocumentBytes:      int64(intEnv("MAX_DOCUMENT_BYTES", 20<<20, &errs)),
 		MaxUploads:            intEnv("MAX_UPLOADS", 2, &errs),
 		AuthFailuresPerMinute: intEnv("AUTH_FAILURES_PER_MINUTE", 30, &errs),
 		RequestTimeout:        durationEnv("REQUEST_TIMEOUT", 30*time.Second, &errs),
@@ -83,6 +85,7 @@ func Load() (Config, error) {
 		{cfg.ClamdAddr != "", "CLAMD_ADDR must not be empty"},
 		{within(cfg.KeyCacheTTL, time.Second, 5*time.Minute), "KEY_CACHE_TTL must be between 1s and 5m"},
 		{cfg.MaxFileBytes >= 64<<10 && cfg.MaxFileBytes <= 8<<20, "MAX_FILE_BYTES must be between 65536 and 8388608"},
+		{cfg.MaxDocumentBytes >= 64<<10 && cfg.MaxDocumentBytes <= 20<<20, "MAX_DOCUMENT_BYTES must be between 65536 and 20971520"},
 		{cfg.MaxUploads >= 1 && cfg.MaxUploads <= 16, "MAX_UPLOADS must be between 1 and 16"},
 		{cfg.AuthFailuresPerMinute >= 1 && cfg.AuthFailuresPerMinute <= 10000, "AUTH_FAILURES_PER_MINUTE must be between 1 and 10000"},
 		{within(cfg.RequestTimeout, 5*time.Second, 2*time.Minute), "REQUEST_TIMEOUT must be between 5s and 2m"},

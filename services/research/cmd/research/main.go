@@ -29,7 +29,7 @@ import (
 
 const (
 	service = "research"
-	version = "0.2.0"
+	version = "0.3.0"
 )
 
 func main() {
@@ -57,16 +57,17 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 	objects := storage.New(cfg.StorageURL, cfg.JWTSecret, cfg.JWTIssuer, cfg.RequestTimeout)
 	limits := xbrl.DefaultLimits()
 	jobs := worker.New(worker.Options{
-		Store:        rest,
-		Objects:      objects,
-		Scanner:      clamd.New(cfg.ClamdAddr, cfg.ScanTimeout),
-		Log:          log,
-		Instance:     cfg.InstanceID,
-		PollInterval: cfg.PollInterval,
-		Lease:        cfg.Lease,
-		JobTimeout:   cfg.JobTimeout,
-		MaxFileBytes: cfg.MaxFileBytes,
-		Limits:       limits,
+		Store:            rest,
+		Objects:          objects,
+		Scanner:          clamd.New(cfg.ClamdAddr, cfg.ScanTimeout),
+		Log:              log,
+		Instance:         cfg.InstanceID,
+		PollInterval:     cfg.PollInterval,
+		Lease:            cfg.Lease,
+		JobTimeout:       cfg.JobTimeout,
+		MaxFileBytes:     cfg.MaxFileBytes,
+		MaxDocumentBytes: cfg.MaxDocumentBytes,
+		Limits:           limits,
 	})
 	var beats *heartbeat.Loop
 	gateway := api.New(api.Options{
@@ -76,6 +77,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		Keys:                  keys.NewCache(rest, cfg.KeyCacheTTL),
 		ClientIP:              clientip.New(cfg.TrustedProxies).Of,
 		MaxFileBytes:          cfg.MaxFileBytes,
+		MaxDocumentBytes:      cfg.MaxDocumentBytes,
 		MaxUploads:            cfg.MaxUploads,
 		AuthFailuresPerMinute: cfg.AuthFailuresPerMinute,
 		RequestTimeout:        cfg.RequestTimeout,
@@ -117,7 +119,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 	})
 	ops.Handle("GET /metrics", metrics.Handler(func() metrics.Snapshot {
 		snap := gateway.Snapshot()
-		reports, busy := jobs.Counts()
+		reports, documents, busy := jobs.Counts()
 		requests := make(map[metrics.Request]uint64, len(snap.Requests))
 		for k, v := range snap.Requests {
 			requests[metrics.Request{Endpoint: k.Endpoint, Code: k.Code}] = v
@@ -130,6 +132,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 			KeysCached:    snap.KeysCached,
 			StoreFailures: snap.StoreFailures,
 			Reports:       reports,
+			Documents:     documents,
 			WorkerBusy:    busy,
 			LastHeartbeat: beats.LastSuccess(),
 		}
@@ -161,7 +164,8 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		}()
 	}
 	log.Info("Research listening", "port", cfg.Port, "ops_port", cfg.OpsPort, "instance", cfg.InstanceID,
-		"version", version, "max_uploads", cfg.MaxUploads, "max_file_bytes", cfg.MaxFileBytes)
+		"version", version, "max_uploads", cfg.MaxUploads, "max_file_bytes", cfg.MaxFileBytes,
+		"max_document_bytes", cfg.MaxDocumentBytes)
 
 	background, stopBackground := context.WithCancel(context.Background())
 	var wg sync.WaitGroup

@@ -119,7 +119,7 @@ Setiap node adalah satu container. Kartu yang sama tampil di Hub, **Pengaturan â
 | `classifier` (2 replika) | Model AI lokal untuk menilai gambar tidak pantas (NSFW) sebelum boleh tampil |
 | `clamav` | Antivirus untuk dokumen dan video chat CS (signature diperbarui otomatis) |
 | `integration` (2 replika) | API `/integration/v1` untuk sistem OLT: notifikasi transaksi ke nasabah dan postingan akun bot resmi, dengan API key yang dibuat di Hub |
-| `research` | Riset: menerima data riset (saat ini file XBRL laporan keuangan IDX) di `/integration/v1/research` dan dari Hub, mengurai satu file sekali jalan, lalu membuat ringkasan dan kartu riset sebagai postingan resmi yang menunggu persetujuan. Container sendiri dengan batas CPU dan memori kecil agar tidak membebani layanan lain |
+| `research` | Riset: menerima data riset (saat ini file XBRL laporan keuangan IDX) di `/integration/v1/research` dan dari Hub, mengurai satu file sekali jalan, lalu membuat ringkasan dan kartu riset sebagai postingan resmi yang menunggu persetujuan. Dokumen sumber (PDF/XLSX laporan asli) diperiksa isi dan antivirusnya sebelum ikut dilampirkan. Container sendiri dengan batas CPU dan memori kecil agar tidak membebani layanan lain |
 | `nasabah-gateway` | Jembatan menu **Akun Nasabah** di Hub ke csAdmin OLT dengan token integrasi Ed25519. Khusus staf, dan memeriksa 2FA |
 | `notifier` | Mengambil antrean push di database dan mengirimnya ke HP lewat FCM. Kunci Firebase diunggah Super Admin di Hub (disimpan di Vault) |
 | `link-preview` | Mengambil judul dan gambar untuk pratinjau tautan, dengan pengaman SSRF (tidak bisa diarahkan ke jaringan internal) |

@@ -140,7 +140,7 @@ services:
       <<: *deploy
       replicas: 2
   research:
-    image: ${REGISTRY}/olt-social/research:0.2.0
+    image: ${REGISTRY}/olt-social/research:0.3.0
     deploy:
       <<: *deploy
       replicas: 1

@@ -13,6 +13,7 @@ func TestRender(t *testing.T) {
 		Inflight:      1,
 		Capacity:      2,
 		Reports:       map[string]uint64{"done": 2, "rejected": 1},
+		Documents:     map[string]uint64{"ready": 4},
 		WorkerBusy:    true,
 		LastHeartbeat: time.Unix(1700000000, 0),
 	})
@@ -21,6 +22,7 @@ func TestRender(t *testing.T) {
 		`research_requests_total{endpoint="submit",code="ok"} 3`,
 		"research_uploaded_bytes_total 2048",
 		`research_reports_total{result="done"} 2`,
+		`research_documents_total{result="ready"} 4`,
 		"research_max_uploads 2",
 		"research_worker_busy 1",
 		"research_last_heartbeat_timestamp_seconds 1700000000",

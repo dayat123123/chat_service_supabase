@@ -25,6 +25,17 @@ const (
 	codeUnavailable         = "unavailable"
 	codeCanceled            = "canceled"
 	codeInternal            = "internal_error"
+	codeUnsupportedDocument = "unsupported_document_type"
+	codeInvalidDocumentName = "invalid_document_name"
+	codeLengthRequired      = "length_required"
+	codeInvalidDocument     = "invalid_document"
+	codeIncompleteBody      = "incomplete_body"
+	codeFileRejected        = "file_rejected"
+)
+
+const (
+	messageEmptyDocument    = "Body kosong. Kirim isi dokumen PDF atau XLSX."
+	messageDocumentTooLarge = "Dokumen melebihi batas ukuran %d MiB."
 )
 
 var messages = map[string]string{
@@ -45,6 +56,12 @@ var messages = map[string]string{
 	codeBusy:                "Server sedang sibuk menerima file lain. Coba lagi setelah Retry-After.",
 	codeUnavailable:         "Penyimpanan atau database sedang tidak bisa dihubungi. Coba lagi setelah Retry-After.",
 	codeInternal:            "Terjadi kesalahan di server. Kirim ulang file yang sama.",
+	codeUnsupportedDocument: "Kirim dokumen PDF (Content-Type: application/pdf) atau XLSX (Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet).",
+	codeInvalidDocumentName: "Parameter name maksimal 120 karakter tanpa garis miring.",
+	codeLengthRequired:      "Header Content-Length wajib diisi untuk dokumen.",
+	codeInvalidDocument:     "Isi dokumen tidak sesuai dengan Content-Type yang dikirim.",
+	codeIncompleteBody:      "Body tidak terbaca sampai selesai. Kirim ulang dokumen yang sama.",
+	codeFileRejected:        "File laporan ini ditolak, jadi dokumennya tidak bisa dilampirkan.",
 }
 
 func writeError(w http.ResponseWriter, status int, code, detail string) {

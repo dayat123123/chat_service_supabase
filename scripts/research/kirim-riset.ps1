@@ -34,13 +34,18 @@ if ($files.Count -eq 0) {
 $headerFile = [System.IO.Path]::GetTempFileName()
 Set-Content -LiteralPath $headerFile -Value "Authorization: Bearer $key" -Encoding ascii -NoNewline
 
-function Send-Report([System.IO.FileInfo]$File) {
+$documentTypes = @{
+    '.pdf'  = 'application/pdf'
+    '.xlsx' = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+}
+
+function Send-File([System.IO.FileInfo]$File, [string]$Url, [string]$ContentType) {
     $bodyFile = [System.IO.Path]::GetTempFileName()
     $headFile = [System.IO.Path]::GetTempFileName()
     try {
         for ($attempt = 1; ; $attempt++) {
-            $code = & $curl.Source -sS -o $bodyFile -D $headFile -w '%{http_code}' -X POST $endpoint `
-                -H "@$headerFile" -H 'Content-Type: application/zip' --data-binary "@$($File.FullName)"
+            $code = & $curl.Source -sS -o $bodyFile -D $headFile -w '%{http_code}' -X POST $Url `
+                -H "@$headerFile" -H "Content-Type: $ContentType" --data-binary "@$($File.FullName)"
             $status = 0
             [void][int]::TryParse("$code", [ref]$status)
             $body = $null
@@ -63,30 +68,65 @@ function Send-Report([System.IO.FileInfo]$File) {
     }
 }
 
+function Move-Sent([System.IO.FileInfo]$File) {
+    if (-not (Test-Path -LiteralPath $sentDir)) { New-Item -ItemType Directory -Path $sentDir | Out-Null }
+    $target = Join-Path $sentDir $File.Name
+    if (Test-Path -LiteralPath $target) {
+        $target = Join-Path $sentDir ("{0}-{1}{2}" -f $File.BaseName, (Get-Date -Format 'yyyyMMddHHmmss'), $File.Extension)
+    }
+    Move-Item -LiteralPath $File.FullName -Destination $target
+}
+
+function Write-Rejected([System.IO.FileInfo]$File, $Result) {
+    $reason = 'no response'
+    if ($Result.Body) { $reason = "{0}: {1}" -f $Result.Body.error, $Result.Body.message }
+    Write-Warning ("{0}: not accepted (HTTP {1}) {2}" -f $File.Name, $Result.Status, $reason)
+}
+
+function Get-Documents([System.IO.FileInfo]$Zip) {
+    @(Get-ChildItem -LiteralPath $Folder -File |
+        Where-Object { $documentTypes.ContainsKey($_.Extension.ToLowerInvariant()) -and
+                       $_.Name.StartsWith($Zip.BaseName, [System.StringComparison]::OrdinalIgnoreCase) } |
+        Sort-Object Name)
+}
+
 $failed = 0
+$documentsSent = 0
+$documentsFailed = 0
 try {
     foreach ($file in $files) {
-        $result = Send-Report $file
-        if ($result.Status -eq 200 -or $result.Status -eq 202) {
-            $state = $result.Body.status
-            if ($result.Body.resubmitted) { $state = "$state (already sent)" }
-            Write-Host ("{0}: {1}, id {2}" -f $file.Name, $state, $result.Body.id)
-            if (-not (Test-Path -LiteralPath $sentDir)) { New-Item -ItemType Directory -Path $sentDir | Out-Null }
-            $target = Join-Path $sentDir $file.Name
-            if (Test-Path -LiteralPath $target) {
-                $target = Join-Path $sentDir ("{0}-{1}{2}" -f $file.BaseName, (Get-Date -Format 'yyyyMMddHHmmss'), $file.Extension)
-            }
-            Move-Item -LiteralPath $file.FullName -Destination $target
+        $documents = Get-Documents $file
+        $result = Send-File $file $endpoint 'application/zip'
+        if ($result.Status -ne 200 -and $result.Status -ne 202) {
+            $failed++
+            Write-Rejected $file $result
             continue
         }
-        $failed++
-        $reason = 'no response'
-        if ($result.Body) { $reason = "{0}: {1}" -f $result.Body.error, $result.Body.message }
-        Write-Warning ("{0}: not accepted (HTTP {1}) {2}" -f $file.Name, $result.Status, $reason)
+        $state = $result.Body.status
+        if ($result.Body.resubmitted) { $state = "$state (already sent)" }
+        Write-Host ("{0}: {1}, id {2}" -f $file.Name, $state, $result.Body.id)
+        $documentsOk = $true
+        foreach ($document in $documents) {
+            $url = "{0}/{1}/documents?name={2}" -f $endpoint, $result.Body.id, [uri]::EscapeDataString($document.Name)
+            $sent = Send-File $document $url $documentTypes[$document.Extension.ToLowerInvariant()]
+            if ($sent.Status -eq 200 -or $sent.Status -eq 202) {
+                $documentsSent++
+                $docState = $sent.Body.status
+                if ($sent.Body.resubmitted) { $docState = "$docState (already sent)" }
+                Write-Host ("  {0}: {1}, id {2}" -f $document.Name, $docState, $sent.Body.id)
+                Move-Sent $document
+                continue
+            }
+            $documentsFailed++
+            $documentsOk = $false
+            Write-Rejected $document $sent
+        }
+        if ($documentsOk) { Move-Sent $file }
     }
 } finally {
     Remove-Item -LiteralPath $headerFile -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host ("Done: {0} sent, {1} not accepted." -f ($files.Count - $failed), $failed)
-if ($failed -gt 0) { exit 1 }
+Write-Host ("Done: {0} reports sent, {1} not accepted; {2} documents sent, {3} not accepted." -f `
+    ($files.Count - $failed), $failed, $documentsSent, $documentsFailed)
+if ($failed -gt 0 -or $documentsFailed -gt 0) { exit 1 }

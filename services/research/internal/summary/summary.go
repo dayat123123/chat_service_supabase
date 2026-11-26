@@ -154,10 +154,10 @@ func (w writer) income() string {
 		}
 		var margins []string
 		if r := w.m.Ratio(analysis.GrossMargin); r != nil {
-			margins = append(margins, "marjin kotor "+percent(*r.Value))
+			margins = append(margins, "margin kotor "+percent(*r.Value))
 		}
 		if r := w.m.Ratio(analysis.NetMargin); r != nil {
-			margins = append(margins, "marjin bersih "+percent(*r.Value))
+			margins = append(margins, "margin bersih "+percent(*r.Value))
 		}
 		if len(margins) > 0 {
 			sentences = append(sentences, capitalize(fmt.Sprintf("%s %s.", strings.Join(margins, ", "), w.ytd())))

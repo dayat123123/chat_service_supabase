@@ -35,7 +35,7 @@ http:
         memRequestBodyBytes: 1048576
     body-research:
       buffering:
-        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_RESEARCH" | default "8388608" }}
+        maxRequestBodyBytes: {{ env "EDGE_BODY_MAX_RESEARCH" | default "20971520" }}
         memRequestBodyBytes: 1048576
 
     security-headers:

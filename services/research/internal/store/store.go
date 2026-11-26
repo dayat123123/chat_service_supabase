@@ -44,6 +44,15 @@ type Job struct {
 	Attempts   int    `json:"attempts"`
 }
 
+type DocumentJob struct {
+	ID         string `json:"id"`
+	ObjectName string `json:"object_name"`
+	Mime       string `json:"mime"`
+	SHA256     string `json:"sha256"`
+	SizeBytes  int64  `json:"size_bytes"`
+	Attempts   int    `json:"attempts"`
+}
+
 type Version struct {
 	ID          string     `json:"id"`
 	Period      string     `json:"period"`
@@ -146,6 +155,38 @@ func (p *PostgREST) Complete(ctx context.Context, fileID, instance string, repor
 
 func (p *PostgREST) Fail(ctx context.Context, fileID, instance, code, detail string, retry bool) error {
 	_, err := p.call(ctx, "research_fail", map[string]any{"p_file": fileID, "p_instance": instance, "p_code": code,
+		"p_detail": nullable(clip(detail, maxError)), "p_retry": retry})
+	return err
+}
+
+func (p *PostgREST) SubmitDocument(ctx context.Context, keyID, fileID, object, sha, name, ip string) (json.RawMessage, error) {
+	return p.call(ctx, "research_document_submit", map[string]any{"p_key_id": keyID, "p_file": fileID,
+		"p_object": object, "p_sha256": sha, "p_name": nullable(name), "p_ip": nullable(ip)})
+}
+
+func (p *PostgREST) ClaimDocument(ctx context.Context, instance string, lease time.Duration) (*DocumentJob, error) {
+	data, err := p.call(ctx, "research_document_claim", map[string]any{"p_instance": instance,
+		"p_lease_seconds": int(lease / time.Second)})
+	if err != nil {
+		return nil, err
+	}
+	if trimmed := bytes.TrimSpace(data); len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		return nil, nil
+	}
+	var job DocumentJob
+	if err := json.Unmarshal(data, &job); err != nil {
+		return nil, fmt.Errorf("%w: decode research_document_claim: %v", ErrUnavailable, err)
+	}
+	return &job, nil
+}
+
+func (p *PostgREST) CompleteDocument(ctx context.Context, id, instance, sha string) error {
+	_, err := p.call(ctx, "research_document_done", map[string]any{"p_id": id, "p_instance": instance, "p_sha256": sha})
+	return err
+}
+
+func (p *PostgREST) FailDocument(ctx context.Context, id, instance, code, detail string, retry bool) error {
+	_, err := p.call(ctx, "research_document_fail", map[string]any{"p_id": id, "p_instance": instance, "p_code": code,
 		"p_detail": nullable(clip(detail, maxError)), "p_retry": retry})
 	return err
 }

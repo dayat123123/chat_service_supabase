@@ -1110,14 +1110,16 @@ services:
   # Research (services/research, docs/riset): receives research input on /integration/v1/research
   # (API keys with the research scope) and from Hub uploads. The first kind is IDX XBRL financial
   # reports: scanned with clamav, parsed one file at a time, and turned into a pending official post
-  # with a research card document. Kept apart from the integration service and capped low (a quarter
-  # of a CPU, a quarter CPU weight under contention, 128 MB) so bursts cannot slow other services.
+  # with a research card document. Source documents (PDF/XLSX up to 20 MiB) are streamed to storage,
+  # then checked and scanned one at a time before they are attached to the post. Kept apart from the
+  # integration service and capped low (a quarter of a CPU, a quarter CPU weight under contention,
+  # 128 MB) so bursts cannot slow other services.
   research:
     <<: *base
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/research
-    image: olt-social/research:0.2.0
+    image: olt-social/research:0.3.0
     networks: [app]
     depends_on:
       migrate:

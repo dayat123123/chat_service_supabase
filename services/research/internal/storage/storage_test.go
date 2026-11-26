@@ -63,3 +63,65 @@ func TestUploadAndDownload(t *testing.T) {
 		t.Fatalf("closed server: %v", err)
 	}
 }
+
+func TestPutGetAndRemoveInOtherBuckets(t *testing.T) {
+	var gotPath, gotType, gotUpsert string
+	var gotLength int64
+	var removed []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			gotPath, gotType, gotUpsert, gotLength = r.URL.Path, r.Header.Get("Content-Type"), r.Header.Get("x-upsert"),
+				r.ContentLength
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = w.Write([]byte(`{"Key":"x"}`))
+		case http.MethodGet:
+			if r.URL.Path == "/object/authenticated/post-files/research/abc/file.pdf" {
+				_, _ = w.Write([]byte("%PDF-"))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		case http.MethodDelete:
+			removed = append(removed, r.URL.Path)
+			if strings.Contains(r.URL.Path, "gone") {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"statusCode":"404","error":"not_found"}`))
+				return
+			}
+			if strings.Contains(r.URL.Path, "broken") {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			_, _ = w.Write([]byte(`[]`))
+		}
+	}))
+	defer srv.Close()
+	c := New(srv.URL, []byte(strings.Repeat("s", 40)), "supabase", 5*time.Second)
+	ctx := context.Background()
+	body := strings.NewReader("%PDF-1.7 body")
+	if err := c.Put(ctx, PostFiles, "research/abc/file.pdf", "application/pdf", io.NopCloser(body), 13); err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/object/post-files/research/abc/file.pdf" || gotType != "application/pdf" || gotUpsert != "false" ||
+		gotLength != 13 {
+		t.Fatalf("put request %q %q %q %d", gotPath, gotType, gotUpsert, gotLength)
+	}
+	if data, err := c.Get(ctx, PostFiles, "research/abc/file.pdf", 64); err != nil || string(data) != "%PDF-" {
+		t.Fatalf("get = %q, %v", data, err)
+	}
+	if _, err := c.Get(ctx, PostFiles, "research/none/file.pdf", 64); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing: %v", err)
+	}
+	if err := c.Remove(ctx, PostFiles, "research/abc/file.pdf"); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Remove(ctx, PostFiles, "research/gone/file.pdf"); err != nil {
+		t.Fatalf("already gone: %v", err)
+	}
+	if err := c.Remove(ctx, PostFiles, "research/broken/file.pdf"); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("broken: %v", err)
+	}
+	if len(removed) != 3 || removed[0] != "/object/post-files/research/abc/file.pdf" {
+		t.Fatalf("removed = %v", removed)
+	}
+}

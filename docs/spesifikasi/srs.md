@@ -5791,6 +5791,19 @@ Modul ini mengatur semua titik temu antara Rendezvous dan sistem OLT. Prinsipnya
 | Antarmuka | Hub **Komunitas → Riset**; RPC `cs_api.research_files`, `cs_api.research_report`, `cs_api.research_create_post`, `cs_api.research_config`, `cs_api.research_save_config`; docs/riset/README.md |
 | Lacak | BR-INT, BR-KOM |
 
+#### FR-INT-25 Dokumen sumber riset
+
+| Atribut | Isi |
+|---|---|
+| Deskripsi | Sistem harus menerima dokumen sumber laporan riset (PDF atau XLSX dari bursa), memeriksanya, dan melampirkannya ke postingan riset agar nasabah bisa membaca laporan aslinya. |
+| Aktor | Sistem pengirim (API key izin `research`); staf Komunitas (izin **Buat postingan**); layanan `research`; nasabah |
+| Prakondisi | File laporan riset sudah diterima dan tidak ditolak |
+| Proses dan aturan | 1) API `POST /integration/v1/research/{id}/documents`: body PDF/XLSX apa adanya, wajib `Content-Length`, ≤ 20 MiB, query `name` opsional ≤ 120 karakter; body dialirkan ke bucket `post-files` di `research/<uuid>/file.<ext>` sambil dihitung SHA-256, lalu `public.research_document_submit` (0201). <br>2) Hub: unggah ke path yang sama (RLS hanya staf `community.post`), lalu `cs_api.research_add_document`; hanya objek milik staf itu. <br>3) Maks. 3 dokumen per laporan, 120 per key per jam; dokumen yang sama (SHA-256) untuk file yang sama tidak membuat antrean baru. <br>4) Worker memeriksa satu dokumen sekali jalan setelah antrean file kosong: SHA-256, isi sesuai jenis, PDF tanpa `/JavaScript`, `/JS`, `/Launch`, XLSX tanpa makro, ClamAV; gangguan sementara dicoba lagi 1, 4, 9, 16 menit. <br>5) Dokumen `ready` dilampirkan sebagai `{type: file, file: {bucket, path, name, mime, size}}` sebelum kartu; postingan yang sudah ada (termasuk yang sudah terbit) diperbarui `private.research_sync_post`. <br>6) Nama default `KODE Laporan Keuangan <periode> <tahun>.<ext>`. <br>7) Dokumen terinfeksi langsung dijadwalkan dihapus; dokumen yang dihapus staf atau tidak terpakai dibersihkan cron `post-files-maintenance`. <br>8) Penambahan dan penghapusan dari Hub tercatat `research.document_add` / `research.document_remove` di jejak audit. |
+| Keluaran | `private.research_documents`; lampiran `file` di `cs.community_posts` dan `public.posts` |
+| Kode error | `400 invalid_document`, `400 invalid_document_name`, `400 incomplete_body`, `400 invalid_file_type`, `400 file_too_large`, `404 object_not_found`, `409 file_rejected`, `409 too_many_documents`, `411 length_required`, `415 unsupported_document_type`; penolakan pemeriksaan `invalid_document`, `active_content`, `macro_not_allowed`, `infected` |
+| Antarmuka | API `POST /integration/v1/research/{id}/documents`; Hub **Komunitas → Riset → detail laporan → Dokumen sumber**; RPC `cs_api.research_add_document`, `cs_api.research_remove_document`; docs/integration/riset.md |
+| Lacak | BR-INT, BR-KOM |
+
 ### 4.11 Operasional (OPS)
 
 Modul ini mencakup cara server dipasang, diperbarui, dipantau, dipulihkan, dan dibersihkan. Server berjalan di Docker dengan tiga profil (`dev`, `single`, `cluster`) yang memakai image dan nama layanan yang sama; perbedaan hanya di file override compose (docs/panduan/skalabilitas.md). Profil `single` siap produksi, profil `cluster` (Docker Swarm) masih kerangka, dan database cloud terkelola tidak didukung karena sistem memakai role, ekstensi, dan Vault milik image Supabase. Logika bisnis dan aturan pemantauan berada di Postgres (fungsi SQL dan pg_cron); layanan Go buatan sendiri (sentinel, healer, backup, janitor, media, classifier, link-preview) hanya mengumpulkan data, menjalankan pekerjaan, dan melapor lewat RPC `service_role`. Kredensial operasional (tujuan dan password backup, kanal alert) dikelola Super Admin di Hub, disimpan di Vault, dan diaudit; kunci dasar infrastruktur tetap di `docker/secrets/`.

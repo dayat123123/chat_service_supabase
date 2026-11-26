@@ -22,6 +22,7 @@ type Snapshot struct {
 	KeysCached    int
 	StoreFailures int
 	Reports       map[string]uint64
+	Documents     map[string]uint64
 	WorkerBusy    bool
 	LastHeartbeat time.Time
 }
@@ -46,22 +47,17 @@ func Render(s Snapshot) string {
 	for _, k := range reqs {
 		fmt.Fprintf(&b, "research_requests_total{endpoint=%q,code=%q} %d\n", k.Endpoint, k.Code, s.Requests[k])
 	}
-	header(&b, "research_uploaded_bytes_total", "Bytes of accepted report files.", "counter")
+	header(&b, "research_uploaded_bytes_total", "Bytes of accepted report files and documents.", "counter")
 	fmt.Fprintf(&b, "research_uploaded_bytes_total %d\n", s.UploadedBytes)
 	header(&b, "research_reports_total", "Processed files by result (done, duplicate, retry, rejected, lease_lost).", "counter")
-	keys := make([]string, 0, len(s.Reports))
-	for k := range s.Reports {
-		keys = append(keys, k)
-	}
-	slices.Sort(keys)
-	for _, k := range keys {
-		fmt.Fprintf(&b, "research_reports_total{result=%q} %d\n", k, s.Reports[k])
-	}
+	results(&b, "research_reports_total", s.Reports)
+	header(&b, "research_documents_total", "Checked source documents by result (ready, retry, rejected, lease_lost).", "counter")
+	results(&b, "research_documents_total", s.Documents)
 	header(&b, "research_inflight_uploads", "Uploads holding an upload slot.", "gauge")
 	fmt.Fprintf(&b, "research_inflight_uploads %d\n", s.Inflight)
 	header(&b, "research_max_uploads", "Configured MAX_UPLOADS.", "gauge")
 	fmt.Fprintf(&b, "research_max_uploads %d\n", s.Capacity)
-	header(&b, "research_worker_busy", "1 while the worker is processing a file.", "gauge")
+	header(&b, "research_worker_busy", "1 while the worker is processing a file or a document.", "gauge")
 	busy := 0
 	if s.WorkerBusy {
 		busy = 1
@@ -78,6 +74,17 @@ func Render(s Snapshot) string {
 	}
 	fmt.Fprintf(&b, "research_last_heartbeat_timestamp_seconds %d\n", last)
 	return b.String()
+}
+
+func results(b *strings.Builder, name string, counts map[string]uint64) {
+	keys := make([]string, 0, len(counts))
+	for k := range counts {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	for _, k := range keys {
+		fmt.Fprintf(b, "%s{result=%q} %d\n", name, k, counts[k])
+	}
 }
 
 func header(b *strings.Builder, name, help, kind string) {

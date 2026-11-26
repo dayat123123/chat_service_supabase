@@ -9,10 +9,10 @@ Pipeline-nya umum. Jenis riset ditambahkan satu per satu; jenis pertama adalah *
 | Layanan | `research` (Go, `services/research`), satu container terpisah |
 | Pintu masuk | `POST /integration/v1/research` (API key izin **Kirim riset**, `research`) dan unggah di Hub |
 | Jenis yang didukung | `financial_report`: `instance.zip` XBRL dari IDX |
-| Data | `private.research_files`, `private.research_reports`, `private.research_config`; file XBRL asli di bucket `financial-reports` |
-| Postingan | `cs.community_posts` status `pending` dengan lampiran kartu (`card`), disetujui staf lain di **Komunitas → Postingan resmi** (empat mata) |
+| Data | `private.research_files`, `private.research_reports`, `private.research_documents`, `private.research_config`; file XBRL asli di bucket `financial-reports`, dokumen sumber di bucket `post-files` (`research/…`) |
+| Postingan | `cs.community_posts` status `pending` dengan lampiran kartu (`card`) dan dokumen sumber (`file`), disetujui staf lain di **Komunitas → Postingan resmi** (empat mata) |
 | Hub | **Komunitas → Riset** |
-| Tersedia sejak | Migrasi `0197` (laporan keuangan), `0199` (pipeline umum, kartu riset), layanan `research` 0.2.0 |
+| Tersedia sejak | Migrasi `0197` (laporan keuangan), `0199` (pipeline umum, kartu riset), `0201` (dokumen sumber), layanan `research` 0.3.0 |
 | Panduan API | [../integration/riset.md](../integration/riset.md) |
 
 ## 1. Alur
@@ -35,6 +35,19 @@ Hub (unggah) ────┘                               │
 2. Worker mengklaim satu file, mengunduhnya, mengecek sidik SHA-256 dan antivirus, lalu mengurainya sesuai jenis.
 3. Hasil hitung disimpan bersama dua keluaran: **ringkasan teks polos** (isi postingan, untuk aplikasi lama, pencarian, dan notifikasi) dan **dokumen kartu** (untuk aplikasi baru).
 4. Postingan resmi berstatus `pending` dibuat dalam transaksi yang sama, dengan cashtag `$KODE` sehingga ikut tampil di stream saham itu.
+5. Dokumen sumber (PDF/XLSX laporan asli) yang dikirim bersama file atau ditambahkan staf diperiksa worker. Yang lolos ikut menjadi lampiran postingan, termasuk postingan yang sudah terbit, supaya nasabah bisa membaca laporan aslinya.
+
+### Dokumen sumber
+
+| Hal | Aturan |
+|---|---|
+| Masuk dari | `POST /integration/v1/research/{id}/documents` (body PDF/XLSX apa adanya, dialirkan ke storage tanpa ditampung) atau Hub **Riset → detail laporan → Dokumen sumber** (`cs_api.research_add_document`) |
+| Jenis dan ukuran | PDF atau XLSX, maks. 20 MiB, maks. 3 per laporan |
+| Penyimpanan | Bucket privat `post-files`, path `research/<uuid>/file.pdf|xlsx`; dibuka nasabah lewat signed URL seperti dokumen postingan resmi lain (`0200`) |
+| Pemeriksaan | Worker, satu dokumen sekali jalan dan hanya saat antrean file kosong: SHA-256, isi sesuai jenis, PDF tanpa `/JavaScript`, `/JS`, `/Launch`, XLSX tanpa makro, ClamAV. Status `queued` → `processing` → `ready` / `rejected` |
+| Lampiran | `{"type": "file", "file": {"bucket": "post-files", "path", "name", "mime", "size"}}` sebelum kartu. Nama default `KODE Laporan Keuangan Kuartal III 2026.pdf` |
+| Postingan yang sudah ada | `private.research_sync_post` memperbarui lampiran `cs.community_posts` dan `public.posts` (yang sudah terbit) setiap ada dokumen lolos atau dihapus staf; lampiran dokumen lain dan kartu tidak diubah |
+| Hapus | Staf menghapus dari detail laporan (`cs_api.research_remove_document`); filenya dibersihkan cron `post-files-maintenance` setelah sehari |
 
 ## 2. Kartu (dokumen versi 1)
 
@@ -72,7 +85,7 @@ Di **Komunitas → Postingan resmi → Buat postingan**, staf bisa memilih tampi
 | Paragraf | Nama emiten, laba periode itu, dan laba kumulatif bila kuartal tunggal tersedia |
 | Angka | Maks. 4: laba bersih, pendapatan bunga bersih atau pendapatan, kredit atau total aset (YoY atau sejak akhir tahun buku), ROE |
 | Poin bernomor | Maks. 5 kalimat dari pos pendapatan, neraca, dan rasio |
-| Poin utama | Maks. 2 aturan yang terpenuhi, berurutan: laba berbalik arah, laba kuartal di atas/di bawah rata-rata kuartal sebelumnya, beban cadangan berubah ≥ 20%, kredit tumbuh ≥ 5 poin lebih cepat dari pendapatan bunga bersih (bank), laba dan pendapatan berlawanan arah, marjin kotor berubah ≥ 1 poin (umum) |
+| Poin utama | Maks. 2 aturan yang terpenuhi, berurutan: laba berbalik arah, laba kuartal di atas/di bawah rata-rata kuartal sebelumnya, beban cadangan berubah ≥ 20%, kredit tumbuh ≥ 5 poin lebih cepat dari pendapatan bunga bersih (bank), laba dan pendapatan berlawanan arah, margin kotor berubah ≥ 1 poin (umum) |
 
 ## 3. Keputusan desain
 
@@ -93,9 +106,9 @@ Di **Komunitas → Postingan resmi → Buat postingan**, staf bisa memilih tampi
 | Lapisan | Batas |
 |---|---|
 | Container | `research` 1 replika, CPU 0,25, memori 128 MB, 64 proses, `cpu_shares` 256, `GOMAXPROCS=1`, `GOMEMLIMIT` 96 MiB, jaringan `app` saja |
-| Unggahan API | 2 bersamaan (`503 busy` setelah 3 detik), 8 MiB per file, `rate_limit_per_minute` per key, `research.files_per_hour` (120) per key |
+| Unggahan API | 2 bersamaan (`503 busy` setelah 3 detik), 8 MiB per zip, 20 MiB per dokumen (dialirkan, tidak ditampung), `rate_limit_per_minute` per key, `research.files_per_hour` dan `research.documents_per_hour` (120) per key |
 | Isi zip | Maks. 16 entri, satu `.xbrl`, 32 MiB setelah dibuka, rasio kompresi ≤ 200:1 |
-| Penguraian | Satu file sekali jalan, batas 60 detik, XML dibaca mengalir |
+| Penguraian | Satu pekerjaan sekali jalan (file laporan didahulukan, lalu dokumen), batas 60 detik, XML dibaca mengalir |
 | Database | Lewat PostgREST yang sudah ada; antrean `FOR UPDATE SKIP LOCKED` |
 | Gagal sementara | Dicoba lagi 1, 4, 9, 16 menit, lalu ditolak `too_many_attempts` |
 
@@ -105,6 +118,7 @@ Di **Komunitas → Postingan resmi → Buat postingan**, staf bisa memilih tampi
 |---|---|
 | `private.research_files` | Satu baris per masukan: sumber (`api` + key / `hub` + staf), lokasi file, sidik, status (`queued`, `processing`, `done`, `duplicate`, `rejected`), percobaan, alasan penolakan |
 | `private.research_reports` | Satu baris per hasil unik: `kind`, emiten, periode, audit, mata uang, template, `facts`, `metrics`, `document`, `summary`, `warnings`, revisi (`supersedes`, `superseded_at`), postingan |
+| `private.research_documents` | Satu baris per dokumen sumber: file laporan asalnya, sumber, lokasi di `post-files`, nama, jenis, ukuran, sidik, status pemeriksaan, alasan penolakan |
 | `private.research_config` | Akun resmi yang memposting dan saklar posting otomatis (Super Admin, tercatat di jejak audit) |
 
 Laporan baru untuk jenis, emiten, dan periode yang sama menggantikan versi lama dan membatalkan postingannya yang belum terbit.
@@ -116,7 +130,7 @@ Konteks XBRL dikenali dari tanggal `idx-dei`. Pembanding: laporan kumulatif sebe
 | Template | Pos dan rasio |
 |---|---|
 | `bank` | Pendapatan bunga bersih, pendapatan operasional lain, beban cadangan, beban operasional, laba sebelum pajak, laba bersih, EPS, kredit, DPK, CASA, LDR, cadangan terhadap kredit, ROE, rasio biaya, biaya kredit |
-| `general` | Pendapatan, laba kotor dan marjin, laba bersih dan marjin, EPS, aset, liabilitas, ekuitas, DER, rasio lancar, arus kas operasi, ROE |
+| `general` | Pendapatan, laba kotor dan margin, laba bersih dan margin, EPS, aset, liabilitas, ekuitas, DER, rasio lancar, arus kas operasi, ROE |
 | `basic` | Laba bersih, EPS, aset, ekuitas, ROE |
 
 | Peringatan | Arti | Menahan posting otomatis |
@@ -130,6 +144,8 @@ Konteks XBRL dikenali dari tanggal `idx-dei`. Pembanding: laporan kumulatif sebe
 
 Kode penolakan file: `not_zip`, `zip_unsafe`, `no_instance`, `invalid_xbrl`, `unknown_entity`, `infected`, `checksum_mismatch`, `object_missing`, `too_many_attempts`, `invalid_report`.
 
+Kode penolakan dokumen sumber: `invalid_document`, `active_content`, `macro_not_allowed`, `infected`, `checksum_mismatch`, `object_missing`, `file_too_large`, `too_many_attempts`.
+
 ## 7. Menambah jenis riset berikutnya
 
 1. Migrasi: tambahkan nilai ke `research_reports_kind`, dan bila perlu longgarkan kolom yang khusus laporan keuangan (periode, audit, template).
@@ -141,3 +157,5 @@ Kode penolakan file: `not_zip`, `zip_unsafe`, `no_instance`, `invalid_xbrl`, `un
 - Template `general` belum dicocokkan dengan file emiten non-bank sungguhan; template `bank` sudah dicocokkan dengan laporan BBCA Q2 2026, Q3 2025, dan Q3 2026.
 - Mengubah draf postingan riset yang ditolak lewat editor Hub menjadikannya kartu manual (teks pendamping dibuat ulang dari kartu). Untuk ringkasan asli, buat postingan baru dari detail laporan.
 - Laporan yang dibuat sebelum `0199` tidak punya dokumen kartu; postingannya tetap teks polos.
+- Dokumen sumber hanya untuk laporan riset dan hanya PDF/XLSX. Dokumen yang sudah ditolak tidak bisa diperiksa ulang; hapus lalu unggah lagi.
+- Pemeriksaan konten aktif PDF membaca teks mentah file. Perintah yang disembunyikan di dalam stream terkompresi tidak terlihat oleh pemeriksaan ini; lapisan berikutnya adalah ClamAV dan penampil PDF di perangkat nasabah.
