@@ -32,6 +32,7 @@ link-preview (pratinjau link, aman SSRF), backup (WAL + backup penuh ──resti
 
 ```bash
 # 1. Server: Docker Engine + compose plugin, firewall hanya SSH/80/443
+#    (dari internet cukup 443; 80 hanya perlu dari LAN/VPN untuk Hub mode http, lihat bagian 6 operasional.md)
 sudo apt-get update && sudo apt-get install -y make git
 curl -fsSL https://get.docker.com | sh
 sudo ufw allow OpenSSH && sudo ufw allow 80/tcp && sudo ufw allow 443 && sudo ufw enable
@@ -91,16 +92,16 @@ Catatan:
 - **Rendezvous Hub** (web CS, repo [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub)) mati secara default di profil single. Nyalakan dengan `make up PROFILE=single CS=1` (Windows: `-Cs`), yang memakai overlay `docker/compose.cs.yml` dan membangun image `cs-console` dari checkout Hub di sebelah repo ini (`../rendezvous_hub`, atau `HUB_DIR` di `docker/.env`, relatif terhadap `docker/`). Tanpa checkout itu `make up ... CS=1` berhenti dengan pesan `Rendezvous Hub checkout not found at ...`. Update Hub: `git -C ../rendezvous_hub pull --ff-only` sebelum `make up`. Isi di `docker/.env`:
   1. `CS_CONSOLE_DOMAIN`: alamat khusus web CS. Bisa domain publik, domain internal (`hub.kantor.local`), atau IP LAN server (`10.251.252.243`). Web CS dan API agen (`/auth/v1`, `/functions/v1`, `/rest/v1`, `/realtime/v1`, `/storage/v1`) disajikan di alamat ini, jadi tidak perlu CORS. Alamat lain (misalnya IP bila yang diisi domain) mendapat 404.
   2. `CS_CONSOLE_SCHEME`: `https` (bawaan) atau `http`.
-     - `https`: sertifikat Let's Encrypt HTTP-01 seperti `PROXY_DOMAIN`, jadi butuh domain publik yang DNS-nya mengarah ke server dan port 80 yang terjangkau dari internet saat verifikasi.
+     - `https`: sertifikat Let's Encrypt (TLS-ALPN-01) seperti `PROXY_DOMAIN`, jadi butuh domain publik yang DNS-nya mengarah ke server dan port 443 yang terjangkau dari internet saat verifikasi.
      - `http`: Hub dilayani di port 80 tanpa TLS dan tanpa HSTS, untuk akses kantor saja (IP atau domain internal, tanpa sertifikat). Pengalihan HTTP→HTTPS bawaan memakai prioritas 1, jadi router Hub menang; domain API tetap dialihkan ke HTTPS dan tetap memakai sertifikat Let's Encrypt. Password dan kode 2FA staf lewat tanpa enkripsi, jadi pakai hanya di LAN kabel tepercaya atau lewat VPN. Notifikasi desktop browser untuk alert tidak muncul di HTTP; alert tetap tampil di Hub, Telegram, dan email.
      - `make up` menolak nilai selain `http` dan `https`. Setelah mengganti, jalankan `make up` lalu buka Hub dengan alamat baru (sesi login tersimpan per alamat).
   3. `VPN_SOURCE_RANGES` (opsional): rentang IP yang boleh membuka web CS, dipisah koma. Semua router domain ini (`docker/volumes/traefik/cs.yml`) memakai `ipAllowList`; bila diisi, IP lain mendapat 403. Bila kosong, yang diizinkan hanya IP privat: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10` (VPN seperti Tailscale), loopback, dan IPv6 ULA. Jadi LAN kantor dan VPN bisa masuk, sedangkan internet tetap 403.
      - Syaratnya Traefik melihat IP klien yang asli. Port forward NAT biasa mempertahankannya. Bila router juga melakukan SNAT/masquerade untuk koneksi masuk, semua klien internet terlihat sebagai IP router (privat) dan ikut lolos: uji dari HP dengan data seluler harus 403. Jangan pasang proxy/CDN di depan, dan jangan tambahkan record AAAA untuk domain Hub (koneksi IPv6 lewat docker-proxy terlihat sebagai IP gateway Docker).
      - Server di jaringan kantor: isi rentang LAN, mis. `192.168.1.0/24`. Arahkan domain CS ke IP LAN server lewat DNS internal (atau file hosts). Bila PC staf membuka IP publik server dari dalam kantor (hairpin NAT), yang terlihat adalah IP router, jadi tambahkan IP itu.
      - Server di cloud: staf datang dari IP publik, jadi isi IP publik kantor, mis. `203.0.113.10/32`, atau pakai VPN ke server.
-     - Firewall saja tidak cukup. API nasabah (`PROXY_DOMAIN`) dan web CS sama-sama di port 443, dan firewall tidak bisa membedakan domain. Pembatasan per domain dilakukan `ipAllowList` ini. Firewall cukup membuka 22/80/443, dengan SSH hanya dari kantor.
+     - Firewall saja tidak cukup. API nasabah (`PROXY_DOMAIN`) dan web CS sama-sama di port 443, dan firewall tidak bisa membedakan domain. Pembatasan per domain dilakukan `ipAllowList` ini. Firewall cukup membuka 443 dari internet (80 opsional, dan dari LAN untuk Hub mode http), dengan SSH hanya dari kantor.
 
-  Dengan `CS_CONSOLE_SCHEME=https`, sertifikat memakai Let's Encrypt HTTP-01 seperti `PROXY_DOMAIN`, jadi DNS publik domain ini harus mengarah ke server. IP di luar `VPN_SOURCE_RANGES` (atau di luar IP privat bila kosong) mendapat 403. Dengan `https`, domain ini tetap butuh DNS publik untuk sertifikat, tetapi staf di kantor sebaiknya diarahkan ke IP LAN server lewat DNS internal. Dengan `http`, cukup IP LAN atau domain internal. Header keamanan dan CSP diatur nginx container `cs-console` berdasarkan `SUPABASE_URL`.
+  Dengan `CS_CONSOLE_SCHEME=https`, sertifikat memakai Let's Encrypt TLS-ALPN-01 seperti `PROXY_DOMAIN`, jadi DNS publik domain ini harus mengarah ke server dan port 443-nya terjangkau dari internet. IP di luar `VPN_SOURCE_RANGES` (atau di luar IP privat bila kosong) mendapat 403. Dengan `https`, domain ini tetap butuh DNS publik untuk sertifikat, tetapi staf di kantor sebaiknya diarahkan ke IP LAN server lewat DNS internal. Dengan `http`, cukup IP LAN atau domain internal. Header keamanan dan CSP diatur nginx container `cs-console` berdasarkan `SUPABASE_URL`.
 - **Menu Akun Nasabah (CS Admin service)** diatur dari web, tidak ada nilai di `docker/.env`:
   1. `make gen-secrets` sudah membuat kunci integrasi (`docker/secrets/csadmin_signing_key`).
   2. Login sebagai Super Admin, lalu buka **Pengaturan → Integrasi API Nasabah** (bertanda "Belum diatur"). Isi alamat dan client id.
@@ -329,7 +330,7 @@ Bila server nanti berada di belakang load balancer/CDN, semua nasabah terlihat d
 - [ ] OLT dummy tidak berjalan (`docker ps` tidak menampilkan `dummy-olt`).
 - [ ] `https://domain/` dan `https://domain/auth/v1/health` mengembalikan 404. `http://domain/` di-redirect ke HTTPS.
 - [ ] Studio mati (`make admin-down PROFILE=single`), dan port admin hanya terikat ke `127.0.0.1`.
-- [ ] Firewall hanya membuka 22/80/443. Akses SSH memakai key, tanpa password.
+- [ ] Firewall hanya membuka 443 dari internet (80 opsional), 22 dari IP admin. Akses SSH memakai key, tanpa password.
 - [ ] `SERVICE_ROLE_KEY` tidak ada di app Flutter. App hanya memakai `ANON_KEY`.
 - [ ] `make test-db` lulus. Tes ini antara lain memeriksa RLS aktif di semua tabel, anon tanpa akses, `olt_user_id` tidak terbaca, peran admin, dan audit log yang tidak bisa diubah.
 - [ ] `retention.archive_days` (arsip regulator) sudah ditetapkan bersama tim legal. Default sementara: 5 tahun.

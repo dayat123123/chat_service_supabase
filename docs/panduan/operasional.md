@@ -70,7 +70,7 @@ Setiap kartu di **Pengaturan → Sistem → Kesehatan sistem → Peta layanan** 
 | **Rendezvous Hub** | Tujuan dan password backup, kunci Firebase, kanal alert (Telegram/email), alamat gateway csAdmin, API key notifikasi, kill switch, fitur aplikasi dan versi minimum, kebijakan konten, slow mode dan jam ramai, dokumen hukum, akun staf | Dari browser, langsung berlaku, tercatat di **Kepatuhan → Jejak Audit** |
 | **`docker/.env`** | Domain dan URL publik, email Let's Encrypt, alamat DB, pool PgBouncer, batas kapasitas, memori/CPU, folder backup lokal, IP yang boleh membuka Hub | SSH ke server, edit, lalu `make up` |
 | **`docker/secrets/`** | Password database, JWT secret, anon key, kunci publik OLT (`olt_jwks`) | Dibuat sekali dengan `make gen-secrets`; `olt_jwks` diisi JWKS dari tim OLT |
-| **Firewall penyedia server** | Port 80/443 publik, 22 hanya IP admin | Panel penyedia atau firewall kantor |
+| **Firewall penyedia server** | Port 443 publik (80 publik opsional), 22 hanya IP admin | Panel penyedia atau firewall kantor |
 | **DNS** | A record domain API (dan domain Hub bila dipakai) | Pengelola domain |
 
 Aturan:
@@ -163,9 +163,19 @@ Bila server hilang total, yang dibutuhkan untuk bangkit lagi: repo dari GitHub (
 
 ## 6. Domain dan akses publik
 
-1. Server mendapat IP publik (VPS), atau tim jaringan meneruskan port 80/443 dari IP publik kantor ke server (NAT).
-2. A record `social-api.<domain>` mengarah ke IP itu, dan port 80/443 dibuka.
-3. Isi domain di `docker/.env`, lalu `make up` (dengan `PROFILE=single`). Traefik meminta dan memperpanjang sertifikat HTTPS sendiri; DNS harus sudah benar sebelum langkah ini.
+1. Server mendapat IP publik (VPS), atau tim jaringan meneruskan port **443** dari IP publik kantor ke server (NAT).
+2. A record `social-api.<domain>` mengarah ke IP itu, dan port 443 dibuka dari internet.
+3. Isi domain di `docker/.env`, lalu `make up` (dengan `PROFILE=single`). Traefik meminta dan memperpanjang sertifikat HTTPS sendiri lewat port 443 (Let's Encrypt TLS-ALPN-01); DNS harus sudah benar sebelum langkah ini.
+
+Port yang dibutuhkan:
+
+| Port | Dari internet | Dari LAN kantor / VPN | Untuk |
+|---|---|---|---|
+| 443 | Buka | Buka | Aplikasi OLT, server OLT, dan sertifikat Let's Encrypt |
+| 80 | Boleh ditutup | Buka bila Hub memakai `CS_CONSOLE_SCHEME=http` | Hub mode http dan redirect ke HTTPS |
+| 22 | Tutup | Hanya IP admin | SSH |
+
+Port 443 harus diteruskan langsung ke server (NAT biasa). Bila 443 melewati perangkat yang membuka TLS (WAF, load balancer), verifikasi Let's Encrypt gagal. Penutupan port 80 dari internet dilakukan di NAT/firewall kantor; ufw di server tidak cukup karena port yang dipublikasikan Docker melewati ufw. Bila 80 tetap terbuka, dari internet hanya ada redirect ke HTTPS, dan Hub tetap menolak (403).
 
 Port forwarding biasa (NAT) tidak mengubah IP klien. Bila di depan server dipasang proxy yang mengakhiri koneksi (Cloudflare, HAProxy, load balancer), batas per IP dan pembatasan Hub akan melihat IP proxy. Konfigurasi proxy tepercaya belum dibuat; jangan pasang proxy seperti itu sebelum konfigurasinya tersedia ([produksi.md](produksi.md) bagian 7, "Batas & rate limit").
 

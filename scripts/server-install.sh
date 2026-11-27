@@ -274,7 +274,7 @@ for _ in $(seq 1 18); do
   sleep 10
 done
 [[ $health == *'"olt_mode":"jwt"'* ]] && ok "https://$domain/bridge/v1/health: olt_mode jwt" \
-  || warn "health is not answering yet. Check the certificate: make logs s=traefik (DNS/port 80 must be open)"
+  || warn "health is not answering yet. Check the certificate: make logs s=traefik (DNS must point here and port 443 must be reachable from the internet)"
 code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "http://$domain/" || true)
 [[ $code =~ ^30[1278]$ ]] && ok "http redirects to https ($code)" || warn "http://$domain/ answered $code (expected a redirect)"
 code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "https://$domain/" || true)

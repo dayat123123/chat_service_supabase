@@ -6,6 +6,14 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 27 November 2026
 
+### Sertifikat HTTPS lewat port 443 saja
+
+- Let's Encrypt kini memverifikasi domain lewat port 443 (TLS-ALPN-01), bukan port 80. Dari internet cukup port **443** yang dibuka; port 80 publik boleh ditutup. Aplikasi OLT memang hanya memakai 443.
+- Port 80 tetap dipakai di LAN/VPN untuk Hub dengan `CS_CONSOLE_SCHEME=http`. Menutupnya dari internet dilakukan di NAT/firewall kantor, karena port Docker melewati ufw.
+- Syarat baru: port 443 dari internet harus diteruskan langsung ke server, tidak lewat WAF atau load balancer yang membuka TLS.
+- Sertifikat yang sudah ada tetap dipakai dan diperpanjang otomatis dengan cara baru.
+- **Cara pasang:** `git pull --ff-only`, lalu `make up` (Traefik dibuat ulang). Tidak ada migrasi.
+
 ### Integrasi API Nasabah: audience bisa diatur dari Hub (migrasi `0205`, `nasabah-gateway` 0.1.1, Hub)
 
 - Kolom baru **Audience** di **Pengaturan → Integrasi API Nasabah**. Isinya nama service CS Admin yang dituju: `csAdminEL` (bawaan, sama seperti sebelumnya) atau `csAdminOD`. Sebelumnya gateway selalu mengirim `csAdminEL`, sehingga csAdminOD menolak dengan log `wrong audience`.

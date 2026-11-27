@@ -15,7 +15,7 @@ Rujukan lain: [operasional.md](operasional.md) (operasional), [gangguan.md](gang
 | | Dari | Contoh |
 |---|---|---|
 | Server Ubuntu 24.04, 4 vCPU / 8 GB / 100 GB SSD (+ disk backup terpisah, mis. `/mnt/backup`) | Vendor IT | — |
-| IP publik server (atau port forwarding 80/443 dari IP publik kantor) | Vendor IT | `203.0.113.10` |
+| IP publik server (atau port forwarding 443 dari IP publik kantor; 80 opsional) | Vendor IT | `203.0.113.10` |
 | A record domain API ke IP itu | Vendor IT / pengelola DNS | `social-api.perusahaan.co.id` |
 | A record domain Hub ke IP yang sama (opsional; tidak perlu bila Hub cukup dibuka lewat IP LAN atau domain internal dengan HTTP) | Vendor IT / pengelola DNS | `hub.perusahaan.co.id` |
 | Firewall penyedia: 80 dan 443 dari internet, 22 hanya dari IP admin | Vendor IT | — |
@@ -352,7 +352,7 @@ for _ in $(seq 1 18); do
   sleep 10
 done
 [[ $health == *'"olt_mode":"jwt"'* ]] && ok "https://$domain/bridge/v1/health: olt_mode jwt" \
-  || warn "health is not answering yet. Check the certificate: make logs s=traefik (DNS/port 80 must be open)"
+  || warn "health is not answering yet. Check the certificate: make logs s=traefik (DNS must point here and port 443 must be reachable from the internet)"
 code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "http://$domain/" || true)
 [[ $code =~ ^30[1278]$ ]] && ok "http redirects to https ($code)" || warn "http://$domain/ answered $code (expected a redirect)"
 code=$(curl -s -o /dev/null -m 10 -w '%{http_code}' "https://$domain/" || true)
@@ -390,7 +390,7 @@ curl -sI http://<domain API>/ | head -1                      # 301/308 ke https
 curl -s -o /dev/null -w '%{http_code}\n' https://<domain API>/   # 404: hanya path API yang dibuka
 ```
 
-Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. `https://<domain Hub>` dari HP dengan data seluler harus 403, sedangkan dari LAN kantor atau VPN terbuka. Bila dari data seluler ternyata terbuka, router menyamarkan IP klien (semua koneksi masuk terlihat sebagai IP router); minta tim IT mematikan SNAT/masquerade untuk port forward 80/443.
+Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. `https://<domain Hub>` dari HP dengan data seluler harus 403, sedangkan dari LAN kantor atau VPN terbuka. Bila dari data seluler ternyata terbuka, router menyamarkan IP klien (semua koneksi masuk terlihat sebagai IP router); minta tim IT mematikan SNAT/masquerade untuk port forward 443 (dan 80 bila ikut diteruskan).
 
 ## 5. Setelah server jalan
 
@@ -408,7 +408,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. `https://<dom
 | Gejala | Penyebab umum | Tindakan |
 |---|---|---|
 | "does not resolve to any IP yet" | A record belum dibuat atau belum menyebar | Minta tim IT cek DNS, tunggu beberapa menit, jalankan ulang |
-| Health tidak menjawab, `make logs s=traefik` berisi error ACME | Port 80 tertutup, DNS salah, atau batas Let's Encrypt | Pastikan 80/443 terbuka dari internet dan DNS benar, lalu `make up` |
+| Health tidak menjawab, `make logs s=traefik` berisi error ACME | Port 443 tertutup atau melewati WAF/load balancer, DNS salah, atau batas Let's Encrypt | Pastikan 443 dari internet diteruskan langsung ke server dan DNS benar, lalu `make up` |
 | `docker/.env still contains CHANGE_ME` atau `is required` | Isian `.env` kurang | Jalankan ulang script, atau edit `docker/.env` lalu `make up` |
 | `JWKS rejected` | Kunci dev, kunci privat, atau format salah | Minta ulang JWKS **publik** dari tim OLT |
 | Clone terus gagal | Deploy key belum ditambahkan / repo lain | Periksa GitHub → Settings → Deploy keys. Kunci `github_deploy` untuk `chat_service_supabase`, kunci `github_deploy_hub` untuk `rendezvous_hub` |

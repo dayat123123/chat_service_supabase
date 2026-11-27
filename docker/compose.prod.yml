@@ -1,5 +1,6 @@
-# Single-server production. Only Traefik is reachable from the internet (80 redirects, 443 HTTPS
-# with automatic Let's Encrypt) and only API paths are published. The admin entrypoint (Studio and
+# Single-server production. Only Traefik is reachable from the internet (443 HTTPS with automatic
+# Let's Encrypt over TLS-ALPN-01, so port 80 may stay closed to the internet; on the LAN it serves
+# HTTPS redirects and the Hub with CS_CONSOLE_SCHEME=http) and only API paths are published. The admin entrypoint (Studio and
 # all paths) listens on 127.0.0.1 only; reach it over WireGuard or an SSH tunnel. See docs/panduan/produksi.md.
 
 services:
@@ -36,7 +37,7 @@ services:
       TRAEFIK_ENTRYPOINTS_ADMIN_HTTP_ALIASHEADERSSTRATEGY: delete
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required for the single profile (docker/.env)}
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_STORAGE: /acme/acme.json
-      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_HTTPCHALLENGE_ENTRYPOINT: web
+      TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_TLSCHALLENGE: "true"
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_CASERVER: ${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
       PROXY_DOMAIN: ${PROXY_DOMAIN:?PROXY_DOMAIN is required for the single profile (docker/.env)}
       TLS_SNI_STRICT: ${TLS_SNI_STRICT:-true}

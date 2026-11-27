@@ -6,7 +6,7 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 
 - [ ] Server Ubuntu 24.04, 4 vCPU / 8 GB / 100 GB SSD, plus disk backup terpisah — `nproc`, `free -h`, `df -h`
 - [ ] IP publik dan A record domain API (dan Hub) mengarah ke server — `getent hosts <domain>`
-- [ ] Firewall: 80/443 publik, 22 hanya IP admin, port lain tertutup — `nc -zv <IP> 5432` dari luar gagal
+- [ ] Firewall: 443 publik (80 publik opsional), 22 hanya IP admin, port lain tertutup — `nc -zv <IP> 5432` dari luar gagal
 - [ ] SSH hanya dengan key; jam server sinkron — `timedatectl`
 - [ ] Konfirmasi ada/tidaknya proxy, load balancer, atau Cloudflare di depan server — bila ada, pasang konfigurasi proxy tepercaya dulu
 

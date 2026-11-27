@@ -248,7 +248,7 @@ Database terkelola dari penyedia cloud (managed DB) belum didukung, karena siste
 | **Produksi awal (disarankan)** | **16 vCPU** | **32 GB** | **500 GB NVMe** |
 | Tumbuh besar | Server aplikasi 16–32 vCPU / 32–64 GB + **server database terpisah** | | NVMe terpisah |
 
-Sistem operasi Ubuntu LTS; firewall hanya membuka 80/443, dan 22 untuk IP admin. Rincian: [spesifikasi-server.md](spesifikasi-server.md).
+Sistem operasi Ubuntu LTS; firewall hanya membuka 443 dari internet (80 hanya bila perlu, mis. Hub mode http di LAN), dan 22 untuk IP admin. Rincian: [spesifikasi-server.md](spesifikasi-server.md).
 
 ### 9.3 Server yang dipakai sekarang
 
