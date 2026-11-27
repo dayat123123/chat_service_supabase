@@ -131,6 +131,7 @@ check high "base compose: CORS default empty (secure by default)" 'grep -q "CORS
 check high "kong-entrypoint: empty origin -> unused origin" 'grep -q "cors-disabled.invalid" $D/volumes/api/kong-entrypoint.sh'
 grep -q 'CORS_ALLOWED_ORIGINS:-\*' "$D/compose.dev.yml" && res INFO low "dev: CORS * (dev profile only; do not use on a shared server)"
 check medium "production web CS is single-origin (cs.yml without CORS, VPN ipAllowList)" 'grep -q "vpn-only" $CS && [ "$(grep -c "vpn-only" $CS)" -ge 6 ]'
+check high "web CS allowlist defaults to private networks, never the whole internet" 'grep "VPN_SOURCE_RANGES\" | default" $CS | grep -q "192.168.0.0/16" && ! grep -Eq "0\.0\.0\.0/0|::/0" $CS'
 
 echo "== trusted proxies"
 check high "Kong trusts X-Forwarded-For only from the edge subnet" 'grep -q "KONG_TRUSTED_IPS: \${EDGE_SUBNET:-10.250.250.0/24}" $D/compose.yml'

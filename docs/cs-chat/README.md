@@ -130,7 +130,7 @@ Migrasi: `0026_care_cancel` (pembersihan), `0027_cs_foundation`, `0028_cs_sessio
 | Kata terlarang aplikasi nasabah (tambah, ubah aksi, hapus, import/unduh Excel) | – | – | – | Ya |
 | Channel realtime | `cs:room:<room miliknya>` | `cs:queue`, `cs:agent:<diri>`, `cs:room:<yang ditangani>` | Sama | `cs:room` berflag |
 
-Semua dicek di server (RLS + fungsi). Login web CS memakai email + password. Super Admin dan peran lain yang dipilih di Pengaturan → Keamanan login juga wajib memasukkan kode 2FA (TOTP), dan akun dikunci sementara setelah password salah berulang (migrasi `0186`). Di produksi, web CS bisa dibatasi ke IP yang diizinkan (LAN kantor atau VPN) lewat `VPN_SOURCE_RANGES`; bila kosong, web CS terbuka untuk semua IP. Akun nonaktif langsung kehilangan akses. Client tidak bisa mengirim broadcast ke channel `cs:*` (hanya server), sehingga event status tidak bisa dipalsukan.
+Semua dicek di server (RLS + fungsi). Login web CS memakai email + password. Super Admin dan peran lain yang dipilih di Pengaturan → Keamanan login juga wajib memasukkan kode 2FA (TOTP), dan akun dikunci sementara setelah password salah berulang (migrasi `0186`). Di produksi, web CS hanya bisa dibuka dari jaringan internal: IP di `VPN_SOURCE_RANGES` bila diisi, atau semua IP privat (LAN kantor dan VPN) bila kosong. Dari internet selalu 403. Akun nonaktif langsung kehilangan akses. Client tidak bisa mengirim broadcast ke channel `cs:*` (hanya server), sehingga event status tidak bisa dipalsukan.
 
 ## API `cs_api`
 

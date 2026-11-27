@@ -1,5 +1,6 @@
 # Web CS and agent API are served on one CS_CONSOLE_DOMAIN. VPN_SOURCE_RANGES (Traefik ipAllowList)
-# is optional: empty opens the domain to every IP. Single origin, so no CORS. See docs/panduan/produksi.md.
+# is optional: empty limits the domain to private networks (office LAN and VPN). Single origin, so no CORS.
+# See docs/panduan/produksi.md.
 
 services:
   traefik:

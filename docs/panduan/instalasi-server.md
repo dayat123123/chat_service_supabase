@@ -5,7 +5,7 @@ Panduan memasang server sosial di server Ubuntu baru sampai API bisa diakses pub
 Hasil akhirnya:
 
 - `https://<domain API>` untuk aplikasi OLT (REST, Realtime, login, unggah media), sertifikat Let's Encrypt otomatis.
-- Rendezvous Hub di `https://<domain Hub>` (opsional). Bisa dibatasi ke IP kantor/VPN, atau dibuka untuk semua IP.
+- Rendezvous Hub di `https://<domain Hub>` (opsional). Hanya dari jaringan internal kantor atau VPN; dari internet 403.
 - Backup berjalan ke folder di disk terpisah setelah diatur dari Hub.
 
 Rujukan lain: [operasional.md](operasional.md) (operasional), [gangguan.md](gangguan.md) (gangguan), [produksi.md](produksi.md) (detail produksi), [server-development.md](server-development.md) (spek dan mode dev).
@@ -59,7 +59,7 @@ Script menanyakan beberapa hal dan berhenti dengan pesan jelas bila ada yang bel
 | 3 | Swap 4 GB bila RAM < 8 GB | — |
 | 4 | `ufw`: SSH, 80, 443 | — |
 | 5 | Deploy key GitHub (baca saja), clone repo ke `~/chat_service_supabase` | Tambahkan deploy key yang ditampilkan di GitHub, lalu Enter |
-| 6 | `make gen-secrets`, isi `docker/.env` | Domain API, email, domain Hub dan IP kantor (opsional), folder backup |
+| 6 | `make gen-secrets`, isi `docker/.env` | Domain API, email, domain Hub dan IP yang boleh membuka Hub (opsional, kosong = LAN kantor dan VPN), folder backup |
 | 7 | Bila domain Hub diisi: deploy key kedua (`~/.ssh/github_deploy_hub`, alias SSH `github-hub`), clone [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub) ke `~/rendezvous_hub`; saat dijalankan ulang cukup `git pull` | Tambahkan deploy key kedua di repo `rendezvous_hub`, lalu Enter |
 | 8 | Simpan JWKS OLT ke `docker/secrets/olt_jwks`, tolak kunci dev atau kunci privat | Tempel JWKS, Enter, Ctrl+D |
 | 9 | Cek DNS domain mengarah ke server | Konfirmasi IP |
@@ -212,7 +212,7 @@ hub_domain=$(ask "Rendezvous Hub domain (leave empty if none yet)" "$(env_get CS
 vpn_ranges=""
 if [ -n "$hub_domain" ]; then
   [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid Hub domain: $hub_domain"
-  vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (empty = every IP)" "$(env_get VPN_SOURCE_RANGES)")
+  vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (empty = office LAN and VPN only)" "$(env_get VPN_SOURCE_RANGES)")
   [ -z "$vpn_ranges" ] || [[ $vpn_ranges =~ ^[0-9A-Fa-f:./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
 fi
 backup_default=$(env_get BACKUP_LOCAL_REPO_DIR)
@@ -352,7 +352,7 @@ Done.
   URL API (supabaseUrl) : https://$domain
   Anon key (anonKey)    : $anon_key
 EOF
-[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: ${vpn_ranges:-every IP})"
+[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: ${vpn_ranges:-office LAN and VPN})"
 cat <<EOF
 
 Next steps (docs/panduan/instalasi-server.md section 5):
@@ -377,7 +377,7 @@ curl -sI http://<domain API>/ | head -1                      # 301/308 ke https
 curl -s -o /dev/null -w '%{http_code}\n' https://<domain API>/   # 404: hanya path API yang dibuka
 ```
 
-Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. Bila `VPN_SOURCE_RANGES` diisi, `https://<domain Hub>` harus 403; bila kosong, halaman login Hub terbuka dari mana pun.
+Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. `https://<domain Hub>` dari HP dengan data seluler harus 403, sedangkan dari LAN kantor atau VPN terbuka. Bila dari data seluler ternyata terbuka, router menyamarkan IP klien (semua koneksi masuk terlihat sebagai IP router); minta tim IT mematikan SNAT/masquerade untuk port forward 80/443.
 
 ## 5. Setelah server jalan
 
@@ -400,7 +400,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. Bila `VPN_SOU
 | `JWKS rejected` | Kunci dev, kunci privat, atau format salah | Minta ulang JWKS **publik** dari tim OLT |
 | Clone terus gagal | Deploy key belum ditambahkan / repo lain | Periksa GitHub → Settings → Deploy keys. Kunci `github_deploy` untuk `chat_service_supabase`, kunci `github_deploy_hub` untuk `rendezvous_hub` |
 | `Rendezvous Hub checkout not found at ...` | Domain Hub diisi tetapi `~/rendezvous_hub` belum ada | Jalankan ulang script (langkah 7), atau isi `HUB_DIR` di `docker/.env` |
-| Hub 403 dari kantor | `VPN_SOURCE_RANGES` diisi tetapi IP kantor tidak termasuk | Cek IP publik kantor, perbaiki atau kosongkan `VPN_SOURCE_RANGES` di `docker/.env`, `make up` |
+| Hub 403 dari kantor | Klien terlihat dengan IP publik (server di cloud, atau domain Hub mengarah ke IP publik tanpa hairpin NAT), atau `VPN_SOURCE_RANGES` diisi tanpa IP itu | Arahkan domain Hub ke IP LAN server lewat DNS internal atau file hosts; untuk server di cloud isi IP publik kantor di `VPN_SOURCE_RANGES`, lalu `make up` |
 | `olt_mode` bukan `jwt` | Konfigurasi auth-bridge | `make logs s=auth-bridge` |
 | `make up` habis waktu menunggu `clamav`, atau Hub menolak dokumen/video chat CS dengan "Virus check is unavailable" | Start pertama clamav masih mengunduh signature (±300 MB) atau server tidak bisa mengakses `database.clamav.net` | `make logs s=clamav`; `make up` sudah menunggu sampai 15 menit; bila tetap habis waktu, tunggu sampai "socket found, clamd started", lalu `make up` lagi. clamd butuh ±1,1–1,6 GB RAM (lihat [produksi.md](produksi.md)) |
 | Login dari aplikasi selalu "Sesi berakhir" | `iss`/`aud`/jam server OLT tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (field `reason`) |

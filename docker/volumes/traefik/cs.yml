@@ -1,6 +1,6 @@
 # Web CS and agent API routers (single profile with CS=1, and cluster).
 # Every router on CS_CONSOLE_DOMAIN goes through vpn-only: limited to VPN_SOURCE_RANGES when it is set,
-# open to every IP when it is empty (staff login, 2FA, and account lockout still apply).
+# and to private networks (office LAN, VPN, loopback) when it is empty, so the internet always gets 403.
 # Page security headers (CSP, HSTS, ...) are set by the cs-console nginx.
 # The cs_api schema and /functions/v1/cs-admin are fully reachable only on this domain; prod.yml restricts them.
 # cs-edge strips X-Olt-Edge on REST, Realtime, and Storage so staff JWTs are accepted.
@@ -13,7 +13,7 @@ http:
 
     vpn-only:
       ipAllowList:
-        sourceRange: [{{ env "VPN_SOURCE_RANGES" | default `"0.0.0.0/0", "::/0"` }}]
+        sourceRange: [{{ env "VPN_SOURCE_RANGES" | default `"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "127.0.0.0/8", "fc00::/7", "::1/128"` }}]
 
   routers:
     cs-realtime:

@@ -86,7 +86,7 @@ Aturan:
 |---|---|---|
 | `PROXY_DOMAIN`, `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL` | Domain API (`https://<domain>`, `API_EXTERNAL_URL` diakhiri `/auth/v1`) | — |
 | `ACME_EMAIL` | Notifikasi sertifikat Let's Encrypt | — |
-| `CS_CONSOLE_DOMAIN`, `VPN_SOURCE_RANGES` | Domain Hub dan IP/rentang yang boleh membukanya, dipisah koma (`203.0.113.10/32,10.8.0.0/24`); `VPN_SOURCE_RANGES` kosong = semua IP | — |
+| `CS_CONSOLE_DOMAIN`, `VPN_SOURCE_RANGES` | Domain Hub dan IP/rentang yang boleh membukanya, dipisah koma (`203.0.113.10/32,10.8.0.0/24`); `VPN_SOURCE_RANGES` kosong = hanya jaringan internal (IP privat LAN kantor dan VPN), internet 403 | — |
 | `HUB_DIR` | Lokasi checkout `rendezvous_hub`, absolut atau relatif terhadap `docker/` | `../../rendezvous_hub` |
 | `EDGE_WS_PER_IP`, `EDGE_RATE_AVERAGE`, `EDGE_RATE_BURST` | Batas WebSocket dan request per IP | 1.500, 600, 1.200 |
 | `AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE` | Login (tukar token) per IP per menit | 1.500 |

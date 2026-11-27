@@ -580,7 +580,7 @@ Rincian teknis setiap kebutuhan (RPC, tabel, kode error, layar) ada di [srs.md](
 | BR-HUB-02 | **2FA TOTP wajib untuk Super Admin**, bisa diwajibkan untuk peran lain dari Hub; ditegakkan di server, termasuk menu Akun Nasabah | Akun berhak tinggi terlindungi | M | Terpasang |
 | BR-HUB-03 | **Kunci akun staf** setelah password salah berulang (bawaan 5 kali, kunci 15 menit, bisa diatur); Super Admin bisa Buka kunci dan Reset 2FA staf lain; prosedur darurat bila Super Admin terakhir kehilangan HP | Mencegah tebak password | M | Terpasang |
 | BR-HUB-04 | Keluar otomatis setelah tidak dipakai (bawaan 30 menit, dengan peringatan), ganti password sendiri, dan keluar dari semua perangkat; semuanya tercatat | Keamanan sesi | M | Terpasang |
-| BR-HUB-05 | Hub dapat dibatasi ke IP kantor/VPN (opsional); API staf ditolak di domain publik | Mengurangi permukaan serangan | M | Terpasang |
+| BR-HUB-05 | Hub hanya bisa dibuka dari LAN kantor atau VPN (daftar IP opsional, kosong = IP privat); API staf ditolak di domain publik | Mengurangi permukaan serangan | M | Terpasang |
 | BR-HUB-06 | Staf bisa membuka beberapa akun berbeda di tab berbeda pada satu browser; sesi, realtime, dan heartbeat terpisah per tab/akun | Kebutuhan kerja staf yang memegang lebih dari satu akun | M | Terpasang |
 | BR-HUB-07 | Peran dan izin staf sesuai bagian 7.2; menu mengikuti gabungan peran dan izin; akun wajib punya minimal satu peran atau satu Izin Komunitas | Akses seperlunya | M | Terpasang |
 | BR-HUB-08 | Super Admin mengelola akun staf: tambah (password sementara tampil sekali), ubah peran/tim/batas tiket/izin, reset password, nonaktifkan (tiket aktif kembali ke antrean, transfer dibatalkan); tidak bisa menonaktifkan diri sendiri atau melepas peran Super Admin sendiri | Siklus hidup akun staf | M | Terpasang |
@@ -627,7 +627,7 @@ Rincian teknis setiap kebutuhan (RPC, tabel, kode error, layar) ada di [srs.md](
 | ID | Kebutuhan | Rasional | Prioritas | Status |
 |---|---|---|---|---|
 | BR-OPS-01 | Sistem berjalan self-hosted di Docker tanpa layanan cloud wajib; hanya beberapa layanan yang boleh keluar ke internet (push, alert, backup, signature antivirus) | Kendali penuh atas data | M | Terpasang |
-| BR-OPS-02 | Dua domain: API publik hanya meloloskan path resmi; domain Hub dapat dibatasi ke IP kantor (opsional) | Permukaan serangan minimal | M | Terpasang |
+| BR-OPS-02 | Dua domain: API publik hanya meloloskan path resmi; domain Hub hanya dari LAN kantor atau VPN | Permukaan serangan minimal | M | Terpasang |
 | BR-OPS-03 | Container dikunci (read-only, non-root, tanpa capability, batas CPU/memori), jaringan internal dipisah, rahasia dari Docker secrets dan Vault | Pengerasan keamanan | M | Terpasang |
 | BR-OPS-04 | Kesehatan sistem: pemantauan layanan, disk, database, antrean, kapasitas, dan backup; alert dibuka, memburuk, dan pulih dikirim ke Telegram/email; Super Admin bisa menandai sudah ditangani | Gangguan cepat diketahui | M | Terpasang |
 | BR-OPS-05 | Peta layanan realtime (diperbarui ±5 detik) dengan status, replika, CPU, dan RAM setiap node | Gambaran kesehatan bagi Super Admin dan IT | S | Terpasang |
