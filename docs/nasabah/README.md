@@ -29,7 +29,7 @@ Gateway tidak memakai akun di TCSLogin. Identitasnya berupa pasangan kunci Ed255
 - **Kunci publik** diisi di config csAdmin. Kunci publik bukan rahasia, jadi aman walaupun config csAdmin terbaca orang lain.
 
 Alurnya:
-1. Gateway membuat *assertion*, yaitu JWT `EdDSA` berumur 60 detik dengan klaim `iss` dan `sub` = client id, `aud` = audience, `iat`, `exp`, dan `jti` acak. Audience diatur di Hub (bawaan `csAdminEL`) dan harus sama dengan `audience` di config CS Admin service. Bila berbeda, csAdmin menolak dengan log `wrong audience`.
+1. Gateway membuat *assertion*, yaitu JWT `EdDSA` berumur 60 detik dengan klaim `iss` dan `sub` = client id, `aud` = audience, `iat`, `exp`, dan `jti` acak. Audience diatur di Hub (bawaan `csAdmin`) dan harus sama dengan `audience` di config CS Admin service. Bila berbeda, csAdmin menolak dengan log `wrong audience`.
 2. Gateway mengirim `POST /integration/token` dengan body `{"Assertion": "..."}`.
 3. csAdmin memeriksa:
    - tanda tangan dengan kunci publik di config;
@@ -57,7 +57,7 @@ Tambahkan blok baru dengan format yang sama seperti blok `server`, `database`, d
 #INTEGRATION (web CS gateway)
 integration {
         client_id       = web-cs
-        audience        = csAdminEL
+        audience        = csAdmin
         public_key      = <satu baris dari gen-secrets atau log gateway>
         #DURATION IN MINUTES (1-60)
         duration_token_minutes = 15
@@ -107,7 +107,7 @@ Endpoint gateway khusus Super Admin aktif (dicek lewat `cs_api.nasabah_is_super_
 | Rute | Isi |
 |---|---|
 | `GET /api-nasabah/integration` | Alamat, client id, audience, `configured`, `connected_at`, `connected_by`, dan kunci publik |
-| `PUT /api-nasabah/integration` | Body `{url, client_id, audience}`; `audience` boleh kosong (= `csAdminEL`). Tes koneksi dulu; menjawab `{saved, check, status}`. `saved = false` berarti tes gagal dan tidak ada yang disimpan |
+| `PUT /api-nasabah/integration` | Body `{url, client_id, audience}`; `audience` boleh kosong (= `csAdmin`). Tes koneksi dulu; menjawab `{saved, check, status}`. `saved = false` berarti tes gagal dan tidak ada yang disimpan |
 | `DELETE /api-nasabah/integration` | Putus integrasi; menu Akun Nasabah tersembunyi lagi |
 | `POST /api-nasabah/integration/test` | Body `{url, client_id, audience}`, sama seperti di atas. Hanya tes, tidak menyimpan. Menjawab `result` (tabel di bawah) |
 
