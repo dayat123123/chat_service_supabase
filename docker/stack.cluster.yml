@@ -122,7 +122,7 @@ services:
       <<: *deploy
       replicas: 2
   classifier:
-    image: ${REGISTRY}/olt-social/classifier:0.1.1
+    image: ${REGISTRY}/olt-social/classifier:0.1.2
     deploy:
       <<: *deploy
       replicas: 2
