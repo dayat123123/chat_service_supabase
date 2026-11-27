@@ -27,7 +27,7 @@ Pegangan rapat go-live bersama vendor IT, tim OLT, tim aplikasi, dan Kepatuhan. 
 ## D. Hub & staf — Super Admin
 
 - [ ] Super Admin pertama dibuat dan password sementara sudah diganti
-- [ ] Hub hanya terbuka dari IP kantor/VPN — dibuka dari jaringan lain mendapat 403
+- [ ] Akses Hub sesuai keputusan: bila `VPN_SOURCE_RANGES` diisi, dibuka dari jaringan lain mendapat 403; bila kosong, Hub sengaja terbuka dari internet (pastikan 2FA aktif)
 - [ ] Akun staf CS, Kepatuhan, dan moderator dibuat, password ≥ 12 karakter
 - [ ] **Pengaturan → Sistem → Alert**: Telegram/email diisi, **Kirim uji** diterima; pemantau uptime dari luar server dipasang
 - [ ] **Pengaturan → Sistem → Backup**: tujuan di disk terpisah atau S3, backup penuh dan uji restore berhasil, password di luar server

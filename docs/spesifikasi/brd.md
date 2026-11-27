@@ -580,7 +580,7 @@ Rincian teknis setiap kebutuhan (RPC, tabel, kode error, layar) ada di [srs.md](
 | BR-HUB-02 | **2FA TOTP wajib untuk Super Admin**, bisa diwajibkan untuk peran lain dari Hub; ditegakkan di server, termasuk menu Akun Nasabah | Akun berhak tinggi terlindungi | M | Terpasang |
 | BR-HUB-03 | **Kunci akun staf** setelah password salah berulang (bawaan 5 kali, kunci 15 menit, bisa diatur); Super Admin bisa Buka kunci dan Reset 2FA staf lain; prosedur darurat bila Super Admin terakhir kehilangan HP | Mencegah tebak password | M | Terpasang |
 | BR-HUB-04 | Keluar otomatis setelah tidak dipakai (bawaan 30 menit, dengan peringatan), ganti password sendiri, dan keluar dari semua perangkat; semuanya tercatat | Keamanan sesi | M | Terpasang |
-| BR-HUB-05 | Hub hanya bisa dibuka dari IP kantor/VPN; API staf ditolak di domain publik | Mengurangi permukaan serangan | M | Terpasang |
+| BR-HUB-05 | Hub dapat dibatasi ke IP kantor/VPN (opsional); API staf ditolak di domain publik | Mengurangi permukaan serangan | M | Terpasang |
 | BR-HUB-06 | Staf bisa membuka beberapa akun berbeda di tab berbeda pada satu browser; sesi, realtime, dan heartbeat terpisah per tab/akun | Kebutuhan kerja staf yang memegang lebih dari satu akun | M | Terpasang |
 | BR-HUB-07 | Peran dan izin staf sesuai bagian 7.2; menu mengikuti gabungan peran dan izin; akun wajib punya minimal satu peran atau satu Izin Komunitas | Akses seperlunya | M | Terpasang |
 | BR-HUB-08 | Super Admin mengelola akun staf: tambah (password sementara tampil sekali), ubah peran/tim/batas tiket/izin, reset password, nonaktifkan (tiket aktif kembali ke antrean, transfer dibatalkan); tidak bisa menonaktifkan diri sendiri atau melepas peran Super Admin sendiri | Siklus hidup akun staf | M | Terpasang |
@@ -627,7 +627,7 @@ Rincian teknis setiap kebutuhan (RPC, tabel, kode error, layar) ada di [srs.md](
 | ID | Kebutuhan | Rasional | Prioritas | Status |
 |---|---|---|---|---|
 | BR-OPS-01 | Sistem berjalan self-hosted di Docker tanpa layanan cloud wajib; hanya beberapa layanan yang boleh keluar ke internet (push, alert, backup, signature antivirus) | Kendali penuh atas data | M | Terpasang |
-| BR-OPS-02 | Dua domain: API publik hanya meloloskan path resmi; domain Hub hanya dari IP kantor | Permukaan serangan minimal | M | Terpasang |
+| BR-OPS-02 | Dua domain: API publik hanya meloloskan path resmi; domain Hub dapat dibatasi ke IP kantor (opsional) | Permukaan serangan minimal | M | Terpasang |
 | BR-OPS-03 | Container dikunci (read-only, non-root, tanpa capability, batas CPU/memori), jaringan internal dipisah, rahasia dari Docker secrets dan Vault | Pengerasan keamanan | M | Terpasang |
 | BR-OPS-04 | Kesehatan sistem: pemantauan layanan, disk, database, antrean, kapasitas, dan backup; alert dibuka, memburuk, dan pulih dikirim ke Telegram/email; Super Admin bisa menandai sudah ditangani | Gangguan cepat diketahui | M | Terpasang |
 | BR-OPS-05 | Peta layanan realtime (diperbarui ±5 detik) dengan status, replika, CPU, dan RAM setiap node | Gambaran kesehatan bagi Super Admin dan IT | S | Terpasang |
@@ -809,7 +809,7 @@ Bagian ini berisi **pertimbangan**, bukan klaim kepatuhan atau sertifikasi. Peni
 | Hak penghapusan | Hapus akun komunitas swalayan, pembersihan file, token push, cache (BR-AKUN-10, BR-OPS-09) | Menjelaskan pengecualian (arsip regulator, riwayat CS) di Kebijakan Privasi |
 | Pembatasan tujuan dan minimisasi | Data trading tidak disimpan; analitik tanpa teks; penyamaran data sensitif di chat CS; EXIF/GPS dibuang; pencarian tanpa hasil disamarkan (BR-PATUH-14) | Menilai kebutuhan setiap data yang dikumpulkan |
 | Retensi | Masa simpan per jenis data dengan penghapusan otomatis; retensi chat CS dikonfirmasi Kepatuhan (bagian 10.8) | Menetapkan dan mengonfirmasi nilai akhir |
-| Keamanan | RLS di semua tabel, 2FA staf, kunci akun, Hub hanya dari IP kantor, rahasia di Vault, enkripsi backup, pengerasan container, audit akses data | Pentest independen, pengelolaan akses fisik dan kunci |
+| Keamanan | RLS di semua tabel, 2FA staf, kunci akun, pembatasan IP Hub (opsional), rahasia di Vault, enkripsi backup, pengerasan container, audit akses data | Pentest independen, pengelolaan akses fisik dan kunci |
 | Akuntabilitas | Jejak Audit tambah-saja; akses kasus, transkrip, jejak layanan, DM, dan bukti tercatat | Peninjauan audit berkala |
 | Insiden data | Alert sistem ke Telegram/email | Prosedur pemberitahuan kegagalan pelindungan data kepada subjek data dan otoritas sesuai UU PDP |
 | Lokasi data | Self-hosted; panduan backup menyarankan bucket S3 di penyedia di Indonesia | Menetapkan kebijakan lokasi data dan transfer lintas batas (FCM, alert) |
@@ -895,7 +895,7 @@ Sistem menyediakan toleransi nol dan penyimpanan bukti (BR-MOD-18). **Kanal pela
 | ID | Risiko | Dampak | Kemungkinan | Mitigasi |
 |---|---|---|---|---|
 | R-01 | Kunci privat OLT bocor | Tinggi: token palsu atas nama nasabah | Rendah | Kunci hanya di server OLT; rotasi `kid`; token maks. 15 menit; kunci tidak bisa diganti dari Hub |
-| R-02 | Akun Super Admin diambil alih | Tinggi | Rendah | 2FA wajib, kunci akun, Hub hanya dari IP kantor, keluar otomatis, audit, Reset 2FA oleh Super Admin lain |
+| R-02 | Akun Super Admin diambil alih | Tinggi | Rendah | 2FA wajib, kunci akun, pembatasan IP Hub (opsional), keluar otomatis, audit, Reset 2FA oleh Super Admin lain |
 | R-03 | Staf meminta OTP/PIN atau menyalahgunakan data nasabah | Tinggi | Sedang | Pemblokiran server, penyamaran, catatan audit, sinyal keamanan di Ringkasan Kepatuhan, pelatihan |
 | R-04 | Penipu menyamar sebagai CS | Tinggi | Sedang | Room CS resmi berbadge, akun resmi tanpa DM, laporan CS palsu P1, pesan pengingat keamanan |
 | R-05 | Manipulasi pasar atau pom-pom saham lewat komunitas | Tinggi | Sedang | Deteksi otomatis, slow mode, bobot akun baru, frasa promosi, moderasi, karantina bukti |

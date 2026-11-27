@@ -9,7 +9,7 @@
 # (api-cs-customer, same list as the cs_api calls in rendezvous_community). Any other cs_api
 # request (Accept-Profile/Content-Profile) gets 403 (api-cs-staff-block), and the api router
 # strips the profile headers so only the public schema is reachable. Agent RPCs and cs-admin
-# go only through CS_CONSOLE_DOMAIN (ipAllowList VPN_SOURCE_RANGES).
+# go only through CS_CONSOLE_DOMAIN (ipAllowList VPN_SOURCE_RANGES when set).
 # Public REST, Realtime, Storage, and media routers set X-Olt-Edge: public (overwriting any
 # client value). The DB rejects CS-account JWTs carrying it: REST via private.check_request,
 # Realtime (join/presence) and Storage (all buckets) via RLS; media forwards it to Storage.

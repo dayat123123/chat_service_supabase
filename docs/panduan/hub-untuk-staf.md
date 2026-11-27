@@ -19,7 +19,7 @@ Semua tindakan penting tercatat di **Jejak Audit** dan tidak bisa dihapus.
 
 ### 1.2 Cara masuk
 
-1. Buka alamat Hub yang diberikan tim IT. Hub hanya bisa dibuka dari **jaringan kantor** (atau VPN kantor bila disediakan IT). Dari jaringan lain halaman tidak terbuka.
+1. Buka alamat Hub yang diberikan tim IT. Bila tim IT membatasi Hub ke **jaringan kantor** (atau VPN kantor), dari jaringan lain halaman tidak terbuka.
 2. Di halaman **Masuk ke Rendezvous Hub**, isi **Email** (email kerja) dan **Password**, lalu klik **Masuk**.
 3. **Kode 2FA** (Super Admin, dan peran lain yang diwajibkan Super Admin): setelah password, Hub meminta **Masukkan kode 2FA**.
    - Buka aplikasi authenticator di HP (Google Authenticator, Microsoft Authenticator, atau sejenis).

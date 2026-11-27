@@ -5,7 +5,7 @@ Panduan memasang server sosial di server Ubuntu baru sampai API bisa diakses pub
 Hasil akhirnya:
 
 - `https://<domain API>` untuk aplikasi OLT (REST, Realtime, login, unggah media), sertifikat Let's Encrypt otomatis.
-- Rendezvous Hub di `https://<domain Hub>`, hanya dari IP kantor/VPN (opsional).
+- Rendezvous Hub di `https://<domain Hub>` (opsional). Bisa dibatasi ke IP kantor/VPN, atau dibuka untuk semua IP.
 - Backup berjalan ke folder di disk terpisah setelah diatur dari Hub.
 
 Rujukan lain: [operasional.md](operasional.md) (operasional), [gangguan.md](gangguan.md) (gangguan), [produksi.md](produksi.md) (detail produksi), [server-development.md](server-development.md) (spek dan mode dev).
@@ -23,7 +23,7 @@ Rujukan lain: [operasional.md](operasional.md) (operasional), [gangguan.md](gang
 | User SSH dengan `sudo`, login dengan SSH key | Vendor IT | — |
 | JWKS (kunci **publik**) penanda tangan token sosial | Tim backend OLT ([olt-integration.md](../olt-integration.md)) | `{"keys":[{"kty":"OKP",...}]}` |
 | Email tim IT (notifikasi sertifikat) | Anda | `it@perusahaan.co.id` |
-| IP publik kantor / subnet VPN untuk Hub | Tim IT | `198.51.100.7/32` |
+| IP publik kantor / subnet VPN untuk Hub (opsional; kosong = Hub bisa dibuka dari IP mana pun) | Tim IT | `198.51.100.7/32` |
 | Akses admin repo GitHub `chat_service_supabase`, dan `rendezvous_hub` bila Hub dipasang (untuk menambah deploy key) | Anda | — |
 
 Tanpa JWKS dari OLT, mode produksi tidak bisa dipakai (kunci dummy ditolak). Selama JWKS belum ada, pakai mode dev di bagian 7.
@@ -212,9 +212,8 @@ hub_domain=$(ask "Rendezvous Hub domain (leave empty if none yet)" "$(env_get CS
 vpn_ranges=""
 if [ -n "$hub_domain" ]; then
   [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid Hub domain: $hub_domain"
-  vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (e.g. 203.0.113.10/32)" "$(env_get VPN_SOURCE_RANGES)")
-  [[ $vpn_ranges =~ ^[0-9./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
-  [[ $vpn_ranges != *0.0.0.0/0* ]] || die "0.0.0.0/0 opens the Hub to the whole internet. Enter office/VPN IPs only."
+  vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (empty = every IP)" "$(env_get VPN_SOURCE_RANGES)")
+  [ -z "$vpn_ranges" ] || [[ $vpn_ranges =~ ^[0-9A-Fa-f:./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
 fi
 backup_default=$(env_get BACKUP_LOCAL_REPO_DIR)
 [ -n "$backup_default" ] || { [ -d /mnt/backup ] && backup_default=/mnt/backup/restic; }
@@ -353,7 +352,7 @@ Done.
   URL API (supabaseUrl) : https://$domain
   Anon key (anonKey)    : $anon_key
 EOF
-[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: $vpn_ranges)"
+[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: ${vpn_ranges:-every IP})"
 cat <<EOF
 
 Next steps (docs/panduan/instalasi-server.md section 5):
@@ -378,17 +377,17 @@ curl -sI http://<domain API>/ | head -1                      # 301/308 ke https
 curl -s -o /dev/null -w '%{http_code}\n' https://<domain API>/   # 404: hanya path API yang dibuka
 ```
 
-Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://<domain Hub>` harus 403.
+Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. Bila `VPN_SOURCE_RANGES` diisi, `https://<domain Hub>` harus 403; bila kosong, halaman login Hub terbuka dari mana pun.
 
 ## 5. Setelah server jalan
 
-1. **Login Hub** (`https://<domain Hub>`, dari kantor/VPN) dengan email Super Admin dan password sementara, lalu ganti password.
+1. **Login Hub** (`https://<domain Hub>`) dengan email Super Admin dan password sementara, lalu ganti password.
 2. **Pengaturan → Sistem → Backup**: pilih tujuan (Folder lokal di server, atau S3), buat password enkripsi, simpan. Tekan **Uji restore sekarang** setelah backup penuh pertama selesai.
 3. **Pengaturan → Sistem → Alert**: isi Telegram/email, lalu **Kirim uji**. Tanpa kanal ini, alert gangguan tidak terkirim ke siapa pun.
 4. **Pengaturan → Push notification**: unggah kunci Firebase (project Firebase aplikasi OLT), bila push dipakai.
 5. **Pengaturan → Akun CS**: buat akun staf lain.
 6. **Simpan di luar server** (password manager / brankas): `docker/.env`, folder `docker/secrets/`, password backup, salinan `pgsodium_root.key` ([backup](../backup/README.md#pemulihan)).
-7. **Data untuk tim aplikasi OLT**: `supabaseUrl` = `https://<domain API>`, `anonKey` = hasil `make anon-key`, versi library `v1.17.0` ([panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md)).
+7. **Data untuk tim aplikasi OLT**: `supabaseUrl` = `https://<domain API>`, `anonKey` = hasil `make anon-key`, versi library `v1.61.0` ([panduan integrasi library](https://github.com/dayat123123/rendezvous_community/blob/main/doc/integration.md)).
 8. Uji dari aplikasi: login, buka feed, kirim chat antar dua akun.
 
 ## 6. Bila ada masalah saat instalasi
@@ -401,7 +400,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal, dan `https://
 | `JWKS rejected` | Kunci dev, kunci privat, atau format salah | Minta ulang JWKS **publik** dari tim OLT |
 | Clone terus gagal | Deploy key belum ditambahkan / repo lain | Periksa GitHub → Settings → Deploy keys. Kunci `github_deploy` untuk `chat_service_supabase`, kunci `github_deploy_hub` untuk `rendezvous_hub` |
 | `Rendezvous Hub checkout not found at ...` | Domain Hub diisi tetapi `~/rendezvous_hub` belum ada | Jalankan ulang script (langkah 7), atau isi `HUB_DIR` di `docker/.env` |
-| Hub 403 dari kantor | IP kantor tidak ada di `VPN_SOURCE_RANGES` | Cek IP publik kantor, perbaiki `docker/.env`, `make up` |
+| Hub 403 dari kantor | `VPN_SOURCE_RANGES` diisi tetapi IP kantor tidak termasuk | Cek IP publik kantor, perbaiki atau kosongkan `VPN_SOURCE_RANGES` di `docker/.env`, `make up` |
 | `olt_mode` bukan `jwt` | Konfigurasi auth-bridge | `make logs s=auth-bridge` |
 | `make up` habis waktu menunggu `clamav`, atau Hub menolak dokumen/video chat CS dengan "Virus check is unavailable" | Start pertama clamav masih mengunduh signature (±300 MB) atau server tidak bisa mengakses `database.clamav.net` | `make logs s=clamav`; `make up` sudah menunggu sampai 15 menit; bila tetap habis waktu, tunggu sampai "socket found, clamd started", lalu `make up` lagi. clamd butuh ±1,1–1,6 GB RAM (lihat [produksi.md](produksi.md)) |
 | Login dari aplikasi selalu "Sesi berakhir" | `iss`/`aud`/jam server OLT tidak cocok | `docker logs olt-social-auth-bridge-1 --since 15m` (field `reason`) |

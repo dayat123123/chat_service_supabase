@@ -134,9 +134,8 @@ hub_domain=$(ask "Rendezvous Hub domain (leave empty if none yet)" "$(env_get CS
 vpn_ranges=""
 if [ -n "$hub_domain" ]; then
   [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid Hub domain: $hub_domain"
-  vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (e.g. 203.0.113.10/32)" "$(env_get VPN_SOURCE_RANGES)")
-  [[ $vpn_ranges =~ ^[0-9./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
-  [[ $vpn_ranges != *0.0.0.0/0* ]] || die "0.0.0.0/0 opens the Hub to the whole internet. Enter office/VPN IPs only."
+  vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (empty = every IP)" "$(env_get VPN_SOURCE_RANGES)")
+  [ -z "$vpn_ranges" ] || [[ $vpn_ranges =~ ^[0-9A-Fa-f:./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
 fi
 backup_default=$(env_get BACKUP_LOCAL_REPO_DIR)
 [ -n "$backup_default" ] || { [ -d /mnt/backup ] && backup_default=/mnt/backup/restic; }
@@ -275,7 +274,7 @@ Done.
   URL API (supabaseUrl) : https://$domain
   Anon key (anonKey)    : $anon_key
 EOF
-[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: $vpn_ranges)"
+[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: ${vpn_ranges:-every IP})"
 cat <<EOF
 
 Next steps (docs/panduan/instalasi-server.md section 5):
