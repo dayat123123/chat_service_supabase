@@ -901,7 +901,7 @@ services:
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/classifier
-    image: olt-social/classifier:0.1.1
+    image: olt-social/classifier:0.1.2
     networks: [app]
     depends_on:
       migrate:
