@@ -1,9 +1,15 @@
 # Web CS and agent API routers (single profile with CS=1, and cluster).
 # Every router on CS_CONSOLE_DOMAIN goes through vpn-only: limited to VPN_SOURCE_RANGES when it is set,
 # and to private networks (office LAN, VPN, loopback) when it is empty, so the internet always gets 403.
+# CS_CONSOLE_DOMAIN may be a public domain, an internal domain, or an IP. CS_CONSOLE_SCHEME=https (default)
+# serves it on websecure with a Let's Encrypt certificate; CS_CONSOLE_SCHEME=http serves it on the web entrypoint
+# without TLS or HSTS for office-only access. The entrypoint HTTPS redirect has priority 1, so these routers win.
 # Page security headers (CSP, HSTS, ...) are set by the cs-console nginx.
 # The cs_api schema and /functions/v1/cs-admin are fully reachable only on this domain; prod.yml restricts them.
 # cs-edge strips X-Olt-Edge on REST, Realtime, and Storage so staff JWTs are accepted.
+{{- $http := eq (env "CS_CONSOLE_SCHEME") "http" }}
+{{- $ep := ternary "web" "websecure" $http }}
+{{- $hsts := ternary "" "hsts, " $http }}
 http:
   middlewares:
     cs-edge:
@@ -17,58 +23,70 @@ http:
 
   routers:
     cs-realtime:
-      entryPoints: [websecure]
+      entryPoints: [{{ $ep }}]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/realtime/v1`)
       service: kong
-      middlewares: [vpn-only, cs-edge, ws-limit, rate-limit, hsts, security-headers]
+      middlewares: [vpn-only, cs-edge, ws-limit, rate-limit, {{ $hsts }}security-headers]
+      priority: 100
+{{- if not $http }}
       tls:
         certResolver: le
-      priority: 100
+{{- end }}
 
     cs-storage-upload:
-      entryPoints: [websecure]
+      entryPoints: [{{ $ep }}]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/storage/v1`) && (Method(`POST`) || Method(`PUT`))
       service: kong
-      middlewares: [vpn-only, cs-edge, rate-limit, body-upload, hsts, security-headers]
+      middlewares: [vpn-only, cs-edge, rate-limit, body-upload, {{ $hsts }}security-headers]
+      priority: 95
+{{- if not $http }}
       tls:
         certResolver: le
-      priority: 95
+{{- end }}
 
     cs-media-upload:
-      entryPoints: [websecure]
+      entryPoints: [{{ $ep }}]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/media/v1`) && Method(`POST`)
       service: kong
-      middlewares: [vpn-only, cs-edge, rate-limit, body-upload, hsts, security-headers]
+      middlewares: [vpn-only, cs-edge, rate-limit, body-upload, {{ $hsts }}security-headers]
+      priority: 95
+{{- if not $http }}
       tls:
         certResolver: le
-      priority: 95
+{{- end }}
 
     cs-api:
-      entryPoints: [websecure]
+      entryPoints: [{{ $ep }}]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && (PathPrefix(`/rest/v1`) || PathPrefix(`/auth/v1`) || PathPrefix(`/functions/v1`) || PathPrefix(`/storage/v1`))
       service: kong
-      middlewares: [vpn-only, cs-edge, rate-limit, body-api, hsts, security-headers]
+      middlewares: [vpn-only, cs-edge, rate-limit, body-api, {{ $hsts }}security-headers]
+      priority: 80
+{{- if not $http }}
       tls:
         certResolver: le
-      priority: 80
+{{- end }}
 
     cs-nasabah:
-      entryPoints: [websecure]
+      entryPoints: [{{ $ep }}]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`) && PathPrefix(`/api-nasabah`)
       service: nasabah-gateway
-      middlewares: [vpn-only, rate-limit, body-api, hsts, security-headers]
+      middlewares: [vpn-only, rate-limit, body-api, {{ $hsts }}security-headers]
+      priority: 90
+{{- if not $http }}
       tls:
         certResolver: le
-      priority: 90
+{{- end }}
 
     cs-console:
-      entryPoints: [websecure]
+      entryPoints: [{{ $ep }}]
       rule: Host(`{{ env "CS_CONSOLE_DOMAIN" }}`)
       service: cs-console
-      middlewares: [vpn-only, rate-limit, hsts]
+      middlewares: [vpn-only, rate-limit{{ ternary "" ", hsts" $http }}]
+      priority: 2
+{{- if not $http }}
       tls:
         certResolver: le
-      priority: 1
+{{- end }}
 
   services:
     cs-console:

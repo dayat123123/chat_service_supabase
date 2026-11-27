@@ -132,6 +132,8 @@ check high "kong-entrypoint: empty origin -> unused origin" 'grep -q "cors-disab
 grep -q 'CORS_ALLOWED_ORIGINS:-\*' "$D/compose.dev.yml" && res INFO low "dev: CORS * (dev profile only; do not use on a shared server)"
 check medium "production web CS is single-origin (cs.yml without CORS, VPN ipAllowList)" 'grep -q "vpn-only" $CS && [ "$(grep -c "vpn-only" $CS)" -ge 6 ]'
 check high "web CS allowlist defaults to private networks, never the whole internet" 'grep "VPN_SOURCE_RANGES\" | default" $CS | grep -q "192.168.0.0/16" && ! grep -Eq "0\.0\.0\.0/0|::/0" $CS'
+check high "web CS plain HTTP only with CS_CONSOLE_SCHEME=http, and every CS router keeps vpn-only" 'grep -q "eq (env \"CS_CONSOLE_SCHEME\") \"http\"" $CS && [ "$(grep -c "middlewares: \[vpn-only" $CS)" -eq "$(routers "$CS" | wc -l)" ]'
+check high "HTTPS redirect has priority 1 and no public API router listens on plain HTTP" 'grep -q "TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_PRIORITY: \"1\"" $D/compose.prod.yml && ! grep -q "entryPoints: \[web\]" $PROD'
 
 echo "== trusted proxies"
 check high "Kong trusts X-Forwarded-For only from the edge subnet" 'grep -q "KONG_TRUSTED_IPS: \${EDGE_SUBNET:-10.250.250.0/24}" $D/compose.yml'

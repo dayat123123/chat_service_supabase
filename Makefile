@@ -92,7 +92,9 @@ check-config:
 	  grep -qE "^$$k=.+" $(ENV) || { echo "Profile $(PROFILE): $$k is required in docker/.env"; exit 1; }; done; \
 	  for k in AUTH_BRIDGE_RATE_LIMIT_PER_MINUTE EDGE_WS_PER_IP; do \
 	    v=$$(sed -n "s/^$$k=\([0-9]*\).*/\1/p" $(ENV) | tail -1); \
-	    [ -z "$$v" ] || [ "$$v" -ge 1000 ] || { echo "Profile $(PROFILE): $$k=$$v in docker/.env is too low (minimum 1000, see docs/panduan/produksi.md 'Batas & rate limit')"; exit 1; }; done; fi
+	    [ -z "$$v" ] || [ "$$v" -ge 1000 ] || { echo "Profile $(PROFILE): $$k=$$v in docker/.env is too low (minimum 1000, see docs/panduan/produksi.md 'Batas & rate limit')"; exit 1; }; done; \
+	  s=$$(sed -n 's/^CS_CONSOLE_SCHEME=//p' $(ENV) | tail -1 | tr -d '\r'); \
+	  case "$$s" in ''|http|https) ;; *) echo "Profile $(PROFILE): CS_CONSOLE_SCHEME=$$s in docker/.env must be http or https"; exit 1;; esac; fi
 
 check-hub:
 	$(HUB_REQUIRED)

@@ -1,6 +1,7 @@
-# Web CS and agent API are served on one CS_CONSOLE_DOMAIN. VPN_SOURCE_RANGES (Traefik ipAllowList)
-# is optional: empty limits the domain to private networks (office LAN and VPN). Single origin, so no CORS.
-# See docs/panduan/produksi.md.
+# Web CS and agent API are served on one CS_CONSOLE_DOMAIN (public domain, internal domain, or IP).
+# VPN_SOURCE_RANGES (Traefik ipAllowList) is optional: empty limits the domain to private networks
+# (office LAN and VPN). CS_CONSOLE_SCHEME=https (default, Let's Encrypt) or http (office-only, no TLS).
+# Single origin, so no CORS. See docs/panduan/produksi.md.
 
 services:
   traefik:
@@ -10,10 +11,11 @@ services:
     environment:
       CS_CONSOLE_DOMAIN: ${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN is required when CS=1 (docker/.env)}
       VPN_SOURCE_RANGES: ${VPN_SOURCE_RANGES:-}
+      CS_CONSOLE_SCHEME: ${CS_CONSOLE_SCHEME:-https}
 
   cs-console:
     environment:
-      SUPABASE_URL: https://${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN is required when CS=1 (docker/.env)}
+      SUPABASE_URL: ${CS_CONSOLE_SCHEME:-https}://${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN is required when CS=1 (docker/.env)}
 
   sentinel:
     networks: [app, data, edge, egress]

@@ -130,10 +130,22 @@ domain=$(ask "API domain (e.g. social-api.company.co.id)" "$(env_get PROXY_DOMAI
 [[ $domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid domain: $domain"
 acme_email=$(ask "IT team email for HTTPS certificates" "$(env_get ACME_EMAIL)")
 [[ $acme_email == *@*.* ]] || die "Invalid email: $acme_email"
-hub_domain=$(ask "Rendezvous Hub domain (leave empty if none yet)" "$(env_get CS_CONSOLE_DOMAIN)")
+hub_domain=$(ask "Rendezvous Hub address, an IP or a domain (leave empty if none yet)" "$(env_get CS_CONSOLE_DOMAIN)")
 vpn_ranges=""
+hub_scheme=""
 if [ -n "$hub_domain" ]; then
-  [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid Hub domain: $hub_domain"
+  hub_is_ip=false
+  if [[ $hub_domain =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    hub_is_ip=true
+  elif ! [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+    die "Invalid Hub address: $hub_domain"
+  fi
+  scheme_default=http
+  $hub_is_ip || scheme_default=$(env_get CS_CONSOLE_SCHEME)
+  [ -n "$scheme_default" ] || scheme_default=https
+  hub_scheme=$(ask "Hub protocol: https (Let's Encrypt, needs a public domain) or http (office LAN/VPN only, no TLS)" "$scheme_default")
+  case "$hub_scheme" in http | https) ;; *) die "Hub protocol must be http or https: $hub_scheme" ;; esac
+  ! { $hub_is_ip && [ "$hub_scheme" = https ]; } || die "https needs a domain for its Let's Encrypt certificate; use http for an IP address"
   vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (empty = office LAN and VPN only)" "$(env_get VPN_SOURCE_RANGES)")
   [ -z "$vpn_ranges" ] || [[ $vpn_ranges =~ ^[0-9A-Fa-f:./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
 fi
@@ -148,6 +160,7 @@ env_set ACME_EMAIL "$acme_email"
 env_set HEALER_DOCKER_GID "$(getent group docker | cut -d: -f3)"
 if [ -n "$hub_domain" ]; then
   env_set CS_CONSOLE_DOMAIN "$hub_domain"
+  env_set CS_CONSOLE_SCHEME "$hub_scheme"
   env_set VPN_SOURCE_RANGES "$vpn_ranges"
 fi
 if [ -n "$backup_dir" ]; then
@@ -231,7 +244,7 @@ check_dns() {
   echo "  $name -> $resolved   (IPs on this server: $(hostname -I | xargs))"
 }
 check_dns "$domain"
-[ -z "$hub_domain" ] || check_dns "$hub_domain"
+[ "$hub_scheme" != https ] || check_dns "$hub_domain"
 confirm "Is the IP above this server's public IP (or the office public IP forwarded to this server)?" \
   || die "Fix DNS first, then run this script again."
 
@@ -274,7 +287,7 @@ Done.
   URL API (supabaseUrl) : https://$domain
   Anon key (anonKey)    : $anon_key
 EOF
-[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: ${vpn_ranges:-office LAN and VPN})"
+[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : $hub_scheme://$hub_domain   (only from: ${vpn_ranges:-office LAN and VPN})"
 cat <<EOF
 
 Next steps (docs/panduan/instalasi-server.md section 5):

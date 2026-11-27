@@ -9,7 +9,6 @@ source /olt/tests/lib/common.sh
 DOMAIN=api.olt-test.invalid
 CS_DOMAIN=cs.olt-test.invalid
 EDGE_NET=$(docker network inspect -f '{{(index .IPAM.Config 0).Subnet}}' "${STACK}_edge")
-NAME=olt-prodroute-traefik
 OUT="${OUT_DIR:-$RESULTS/security-$(stamp)}"
 mkdir -p "$OUT"
 TSV="$OUT/prod-routing.tsv"
@@ -22,39 +21,49 @@ res() {
 }
 
 IMAGE=$(docker inspect -f '{{.Config.Image}}' "$(container traefik)")
-docker rm -f "$NAME" > /dev/null 2>&1
-docker create --name "$NAME" --network "${STACK}_edge" --tmpfs /tmp --cap-drop ALL --user 65532:65532 \
-  -e TRAEFIK_GLOBAL_CHECKNEWVERSION=false -e TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE=false -e TRAEFIK_LOG_LEVEL=ERROR \
-  -e TRAEFIK_PROVIDERS_FILE_DIRECTORY=/etc/traefik/dynamic \
-  -e TRAEFIK_ENTRYPOINTS_PING_ADDRESS=:8082 -e TRAEFIK_PING=true -e TRAEFIK_PING_ENTRYPOINT=ping \
-  -e TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:8080 -e TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO=:443 \
-  -e TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME=https \
-  -e TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS=:8443 -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_MAXHEADERBYTES=32768 \
-  -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_ALIASHEADERSSTRATEGY=delete \
-  -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDSLASH=false \
-  -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDNULLCHARACTER=false \
-  -e TRAEFIK_ENTRYPOINTS_ADMIN_ADDRESS=:9000 \
-  -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL=probe@olt-test.invalid \
-  -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_STORAGE=/tmp/acme.json \
-  -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_HTTPCHALLENGE_ENTRYPOINT=web \
-  -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_CASERVER=https://127.0.0.1:9/directory \
-  -e PROXY_DOMAIN=$DOMAIN -e TLS_SNI_STRICT=false -e CS_CONSOLE_DOMAIN=$CS_DOMAIN -e VPN_SOURCE_RANGES="$EDGE_NET" \
-  -e EDGE_RATE_AVERAGE=100 -e EDGE_RATE_BURST=200 -e EDGE_WS_PER_IP=20 -e EDGE_BODY_MAX_API=262144 \
-  "$IMAGE" > /dev/null || { echo "failed to create test Traefik" >&2; exit 2; }
-trap 'docker rm -f "$NAME" > /dev/null 2>&1; rm -f "$BODY"' EXIT
+docker rm -f olt-prodroute-traefik olt-prodroute-traefik-http > /dev/null 2>&1
+create_traefik() {
+  local name=$1
+  shift
+  docker create --name "$name" --network "${STACK}_edge" --tmpfs /tmp --cap-drop ALL --user 65532:65532 \
+    -e TRAEFIK_GLOBAL_CHECKNEWVERSION=false -e TRAEFIK_GLOBAL_SENDANONYMOUSUSAGE=false -e TRAEFIK_LOG_LEVEL=ERROR \
+    -e TRAEFIK_PROVIDERS_FILE_DIRECTORY=/etc/traefik/dynamic \
+    -e TRAEFIK_ENTRYPOINTS_PING_ADDRESS=:8082 -e TRAEFIK_PING=true -e TRAEFIK_PING_ENTRYPOINT=ping \
+    -e TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:8080 -e TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_TO=:443 \
+    -e TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME=https \
+    -e TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_PRIORITY=1 \
+    -e TRAEFIK_ENTRYPOINTS_WEBSECURE_ADDRESS=:8443 -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_MAXHEADERBYTES=32768 \
+    -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_ALIASHEADERSSTRATEGY=delete \
+    -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDSLASH=false \
+    -e TRAEFIK_ENTRYPOINTS_WEBSECURE_HTTP_ENCODEDCHARACTERS_ALLOWENCODEDNULLCHARACTER=false \
+    -e TRAEFIK_ENTRYPOINTS_ADMIN_ADDRESS=:9000 \
+    -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_EMAIL=probe@olt-test.invalid \
+    -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_STORAGE=/tmp/acme.json \
+    -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_HTTPCHALLENGE_ENTRYPOINT=web \
+    -e TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_CASERVER=https://127.0.0.1:9/directory \
+    -e PROXY_DOMAIN=$DOMAIN -e TLS_SNI_STRICT=false -e VPN_SOURCE_RANGES="$EDGE_NET" \
+    -e EDGE_RATE_AVERAGE=100 -e EDGE_RATE_BURST=200 -e EDGE_WS_PER_IP=20 -e EDGE_BODY_MAX_API=262144 \
+    "$@" "$IMAGE" > /dev/null
+}
+start_traefik() {
+  local name=$1 ip=""
+  docker cp "$tmpdir/traefik" "$name:/etc/" > /dev/null || return 1
+  docker start "$name" > /dev/null || return 1
+  for _ in $(seq 1 30); do
+    ip=$(docker inspect -f "{{with index .NetworkSettings.Networks \"${STACK}_edge\"}}{{.IPAddress}}{{end}}" "$name")
+    [ -n "$ip" ] && curl -sf "http://$ip:8082/ping" > /dev/null && break
+    sleep 1
+  done
+  printf '%s' "$ip"
+}
+create_traefik olt-prodroute-traefik -e CS_CONSOLE_DOMAIN=$CS_DOMAIN || { echo "failed to create test Traefik" >&2; exit 2; }
+trap 'docker rm -f olt-prodroute-traefik olt-prodroute-traefik-http > /dev/null 2>&1; rm -f "$BODY"' EXIT
 tmpdir=$(mktemp -d)
 mkdir -p "$tmpdir/traefik/dynamic"
 cp /olt/docker/volumes/traefik/common.yml "$tmpdir/traefik/dynamic/common.yml"
 cp /olt/docker/volumes/traefik/prod.yml "$tmpdir/traefik/dynamic/routes.yml"
 cp /olt/docker/volumes/traefik/cs.yml "$tmpdir/traefik/dynamic/cs.yml"
-docker cp "$tmpdir/traefik" "$NAME:/etc/" > /dev/null || { echo "failed to copy configuration" >&2; exit 2; }
-docker start "$NAME" > /dev/null
-IP=""
-for _ in $(seq 1 30); do
-  IP=$(docker inspect -f "{{with index .NetworkSettings.Networks \"${STACK}_edge\"}}{{.IPAddress}}{{end}}" "$NAME")
-  [ -n "$IP" ] && curl -sf "http://$IP:8082/ping" > /dev/null && break
-  sleep 1
-done
+IP=$(start_traefik olt-prodroute-traefik) || { echo "failed to copy configuration" >&2; exit 2; }
 log "test Traefik $IP (image $IMAGE)"
 
 H=https://$DOMAIN:8443
@@ -219,6 +228,26 @@ if k6 run -q --summary-mode disabled --log-format raw --insecure-skip-tls-verify
     || res FAIL "ws-limit does not limit ($opened opened, $rejected rejected)"
 else
   res FAIL "k6 ws-limit failed (see ws-limit.log)"
+fi
+
+HUB_IP_HOST=192.0.2.10
+if create_traefik olt-prodroute-traefik-http -e CS_CONSOLE_DOMAIN=$HUB_IP_HOST -e CS_CONSOLE_SCHEME=http \
+  && HTTP_IP=$(start_traefik olt-prodroute-traefik-http) && [ -n "$HTTP_IP" ]; then
+  hc() { curl -s -o "$BODY" -D "$BODY.h" -w '%{http_code}' -H "Host: $1" "http://$HTTP_IP:8080$2" "${@:3}" 2>/dev/null || echo 000; }
+  code=$(hc "$HUB_IP_HOST" /rest/v1/rpc/agent_me -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Content-Profile: cs_api' -H 'Content-Type: application/json' -d '{}')
+  [ "$code" = 200 ] && res ok "Hub http mode: staff RPC reachable over plain HTTP on an IP host" "$code" || res FAIL "Hub http mode: staff RPC not reachable over HTTP" "$code"
+  ! grep -qi '^strict-transport-security' "$BODY.h" && res ok "Hub http mode: no HSTS header" || res FAIL "Hub http mode: HSTS sent over plain HTTP"
+  code=$(hc "$HUB_IP_HOST" /functions/v1/cs-admin/agents -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H "Content-Type: application/json" -d "{}")
+  [ "$code" = 403 ] && body_has role_forbidden && res ok "Hub http mode: cs-admin reachable over HTTP (agent rejected by the function)" "$code" \
+    || res FAIL "Hub http mode: cs-admin not reachable over HTTP" "$code"
+  code=$(hc "$DOMAIN" "/rest/v1/rpc/get_feed?p_limit=1" -H "apikey: $ANON_KEY")
+  [[ "$code" =~ ^30[178]$ ]] && res ok "Hub http mode: public API domain still redirected to HTTPS" "$code" || res FAIL "Hub http mode: public API served over plain HTTP" "$code"
+  code=$(hc "$CS_DOMAIN" /rest/v1/rpc/agent_me -X POST -H "apikey: $ANON_KEY" -H "Authorization: Bearer $STAFF_JWT" -H 'Content-Profile: cs_api' -H 'Content-Type: application/json' -d '{}')
+  [[ "$code" =~ ^30[178]$ ]] && res ok "Hub http mode: hosts other than CS_CONSOLE_DOMAIN are only redirected over HTTP" "$code" || res FAIL "Hub http mode: other host served over plain HTTP" "$code"
+  code=$(curl -sk -o /dev/null -w '%{http_code}' --resolve "$DOMAIN:8443:$HTTP_IP" "https://$DOMAIN:8443/rest/v1/rpc/get_feed?p_limit=1" -H "apikey: $ANON_KEY" 2>/dev/null || echo 000)
+  [ "$code" = 200 ] || [ "$code" = 401 ] && res ok "Hub http mode: public API still served over HTTPS" "$code" || res FAIL "Hub http mode: public API broken over HTTPS" "$code"
+else
+  res FAIL "failed to start the http-mode test Traefik"
 fi
 
 echo

@@ -5,7 +5,7 @@ Panduan memasang server sosial di server Ubuntu baru sampai API bisa diakses pub
 Hasil akhirnya:
 
 - `https://<domain API>` untuk aplikasi OLT (REST, Realtime, login, unggah media), sertifikat Let's Encrypt otomatis.
-- Rendezvous Hub di `https://<domain Hub>` (opsional). Hanya dari jaringan internal kantor atau VPN; dari internet 403.
+- Rendezvous Hub di `https://<domain Hub>`, atau `http://<IP LAN server>` / `http://<domain internal>` bila hanya dipakai di kantor (opsional). Hanya dari jaringan internal kantor atau VPN; dari internet 403.
 - Backup berjalan ke folder di disk terpisah setelah diatur dari Hub.
 
 Rujukan lain: [operasional.md](operasional.md) (operasional), [gangguan.md](gangguan.md) (gangguan), [produksi.md](produksi.md) (detail produksi), [server-development.md](server-development.md) (spek dan mode dev).
@@ -17,7 +17,7 @@ Rujukan lain: [operasional.md](operasional.md) (operasional), [gangguan.md](gang
 | Server Ubuntu 24.04, 4 vCPU / 8 GB / 100 GB SSD (+ disk backup terpisah, mis. `/mnt/backup`) | Vendor IT | — |
 | IP publik server (atau port forwarding 80/443 dari IP publik kantor) | Vendor IT | `203.0.113.10` |
 | A record domain API ke IP itu | Vendor IT / pengelola DNS | `social-api.perusahaan.co.id` |
-| A record domain Hub ke IP yang sama (opsional) | Vendor IT / pengelola DNS | `hub.perusahaan.co.id` |
+| A record domain Hub ke IP yang sama (opsional; tidak perlu bila Hub cukup dibuka lewat IP LAN atau domain internal dengan HTTP) | Vendor IT / pengelola DNS | `hub.perusahaan.co.id` |
 | Firewall penyedia: 80 dan 443 dari internet, 22 hanya dari IP admin | Vendor IT | — |
 | Akses HTTPS keluar dari server ke `database.clamav.net` (signature antivirus, ±300 MB saat start pertama lalu update harian) | Vendor IT | — |
 | User SSH dengan `sudo`, login dengan SSH key | Vendor IT | — |
@@ -59,7 +59,7 @@ Script menanyakan beberapa hal dan berhenti dengan pesan jelas bila ada yang bel
 | 3 | Swap 4 GB bila RAM < 8 GB | — |
 | 4 | `ufw`: SSH, 80, 443 | — |
 | 5 | Deploy key GitHub (baca saja), clone repo ke `~/chat_service_supabase` | Tambahkan deploy key yang ditampilkan di GitHub, lalu Enter |
-| 6 | `make gen-secrets`, isi `docker/.env` | Domain API, email, domain Hub dan IP yang boleh membuka Hub (opsional, kosong = LAN kantor dan VPN), folder backup |
+| 6 | `make gen-secrets`, isi `docker/.env` | Domain API, email, alamat Hub (domain atau IP LAN) dan protokolnya (`https` dengan Let's Encrypt, atau `http` untuk kantor saja; IP selalu `http`), IP yang boleh membuka Hub (opsional, kosong = LAN kantor dan VPN), folder backup |
 | 7 | Bila domain Hub diisi: deploy key kedua (`~/.ssh/github_deploy_hub`, alias SSH `github-hub`), clone [`rendezvous_hub`](https://github.com/dayat123123/rendezvous_hub) ke `~/rendezvous_hub`; saat dijalankan ulang cukup `git pull` | Tambahkan deploy key kedua di repo `rendezvous_hub`, lalu Enter |
 | 8 | Simpan JWKS OLT ke `docker/secrets/olt_jwks`, tolak kunci dev atau kunci privat | Tempel JWKS, Enter, Ctrl+D |
 | 9 | Cek DNS domain mengarah ke server | Konfirmasi IP |
@@ -208,10 +208,22 @@ domain=$(ask "API domain (e.g. social-api.company.co.id)" "$(env_get PROXY_DOMAI
 [[ $domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid domain: $domain"
 acme_email=$(ask "IT team email for HTTPS certificates" "$(env_get ACME_EMAIL)")
 [[ $acme_email == *@*.* ]] || die "Invalid email: $acme_email"
-hub_domain=$(ask "Rendezvous Hub domain (leave empty if none yet)" "$(env_get CS_CONSOLE_DOMAIN)")
+hub_domain=$(ask "Rendezvous Hub address, an IP or a domain (leave empty if none yet)" "$(env_get CS_CONSOLE_DOMAIN)")
 vpn_ranges=""
+hub_scheme=""
 if [ -n "$hub_domain" ]; then
-  [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "Invalid Hub domain: $hub_domain"
+  hub_is_ip=false
+  if [[ $hub_domain =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    hub_is_ip=true
+  elif ! [[ $hub_domain =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]]; then
+    die "Invalid Hub address: $hub_domain"
+  fi
+  scheme_default=http
+  $hub_is_ip || scheme_default=$(env_get CS_CONSOLE_SCHEME)
+  [ -n "$scheme_default" ] || scheme_default=https
+  hub_scheme=$(ask "Hub protocol: https (Let's Encrypt, needs a public domain) or http (office LAN/VPN only, no TLS)" "$scheme_default")
+  case "$hub_scheme" in http | https) ;; *) die "Hub protocol must be http or https: $hub_scheme" ;; esac
+  ! { $hub_is_ip && [ "$hub_scheme" = https ]; } || die "https needs a domain for its Let's Encrypt certificate; use http for an IP address"
   vpn_ranges=$(ask "IPs/ranges allowed to open the Hub, comma separated (empty = office LAN and VPN only)" "$(env_get VPN_SOURCE_RANGES)")
   [ -z "$vpn_ranges" ] || [[ $vpn_ranges =~ ^[0-9A-Fa-f:./,\ ]+$ ]] || die "Invalid Hub IP list: $vpn_ranges"
 fi
@@ -226,6 +238,7 @@ env_set ACME_EMAIL "$acme_email"
 env_set HEALER_DOCKER_GID "$(getent group docker | cut -d: -f3)"
 if [ -n "$hub_domain" ]; then
   env_set CS_CONSOLE_DOMAIN "$hub_domain"
+  env_set CS_CONSOLE_SCHEME "$hub_scheme"
   env_set VPN_SOURCE_RANGES "$vpn_ranges"
 fi
 if [ -n "$backup_dir" ]; then
@@ -309,7 +322,7 @@ check_dns() {
   echo "  $name -> $resolved   (IPs on this server: $(hostname -I | xargs))"
 }
 check_dns "$domain"
-[ -z "$hub_domain" ] || check_dns "$hub_domain"
+[ "$hub_scheme" != https ] || check_dns "$hub_domain"
 confirm "Is the IP above this server's public IP (or the office public IP forwarded to this server)?" \
   || die "Fix DNS first, then run this script again."
 
@@ -352,7 +365,7 @@ Done.
   URL API (supabaseUrl) : https://$domain
   Anon key (anonKey)    : $anon_key
 EOF
-[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : https://$hub_domain   (only from: ${vpn_ranges:-office LAN and VPN})"
+[ -z "$hub_domain" ] || echo "  Rendezvous Hub        : $hub_scheme://$hub_domain   (only from: ${vpn_ranges:-office LAN and VPN})"
 cat <<EOF
 
 Next steps (docs/panduan/instalasi-server.md section 5):
@@ -381,7 +394,7 @@ Dari laptop di luar kantor: `nc -zv <IP-server> 5432` harus gagal. `https://<dom
 
 ## 5. Setelah server jalan
 
-1. **Login Hub** (`https://<domain Hub>`) dengan email Super Admin dan password sementara, lalu ganti password.
+1. **Login Hub** (`https://<domain Hub>`, atau `http://<IP LAN server>` bila memilih `http`) dengan email Super Admin dan password sementara, lalu ganti password.
 2. **Pengaturan → Sistem → Backup**: pilih tujuan (Folder lokal di server, atau S3), buat password enkripsi, simpan. Tekan **Uji restore sekarang** setelah backup penuh pertama selesai.
 3. **Pengaturan → Sistem → Alert**: isi Telegram/email, lalu **Kirim uji**. Tanpa kanal ini, alert gangguan tidak terkirim ke siapa pun.
 4. **Pengaturan → Push notification**: unggah kunci Firebase (project Firebase aplikasi OLT), bila push dipakai.

@@ -7456,7 +7456,8 @@ Sumber: `docker/.env.example`, default di `docker/compose*.yml`, dan `docs/pandu
 | `EDGE_WS_PER_IP` | `1500` | WebSocket bersamaan per IP; produksi minimal 1.000 (`check-config`) |
 | `EDGE_BODY_MAX_API` / `EDGE_BODY_MAX_UPLOAD` / `EDGE_BODY_MAX_INTEGRATION` | `262144` / `27262976` / `2097152` | Batas body (byte) |
 | `TLS_SNI_STRICT` | `true` | Tolak TLS tanpa SNI yang cocok |
-| `CS_CONSOLE_DOMAIN` | kosong (wajib bila `CS=1`) | Domain Hub + API staf |
+| `CS_CONSOLE_DOMAIN` | kosong (wajib bila `CS=1`) | Alamat Hub + API staf: domain publik, domain internal, atau IP LAN server |
+| `CS_CONSOLE_SCHEME` | `https` | `https` (Let's Encrypt, butuh domain publik) atau `http` (port 80 tanpa TLS dan HSTS, untuk kantor saja; domain API tetap HTTPS) |
 | `VPN_SOURCE_RANGES` | kosong (opsional) | Rentang IP (LAN kantor/VPN, dipisah koma) yang boleh membuka domain CS; kosong = hanya jaringan internal (IP privat LAN kantor dan VPN), internet 403 |
 | `CS_CONSOLE_PORT` | `8085` | Port Hub di dev |
 | `HUB_DIR` | `../../rendezvous_hub` | Checkout repo Hub untuk build image `cs-console` |
