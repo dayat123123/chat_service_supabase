@@ -251,7 +251,7 @@ Karakteristik pengguna yang memengaruhi desain:
 | Aspek | Ketentuan |
 |---|---|
 | Server produksi | Linux, disarankan Ubuntu LTS; Docker Engine + Compose plugin; produksi awal disarankan 16 vCPU, 32 GB RAM, 500 GB NVMe (minimum 8 vCPU / 16 GB / 200 GB NVMe) (`docs/panduan/spesifikasi-server.md`) |
-| Jaringan | IP publik dengan 80/443 untuk API nasabah, 22 hanya dari IP admin; LAN/VPN kantor untuk Hub (`VPN_SOURCE_RANGES` opsional, kosong = IP privat); HTTPS keluar untuk Let's Encrypt, FCM, ClamAV, S3, Telegram/SMTP, csAdmin |
+| Jaringan | IP publik dengan 443 untuk API nasabah (80 publik opsional), 22 hanya dari IP admin; LAN/VPN kantor untuk Hub (`VPN_SOURCE_RANGES` opsional, kosong = IP privat); HTTPS keluar untuk Let's Encrypt, FCM, ClamAV, S3, Telegram/SMTP, csAdmin |
 | Profil deploy | `dev` (HTTP `:8000`, semua path terbuka), `single` (produksi satu server, siap pakai), `cluster` (Docker Swarm, kerangka) |
 | Aplikasi nasabah | Aplikasi OLT dengan library `rendezvous_community` (Flutter ≥ 3.47, Dart ≥ 3.12 menurut `pubspec.yaml`; lihat 11.4), di Windows, web, Android, iOS |
 | Hub | Browser desktop modern (diuji di Chromium lewat Playwright), dari IP yang diizinkan |
@@ -5861,7 +5861,7 @@ Modul ini mencakup cara server dipasang, diperbarui, dipantau, dipulihkan, dan d
 |---|---|
 | Deskripsi | Sistem harus menyediakan skrip instalasi yang menyiapkan server Ubuntu baru sampai stack berjalan. |
 | Aktor | Tim IT |
-| Prakondisi | Server Ubuntu LTS, DNS A record domain API, port 80/443 terbuka, 22 hanya IP admin |
+| Prakondisi | Server Ubuntu LTS, DNS A record domain API, port 443 terbuka dari internet (diteruskan langsung, tanpa TLS di depannya), 22 hanya IP admin |
 | Proses dan aturan | 1) `scripts/server-install.sh` memasang Docker, meng-clone `~/chat_service_supabase` dan `~/rendezvous_hub` (deploy key), membuat rahasia, lalu menjalankan stack. <br>2) Domain, email ACME, domain Hub, dan `VPN_SOURCE_RANGES` (opsional) diisi di `docker/.env`. <br>3) JWKS OLT diisi di `docker/secrets/olt_jwks`. <br>4) Ukuran minimum 8 vCPU / 16 GB / 200 GB NVMe; disarankan produksi awal 16 vCPU / 32 GB / 500 GB NVMe. |
 | Keluaran | Server siap dipakai |
 | Kode error | — |
@@ -6640,13 +6640,13 @@ Dipanggil Hub di domain CS: `POST /functions/v1/cs-admin/agents` (buat akun staf
 | Penyimpanan S3-compatible atau lokal | backup | Tujuan dan password enkripsi backup diatur di **Pengaturan → Backup**; jenis tujuan `s3` atau `local` | 0065, 0112, docs/backup |
 | Situs web publik | link-preview | Mengambil metadata URL untuk kartu link preview (jaringan `egress`) | docker/compose.yml, services/link-preview/README.md |
 | Server signature ClamAV | clamav (freshclam) | Unduh database signature harian | services/media/README.md |
-| Let's Encrypt | Traefik | Sertifikat TLS lewat HTTP-01 | docker/compose.prod.yml |
+| Let's Encrypt | Traefik | Sertifikat TLS lewat TLS-ALPN-01 di port 443 | docker/compose.prod.yml |
 
 ### 5.3 Antarmuka komunikasi
 
 | Aspek | Ketentuan | Sumber |
 |---|---|---|
-| Transport publik | HTTPS (HTTP/1.1, TLS) dan WebSocket aman (`wss`) di port 443. Port 80 hanya untuk redirect ke HTTPS dan tantangan HTTP-01 Let's Encrypt | docker/compose.prod.yml |
+| Transport publik | HTTPS (HTTP/1.1, TLS) dan WebSocket aman (`wss`) di port 443. Port 80 hanya untuk redirect ke HTTPS dan Hub mode `http` (LAN/VPN), boleh ditutup dari internet; tantangan Let's Encrypt lewat TLS-ALPN-01 di 443 | docker/compose.prod.yml |
 | TLS | Minimal TLS 1.2, `sniStrict` (bawaan true), cipher ECDHE AES-GCM/ChaCha20-Poly1305, kurva X25519/P-256/P-384, HSTS `max-age=31536000; includeSubDomains`; sertifikat otomatis Let's Encrypt (`certResolver: le`) | docker/volumes/traefik/prod.yml, common.yml |
 | Firewall server | Hanya 22 (SSH dengan key, dari kantor), 80, dan 443 terbuka | docs/panduan/produksi.md |
 | Admin | Entrypoint `admin` (Traefik `:9000`) terikat `127.0.0.1:8000` di server; Studio dan semua path hanya lewat SSH tunnel atau WireGuard. Studio dan meta mati secara bawaan (profil `admin`) | docker/compose.prod.yml |
@@ -7457,7 +7457,7 @@ Sumber: `docker/.env.example`, default di `docker/compose*.yml`, dan `docs/pandu
 | `EDGE_BODY_MAX_API` / `EDGE_BODY_MAX_UPLOAD` / `EDGE_BODY_MAX_INTEGRATION` | `262144` / `27262976` / `2097152` | Batas body (byte) |
 | `TLS_SNI_STRICT` | `true` | Tolak TLS tanpa SNI yang cocok |
 | `CS_CONSOLE_DOMAIN` | kosong (wajib bila `CS=1`) | Alamat Hub + API staf: domain publik, domain internal, atau IP LAN server |
-| `CS_CONSOLE_SCHEME` | `https` | `https` (Let's Encrypt, butuh domain publik) atau `http` (port 80 tanpa TLS dan HSTS, untuk kantor saja; domain API tetap HTTPS) |
+| `CS_CONSOLE_SCHEME` | `https` | `https` (Let's Encrypt, butuh domain publik dengan 443 terjangkau) atau `http` (port 80 tanpa TLS dan HSTS, untuk kantor saja; domain API tetap HTTPS) |
 | `VPN_SOURCE_RANGES` | kosong (opsional) | Rentang IP (LAN kantor/VPN, dipisah koma) yang boleh membuka domain CS; kosong = hanya jaringan internal (IP privat LAN kantor dan VPN), internet 403 |
 | `CS_CONSOLE_PORT` | `8085` | Port Hub di dev |
 | `HUB_DIR` | `../../rendezvous_hub` | Checkout repo Hub untuk build image `cs-console` |

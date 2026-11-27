@@ -72,8 +72,8 @@ Sertifikat HTTPS dibuat dan diperpanjang otomatis oleh Traefik (Let's Encrypt), 
 | 22/TCP | A dan B | IP admin | SSH (key-only) |
 | 8000/TCP | A | IP tim | API untuk aplikasi + Studio |
 | 8090/TCP | A | IP tim | OLT dummy (login dummy) |
-| 443/TCP | B | Semua, atau IP tim | HTTPS API untuk aplikasi |
-| 80/TCP | B | Semua | Validasi Let's Encrypt dan redirect ke HTTPS |
+| 443/TCP | B | Semua, atau IP tim | HTTPS API untuk aplikasi, sekaligus validasi Let's Encrypt (TLS-ALPN-01) |
+| 80/TCP | B | Opsional | Hanya redirect ke HTTPS; boleh ditutup |
 
 Port lain tetap tertutup, termasuk Postgres (5432), Valkey (6379), dan port layanan internal. Semua itu hanya ada di network Docker internal. Di tahap B, Studio hanya bisa dibuka lewat SSH tunnel ke `127.0.0.1:8000`.
 
@@ -82,7 +82,7 @@ Port lain tetap tertutup, termasuk Postgres (5432), Valkey (6379), dan port laya
 | Tujuan | Port | Untuk |
 |---|---|---|
 | Docker Hub, ghcr.io, GitHub | 443 | Unduh image dan kode saat update |
-| Let's Encrypt | 443 | Sertifikat HTTPS (tahap B) |
+| Let's Encrypt | 443 | Sertifikat HTTPS (tahap B); validasinya datang masuk ke port 443 |
 | Firebase Cloud Messaging | 443 | Push notification ke aplikasi |
 | Situs web umum | 80/443 | Pratinjau link di post dan chat (dibatasi aman SSRF) |
 | DNS, NTP | 53, 123/UDP | Resolusi nama dan sinkron jam |

@@ -39,6 +39,7 @@ done < <(routers "$PROD")
 check high "admin router only on the admin entrypoint" '[[ "$(entry_of "$PROD" admin)" == *"[admin]"* ]]'
 check high "Traefik admin port bound to 127.0.0.1" 'grep -q "127.0.0.1:\${ADMIN_PORT:-8000}:9000/tcp" $D/compose.prod.yml'
 check high "HTTP (80) redirected to HTTPS" 'grep -q "TRAEFIK_ENTRYPOINTS_WEB_HTTP_REDIRECTIONS_ENTRYPOINT_SCHEME: https" $D/compose.prod.yml'
+check high "Let's Encrypt uses TLS-ALPN-01 on 443, so port 80 can stay closed to the internet" 'grep -q "LE_ACME_TLSCHALLENGE: \"true\"" $D/compose.prod.yml && grep -q "LE_ACME_TLSCHALLENGE: \"true\"" $D/stack.cluster.yml && ! grep -q HTTPCHALLENGE $D/compose.prod.yml $D/stack.cluster.yml'
 check medium "Studio & pg-meta off by default in production (admin profile)" 'awk "/^  studio:/{s=1} s&&/profiles: \\[admin\\]/{print;exit}" $D/compose.prod.yml | grep -q admin'
 echo "== staff API only on the CS domain (T4)"
 rule_of() { routers "$1" | awk -F'\t' -v n="$2" '$1==n{print $2}'; }
