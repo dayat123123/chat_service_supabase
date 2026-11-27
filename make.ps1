@@ -564,7 +564,7 @@ switch ($Target) {
         Invoke-Compose @('build', 'backup')
         Invoke-Compose @('stop')
         $runArgs = @('run', '--rm', '--user', '0:0', '--network', "${Stack}_egress") + $resticArgs + @('-v', "${Stack}_db-data:/restore")
-        $runArgs += @('olt-social/backup:0.2.0', 'restore', '--target-time', $At, '--data-dir', '/restore', '--wipe')
+        $runArgs += @('olt-social/backup:0.2.1', 'restore', '--target-time', $At, '--data-dir', '/restore', '--wipe')
         Invoke-Docker $runArgs
         Invoke-Compose @('up', '-d', 'db')
         Write-Host 'Waiting for recovery to finish (follow: .\make.ps1 logs -Service db)...'

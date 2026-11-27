@@ -213,7 +213,7 @@ Laporkan masalahnya ke tim pengembang. Setelah diperbaiki, kembali ke versi terb
    ```
 3. Pulihkan file (foto dan dokumen). Password akan ditanyakan:
    ```powershell
-   docker run --rm -it --user 0:0 --entrypoint restic -v "E:\backup\restic:/repo" -e RESTIC_REPOSITORY=/repo -v olt-social_storage-data:/mnt/storage olt-social/backup:0.2.0 --no-cache restore latest --tag files --target /
+   docker run --rm -it --user 0:0 --entrypoint restic -v "E:\backup\restic:/repo" -e RESTIC_REPOSITORY=/repo -v olt-social_storage-data:/mnt/storage olt-social/backup:0.2.1 --no-cache restore latest --tag files --target /
    ```
 4. Jalankan `.\make.ps1 up` dan periksa data.
 
@@ -251,10 +251,10 @@ Contoh: mengembalikan lampiran yang terhapus. Password akan ditanyakan.
 
 ```powershell
 # lihat daftar snapshot
-docker run --rm -it --entrypoint restic -v "E:\backup\restic:/repo" -e RESTIC_REPOSITORY=/repo olt-social/backup:0.2.0 --no-cache snapshots
+docker run --rm -it --entrypoint restic -v "E:\backup\restic:/repo" -e RESTIC_REPOSITORY=/repo olt-social/backup:0.2.1 --no-cache snapshots
 
 # ambil file terbaru ke D:\hasil-restore (hasilnya di D:\hasil-restore\mnt\storage)
-docker run --rm -it --entrypoint restic -v "E:\backup\restic:/repo" -v "D:\hasil-restore:/out" -e RESTIC_REPOSITORY=/repo olt-social/backup:0.2.0 --no-cache restore latest --tag files --target /out
+docker run --rm -it --entrypoint restic -v "E:\backup\restic:/repo" -v "D:\hasil-restore:/out" -e RESTIC_REPOSITORY=/repo olt-social/backup:0.2.1 --no-cache restore latest --tag files --target /out
 ```
 
 Ganti `latest` dengan ID snapshot (kolom ID) untuk mengambil versi tertentu.
