@@ -103,7 +103,7 @@ func TestSessionExchangesASignedAssertionOnceAndRefreshesBeforeExpiry(t *testing
 		t.Fatalf("token must be reused, issued = %d", fake.issued)
 	}
 	claims := fake.claims[0]
-	if claims["iss"] != "web-cs" || claims["sub"] != "web-cs" || claims["aud"] != "csAdminEL" {
+	if claims["iss"] != "web-cs" || claims["sub"] != "web-cs" || claims["aud"] != DefaultAudience {
 		t.Fatalf("assertion claims = %v", claims)
 	}
 	if claims["iat"].(float64) != float64(now.Unix()) || claims["exp"].(float64)-claims["iat"].(float64) != 60 {
@@ -121,7 +121,7 @@ func TestSessionSignsTheConfiguredAudience(t *testing.T) {
 	fake, server, key := newIntegration(t, time.Now().Add(time.Hour))
 	fake.audience = "csAdminOD"
 	if _, err := NewSession(server.URL+"/csAdmin", "web-cs", "", key, nil).Token(context.Background()); err == nil {
-		t.Fatal("a csAdminOD service must refuse the default csAdminEL audience")
+		t.Fatal("a csAdminOD service must refuse the default audience")
 	}
 	if _, err := NewSession(server.URL+"/csAdmin", "web-cs", "csAdminOD", key, nil).Token(context.Background()); err != nil {
 		t.Fatalf("configured audience refused: %v", err)

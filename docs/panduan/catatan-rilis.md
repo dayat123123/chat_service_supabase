@@ -14,12 +14,12 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 - Sertifikat yang sudah ada tetap dipakai dan diperpanjang otomatis dengan cara baru.
 - **Cara pasang:** `git pull --ff-only`, lalu `make up` (Traefik dibuat ulang). Tidak ada migrasi.
 
-### Integrasi API Nasabah: audience bisa diatur dari Hub (migrasi `0205`, `nasabah-gateway` 0.1.1, Hub)
+### Integrasi API Nasabah: audience bisa diatur dari Hub (migrasi `0205` dan `0206`, `nasabah-gateway` 0.1.2, Hub)
 
-- Kolom baru **Audience** di **Pengaturan → Integrasi API Nasabah** (bawaan `csAdminEL`, sama seperti sebelumnya). Isinya harus sama dengan `audience` di config CS Admin service. Sebelumnya gateway selalu mengirim `csAdminEL`, sehingga CS Admin service yang memakai nama lain menolak dengan log `wrong audience`.
-- Blok **Kunci integrasi** kini berisi baris `audience`, jadi config CS Admin service cukup disalin dari Hub. CS Admin service versi lama mengabaikan baris ini.
-- Tes koneksi dan **Simpan & aktifkan** memakai audience yang diketik. Nilainya tercatat di jejak audit bersama alamat dan client id. **Putuskan** mengembalikannya ke `csAdminEL`.
-- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up` (menjalankan migrasi). Integrasi yang sudah aktif tetap memakai `csAdminEL`. Untuk nama lain: isi Audience di Hub, salin blok Kunci integrasi ke config CS Admin service lalu restart service itu, kemudian **Tes koneksi** dan **Simpan & aktifkan**.
+- Kolom baru **Audience** di **Pengaturan → Integrasi API Nasabah**, bawaannya `csAdmin`. Isinya harus sama dengan `audience` di config CS Admin service. Sebelumnya gateway selalu mengirim `csAdminEL` yang ditanam di kode, sehingga CS Admin service dengan nama lain menolak dengan log `wrong audience`.
+- Blok **Kunci integrasi** kini berisi baris `audience`, jadi config CS Admin service cukup disalin dari Hub. CS Admin service perlu versi yang membaca `audience` dari config; versi lama mengabaikan baris ini dan tetap memakai nama di kodenya.
+- Tes koneksi dan **Simpan & aktifkan** memakai audience yang diketik. Nilainya tercatat di jejak audit bersama alamat dan client id. Kolom kosong dan **Putuskan** kembali ke `csAdmin`.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up` (menjalankan migrasi). Integrasi yang sudah aktif tetap memakai nilai lamanya (`csAdminEL`) agar tidak putus. Untuk beralih: pasang CS Admin service versi baru, isi Audience di Hub, salin blok Kunci integrasi ke config CS Admin service lalu restart service itu, kemudian **Tes koneksi** dan **Simpan & aktifkan**.
 
 ### Akses Hub: cukup lewat IP atau domain internal, dan perbaikan build server baru
 

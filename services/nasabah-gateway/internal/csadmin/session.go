@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	DefaultAudience   = "csAdminEL"
+	DefaultAudience   = "csAdmin"
 	assertionLifetime = time.Minute
 )
 
