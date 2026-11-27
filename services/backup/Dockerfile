@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/backup 
 # Not distroless: needs pg_receivewal, pg_basebackup, pg_verifybackup, postgres/pg_ctl 17 (PostgreSQL License)
 # and restic (BSD-2-Clause) from pinned Alpine packages.
 FROM alpine:3.22.7@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
-RUN apk add --no-cache postgresql17=17.11-r0 postgresql17-client=17.11-r0 restic=0.18.0-r7 \
+RUN apk add --no-cache postgresql17=17.12-r0 postgresql17-client=17.12-r0 restic=0.18.0-r7 \
  && addgroup -S -g 10001 backup \
  && adduser -S -D -H -u 10001 -G backup -h /var/lib/olt-backup backup \
  && install -d -o 10001 -g 10001 -m 0700 /var/lib/olt-backup

@@ -184,7 +184,7 @@ Langkah manual yang setara (tanpa make; `docker compose` dengan file `-f` sesuai
 docker compose stop
 docker run --rm --user 0:0 --network olt-social_egress \
   -e RESTIC_REPOSITORY -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
-  -v olt-social_db-data:/restore olt-social/backup:0.2.0 \
+  -v olt-social_db-data:/restore olt-social/backup:0.2.1 \
   restore --target-time 2026-11-03T10:15:00+07:00 --data-dir /restore --wipe
 docker compose up -d db
 until docker compose exec -T db pg_isready -U postgres -h localhost -q; do sleep 5; done

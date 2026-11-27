@@ -172,7 +172,7 @@ services:
   # Cluster file storage lives in SeaweedFS (S3), so restic here backs up the database only.
   # For a "Folder lokal" destination in the cluster, set BACKUP_LOCAL_REPO_DIR to an absolute path on the DB node.
   backup:
-    image: ${REGISTRY}/olt-social/backup:0.2.0
+    image: ${REGISTRY}/olt-social/backup:0.2.1
     deploy:
       <<: *deploy
       replicas: 1

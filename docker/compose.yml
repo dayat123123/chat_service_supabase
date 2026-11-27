@@ -1028,7 +1028,7 @@ services:
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/backup
-    image: olt-social/backup:0.2.0
+    image: olt-social/backup:0.2.1
     # Fixed hostname so restic recognizes its own stale locks after a restart.
     hostname: backup
     networks: [data, app, egress]

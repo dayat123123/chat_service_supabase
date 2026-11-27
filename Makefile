@@ -185,7 +185,7 @@ restore-pitr: check-config ## PITR: make restore-pitr AT=<RFC3339|latest> CONFIR
 	  $(if $(RESTIC_LOCAL),-v "$(abspath $(RESTIC_LOCAL)):/var/lib/olt-backup-repo" -e RESTIC_REPOSITORY=/var/lib/olt-backup-repo,-e RESTIC_REPOSITORY) \
 	  -e RESTIC_PASSWORD -e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION \
 	  $(if $(RESTIC_PASSWORD_FILE),-v "$(abspath $(RESTIC_PASSWORD_FILE)):/run/secrets/restic_password:ro" -e RESTIC_PASSWORD_FILE=/run/secrets/restic_password) \
-	  -v $(STACK)_db-data:/restore olt-social/backup:0.2.0 \
+	  -v $(STACK)_db-data:/restore olt-social/backup:0.2.1 \
 	  restore --target-time "$(AT)" --data-dir /restore --wipe
 	$(COMPOSE) up -d db
 	@echo "Waiting for recovery to finish (follow: make logs s=db)..."

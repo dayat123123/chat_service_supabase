@@ -38,7 +38,7 @@ Rahasia (secret access key, password enkripsi) disimpan terenkripsi di Supabase 
 
 ## Tujuan folder lokal
 
-Bila belum ada S3, pilih **Folder lokal di server** di **Pengaturan → Sistem → Backup → Tujuan backup**. Yang diisi hanya password enkripsi (+ konfirmasi). Repositori restic dibuat di folder `BACKUP_LOCAL_REPO_DIR` di server (bawaan `backups/restic` di repo, sudah di-gitignore), yang di-mount ke `/var/lib/olt-backup-repo` di container `backup` (migrasi `0112_backup_local_destination`, layanan `olt-social/backup:0.2.0`). Isinya sama terenkripsinya dengan repositori S3, dan jadwal, retensi, uji restore, serta PITR berjalan sama persis.
+Bila belum ada S3, pilih **Folder lokal di server** di **Pengaturan → Sistem → Backup → Tujuan backup**. Yang diisi hanya password enkripsi (+ konfirmasi). Repositori restic dibuat di folder `BACKUP_LOCAL_REPO_DIR` di server (bawaan `backups/restic` di repo, sudah di-gitignore), yang di-mount ke `/var/lib/olt-backup-repo` di container `backup` (migrasi `0112_backup_local_destination`, layanan `olt-social/backup:0.2.1`). Isinya sama terenkripsinya dengan repositori S3, dan jadwal, retensi, uji restore, serta PITR berjalan sama persis.
 
 **Risikonya:** folder itu ada di server yang sama dengan database. Backup lokal melindungi dari salah hapus data, korupsi database, atau upgrade yang gagal, tetapi **tidak** melindungi dari server yang rusak, disk yang mati (bila satu disk), ransomware, atau server yang hilang. Halaman Backup menampilkan peringatan ini selama tujuan lokal dipakai. Karena itu:
 
@@ -56,7 +56,7 @@ Bila belum ada S3, pilih **Folder lokal di server** di **Pengaturan → Sistem �
      restic copy        # hanya snapshot yang belum ada yang disalin; aman saat layanan backup berjalan
      restic check       # sesekali, untuk memastikan salinan utuh
      ```
-     Tanpa restic di host, pakai binary di image backup: `docker run --rm --user 0:0 --entrypoint restic -v /mnt/backup/restic:/src -v /media/usb-backup/restic:/dst -v /root/password-backup:/pw:ro -e RESTIC_FROM_REPOSITORY=/src -e RESTIC_FROM_PASSWORD_FILE=/pw -e RESTIC_REPOSITORY=/dst -e RESTIC_PASSWORD_FILE=/pw olt-social/backup:0.2.0 --no-cache copy`.
+     Tanpa restic di host, pakai binary di image backup: `docker run --rm --user 0:0 --entrypoint restic -v /mnt/backup/restic:/src -v /media/usb-backup/restic:/dst -v /root/password-backup:/pw:ro -e RESTIC_FROM_REPOSITORY=/src -e RESTIC_FROM_PASSWORD_FILE=/pw -e RESTIC_REPOSITORY=/dst -e RESTIC_PASSWORD_FILE=/pw olt-social/backup:0.2.1 --no-cache copy`.
    - Salin foldernya apa adanya (`rsync -a --delete /mnt/backup/restic/ /media/usb-backup/restic/`) **saat backup tidak berjalan**: hentikan dulu layanan backup (`docker compose … stop backup`), salin, lalu nyalakan lagi (`… start backup`). Folder yang disalin di tengah backup bisa berisi berkas setengah jadi. Pilih jam di luar jadwal backup penuh dan kiriman WAL.
    Simpan password enkripsi di luar server; salinan tanpa password tidak berguna.
 3. **Pindah ke S3 begitu tersedia.** Pilih **S3** di form Tujuan, isi endpoint, bucket, access key, dan **password enkripsi baru** (pindah jenis tujuan = repositori baru). Layanan backup langsung membuat backup penuh baru di S3. Repositori lokal tidak dihapus otomatis; simpan sampai masa retensi WAL dan backup harian lewat, lalu hapus foldernya.
