@@ -26,6 +26,7 @@ const (
 
 var (
 	ClientIDPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,50}$`)
+	AudiencePattern = ClientIDPattern
 	hostPattern     = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?(:[0-9]{1,5})?$`)
 	pathPattern     = regexp.MustCompile(`^(/[A-Za-z0-9._~-]+)*/?$`)
 )
@@ -33,17 +34,28 @@ var (
 type Settings struct {
 	URL      string
 	ClientID string
+	Audience string
 }
 
 type Record struct {
 	URL         string  `json:"url"`
 	ClientID    string  `json:"client_id"`
+	Audience    string  `json:"audience"`
 	Configured  bool    `json:"configured"`
 	ConnectedAt *string `json:"connected_at"`
 	ConnectedBy *string `json:"connected_by"`
 }
 
-func (r Record) Settings() Settings { return Settings{URL: r.URL, ClientID: r.ClientID} }
+func (r Record) Settings() Settings {
+	return Settings{URL: r.URL, ClientID: r.ClientID, Audience: AudienceOrDefault(r.Audience)}
+}
+
+func AudienceOrDefault(audience string) string {
+	if audience == "" {
+		return DefaultAudience
+	}
+	return audience
+}
 
 type Source interface {
 	Integration(ctx context.Context) (Record, error)
@@ -98,7 +110,7 @@ func ValidURL(raw string) bool {
 }
 
 func Usable(s Settings) bool {
-	return ValidURL(s.URL) && ClientIDPattern.MatchString(s.ClientID)
+	return ValidURL(s.URL) && ClientIDPattern.MatchString(s.ClientID) && AudiencePattern.MatchString(AudienceOrDefault(s.Audience))
 }
 
 func (p *Provider) Session(ctx context.Context) *Session {
@@ -133,7 +145,7 @@ func (p *Provider) Check(ctx context.Context, s Settings) CheckResult {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	started := time.Now()
-	_, _, err := NewSession(s.URL, s.ClientID, p.opts.Key, p.opts.Client).exchange(ctx)
+	_, _, err := NewSession(s.URL, s.ClientID, s.Audience, p.opts.Key, p.opts.Client).exchange(ctx)
 	result := CheckResult{DurationMS: time.Since(started).Milliseconds()}
 	var refused *RefusedError
 	switch {
@@ -179,9 +191,9 @@ func (p *Provider) reload(ctx context.Context) {
 		return
 	}
 	p.current = next
-	p.session = NewSession(next.URL, next.ClientID, p.opts.Key, p.opts.Client)
+	p.session = NewSession(next.URL, next.ClientID, next.Audience, p.opts.Key, p.opts.Client)
 	if p.session.Configured() {
-		p.opts.Log.Info("Customer admin integration configured", "url", next.URL, "client_id", next.ClientID,
+		p.opts.Log.Info("Customer admin integration configured", "url", next.URL, "client_id", next.ClientID, "audience", next.Audience,
 			"public_key", PublicKeyLine(p.opts.Key))
 	} else {
 		p.opts.Log.Warn("Customer admin integration is not set up; customer requests will be refused",

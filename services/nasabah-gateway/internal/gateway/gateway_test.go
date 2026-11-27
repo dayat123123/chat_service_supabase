@@ -63,7 +63,7 @@ func (s *fakeStore) Integration(context.Context) (csadmin.Record, error) {
 
 func (s *fakeStore) SaveIntegration(_ context.Context, userID string, settings csadmin.Settings) (csadmin.Record, error) {
 	s.saved = append(s.saved, settings)
-	s.record = csadmin.Record{URL: settings.URL, ClientID: settings.ClientID, Configured: true, ConnectedBy: &userID}
+	s.record = csadmin.Record{URL: settings.URL, ClientID: settings.ClientID, Audience: settings.Audience, Configured: true, ConnectedBy: &userID}
 	return s.record, nil
 }
 

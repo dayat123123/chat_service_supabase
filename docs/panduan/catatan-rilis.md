@@ -6,6 +6,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 27 November 2026
 
+### Integrasi API Nasabah: audience bisa diatur dari Hub (migrasi `0205`, `nasabah-gateway` 0.1.1, Hub)
+
+- Kolom baru **Audience** di **Pengaturan → Integrasi API Nasabah**. Isinya nama service CS Admin yang dituju: `csAdminEL` (bawaan, sama seperti sebelumnya) atau `csAdminOD`. Sebelumnya gateway selalu mengirim `csAdminEL`, sehingga csAdminOD menolak dengan log `wrong audience`.
+- Tes koneksi dan **Simpan & aktifkan** memakai audience yang diketik. Nilainya tercatat di jejak audit bersama alamat dan client id. **Putuskan** mengembalikannya ke `csAdminEL`.
+- CS Admin service tidak perlu diubah.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up` (menjalankan migrasi). Integrasi yang sudah aktif tetap memakai `csAdminEL`. Untuk csAdminOD: buka **Pengaturan → Integrasi API Nasabah → Ubah**, isi Audience `csAdminOD`, **Tes koneksi**, lalu **Simpan & aktifkan**.
+
 ### Akses Hub: cukup lewat IP atau domain internal, dan perbaikan build server baru
 
 - `VPN_SOURCE_RANGES` boleh kosong. Kosong berarti Hub hanya bisa dibuka dari IP privat (LAN kantor dan VPN, termasuk `100.64.0.0/10` seperti Tailscale); dari internet tetap 403. Sebelumnya kosong berarti semua IP.

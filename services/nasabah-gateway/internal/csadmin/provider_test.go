@@ -58,6 +58,7 @@ func TestProviderUsesOnlyTheVerifiedConsoleSettings(t *testing.T) {
 		"no client id":   {URL: "http://10.0.0.5:8080", Configured: true},
 		"unsafe address": active("http://admin:secret@10.0.0.5", "web-cs"),
 		"invalid client": active("http://10.0.0.5:8080", "web cs"),
+		"bad audience":   {URL: "http://10.0.0.5:8080", ClientID: "web-cs", Audience: "cs admin", Configured: true},
 	} {
 		empty := NewProvider(ProviderOptions{Source: &fakeSource{record: record}, Key: newKey(t)})
 		if empty.Session(context.Background()).Configured() {
@@ -91,6 +92,17 @@ func TestProviderReloadsAfterTheTTLAndOnlyReplacesTheSessionOnChange(t *testing.
 	now = now.Add(time.Minute)
 	if p.Session(context.Background()) != second || source.reads != 3 {
 		t.Fatalf("unchanged settings must keep the session and its token, reads = %d", source.reads)
+	}
+
+	audience := active("http://10.0.0.6:8080", "web-cs")
+	audience.Audience = "csAdminOD"
+	source.set(audience, nil)
+	p.Refresh(context.Background())
+	if third := p.Session(context.Background()); third == second || third.audience != "csAdminOD" {
+		t.Fatalf("a changed audience must start a new session, got %q", third.audience)
+	}
+	if second.audience != DefaultAudience {
+		t.Fatalf("an empty saved audience must sign %s, got %q", DefaultAudience, second.audience)
 	}
 
 	source.set(Record{}, nil)
@@ -129,27 +141,35 @@ func statusServer(t *testing.T, status int) string {
 	return server.URL
 }
 
+type checkCase struct {
+	settings Settings
+	provider *Provider
+	want     string
+	status   int
+}
+
 func TestCheckClassifiesTheTokenExchange(t *testing.T) {
 	_, server, key := newIntegration(t, time.Now().Add(time.Hour))
 	p := NewProvider(ProviderOptions{Key: key})
 	unreachable := httptest.NewServer(http.NotFoundHandler())
 	unreachable.Close()
 
-	cases := map[string]struct {
-		settings Settings
-		provider *Provider
-		want     string
-		status   int
-	}{
-		"ok":           {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, p, CheckOK, http.StatusOK},
-		"wrong key":    {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{Key: newKey(t)}), CheckRefused, http.StatusUnauthorized},
-		"ip":           {Settings{URL: statusServer(t, http.StatusForbidden), ClientID: "web-cs"}, p, CheckIPNotAllowed, http.StatusForbidden},
-		"disabled":     {Settings{URL: statusServer(t, http.StatusNotFound), ClientID: "web-cs"}, p, CheckDisabled, http.StatusNotFound},
-		"unexpected":   {Settings{URL: statusServer(t, http.StatusInternalServerError), ClientID: "web-cs"}, p, CheckUnexpected, http.StatusInternalServerError},
-		"unreachable":  {Settings{URL: unreachable.URL, ClientID: "web-cs"}, p, CheckUnreachable, 0},
-		"no address":   {Settings{ClientID: "web-cs"}, p, CheckNotConfigured, 0},
-		"no client id": {Settings{URL: server.URL + "/csAdmin"}, p, CheckNotConfigured, 0},
-		"no key":       {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{}), CheckNoKey, 0},
+	od, odServer, odKey := newIntegration(t, time.Now().Add(time.Hour))
+	od.audience = "csAdminOD"
+	odProvider := NewProvider(ProviderOptions{Key: odKey})
+
+	cases := map[string]checkCase{
+		"ok":             {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, p, CheckOK, http.StatusOK},
+		"wrong key":      {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{Key: newKey(t)}), CheckRefused, http.StatusUnauthorized},
+		"ip":             {Settings{URL: statusServer(t, http.StatusForbidden), ClientID: "web-cs"}, p, CheckIPNotAllowed, http.StatusForbidden},
+		"disabled":       {Settings{URL: statusServer(t, http.StatusNotFound), ClientID: "web-cs"}, p, CheckDisabled, http.StatusNotFound},
+		"unexpected":     {Settings{URL: statusServer(t, http.StatusInternalServerError), ClientID: "web-cs"}, p, CheckUnexpected, http.StatusInternalServerError},
+		"unreachable":    {Settings{URL: unreachable.URL, ClientID: "web-cs"}, p, CheckUnreachable, 0},
+		"no address":     {Settings{ClientID: "web-cs"}, p, CheckNotConfigured, 0},
+		"no client id":   {Settings{URL: server.URL + "/csAdmin"}, p, CheckNotConfigured, 0},
+		"no key":         {Settings{URL: server.URL + "/csAdmin", ClientID: "web-cs"}, NewProvider(ProviderOptions{}), CheckNoKey, 0},
+		"wrong audience": {Settings{URL: odServer.URL + "/csAdmin", ClientID: "web-cs"}, odProvider, CheckRefused, http.StatusUnauthorized},
+		"right audience": {Settings{URL: odServer.URL + "/csAdmin", ClientID: "web-cs", Audience: "csAdminOD"}, odProvider, CheckOK, http.StatusOK},
 	}
 	for name, c := range cases {
 		got := c.provider.Check(context.Background(), c.settings)

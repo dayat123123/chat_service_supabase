@@ -62,7 +62,7 @@ func TestIntegrationStatusStartsEmptyAndShowsTheKeyForCSAdmin(t *testing.T) {
 		t.Fatalf("status %d headers %v", rec.Code, rec.Header())
 	}
 	body := decode(t, rec.Body.String())
-	if body["url"] != "" || body["client_id"] != "" || body["configured"] != false || body["key_configured"] != true {
+	if body["url"] != "" || body["client_id"] != "" || body["audience"] != csadmin.DefaultAudience || body["configured"] != false || body["key_configured"] != true {
 		t.Fatalf("there must be no default address or client id, got %v", body)
 	}
 	der, err := base64.RawStdEncoding.DecodeString(body["public_key"].(string))
@@ -89,6 +89,7 @@ func TestSavingRequiresASuccessfulConnectionTest(t *testing.T) {
 		fmt.Sprintf(`{"url":%q}`, address):                            "invalid_csadmin_client_id",
 		`{"url":"http://admin:secret@10.0.0.5","client_id":"web-cs"}`: "invalid_csadmin_url",
 		`["x"]`: "invalid_body",
+		fmt.Sprintf(`{"url":%q,"client_id":"web-cs","audience":"cs admin"}`, address): "invalid_csadmin_audience",
 	} {
 		rec := do(g, http.MethodPut, "/api-nasabah/integration", sinta, body)
 		if rec.Code != http.StatusBadRequest || errorCode(t, rec) != code {
@@ -108,8 +109,13 @@ func TestSavingRequiresASuccessfulConnectionTest(t *testing.T) {
 	if body["saved"] != true || status["configured"] != true || status["url"] != address || status["client_id"] != "web-cs" {
 		t.Fatalf("a passing test must save and activate, got %v", body)
 	}
-	if len(store.saved) != 1 || store.saved[0].URL != address {
-		t.Fatalf("saved = %+v", store.saved)
+	if len(store.saved) != 1 || store.saved[0].URL != address || store.saved[0].Audience != csadmin.DefaultAudience || status["audience"] != csadmin.DefaultAudience {
+		t.Fatalf("an empty audience must save %s, saved = %+v", csadmin.DefaultAudience, store.saved)
+	}
+	rec = do(g, http.MethodPut, "/api-nasabah/integration", sinta, fmt.Sprintf(`{"url":%q,"client_id":"web-cs","audience":" csAdminOD "}`, address))
+	body = decode(t, rec.Body.String())
+	if body["saved"] != true || body["status"].(map[string]any)["audience"] != "csAdminOD" || len(store.saved) != 2 || store.saved[1].Audience != "csAdminOD" {
+		t.Fatalf("the typed audience must be saved, got %v saved %+v", body, store.saved)
 	}
 	if rec := do(g, http.MethodGet, "/api-nasabah/online/get-list-online-user", session(t, "bima", nil), ""); rec.Code != http.StatusOK {
 		t.Fatalf("customer requests must work right after saving, status %d", rec.Code)
