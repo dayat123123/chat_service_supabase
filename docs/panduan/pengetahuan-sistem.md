@@ -29,7 +29,7 @@ Nasabah: Aplikasi OLT + library rendezvous_community
          (Flutter: Windows, web, Android, iOS)
     │ HTTPS ke domain API (publik)
     ▼
-SERVER SOSIAL (Docker)  ◀── HTTPS ke domain CS (IP kantor bila dibatasi) ── Staf: Rendezvous Hub (browser)
+SERVER SOSIAL (Docker)  ◀── HTTPS ke domain CS (LAN kantor / VPN saja) ── Staf: Rendezvous Hub (browser)
     │
     ├─ Pintu      Traefik → Kong
     ├─ Layanan    REST · Realtime · Storage · media · auth-bridge
@@ -95,7 +95,7 @@ Setiap node adalah satu container. Kartu yang sama tampil di Hub, **Pengaturan �
 
 | Node | Fungsi | Teknologi |
 |---|---|---|
-| `traefik` | Satu-satunya yang menerima koneksi dari internet: HTTPS, sertifikat, rate limit per IP, batas ukuran upload, dan hanya meloloskan path API resmi. Hub dilayani di domain CS yang hanya boleh dibuka dari IP kantor | Traefik |
+| `traefik` | Satu-satunya yang menerima koneksi dari internet: HTTPS, sertifikat, rate limit per IP, batas ukuran upload, dan hanya meloloskan path API resmi. Hub dilayani di domain CS yang hanya boleh dibuka dari LAN kantor atau VPN | Traefik |
 | `kong` | Membagi permintaan ke REST, Realtime, Storage, functions, media, auth-bridge, dan integration, serta memeriksa kunci API | Kong |
 
 ### 5.2 API dan layanan inti Supabase
@@ -215,7 +215,7 @@ Setiap node adalah satu container. Kartu yang sama tampil di Hub, **Pengaturan �
 
 - **Dua domain:**
   - **Domain API (publik):** untuk aplikasi nasabah. Hanya meloloskan `/rest/v1`, `/realtime/v1`, `/storage/v1`, `/media/v1`, `/integration/v1`, dan `/bridge/v1`. Path lain menghasilkan 404, termasuk `/auth/v1`, `/functions/v1`, dan Studio. RPC staf ditolak di domain ini.
-  - **Domain CS:** untuk Hub; dibatasi ke IP kantor bila `VPN_SOURCE_RANGES` diisi, terbuka untuk semua IP bila kosong.
+  - **Domain CS:** untuk Hub; hanya dari IP di `VPN_SOURCE_RANGES` bila diisi, atau dari semua IP privat (LAN kantor dan VPN) bila kosong. Dari internet 403.
 - **Network Docker dipisah:** `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey) tanpa akses internet. Hanya beberapa node yang tersambung ke `egress`: Traefik, functions, notifier, sentinel, link-preview, backup, clamav.
 - **Container dikunci:** read-only, non-root, `cap_drop: ALL`, `no-new-privileges`, dan batas CPU/memori/pids.
 - **Rahasia** hanya dari Docker secrets (`docker/secrets/`) dan Vault. `docker/.env` berisi konfigurasi, bukan kunci.
