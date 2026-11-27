@@ -215,7 +215,7 @@ Setiap node adalah satu container. Kartu yang sama tampil di Hub, **Pengaturan â
 
 - **Dua domain:**
   - **Domain API (publik):** untuk aplikasi nasabah. Hanya meloloskan `/rest/v1`, `/realtime/v1`, `/storage/v1`, `/media/v1`, `/integration/v1`, dan `/bridge/v1`. Path lain menghasilkan 404, termasuk `/auth/v1`, `/functions/v1`, dan Studio. RPC staf ditolak di domain ini.
-  - **Domain CS:** untuk Hub; hanya dari IP di `VPN_SOURCE_RANGES` bila diisi, atau dari semua IP privat (LAN kantor dan VPN) bila kosong. Dari internet 403.
+  - **Domain CS:** untuk Hub; hanya dari IP di `VPN_SOURCE_RANGES` bila diisi, atau dari semua IP privat (LAN kantor dan VPN) bila kosong. Dari internet 403. Alamatnya bisa domain atau IP LAN server; dengan `CS_CONSOLE_SCHEME=http` Hub dilayani lewat HTTP biasa tanpa sertifikat, untuk kantor saja.
 - **Network Docker dipisah:** `edge` (Traefik â†” Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey) tanpa akses internet. Hanya beberapa node yang tersambung ke `egress`: Traefik, functions, notifier, sentinel, link-preview, backup, clamav.
 - **Container dikunci:** read-only, non-root, `cap_drop: ALL`, `no-new-privileges`, dan batas CPU/memori/pids.
 - **Rahasia** hanya dari Docker secrets (`docker/secrets/`) dan Vault. `docker/.env` berisi konfigurasi, bukan kunci.

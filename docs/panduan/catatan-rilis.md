@@ -6,6 +6,16 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 27 November 2026
 
+### Akses Hub: cukup lewat IP atau domain internal, dan perbaikan build server baru
+
+- `VPN_SOURCE_RANGES` boleh kosong. Kosong berarti Hub hanya bisa dibuka dari IP privat (LAN kantor dan VPN, termasuk `100.64.0.0/10` seperti Tailscale); dari internet tetap 403. Sebelumnya kosong berarti semua IP.
+- `CS_CONSOLE_DOMAIN` kini boleh berupa IP LAN server (`10.251.252.243`) atau domain internal (`hub.kantor.local`). Pengaturan baru `CS_CONSOLE_SCHEME`:
+  - `https` (bawaan, sama seperti sebelumnya): sertifikat Let's Encrypt, butuh domain publik.
+  - `http`: Hub dilayani di port 80 tanpa sertifikat, untuk akses kantor saja. Domain API nasabah tetap HTTPS. Password staf lewat tanpa enkripsi, jadi pakai hanya di LAN tepercaya atau VPN. Rincian: [produksi.md](produksi.md).
+- `server-install.sh` menanyakan alamat Hub (IP atau domain) dan protokolnya; alamat IP selalu memakai `http`.
+- Build server baru sempat gagal karena dua sumber unduhan berubah. Image `backup` 0.2.1 memakai PostgreSQL client 17.12 (Alpine membuang 17.11). Image `classifier` 0.1.2 mengambil ONNX Runtime dari paket NuGet resmi Microsoft karena repo GitHub-nya dihapus; library-nya identik dan hasil pemeriksaan gambarnya sama.
+- **Cara pasang:** `git pull --ff-only`, lalu `make up`. Server lama tidak perlu mengubah apa pun: tanpa `CS_CONSOLE_SCHEME`, Hub tetap HTTPS. Untuk beralih ke HTTP, isi `CS_CONSOLE_DOMAIN=<IP LAN server>` dan `CS_CONSOLE_SCHEME=http` di `docker/.env`, hapus `TLS_SNI_STRICT=false` bila pernah ditambahkan, lalu `make up`.
+
 ### Pembersihan otomatis storage, database, dan image Docker (migrasi `0204`, Hub)
 
 - Job baru `housekeeping` berjalan setiap jam:

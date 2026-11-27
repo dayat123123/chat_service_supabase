@@ -260,6 +260,10 @@ function Assert-Config {
                 throw "Profile ${DeployProfile}: $key=$limit in docker/.env is too low (minimum 1000, see docs/panduan/produksi.md 'Batas & rate limit')"
             }
         }
+        $scheme = Get-EnvValue 'CS_CONSOLE_SCHEME'
+        if ($scheme -and $scheme -cnotin @('http', 'https')) {
+            throw "Profile ${DeployProfile}: CS_CONSOLE_SCHEME=$scheme in docker/.env must be http or https"
+        }
     }
 }
 
