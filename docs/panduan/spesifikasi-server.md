@@ -39,7 +39,7 @@ Sebaiknya repositori backup di **disk terpisah** dari database, dan salinannya d
 
 - **Produksi:** Linux, disarankan Ubuntu LTS, sesuai [instalasi-server.md](instalasi-server.md). Docker di Windows (Docker Desktop) berjalan di dalam VM sehingga ada overhead, dan Hyper-V mencadangkan rentang port tertentu. Untuk server lokal atau development, Windows tidak masalah.
 - **IP publik** dengan port 80/443 untuk aplikasi nasabah; port 22 (SSH) hanya dari IP admin.
-- **LAN/VPN kantor** untuk membuka Hub (`VPN_SOURCE_RANGES`).
+- **LAN/VPN kantor** untuk membuka Hub (`VPN_SOURCE_RANGES`, opsional; kosong = semua IP).
 - **Jaringan keluar (HTTPS)** untuk Let's Encrypt, Firebase (push), pembaruan tanda tangan ClamAV, dan S3 bila dipakai.
 - **GPU tidak diperlukan.**
 

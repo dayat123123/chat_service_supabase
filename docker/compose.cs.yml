@@ -1,5 +1,5 @@
-# Web CS and agent API are served on one CS_CONSOLE_DOMAIN that only accepts IPs from
-# VPN_SOURCE_RANGES (Traefik ipAllowList). Single origin, so no CORS. See docs/panduan/produksi.md.
+# Web CS and agent API are served on one CS_CONSOLE_DOMAIN. VPN_SOURCE_RANGES (Traefik ipAllowList)
+# is optional: empty opens the domain to every IP. Single origin, so no CORS. See docs/panduan/produksi.md.
 
 services:
   traefik:
@@ -8,7 +8,7 @@ services:
         target: /etc/traefik/dynamic/cs.yml
     environment:
       CS_CONSOLE_DOMAIN: ${CS_CONSOLE_DOMAIN:?CS_CONSOLE_DOMAIN is required when CS=1 (docker/.env)}
-      VPN_SOURCE_RANGES: ${VPN_SOURCE_RANGES:?VPN_SOURCE_RANGES is required when CS=1 (docker/.env)}
+      VPN_SOURCE_RANGES: ${VPN_SOURCE_RANGES:-}
 
   cs-console:
     environment:
