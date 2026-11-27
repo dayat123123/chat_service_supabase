@@ -76,7 +76,9 @@ func (p *PostgREST) Integration(ctx context.Context) (csadmin.Record, error) {
 }
 
 func (p *PostgREST) SaveIntegration(ctx context.Context, userID string, s csadmin.Settings) (csadmin.Record, error) {
-	return p.record(ctx, "nasabah_save_integration", map[string]any{"p_user_id": userID, "p_url": s.URL, "p_client_id": s.ClientID})
+	return p.record(ctx, "nasabah_save_integration", map[string]any{
+		"p_user_id": userID, "p_url": s.URL, "p_client_id": s.ClientID, "p_audience": csadmin.AudienceOrDefault(s.Audience),
+	})
 }
 
 func (p *PostgREST) ClearIntegration(ctx context.Context, userID string) (csadmin.Record, error) {
@@ -90,6 +92,7 @@ func (p *PostgREST) record(ctx context.Context, fn string, args map[string]any) 
 	}
 	record.URL = strings.TrimSpace(record.URL)
 	record.ClientID = strings.TrimSpace(record.ClientID)
+	record.Audience = csadmin.AudienceOrDefault(strings.TrimSpace(record.Audience))
 	return record, nil
 }
 

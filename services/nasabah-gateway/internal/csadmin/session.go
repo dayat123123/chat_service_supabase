@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	Audience          = "csAdminEL"
+	DefaultAudience   = "csAdminEL"
 	assertionLifetime = time.Minute
 )
 
@@ -41,6 +41,7 @@ func (e *RefusedError) Is(target error) bool { return target == ErrRefused }
 type Session struct {
 	baseURL  string
 	clientID string
+	audience string
 	key      ed25519.PrivateKey
 	http     *http.Client
 	now      func() time.Time
@@ -50,11 +51,14 @@ type Session struct {
 	expires time.Time
 }
 
-func NewSession(baseURL, clientID string, key ed25519.PrivateKey, client *http.Client) *Session {
+func NewSession(baseURL, clientID, audience string, key ed25519.PrivateKey, client *http.Client) *Session {
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	return &Session{baseURL: strings.TrimSuffix(baseURL, "/"), clientID: clientID, key: key, http: client, now: time.Now}
+	if audience == "" {
+		audience = DefaultAudience
+	}
+	return &Session{baseURL: strings.TrimSuffix(baseURL, "/"), clientID: clientID, audience: audience, key: key, http: client, now: time.Now}
 }
 
 func (s *Session) Configured() bool {
@@ -94,7 +98,7 @@ func (s *Session) assertion() (string, error) {
 	return jwt.SignEdDSA(map[string]any{
 		"iss": s.clientID,
 		"sub": s.clientID,
-		"aud": Audience,
+		"aud": s.audience,
 		"iat": now.Unix(),
 		"exp": now.Add(assertionLifetime).Unix(),
 		"jti": hex.EncodeToString(nonce),

@@ -63,12 +63,12 @@ func TestPostgRESTReadsSavesAndClearsTheIntegration(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var args map[string]any
 		_ = json.NewDecoder(r.Body).Decode(&args)
-		calls = append(calls, fmt.Sprintf("%s %v %v %v %v", r.URL.Path, args["p_user_id"], args["p_url"], args["p_client_id"], args["p_aal"]))
+		calls = append(calls, fmt.Sprintf("%s %v %v %v %v %v", r.URL.Path, args["p_user_id"], args["p_url"], args["p_client_id"], args["p_audience"], args["p_aal"]))
 		switch r.URL.Path {
 		case "/rpc/nasabah_integration", "/rpc/nasabah_clear_integration":
 			_, _ = w.Write([]byte(`{"url":"","client_id":"","configured":false,"connected_at":null,"connected_by":null}`))
 		case "/rpc/nasabah_save_integration":
-			_, _ = w.Write([]byte(`{"url":" http://10.0.0.5:9001/csAdmin ","client_id":"web-cs.prod","configured":true,"connected_at":"2026-11-02T03:00:00Z","connected_by":"Sinta"}`))
+			_, _ = w.Write([]byte(`{"url":" http://10.0.0.5:9001/csAdmin ","client_id":"web-cs.prod","audience":" csAdminOD ","configured":true,"connected_at":"2026-11-02T03:00:00Z","connected_by":"Sinta"}`))
 		case "/rpc/nasabah_is_super_admin":
 			_, _ = w.Write([]byte(map[bool]string{true: "true", false: "false"}[args["p_user_id"] == "sinta"]))
 		}
@@ -77,12 +77,12 @@ func TestPostgRESTReadsSavesAndClearsTheIntegration(t *testing.T) {
 	store := NewPostgREST(server.URL, []byte("secret"), "supabase")
 
 	empty, err := store.Integration(context.Background())
-	if err != nil || empty.Configured || empty.URL != "" || empty.ConnectedBy != nil {
+	if err != nil || empty.Configured || empty.URL != "" || empty.Audience != csadmin.DefaultAudience || empty.ConnectedBy != nil {
 		t.Fatalf("record = %+v, err = %v", empty, err)
 	}
 	saved, err := store.SaveIntegration(context.Background(), "sinta",
-		csadmin.Settings{URL: "http://10.0.0.5:9001/csAdmin", ClientID: "web-cs.prod"})
-	if err != nil || !saved.Configured || saved.URL != "http://10.0.0.5:9001/csAdmin" || *saved.ConnectedBy != "Sinta" {
+		csadmin.Settings{URL: "http://10.0.0.5:9001/csAdmin", ClientID: "web-cs.prod", Audience: "csAdminOD"})
+	if err != nil || !saved.Configured || saved.URL != "http://10.0.0.5:9001/csAdmin" || saved.Audience != "csAdminOD" || *saved.ConnectedBy != "Sinta" {
 		t.Fatalf("saved = %+v, err = %v", saved, err)
 	}
 	if cleared, err := store.ClearIntegration(context.Background(), "sinta"); err != nil || cleared.Configured {
@@ -94,11 +94,11 @@ func TestPostgRESTReadsSavesAndClearsTheIntegration(t *testing.T) {
 		t.Fatalf("super admin check: sinta %v nadia %v", sinta, nadia)
 	}
 	want := []string{
-		"/rpc/nasabah_integration <nil> <nil> <nil> <nil>",
-		"/rpc/nasabah_save_integration sinta http://10.0.0.5:9001/csAdmin web-cs.prod <nil>",
-		"/rpc/nasabah_clear_integration sinta <nil> <nil> <nil>",
-		"/rpc/nasabah_is_super_admin sinta <nil> <nil> aal2",
-		"/rpc/nasabah_is_super_admin nadia <nil> <nil> aal1",
+		"/rpc/nasabah_integration <nil> <nil> <nil> <nil> <nil>",
+		"/rpc/nasabah_save_integration sinta http://10.0.0.5:9001/csAdmin web-cs.prod csAdminOD <nil>",
+		"/rpc/nasabah_clear_integration sinta <nil> <nil> <nil> <nil>",
+		"/rpc/nasabah_is_super_admin sinta <nil> <nil> <nil> aal2",
+		"/rpc/nasabah_is_super_admin nadia <nil> <nil> <nil> aal1",
 	}
 	if strings.Join(calls, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("calls = %v", calls)

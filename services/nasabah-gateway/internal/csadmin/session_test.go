@@ -20,12 +20,13 @@ import (
 )
 
 type integrationServer struct {
-	public  ed25519.PublicKey
-	exp     time.Time
-	mu      sync.Mutex
-	issued  int
-	seenJTI map[string]bool
-	claims  []map[string]any
+	public   ed25519.PublicKey
+	exp      time.Time
+	audience string
+	mu       sync.Mutex
+	issued   int
+	seenJTI  map[string]bool
+	claims   []map[string]any
 }
 
 func (s *integrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +41,7 @@ func (s *integrationServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	claims, ok := s.verify(body.Assertion)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if !ok || s.seenJTI[claims["jti"].(string)] {
+	if !ok || s.seenJTI[claims["jti"].(string)] || (s.audience != "" && claims["aud"] != s.audience) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte(`{"message":"Invalid client assertion.","data":{}}`))
 		return
@@ -90,7 +91,7 @@ func newIntegration(t *testing.T, exp time.Time) (*integrationServer, *httptest.
 func TestSessionExchangesASignedAssertionOnceAndRefreshesBeforeExpiry(t *testing.T) {
 	now := time.Unix(1_800_000_000, 0)
 	fake, server, key := newIntegration(t, now.Add(15*time.Minute))
-	s := NewSession(server.URL+"/csAdmin/", "web-cs", key, nil)
+	s := NewSession(server.URL+"/csAdmin/", "web-cs", "", key, nil)
 	s.now = func() time.Time { return now }
 
 	first, err := s.Token(context.Background())
@@ -116,9 +117,23 @@ func TestSessionExchangesASignedAssertionOnceAndRefreshesBeforeExpiry(t *testing
 	}
 }
 
+func TestSessionSignsTheConfiguredAudience(t *testing.T) {
+	fake, server, key := newIntegration(t, time.Now().Add(time.Hour))
+	fake.audience = "csAdminOD"
+	if _, err := NewSession(server.URL+"/csAdmin", "web-cs", "", key, nil).Token(context.Background()); err == nil {
+		t.Fatal("a csAdminOD service must refuse the default csAdminEL audience")
+	}
+	if _, err := NewSession(server.URL+"/csAdmin", "web-cs", "csAdminOD", key, nil).Token(context.Background()); err != nil {
+		t.Fatalf("configured audience refused: %v", err)
+	}
+	if got := fake.claims[0]["aud"]; got != "csAdminOD" {
+		t.Fatalf("aud = %v, want csAdminOD", got)
+	}
+}
+
 func TestSessionInvalidateForcesANewExchange(t *testing.T) {
 	fake, server, key := newIntegration(t, time.Now().Add(time.Hour))
-	s := NewSession(server.URL+"/csAdmin", "web-cs", key, nil)
+	s := NewSession(server.URL+"/csAdmin", "web-cs", "", key, nil)
 	token, _ := s.Token(context.Background())
 	s.Invalidate("some-other-token")
 	_, _ = s.Token(context.Background())
@@ -135,7 +150,7 @@ func TestSessionInvalidateForcesANewExchange(t *testing.T) {
 func TestSessionReportsARefusedAssertion(t *testing.T) {
 	_, server, _ := newIntegration(t, time.Now().Add(time.Hour))
 	_, otherKey, _ := ed25519.GenerateKey(rand.Reader)
-	s := NewSession(server.URL+"/csAdmin", "web-cs", otherKey, nil)
+	s := NewSession(server.URL+"/csAdmin", "web-cs", "", otherKey, nil)
 	if _, err := s.Token(context.Background()); !errors.Is(err, ErrRefused) {
 		t.Fatalf("a key csAdmin does not know must be refused, err = %v", err)
 	}
@@ -143,12 +158,12 @@ func TestSessionReportsARefusedAssertion(t *testing.T) {
 
 func TestSessionIsNotConfiguredWithoutURLClientOrKey(t *testing.T) {
 	_, key, _ := ed25519.GenerateKey(rand.Reader)
-	if NewSession("http://csadmin", "web-cs", nil, nil).Configured() ||
-		NewSession("", "web-cs", key, nil).Configured() ||
-		NewSession("http://csadmin", "", key, nil).Configured() {
+	if NewSession("http://csadmin", "web-cs", "", nil, nil).Configured() ||
+		NewSession("", "web-cs", "", key, nil).Configured() ||
+		NewSession("http://csadmin", "", "", key, nil).Configured() {
 		t.Fatal("missing url, client id, or key must not count as configured")
 	}
-	if !NewSession("http://csadmin", "web-cs", key, nil).Configured() {
+	if !NewSession("http://csadmin", "web-cs", "", key, nil).Configured() {
 		t.Fatal("complete settings must count as configured")
 	}
 }

@@ -113,13 +113,15 @@ func (g *Gateway) serveIntegration(w http.ResponseWriter, r *http.Request, path 
 			return
 		}
 		g.opts.Upstream.Refresh(r.Context())
-		g.opts.Log.Info("Customer admin integration saved", "url", settings.URL, "client_id", settings.ClientID)
+		g.opts.Log.Info("Customer admin integration saved", "url", settings.URL, "client_id", settings.ClientID,
+			"audience", settings.Audience)
 		writeJSON(w, http.StatusOK, integrationSave{Saved: true, Check: check, Status: g.status(record)})
 	}
 }
 
 func (g *Gateway) status(record csadmin.Record) integrationStatus {
 	key := g.opts.Upstream.PublicKey()
+	record.Audience = csadmin.AudienceOrDefault(record.Audience)
 	return integrationStatus{Record: record, PublicKey: key, KeyConfigured: key != ""}
 }
 
@@ -143,6 +145,7 @@ func integrationSettings(r *http.Request) (csadmin.Settings, *Rejection) {
 	var body struct {
 		URL      string `json:"url"`
 		ClientID string `json:"client_id"`
+		Audience string `json:"audience"`
 	}
 	if len(bytes.TrimSpace(raw)) > 0 && json.Unmarshal(raw, &body) != nil {
 		return csadmin.Settings{}, &Rejection{Status: http.StatusBadRequest, Code: "invalid_body", Message: "Request body must be a JSON object"}
@@ -150,12 +153,16 @@ func integrationSettings(r *http.Request) (csadmin.Settings, *Rejection) {
 	settings := csadmin.Settings{
 		URL:      strings.TrimSuffix(strings.TrimSpace(body.URL), "/"),
 		ClientID: strings.TrimSpace(body.ClientID),
+		Audience: csadmin.AudienceOrDefault(strings.TrimSpace(body.Audience)),
 	}
 	if !csadmin.ValidURL(settings.URL) {
 		return settings, &Rejection{Status: http.StatusBadRequest, Code: "invalid_csadmin_url", Message: "Customer admin address must be a plain http(s) URL"}
 	}
 	if !csadmin.ClientIDPattern.MatchString(settings.ClientID) {
 		return settings, &Rejection{Status: http.StatusBadRequest, Code: "invalid_csadmin_client_id", Message: "Client id must be 1-50 letters, digits, dots, dashes or underscores"}
+	}
+	if !csadmin.AudiencePattern.MatchString(settings.Audience) {
+		return settings, &Rejection{Status: http.StatusBadRequest, Code: "invalid_csadmin_audience", Message: "Audience must be 1-50 letters, digits, dots, dashes or underscores"}
 	}
 	return settings, nil
 }

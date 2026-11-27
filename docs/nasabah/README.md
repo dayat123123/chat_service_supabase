@@ -29,7 +29,7 @@ Gateway tidak memakai akun di TCSLogin. Identitasnya berupa pasangan kunci Ed255
 - **Kunci publik** diisi di config csAdmin. Kunci publik bukan rahasia, jadi aman walaupun config csAdmin terbaca orang lain.
 
 Alurnya:
-1. Gateway membuat *assertion*, yaitu JWT `EdDSA` berumur 60 detik dengan klaim `iss` dan `sub` = client id, `aud` = `csAdminEL`, `iat`, `exp`, dan `jti` acak.
+1. Gateway membuat *assertion*, yaitu JWT `EdDSA` berumur 60 detik dengan klaim `iss` dan `sub` = client id, `aud` = audience, `iat`, `exp`, dan `jti` acak. Audience adalah nama service CS Admin yang dituju dan diatur di Hub (bawaan `csAdminEL`; untuk csAdminOD isi `csAdminOD`). Nilainya ditanam di kode csAdmin, jadi bila salah, csAdmin menolak dengan log `wrong audience`.
 2. Gateway mengirim `POST /integration/token` dengan body `{"Assertion": "..."}`.
 3. csAdmin memeriksa:
    - tanda tangan dengan kunci publik di config;
@@ -94,7 +94,7 @@ Nasabah tiket adalah profil aplikasi sosial yang dibuat dari token OLT. Username
 
 Super Admin mengatur sambungan ke CS Admin service dari web CS, di **Pengaturan → Integrasi API Nasabah**. Server cukup menjalankan `make up`; tidak ada alamat atau client id bawaan.
 
-- **Aktif hanya setelah tes berhasil.** **Simpan & aktifkan** mengirim alamat dan client id ke gateway. Gateway meminta token ke CS Admin service dengan nilai itu, dan hanya bila berhasil menyimpannya lewat `cs_api.nasabah_save_integration` (service_role, migrasi `0055`). Penyimpanan langsung lewat `admin_set_setting` ditolak (`setting_locked`).
+- **Aktif hanya setelah tes berhasil.** **Simpan & aktifkan** mengirim alamat, client id, dan audience ke gateway. Gateway meminta token ke CS Admin service dengan nilai itu, dan hanya bila berhasil menyimpannya lewat `cs_api.nasabah_save_integration` (service_role, migrasi `0055`; audience sejak `0205`). Penyimpanan langsung lewat `admin_set_setting` ditolak (`setting_locked`).
 - **Menu Akun Nasabah** (menu atas, panel tiket, palet perintah) hanya tampil bila integrasi aktif: `agent_me` mengosongkan `nasabah_permissions` dan memberi `settings.nasabah_ready = false` selama belum aktif. Web CS memeriksa ulang setiap 60 detik, jadi tidak perlu login ulang.
 - **Badge "Belum diatur"** tampil di menu samping Pengaturan dan di judul halaman sampai integrasi aktif. **Putuskan** menonaktifkan integrasi dan langsung menyembunyikan menu.
 - **Gateway membaca nilainya** lewat `cs_api.nasabah_integration()` paling lama setiap 15 detik, dan langsung setelah simpan atau putus. Bila database sedang tidak terbaca, gateway tetap memakai nilai terakhir.
@@ -104,15 +104,15 @@ Endpoint gateway khusus Super Admin aktif (dicek lewat `cs_api.nasabah_is_super_
 
 | Rute | Isi |
 |---|---|
-| `GET /api-nasabah/integration` | Alamat, client id, `configured`, `connected_at`, `connected_by`, dan kunci publik |
-| `PUT /api-nasabah/integration` | Body `{url, client_id}` (wajib). Tes koneksi dulu; menjawab `{saved, check, status}`. `saved = false` berarti tes gagal dan tidak ada yang disimpan |
+| `GET /api-nasabah/integration` | Alamat, client id, audience, `configured`, `connected_at`, `connected_by`, dan kunci publik |
+| `PUT /api-nasabah/integration` | Body `{url, client_id, audience}`; `audience` boleh kosong (= `csAdminEL`). Tes koneksi dulu; menjawab `{saved, check, status}`. `saved = false` berarti tes gagal dan tidak ada yang disimpan |
 | `DELETE /api-nasabah/integration` | Putus integrasi; menu Akun Nasabah tersembunyi lagi |
-| `POST /api-nasabah/integration/test` | Body `{url, client_id}` (wajib). Hanya tes, tidak menyimpan. Menjawab `result` (tabel di bawah) |
+| `POST /api-nasabah/integration/test` | Body `{url, client_id, audience}`, sama seperti di atas. Hanya tes, tidak menyimpan. Menjawab `result` (tabel di bawah) |
 
 | `result` | Arti |
 |---|---|
 | `ok` | csAdmin menerbitkan token |
-| `refused` | csAdmin menjawab 401: `public_key` atau `client_id` di config CS Admin service tidak cocok, atau jam server berbeda jauh |
+| `refused` | csAdmin menjawab 401: `public_key` atau `client_id` di config CS Admin service tidak cocok, audience bukan nama service CS Admin yang dituju, atau jam server berbeda jauh |
 | `ip_not_allowed` | csAdmin menjawab 403: IP server web CS tidak ada di `allowed_ips` |
 | `disabled` | csAdmin menjawab 404: blok `integration` belum diisi, atau csAdmin masih versi lama |
 | `unexpected` | Status HTTP lain, biasanya prefix path salah |

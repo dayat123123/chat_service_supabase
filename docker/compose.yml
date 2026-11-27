@@ -1337,7 +1337,7 @@ services:
     profiles: [cs]
     build:
       context: ../services/nasabah-gateway
-    image: olt-social/nasabah-gateway:0.1.0
+    image: olt-social/nasabah-gateway:0.1.1
     # edge: from Traefik; app: PostgREST; egress: the csAdmin server on the local network.
     networks: [edge, app, egress]
     depends_on:
