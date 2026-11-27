@@ -29,7 +29,7 @@ Gateway tidak memakai akun di TCSLogin. Identitasnya berupa pasangan kunci Ed255
 - **Kunci publik** diisi di config csAdmin. Kunci publik bukan rahasia, jadi aman walaupun config csAdmin terbaca orang lain.
 
 Alurnya:
-1. Gateway membuat *assertion*, yaitu JWT `EdDSA` berumur 60 detik dengan klaim `iss` dan `sub` = client id, `aud` = audience, `iat`, `exp`, dan `jti` acak. Audience adalah nama service CS Admin yang dituju dan diatur di Hub (bawaan `csAdminEL`; untuk csAdminOD isi `csAdminOD`). Nilainya ditanam di kode csAdmin, jadi bila salah, csAdmin menolak dengan log `wrong audience`.
+1. Gateway membuat *assertion*, yaitu JWT `EdDSA` berumur 60 detik dengan klaim `iss` dan `sub` = client id, `aud` = audience, `iat`, `exp`, dan `jti` acak. Audience diatur di Hub (bawaan `csAdminEL`) dan harus sama dengan `audience` di config CS Admin service. Bila berbeda, csAdmin menolak dengan log `wrong audience`.
 2. Gateway mengirim `POST /integration/token` dengan body `{"Assertion": "..."}`.
 3. csAdmin memeriksa:
    - tanda tangan dengan kunci publik di config;
@@ -57,6 +57,7 @@ Tambahkan blok baru dengan format yang sama seperti blok `server`, `database`, d
 #INTEGRATION (web CS gateway)
 integration {
         client_id       = web-cs
+        audience        = csAdminEL
         public_key      = <satu baris dari gen-secrets atau log gateway>
         #DURATION IN MINUTES (1-60)
         duration_token_minutes = 15
@@ -67,6 +68,7 @@ integration {
   ```bash
   openssl pkey -in docker/secrets/csadmin_signing_key -pubout -outform DER | openssl base64 -A | tr -d '='
   ```
+- **`audience`**: nama yang dicocokkan csAdmin dengan klaim `aud` assertion. Isinya harus sama dengan kolom Audience di Hub. csAdmin versi lama mengabaikan baris ini dan memakai nama bawaan di kodenya.
 - **`allowed_ips`** (opsional): daftar IP dipisah koma, sebagaimana terlihat oleh csAdmin, mis. `allowed_ips = 192.168.4.20`. Tanpa baris ini, IP tidak dibatasi; tanda tangan tetap wajib.
 - **`duration_token_minutes`**: 1–60; nilai lain kembali ke 15.
 - **Syarat build:** OpenSSL ≥ 1.1.1 (Ed25519). Kodenya sudah dicek kompilasinya dengan jwt-cpp 0.4.0–0.7.2.

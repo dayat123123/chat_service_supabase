@@ -16,10 +16,10 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ### Integrasi API Nasabah: audience bisa diatur dari Hub (migrasi `0205`, `nasabah-gateway` 0.1.1, Hub)
 
-- Kolom baru **Audience** di **Pengaturan → Integrasi API Nasabah**. Isinya nama service CS Admin yang dituju: `csAdminEL` (bawaan, sama seperti sebelumnya) atau `csAdminOD`. Sebelumnya gateway selalu mengirim `csAdminEL`, sehingga csAdminOD menolak dengan log `wrong audience`.
+- Kolom baru **Audience** di **Pengaturan → Integrasi API Nasabah** (bawaan `csAdminEL`, sama seperti sebelumnya). Isinya harus sama dengan `audience` di config CS Admin service. Sebelumnya gateway selalu mengirim `csAdminEL`, sehingga CS Admin service yang memakai nama lain menolak dengan log `wrong audience`.
+- Blok **Kunci integrasi** kini berisi baris `audience`, jadi config CS Admin service cukup disalin dari Hub. CS Admin service versi lama mengabaikan baris ini.
 - Tes koneksi dan **Simpan & aktifkan** memakai audience yang diketik. Nilainya tercatat di jejak audit bersama alamat dan client id. **Putuskan** mengembalikannya ke `csAdminEL`.
-- CS Admin service tidak perlu diubah.
-- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up` (menjalankan migrasi). Integrasi yang sudah aktif tetap memakai `csAdminEL`. Untuk csAdminOD: buka **Pengaturan → Integrasi API Nasabah → Ubah**, isi Audience `csAdminOD`, **Tes koneksi**, lalu **Simpan & aktifkan**.
+- **Cara pasang:** `git pull --ff-only`, perbarui Hub, lalu `make up` (menjalankan migrasi). Integrasi yang sudah aktif tetap memakai `csAdminEL`. Untuk nama lain: isi Audience di Hub, salin blok Kunci integrasi ke config CS Admin service lalu restart service itu, kemudian **Tes koneksi** dan **Simpan & aktifkan**.
 
 ### Akses Hub: cukup lewat IP atau domain internal, dan perbaikan build server baru
 
