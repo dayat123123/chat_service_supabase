@@ -6,6 +6,40 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 28 November 2026
 
+### Kutip post (migrasi `0214`, `rendezvous_community` 1.67.0)
+
+- Nasabah bisa **mengutip** post orang lain: membagikan ulang post itu ke feed sendiri dengan komentar. Post asli tampil sebagai kartu kecil di bawah komentar dan bisa diketuk.
+- Tombol **Kutip** ada di bar aksi post, dengan jumlah kutipan. Menu ⋮ punya **Lihat N kutipan**.
+- Aturannya mengikuti pengaturan yang sudah ada:
+  - post yang dihapus, ditahan moderasi, atau milik akun yang di-ban tidak bisa dikutip;
+  - akun yang saling blokir tidak bisa saling mengutip;
+  - bila pemilik post membatasi siapa yang bisa membalas (Kontrol komentar), hanya yang boleh membalas yang bisa mengutip.
+- Bila post asli kemudian dihapus atau disembunyikan, kartu di post kutipan berubah menjadi "Postingan ini tidak tersedia". Isinya tidak ikut tampil lagi.
+- Penulis post asli mendapat notifikasi baru **Kutipan** ("Ani mengutip postingan Anda"). Beberapa kutipan untuk post yang sama digabung. Jenis ini bisa dimatikan di pengaturan notifikasi aplikasi.
+- Moderasi tidak berubah: post kutipan adalah post biasa, jadi laporan, penahanan, dan deteksi manipulasi berlaku seperti biasa.
+- **Cara pasang:** langkah update biasa. App OLT perlu `rendezvous_community` 1.67.0 agar tombol dan kartu kutipan tampil. App lama tetap berjalan, hanya belum menampilkan kutipan.
+
+### Deteksi sentimen seragam (pompom) dan akun berulang (migrasi `0213`, Hub)
+
+- Jenis alert manipulasi baru **Sentimen seragam (pompom)**. Alert muncul bila dalam 1 jam terakhir hampir semua postingan berlabel sentimen untuk satu saham searah (≥ 90% bullish, atau ≥ 90% bearish), datang dari minimal 8 akun berbeda, minimal 15 postingan berlabel, dan jumlah mention di atas 3× rata-rata per jam saham itu. Aksi otomatisnya sama dengan alert lain: slow mode room saham. Postingan **tidak** ditahan otomatis, karena sentimen saja belum cukup sebagai bukti.
+- Ambangnya bisa diubah di **Kepatuhan → Kebijakan konten → Anti-manipulasi saham → Sentimen seragam (pompom)**, dengan alur persetujuan yang sama seperti pengaturan lain.
+- Alert **lonjakan mention** dan **konsentrasi akun baru** kini juga membawa daftar postingan (tombol **Postingan 1, 2, …**) dan jumlah akun terkait, sama seperti posting terkoordinasi.
+- **Komunitas → Moderasi → Indikasi manipulasi** kini punya bagian **Akun yang berulang muncul**: akun yang ikut di 2 alert atau lebih dalam 30 hari terakhir, beserta saham, tanda akun baru/diblokir, dan tombol untuk membuka akun.
+- **Cara pasang:** langkah update biasa.
+
+### Statistik tautan berbagi (migrasi `0212`, `share-link` 0.1.5, Hub)
+
+- **Hub → Pengaturan → Tautan berbagi → Statistik** (Super Admin) menampilkan, untuk 7/30/90 hari terakhir:
+  - berapa kali halaman tautan dilihat, dipisah dari pratinjau WhatsApp/Telegram/bot;
+  - berapa kali tombol **Buka di …** diketuk;
+  - berapa kali tautan langsung membuka aplikasi;
+  - unduhan per platform (Android, iPhone, Windows, Mac);
+  - grafik per hari dan 10 postingan yang paling banyak dibuka.
+- Yang disimpan hanya hitungan per post per hari (WIB). Tidak ada IP, User-Agent, atau cookie yang disimpan. Data harian dihapus otomatis setelah 400 hari.
+- Tautan unduh di halaman post kini lewat `/p/<kode>/get/<platform>` (dicatat, lalu diteruskan ke tautan unduh dari Hub). Tidak ada perubahan di Traefik, karena path tetap di bawah `/p/`.
+- Variabel baru opsional untuk `share-link`: `STATS_INTERVAL` (bawaan `30s`) dan `STATS_MAX_CODES` (bawaan `20000`). Tidak perlu diisi.
+- **Cara pasang:** langkah update biasa (`git pull --ff-only` di repo server dan Hub, lalu `make up`).
+
 ### Tampilan baru halaman tautan berbagi (migrasi `0211`, `share-link` 0.1.4)
 
 - Halaman `/p/<kode>` kini satu kolom yang berfokus pada isi post: nama aplikasi di atas, penulis, teks dengan kode saham berwarna, gambar, chip saham yang disebut (maks. 3), jumlah suka/komentar, dan **Salin tautan** (di HP membuka menu bagikan bawaan).
