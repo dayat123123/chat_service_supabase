@@ -1198,6 +1198,44 @@ services:
       resources:
         limits: {cpus: "0.5", memory: 128M, pids: 64}
 
+  # Post share links (services/share-link): public HTML preview pages for /p/<code> with Open Graph
+  # tags, the first post image and avatar proxied from Storage, and the App Links / Universal Links
+  # files, all configured by a Super Admin in the Hub (Pengaturan > Tautan berbagi). Traefik routes
+  # /p/* and /.well-known/{assetlinks.json,apple-app-site-association} to :8080; ops on :9100.
+  share-link:
+    <<: *base
+    labels: ["olt.autoheal=true"]
+    build:
+      context: ../services/share-link
+    image: olt-social/share-link:0.1.0
+    networks: [edge, app]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rest:
+        condition: service_healthy
+      storage:
+        condition: service_healthy
+    stop_grace_period: 20s
+    secrets: [jwt_secret]
+    environment:
+      PORT: 8080
+      OPS_PORT: 9100
+      LOG_LEVEL: ${SHARE_LINK_LOG_LEVEL:-info}
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      POSTGREST_URL: http://rest:3000
+      STORAGE_URL: http://storage:5000
+    healthcheck:
+      test: ["CMD", "/share-link", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      replicas: ${SHARE_LINK_REPLICAS:-1}
+      resources:
+        limits: {cpus: "0.5", memory: 96M, pids: 64}
+
   # System monitor (services/sentinel): every 30 s it probes internal services over HTTP/TCP and
   # reports disk usage to the database (alert rules are evaluated in the DB, docs/system-health),
   # then sends alerts to the Telegram/email channels a Super Admin sets in the web CS. The CS
@@ -1226,7 +1264,7 @@ services:
       LOG_LEVEL: ${SENTINEL_LOG_LEVEL:-info}
       JWT_SECRET_FILE: /run/secrets/jwt_secret
       POSTGREST_URL: http://rest:3000
-      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,research=http://research:9100/livez,link-preview=http://link-preview:8080/livez,classifier=http://classifier:9100/readyz,clamav=tcp://clamav:3310,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
+      PROBES: ${SENTINEL_PROBES:-storage=http://storage:5000/status,auth=http://auth:9999/health,rest=http://rest:3000/,realtime=http://realtime:4000/healthcheck,functions=http://functions:9000/,imgproxy=http://imgproxy:5001/health,kong=http://kong:8000/,auth-bridge=http://auth-bridge:9100/livez,notifier=http://notifier:8080/healthz,janitor=http://janitor:8080/healthz,media=http://media:9100/livez,backup=http://backup:8080/livez,integration=http://integration:9100/livez,research=http://research:9100/livez,link-preview=http://link-preview:8080/livez,share-link=http://share-link:9100/livez,classifier=http://classifier:9100/readyz,clamav=tcp://clamav:3310,db=tcp://db:5432,pgbouncer=tcp://pgbouncer:6432,valkey=tcp://valkey:6379}
       DISKS: db=/mnt/disks/db,storage=/mnt/disks/storage,backup=/mnt/disks/backup,backup-repo=/mnt/disks/backup-repo
       # Metrics for the PostgREST pool, Realtime event rate (JWT from jwt_secret = METRICS_JWT_SECRET),
       # and PgBouncer queue (SHOW POOLS as olt_stats) alerts. See services/sentinel/README.md.

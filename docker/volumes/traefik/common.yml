@@ -48,6 +48,16 @@ http:
           Server: ""
           X-Powered-By: ""
 
+    # Post share pages: share-link sends its own hash-based CSP and X-Robots-Tag.
+    security-headers-share:
+      headers:
+        frameDeny: true
+        contentTypeNosniff: true
+        referrerPolicy: no-referrer
+        customResponseHeaders:
+          Server: ""
+          X-Powered-By: ""
+
     # For web pages (Studio): Next.js needs inline scripts and styles.
     security-headers-ui:
       headers:
@@ -71,3 +81,7 @@ http:
         passHostHeader: true
         servers:
           - url: http://kong:8000
+    share-link:
+      loadBalancer:
+        servers:
+          - url: http://share-link:8080

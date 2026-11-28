@@ -177,6 +177,7 @@ Gambar diambil dari aplikasi Rendezvous OLT (Windows) dan Rendezvous Hub di serv
 | **auth-bridge** | Menukar token sosial dari OLT menjadi sesi komunitas |
 | **media, classifier, ClamAV** | Unggahan file, pemindaian gambar NSFW, dan pemindaian virus |
 | **link-preview** | Membuat pratinjau tautan dengan aman |
+| **share-link** | Halaman publik tautan berbagi post (`/p/<kode>`) dengan pratinjau, tombol buka aplikasi, dan file verifikasi App Links / Universal Links |
 | **notifier** | Mengirim push ke HP lewat Firebase |
 | **integration** | API untuk sistem OLT: notifikasi transaksi dan bot resmi |
 | **research** | Riset otomatis tanpa AI (saat ini laporan keuangan emiten dari XBRL bursa), diposting sebagai kartu riset setelah disetujui, dengan dokumen sumber (PDF/XLSX laporan asli) yang diperiksa antivirus |

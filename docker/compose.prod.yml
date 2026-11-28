@@ -40,6 +40,8 @@ services:
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_TLSCHALLENGE: "true"
       TRAEFIK_CERTIFICATESRESOLVERS_LE_ACME_CASERVER: ${ACME_CA_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
       PROXY_DOMAIN: ${PROXY_DOMAIN:?PROXY_DOMAIN is required for the single profile (docker/.env)}
+      # Public domain for post share links (/p/<code>, App Links, Universal Links); empty = PROXY_DOMAIN.
+      SHARE_DOMAIN: ${SHARE_DOMAIN:-}
       TLS_SNI_STRICT: ${TLS_SNI_STRICT:-true}
 
   kong:

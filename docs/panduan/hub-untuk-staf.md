@@ -353,7 +353,7 @@ Diperbarui otomatis. Angka di menu **Dashboard** adalah jumlah tiket yang perlu 
 
 Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak Audit.
 
-**Form penting terkunci.** Integrasi API Nasabah, Integrasi aplikasi (skema deep link), Push notification (kunci Firebase), Keamanan login, Alert, Backup, Penugasan, dan Komunitas tampil terkunci. Klik **Ubah** untuk membuka, lalu **Simpan**: Hub menampilkan konfirmasi yang menjelaskan dampaknya, dan perubahan baru tersimpan setelah dikonfirmasi. **Batal** atau **Esc** mengembalikan nilai semula. Tes koneksi, Kirim uji, dan push uji tetap bisa langsung dijalankan; Backup penuh dan Uji restore meminta konfirmasi.
+**Form penting terkunci.** Integrasi API Nasabah, Integrasi aplikasi (skema deep link), Tautan berbagi, Push notification (kunci Firebase), Keamanan login, Alert, Backup, Penugasan, dan Komunitas tampil terkunci. Klik **Ubah** untuk membuka, lalu **Simpan**: Hub menampilkan konfirmasi yang menjelaskan dampaknya, dan perubahan baru tersimpan setelah dikonfirmasi. **Batal** atau **Esc** mengembalikan nilai semula. Tes koneksi, Kirim uji, dan push uji tetap bisa langsung dijalankan; Backup penuh dan Uji restore meminta konfirmasi.
 
  Menu samping dikelompokkan dalam empat judul kecil: **Layanan CS**, **Komunitas**, **Integrasi**, dan **Sistem**. Fitur sosial, versi minimum, dan tab Stream ada di menu **Komunitas**, sedangkan banner dan popup di menu **Banner & Popup** (bagian 3.5).
 
@@ -368,6 +368,7 @@ Menu **Pengaturan** hanya untuk Super Admin. Setiap perubahan tercatat di Jejak 
 | **Persetujuan** | **Aturan empat mata** | Empat mata Komunitas, kebijakan konten, dan notifikasi info Banner & Popup | Jarang; atas permintaan Kepatuhan |
 | **Integrasi** | **Integrasi API Nasabah** | Sambungan menu Akun Nasabah | Pemasangan awal bersama IT |
 | | **Integrasi aplikasi** | Data untuk tim aplikasi OLT dan status login OLT (hanya baca) | Diminta tim aplikasi, cek login |
+| | **Tautan berbagi** | Tautan publik post untuk dibagikan ke luar aplikasi: domain, pratinjau, identitas aplikasi Android/iOS, tautan unduh | Pemasangan awal, rilis aplikasi baru |
 | | **API Integrasi** | API key untuk sistem lain yang mengirim notifikasi, memposting sebagai bot, atau membaca kesehatan sistem | Sistem baru, rotasi key |
 | | **Push notification** | Kunci Firebase dan push uji | Pemasangan awal, ganti kunci |
 | **Sistem** | **Keamanan login** | Peran yang wajib 2FA, batas password salah, dan lama kunci akun | Pemasangan awal, atas permintaan IT atau Kepatuhan |
@@ -460,6 +461,18 @@ Data koneksi untuk tim aplikasi OLT (URL API, anon key, versi library) dan **Sta
 **Skema deep link aplikasi** (terkunci, **Ubah** → **Simpan** → konfirmasi): awalan tautan yang membuka halaman di dalam aplikasi OLT dari banner atau popup, mis. `olt://promo/akhir-tahun` membuka halaman promo di aplikasi, bukan di browser. Isi sesuai skema yang didaftarkan aplikasi OLT (bawaan `olt`, maksimal 5); biasanya cukup diatur sekali oleh tim IT. Dikosongkan berarti tautan banner hanya boleh `https://`. Skema web dan skema berbahaya (javascript, data, file, intent, content, dan sejenisnya) selalu ditolak. Banner aktif yang memakai skema yang dicabut tetap tampil, tetapi tanpa tautan dan tombol. Hanya Super Admin yang bisa mengubahnya; peran Fitur & Banner hanya melihat daftarnya saat mengisi tautan banner.
 
 **Batas rekening per nasabah** (terkunci, **Ubah** → **Simpan** → konfirmasi): jumlah maksimal rekening (cust id) dari token login OLT yang ditautkan ke satu nasabah untuk notifikasi transaksi. Bawaan dan nilai tertinggi 200, paling kecil 1. Rekening di atas batas diabaikan mulai login berikutnya dan tidak menerima notifikasi transaksi. Hanya Super Admin yang bisa mengubahnya, dan perubahannya tercatat di Jejak Audit.
+
+#### Tautan berbagi
+
+Bila aktif, nasabah bisa menyalin atau membagikan tautan post (`https://<domain>/p/<kode>`) ke WhatsApp, Telegram, dan lainnya. Di HP yang sudah memasang aplikasi, tautan langsung membuka aplikasi. Selain itu tampil halaman pratinjau dengan tombol **Buka di aplikasi** dan tombol unduh. Formnya terkunci (**Ubah** → **Simpan** → konfirmasi). Hanya Super Admin yang bisa mengubahnya, dan setiap perubahan tercatat di Jejak Audit.
+
+- **Aktifkan tautan berbagi**: menu **Salin tautan** di aplikasi hanya muncul bila ini aktif dan domain diisi. Bila dimatikan, tautan yang sudah beredar menampilkan "Tautan tidak tersedia".
+- **Domain tautan**: alamat publik dari IT, mis. `https://share.perusahaan.co.id`, tanpa path.
+- **Nama aplikasi** dan **Skema aplikasi** (bawaan `OLT` dan `olt`): dipakai judul halaman dan tombol **Buka di aplikasi**.
+- **Tampilkan isi postingan di pratinjau**: nama penulis, cuplikan teks, dan gambar pertama tampil di halaman dan kartu WhatsApp. Post yang dihapus atau disembunyikan tidak pernah ditampilkan. Matikan bila isi post tidak boleh terlihat tanpa login.
+- **Android (App Links)** dan **iOS (Universal Links)**: diisi tim aplikasi, satu aplikasi per baris. Tanpa ini tautan tetap jalan, tetapi HP membukanya di browser dulu.
+- **Tautan unduh**: tombol Google Play, App Store, dan Windows di halaman pratinjau (harus `https://`).
+- **Status**: jumlah post yang sudah punya tautan, contoh tautan, dan alamat file verifikasi untuk dicek tim aplikasi.
 
 #### API Integrasi
 
