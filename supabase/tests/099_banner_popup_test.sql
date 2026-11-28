@@ -84,7 +84,7 @@ select throws_ok(format($$select cs_api.admin_save_banner(null, 'Promo', p_displ
                         'https://api.olt.example/storage/v1/object/public/avatars/' || :'img'),
   'PT400', 'invalid_image', 'Gambar dari bucket lain ditolak');
 
-select lives_ok($$select cs_api.admin_save_banner(null, 'Deep link', p_link_url => 'olt://promo/akhir-tahun')$$,
+select lives_ok($$select cs_api.admin_save_banner(null, 'Deep link', p_link_url => 'rendezvous-olt://promo/akhir-tahun')$$,
   'Deep link dengan skema terdaftar diterima');
 select throws_ok($$select cs_api.admin_save_banner(null, 'X', p_link_url => 'javascript://%0aalert(1)')$$,
   'PT400', 'invalid_link', 'javascript:// ditolak');
@@ -99,7 +99,7 @@ select throws_ok($$select cs_api.admin_save_banner(null, 'X', p_link_url => 'htt
 select throws_ok($$select cs_api.admin_save_banner(null, 'X', p_link_url => 'olt://promo dengan spasi')$$,
   'PT400', 'invalid_link', 'Deep link tanpa spasi');
 
-select is(cs_api.admin_banner_settings() -> 'deep_link_schemes', '["olt"]'::jsonb, 'Skema deep link bawaan olt');
+select is(cs_api.admin_banner_settings() -> 'deep_link_schemes', '["rendezvous-olt"]'::jsonb, 'Skema deep link bawaan rendezvous-olt');
 select throws_ok($$select cs_api.admin_set_banner_link_schemes('{olt,https}')$$, 'PT400', 'invalid_link_schemes',
   'Skema https tidak boleh menjadi deep link');
 select throws_ok($$select cs_api.admin_set_banner_link_schemes('{javascript}')$$, 'PT400', 'invalid_link_schemes',

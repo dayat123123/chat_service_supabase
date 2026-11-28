@@ -34,7 +34,7 @@ select is(cs_api.admin_set_kill_switch(false, 'Uji pemadaman sementara oleh tim 
 select lives_ok(format($$insert into storage.objects (bucket_id, name, owner_id) values ('app-banners', %L, %L)$$,
                        :'img', :'putri'),
   'Peran Fitur & Kampanye mengunggah gambar banner');
-select lives_ok($$select cs_api.admin_save_banner(null, 'Promo akhir tahun', p_link_url => 'olt://promo/akhir-tahun')$$,
+select lives_ok($$select cs_api.admin_save_banner(null, 'Promo akhir tahun', p_link_url => 'rendezvous-olt://promo/akhir-tahun')$$,
   'Peran Fitur & Kampanye membuat banner');
 select is(jsonb_array_length(cs_api.admin_banners()), 1, 'Peran Fitur & Kampanye melihat banner');
 select lives_ok($$select cs_api.admin_banner_settings()$$, 'Peran Fitur & Kampanye membaca pengaturan banner');

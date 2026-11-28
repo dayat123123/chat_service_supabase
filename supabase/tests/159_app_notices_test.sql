@@ -21,7 +21,7 @@ select hasnt_function('cs', 'banner_campaign', 'Banner tidak lagi membuat kampan
 select tests.authenticate_agent(:'pandu');
 select ok(not (cs_api.admin_save_banner(null, 'Tanpa notifikasi') ? 'notice'), 'Banner tanpa p_notify tidak punya notifikasi');
 select cs_api.admin_save_banner(null, 'Server mock trading', 'Server dipakai mock trading malam ini',
-  'olt://mock-trading', p_level => 'warning', p_cta_label => 'Buka simulasi', p_notify => true) as mock \gset
+  'rendezvous-olt://mock-trading', p_level => 'warning', p_cta_label => 'Buka simulasi', p_notify => true) as mock \gset
 select is(:'mock'::jsonb -> 'notice' ->> 'status', 'queued', 'Notifikasi banner langsung antre kirim');
 select is(cs_api.admin_banner_notice_preview('all') -> 'four_eyes', 'false'::jsonb, 'Pratinjau menyebut tanpa persetujuan');
 select is((cs_api.admin_banner_notice_preview('all') ->> 'recipients')::integer, :'everyone'::int,
@@ -37,7 +37,7 @@ select is((select targeted from private.app_notices where id = (:'mock'::jsonb -
   'Semua penerima dijangkau');
 select is((select payload ->> 'title' || ' | ' || (payload ->> 'level') || ' | ' || (payload ->> 'link_url') || ' | ' || (payload ->> 'cta_label')
              from public.notifications where user_id = :'budi' and payload ->> 'notice_id' = :'mock'::jsonb -> 'notice' ->> 'id'),
-  'Server mock trading | warning | olt://mock-trading | Buka simulasi', 'Isi notifikasi memuat judul, level, dan tautan in-app');
+  'Server mock trading | warning | rendezvous-olt://mock-trading | Buka simulasi', 'Isi notifikasi memuat judul, level, dan tautan in-app');
 select is((select type from public.notifications where user_id = :'budi' and payload ? 'notice_id' limit 1), 'announcement',
   'Masuk daftar notifikasi nasabah');
 select ok(not exists (select 1 from public.notifications where user_id = :'resmi' and payload ? 'notice_id'),
