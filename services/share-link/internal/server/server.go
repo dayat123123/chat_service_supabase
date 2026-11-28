@@ -38,6 +38,7 @@ const (
 var (
 	codePattern   = regexp.MustCompile(`^[A-Za-z0-9]{10}$`)
 	schemePattern = regexp.MustCompile(`^[a-z][a-z0-9+.-]{1,30}$`)
+	stockPattern  = regexp.MustCompile(`^[A-Z][A-Z0-9]{1,11}$`)
 )
 
 type Source interface {
@@ -326,7 +327,6 @@ func (s *Server) page(ctx context.Context, w http.ResponseWriter, code string) {
 	base.CanonicalURL = link
 	if schemePattern.MatchString(settings.AppScheme) {
 		base.AppURL = template.URL(settings.AppScheme + "://p/" + code)
-		base.OpenLabel = "Buka di aplikasi " + appName
 	}
 	if !preview.Preview {
 		base.Title = "Postingan di " + appName
@@ -341,16 +341,20 @@ func (s *Server) page(ctx context.Context, w http.ResponseWriter, code string) {
 	if name == "" {
 		name = author.Username
 	}
+	body := preview.Body
+	if preview.Truncated && body != "" {
+		body += "…"
+	}
 	post := &page.Post{
 		DisplayName: name,
 		Username:    author.Username,
-		Initial:     page.Initial(name),
-		Body:        preview.Body,
+		Initials:    page.Initials(name),
+		Body:        page.Segments(body),
+		More:        preview.Truncated && body != "",
 		Date:        page.Date(preview.CreatedAt),
-		Stats:       stats(preview.LikeCount, preview.CommentCount),
-	}
-	if preview.Truncated && post.Body != "" {
-		post.Body += "…"
+		Likes:       max(preview.LikeCount, 0),
+		Comments:    max(preview.CommentCount, 0),
+		Stocks:      stocks(preview.Stocks),
 	}
 	switch {
 	case author.Official:
@@ -474,10 +478,10 @@ func (s *Server) image(ctx context.Context, w http.ResponseWriter, code string, 
 func downloads(settings store.Settings) []page.Link {
 	var links []page.Link
 	for _, item := range []page.Link{
-		{Label: "Unduh di Google Play", URL: settings.AndroidStoreURL},
-		{Label: "Unduh di App Store", URL: settings.IOSStoreURL},
-		{Label: "Unduh untuk Windows", URL: settings.WindowsDownloadURL},
-		{Label: "Unduh untuk Mac", URL: settings.MacDownloadURL},
+		{Kind: "android", Name: "Android", Label: "Unduh di Google Play", URL: settings.AndroidStoreURL},
+		{Kind: "ios", Name: "iPhone", Label: "Unduh di App Store", URL: settings.IOSStoreURL},
+		{Kind: "windows", Name: "Windows", Label: "Unduh untuk Windows", URL: settings.WindowsDownloadURL},
+		{Kind: "mac", Name: "Mac", Label: "Unduh untuk Mac", URL: settings.MacDownloadURL},
 	} {
 		if strings.HasPrefix(item.URL, "https://") {
 			links = append(links, item)
@@ -486,15 +490,18 @@ func downloads(settings store.Settings) []page.Link {
 	return links
 }
 
-func stats(likes, comments int) string {
-	var parts []string
-	if likes > 0 {
-		parts = append(parts, fmt.Sprintf("%d suka", likes))
+func stocks(items []store.Stock) []page.Stock {
+	var out []page.Stock
+	for _, item := range items {
+		if len(out) == 3 {
+			break
+		}
+		if !stockPattern.MatchString(item.Code) {
+			continue
+		}
+		out = append(out, page.Stock{Code: item.Code, Name: item.Name, Initials: item.Code[:2]})
 	}
-	if comments > 0 {
-		parts = append(parts, fmt.Sprintf("%d komentar", comments))
-	}
-	return strings.Join(parts, " · ")
+	return out
 }
 
 func describe(body, username string) string {

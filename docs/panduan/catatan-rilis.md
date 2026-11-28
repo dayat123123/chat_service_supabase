@@ -6,6 +6,14 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 28 November 2026
 
+### Tampilan baru halaman tautan berbagi (migrasi `0211`, `share-link` 0.1.3)
+
+- Halaman `/p/<kode>` kini dua kolom: bilah atas dengan logo dan tombol **Buka aplikasi**; kartu postingan dengan kode saham berwarna, **Baca selengkapnya di aplikasi**, kartu saham yang disebut (maks. 3), serta Suka/Komentar/Bagikan; kolom kanan berisi **Lanjutkan di <nama aplikasi>**, tombol unduh per platform, dan daftar fitur aplikasi. Di HP kolomnya bertumpuk.
+- Suka dan Komentar membuka aplikasi. **Bagikan** menyalin tautan halaman (di HP membuka menu bagikan bawaan).
+- Kartu saham hanya menampilkan kodenya, karena nama emiten adalah data klien. Untuk indeks dari **Komunitas → Indeks**, namanya ikut tampil (migrasi `0211` menambah `stocks` ke pratinjau).
+- **Nama di halaman** (logo, "Lanjutkan di …", footer) diambil dari **Pengaturan → Integrasi aplikasi → Identitas aplikasi → Nama aplikasi**. Isi `Rendezvous OLT` di sana; kata terakhir tampil hijau di logo.
+- Nama di dialog browser "Buka Rendezvous OLT?" **tidak** diatur dari Hub. Nama itu milik aplikasi yang terpasang di komputer pengguna (Windows: `FileDescription`/`ProductName` di `windows/runner/Runner.rc` dan registry `URL:Rendezvous OLT`; Mac: `PRODUCT_NAME`).
+
 ### Tautan berbagi post (migrasi `0207`–`0209`, layanan baru `share-link` 0.1.2, Hub, `rendezvous_community` 1.66.0)
 
 - **Fitur.** Nasabah bisa menyalin atau membagikan tautan post ke luar aplikasi (WhatsApp, Telegram, email), bentuknya `https://<domain tautan>/p/<kode>`.

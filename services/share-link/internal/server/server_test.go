@@ -96,7 +96,8 @@ func publicPost() store.Preview {
 		Truncated: true,
 		CreatedAt: time.Date(2026, 11, 27, 20, 0, 0, 0, time.UTC),
 		LikeCount: 12, CommentCount: 3,
-		Image: &store.Image{Path: "posts/u/photo.png", Width: 2400, Height: 1200},
+		Image:  &store.Image{Path: "posts/u/photo.png", Width: 2400, Height: 1200},
+		Stocks: []store.Stock{{Code: "BBCA"}, {Code: "bad code"}, {Code: "COMPOSITE", Name: "IHSG"}},
 	}
 }
 
@@ -134,14 +135,18 @@ func TestPublicPostPageCarriesPreviewAndEscapesContent(t *testing.T) {
 		`<meta property="og:image:height" content="600">`,
 		`<meta property="og:url" content="https://share.olt.test/p/` + code + `">`,
 		`href="olt://p/` + code + `"`,
-		`Beli $BBCA &lt;script&gt;alert(1)&lt;/script&gt;…`,
+		`Beli <span class="tag">$BBCA</span> &lt;script&gt;alert(1)&lt;/script&gt;…`,
+		`Baca selengkapnya di aplikasi`,
+		`<b>$BBCA</b>`,
+		`<small>IHSG</small>`,
 		`</svg>Resmi</span>`,
 		`@ani · 28 Nov 2026`,
-		`12 suka · 3 komentar`,
+		`Suka <em>12</em>`,
+		`Komentar <em>3</em>`,
 		`src="/p/` + code + `/avatar"`,
 		`Unduh di Google Play`,
-		`<a class="btn store" href="https://unduh.olt.test/OLT.dmg" rel="noopener">`,
-		`</svg>Unduh untuk Mac</a>`,
+		`<a class="btn dl" href="https://unduh.olt.test/OLT.dmg" rel="noopener" title="Unduh untuk Mac">`,
+		`</svg>Mac</a>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page is missing %q", want)
@@ -149,6 +154,9 @@ func TestPublicPostPageCarriesPreviewAndEscapesContent(t *testing.T) {
 	}
 	if strings.Contains(body, "<script>alert") {
 		t.Error("post text must be escaped")
+	}
+	if strings.Contains(body, "bad code") {
+		t.Error("malformed stock codes must be dropped")
 	}
 	if strings.Contains(body, "not-https.example") {
 		t.Error("download links must be https")
