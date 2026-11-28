@@ -6,7 +6,7 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 28 November 2026
 
-### Tautan berbagi post (migrasi `0207` dan `0208`, layanan baru `share-link` 0.1.1, Hub, `rendezvous_community` 1.66.0)
+### Tautan berbagi post (migrasi `0207`–`0209`, layanan baru `share-link` 0.1.1, Hub, `rendezvous_community` 1.66.0)
 
 - **Fitur.** Nasabah bisa menyalin atau membagikan tautan post ke luar aplikasi (WhatsApp, Telegram, email), bentuknya `https://<domain tautan>/p/<kode>`.
   - Di HP yang sudah memasang aplikasi OLT, tautan langsung membuka aplikasi (Android App Links, iOS Universal Links).
@@ -20,8 +20,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
   1. `git pull --ff-only` di repo server dan Hub, lalu `make up`. Perintah ini menjalankan migrasi `0207`, membangun image `share-link`, dan membangun ulang Hub.
   2. Opsional: domain sendiri untuk tautan. Arahkan DNS A `share.<domain>` ke server, isi `SHARE_DOMAIN=share.<domain>` di `docker/.env`, lalu `make up` lagi (Traefik dibuat ulang).
   3. Di Hub **Pengaturan → Tautan berbagi**: isi **Domain tautan** dengan alamat yang sama (`https://share.<domain>`, atau `https://<PROXY_DOMAIN>`), lalu aktifkan. Di server dev/LAN: `http://<IP server>:8000`.
-  4. Setelah app OLT siap: isi package name + fingerprint Android dan App ID iOS. Cek `https://<domain>/.well-known/assetlinks.json` (Hub menampilkan alamatnya).
+  4. Setelah app OLT siap: isi package name + fingerprint Android, App ID iOS/Mac, dan tautan unduh di **Pengaturan → Integrasi aplikasi → Identitas aplikasi**. Cek `https://<domain>/.well-known/assetlinks.json` (Hub menampilkan alamatnya).
   5. App OLT perlu `rendezvous_community` 1.66.0 dan penerusan tautan masuk ke paket. Di Windows juga perlu registrasi skema `olt` di installer dan app satu instance. Detail: `doc/integration.md` di repo library.
+- **Skema dan identitas aplikasi di satu tempat (migrasi `0209`).**
+  - Pindah ke **Pengaturan → Integrasi aplikasi**: kartu **Skema aplikasi** (dulu "Skema deep link aplikasi") dan kartu baru **Identitas aplikasi** (nama, Android, iOS & Mac, tautan unduh).
+  - Skema **pertama** di daftar menjadi skema utama untuk tombol **Buka di aplikasi**, dan urutan yang diketik kini dipertahankan.
+  - **Tautan berbagi** tinggal berisi aktif, domain, dan pratinjau, plus ringkasan aplikasi dan tombol ke Integrasi aplikasi.
+  - Nilai yang sudah diisi di Tautan berbagi dipindahkan otomatis oleh migrasi.
 - **Traefik dibuat ulang otomatis bila file rutenya berubah.** Sebelumnya rute baru (seperti `/p/...`) baru terbaca setelah `docker restart olt-social-traefik-1`. Gejalanya: membuka `/p/...` memunculkan dialog login Studio. Kini `make up` dan `.\make.ps1 up` mengirim hash file rute ke label Traefik, jadi Traefik dibuat ulang sendiri saat rutenya berubah (jeda ±2 detik).
 - **Cek setelah pasang.** **Sistem → Kesehatan sistem** menampilkan layanan "Tautan berbagi". Lalu buka `https://<domain>/p/abcdefghij`; harus tampil "Tautan tidak tersedia" (404).
 
