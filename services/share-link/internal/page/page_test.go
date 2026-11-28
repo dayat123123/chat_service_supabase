@@ -36,6 +36,25 @@ func TestAutoOpenCoversWindowsAndMacButNotSafariOrPhones(t *testing.T) {
 	}
 }
 
+func TestPageIsLightOnly(t *testing.T) {
+	out, err := Render(Data{Title: "t", SiteName: "OLT", AppURL: "olt://p/Ab12Cd34Ef", OpenLabel: "Buka", Downloads: []Link{{Label: "Unduh untuk Windows", URL: "https://example.com/olt.exe"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	html := string(out)
+	if strings.Contains(style, "prefers-color-scheme") {
+		t.Fatal("the share page must not switch to a dark theme")
+	}
+	for _, want := range []string{`<meta name="color-scheme" content="light">`, `class="mark" aria-hidden="true">O<`, `class="btn store" href="https://example.com/olt.exe"`, "Belum punya aplikasinya?"} {
+		if !strings.Contains(html, want) {
+			t.Errorf("page is missing %q", want)
+		}
+	}
+	if strings.Contains(html, " style=") {
+		t.Fatal("inline style attributes are blocked by the CSP")
+	}
+}
+
 func TestNoScriptWithoutAppLink(t *testing.T) {
 	out, err := Render(Data{Title: "t", SiteName: "OLT", Heading: "h", Message: "m"})
 	if err != nil {
