@@ -74,6 +74,12 @@ type Preview struct {
 	LikeCount    int       `json:"like_count"`
 	CommentCount int       `json:"comment_count"`
 	Image        *Image    `json:"image"`
+	Stocks       []Stock   `json:"stocks"`
+}
+
+type Stock struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 type Blob struct {
