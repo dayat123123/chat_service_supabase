@@ -1,6 +1,6 @@
 # share-link
 
-Halaman publik untuk tautan berbagi post (versi **0.1.3**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql`, `0208_share_links_macos.sql` (tautan unduh Mac), dan `0209_app_identity.sql` (identitas aplikasi dipindah ke Integrasi aplikasi), tes `184_post_share_links_test.sql` dan `185_app_identity_test.sql`.
+Halaman publik untuk tautan berbagi post (versi **0.1.4**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql`, `0208_share_links_macos.sql` (tautan unduh Mac), dan `0209_app_identity.sql` (identitas aplikasi dipindah ke Integrasi aplikasi), tes `184_post_share_links_test.sql` dan `185_app_identity_test.sql`.
 
 ```
 Tautan diklik ──▶ HP dengan aplikasi terpasang: Android App Links / iOS Universal Links langsung membuka aplikasi

@@ -6,12 +6,12 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 28 November 2026
 
-### Tampilan baru halaman tautan berbagi (migrasi `0211`, `share-link` 0.1.3)
+### Tampilan baru halaman tautan berbagi (migrasi `0211`, `share-link` 0.1.4)
 
-- Halaman `/p/<kode>` kini dua kolom: bilah atas dengan logo dan tombol **Buka aplikasi**; kartu postingan dengan kode saham berwarna, **Baca selengkapnya di aplikasi**, kartu saham yang disebut (maks. 3), serta Suka/Komentar/Bagikan; kolom kanan berisi **Lanjutkan di <nama aplikasi>**, tombol unduh per platform, dan daftar fitur aplikasi. Di HP kolomnya bertumpuk.
-- Suka dan Komentar membuka aplikasi. **Bagikan** menyalin tautan halaman (di HP membuka menu bagikan bawaan).
-- Kartu saham hanya menampilkan kodenya, karena nama emiten adalah data klien. Untuk indeks dari **Komunitas → Indeks**, namanya ikut tampil (migrasi `0211` menambah `stocks` ke pratinjau).
-- **Nama di halaman** (logo, "Lanjutkan di …", footer) diambil dari **Pengaturan → Integrasi aplikasi → Identitas aplikasi → Nama aplikasi**. Isi `Rendezvous OLT` di sana; kata terakhir tampil hijau di logo.
+- Halaman `/p/<kode>` kini satu kolom yang berfokus pada isi post: nama aplikasi di atas, penulis, teks dengan kode saham berwarna, gambar, chip saham yang disebut (maks. 3), jumlah suka/komentar, dan **Salin tautan** (di HP membuka menu bagikan bawaan).
+- Di bawahnya satu tombol **Buka di <nama aplikasi>** dan tautan unduh per platform. Catatan "Konten ini pendapat pengguna, bukan rekomendasi investasi" ada di kaki halaman.
+- Chip saham hanya menampilkan kodenya, karena nama emiten adalah data klien. Untuk indeks dari **Komunitas → Indeks**, namanya ikut tampil (migrasi `0211` menambah `stocks` ke pratinjau).
+- **Nama di halaman** (judul atas, tombol **Buka di …**, kaki halaman) diambil dari **Pengaturan → Integrasi aplikasi → Identitas aplikasi → Nama aplikasi**. Isi `Rendezvous OLT` di sana.
 - Nama di dialog browser "Buka Rendezvous OLT?" **tidak** diatur dari Hub. Nama itu milik aplikasi yang terpasang di komputer pengguna (Windows: `FileDescription`/`ProductName` di `windows/runner/Runner.rc` dan registry `URL:Rendezvous OLT`; Mac: `PRODUCT_NAME`).
 
 ### Tautan berbagi post (migrasi `0207`–`0209`, layanan baru `share-link` 0.1.2, Hub, `rendezvous_community` 1.66.0)

@@ -137,16 +137,15 @@ func TestPublicPostPageCarriesPreviewAndEscapesContent(t *testing.T) {
 		`href="olt://p/` + code + `"`,
 		`Beli <span class="tag">$BBCA</span> &lt;script&gt;alert(1)&lt;/script&gt;…`,
 		`Baca selengkapnya di aplikasi`,
-		`<b>$BBCA</b>`,
-		`<small>IHSG</small>`,
-		`</svg>Resmi</span>`,
+		`>$BBCA</a>`,
+		`>$COMPOSITE <small>IHSG</small></a>`,
+		`<span class="sr">Resmi</span>`,
 		`@ani · 28 Nov 2026`,
-		`Suka <em>12</em>`,
-		`Komentar <em>3</em>`,
+		`12 suka · 3 komentar`,
+		`Buka di OLT</a>`,
 		`src="/p/` + code + `/avatar"`,
 		`Unduh di Google Play`,
-		`<a class="btn dl" href="https://unduh.olt.test/OLT.dmg" rel="noopener" title="Unduh untuk Mac">`,
-		`</svg>Mac</a>`,
+		`<a href="https://unduh.olt.test/OLT.dmg" rel="noopener" title="Unduh untuk Mac">Mac</a>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page is missing %q", want)

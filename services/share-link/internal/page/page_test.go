@@ -38,8 +38,11 @@ func TestAutoOpenCoversWindowsAndMacButNotSafariOrPhones(t *testing.T) {
 
 func TestPageIsLightOnly(t *testing.T) {
 	out, err := Render(Data{Title: "t", SiteName: "Rendezvous OLT", AppURL: "rendezvous-olt://p/Ab12Cd34Ef",
-		Downloads: []Link{{Kind: "windows", Name: "Windows", Label: "Unduh untuk Windows", URL: "https://example.com/olt.exe"}},
-		Post:      &Post{DisplayName: "OLT Research", Username: "olt_research", Initials: "OR", Body: Segments("$BBNI naik"), More: true}})
+		Downloads: []Link{
+			{Kind: "android", Name: "Android", Label: "Unduh di Google Play", URL: "https://example.com/olt.apk"},
+			{Kind: "windows", Name: "Windows", Label: "Unduh untuk Windows", URL: "https://example.com/olt.exe"},
+		},
+		Post: &Post{DisplayName: "OLT Research", Username: "olt_research", Initials: "OR", Body: Segments("$BBNI naik"), More: true}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,12 +52,13 @@ func TestPageIsLightOnly(t *testing.T) {
 	}
 	for _, want := range []string{
 		`<meta name="color-scheme" content="light">`,
-		`<span class="mark" aria-hidden="true">R</span><span>Rendezvous <b>OLT</b></span>`,
-		`<a class="btn dl" href="https://example.com/olt.exe" rel="noopener" title="Unduh untuk Windows">`,
+		`<span class="word">Rendezvous OLT</span>`,
+		`>Android</a><span class="dot" aria-hidden="true">·</span><a href="https://example.com/olt.exe" rel="noopener" title="Unduh untuk Windows">Windows</a>`,
 		`<span class="tag">$BBNI</span> naik`,
 		`Baca selengkapnya di aplikasi`,
-		`Lanjutkan di Rendezvous OLT`,
+		`Buka di Rendezvous OLT</a>`,
 		`id="share"`,
+		`bukan rekomendasi investasi`,
 	} {
 		if !strings.Contains(html, want) {
 			t.Errorf("page is missing %q", want)
@@ -107,7 +111,7 @@ func TestDateUsesWIB(t *testing.T) {
 	if got := Date(time.Date(2026, 12, 31, 17, 30, 0, 0, time.UTC)); got != "1 Jan 2027" {
 		t.Fatalf("Date = %q", got)
 	}
-	if Date(time.Time{}) != "" || Initial(" ani") != "A" || Initial("") != "?" {
+	if Date(time.Time{}) != "" {
 		t.Fatal("helpers")
 	}
 }

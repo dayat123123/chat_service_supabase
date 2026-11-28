@@ -499,7 +499,7 @@ func stocks(items []store.Stock) []page.Stock {
 		if !stockPattern.MatchString(item.Code) {
 			continue
 		}
-		out = append(out, page.Stock{Code: item.Code, Name: item.Name, Initials: item.Code[:2]})
+		out = append(out, page.Stock{Code: item.Code, Name: item.Name})
 	}
 	return out
 }

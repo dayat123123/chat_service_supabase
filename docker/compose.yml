@@ -1209,7 +1209,7 @@ services:
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/share-link
-    image: olt-social/share-link:0.1.3
+    image: olt-social/share-link:0.1.4
     networks: [edge, app]
     depends_on:
       migrate:
