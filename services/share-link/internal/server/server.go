@@ -19,6 +19,7 @@ import (
 
 	"olt-social/share-link/internal/heartbeat"
 	"olt-social/share-link/internal/page"
+	"olt-social/share-link/internal/stats"
 	"olt-social/share-link/internal/store"
 )
 
@@ -28,6 +29,8 @@ const (
 	routePage       = "page"
 	routeImage      = "image"
 	routeAvatar     = "avatar"
+	routeOpen       = "open"
+	routeDownload   = "download"
 	routeOther      = "other"
 
 	staleSettings  = 10 * time.Minute
@@ -39,7 +42,15 @@ var (
 	codePattern   = regexp.MustCompile(`^[A-Za-z0-9]{10}$`)
 	schemePattern = regexp.MustCompile(`^[a-z][a-z0-9+.-]{1,30}$`)
 	stockPattern  = regexp.MustCompile(`^[A-Z][A-Z0-9]{1,11}$`)
+	botPattern    = regexp.MustCompile(`(?i)bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|telegram|discord|slack|skype|line/|embedly|pinterest|vkshare|curl|wget|python|go-http-client|okhttp|headless|lighthouse`)
 )
+
+var downloadEvents = map[string]stats.Event{
+	"android": stats.Android,
+	"ios":     stats.IOS,
+	"windows": stats.Windows,
+	"mac":     stats.Mac,
+}
 
 type Source interface {
 	Settings(ctx context.Context) (store.Settings, error)
@@ -57,6 +68,7 @@ type Options struct {
 	MaxImageBytes    int64
 	ImageWidth       int
 	RequestTimeout   time.Duration
+	Stats            *stats.Tracker
 	Now              func() time.Time
 }
 
@@ -115,13 +127,22 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) route(w *recorder, r *http.Request) string {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "no-referrer")
+	ctx, cancel := context.WithTimeout(r.Context(), s.opts.RequestTimeout)
+	defer cancel()
+	if code, ok := strings.CutSuffix(strings.TrimPrefix(r.URL.Path, "/p/"), "/open"); ok && strings.HasPrefix(r.URL.Path, "/p/") {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return routeOther
+		}
+		s.open(ctx, w, code)
+		return routeOpen
+	}
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return routeOther
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), s.opts.RequestTimeout)
-	defer cancel()
 	switch path := r.URL.Path; {
 	case path == "/.well-known/assetlinks.json":
 		s.assetLinks(ctx, w)
@@ -133,7 +154,7 @@ func (s *Server) route(w *recorder, r *http.Request) string {
 		code, sub, _ := strings.Cut(strings.TrimPrefix(path, "/p/"), "/")
 		switch sub {
 		case "":
-			s.page(ctx, w, code)
+			s.page(ctx, w, r, code)
 			return routePage
 		case "image":
 			s.image(ctx, w, code, false)
@@ -141,6 +162,10 @@ func (s *Server) route(w *recorder, r *http.Request) string {
 		case "avatar":
 			s.image(ctx, w, code, true)
 			return routeAvatar
+		}
+		if kind, ok := strings.CutPrefix(sub, "get/"); ok {
+			s.download(ctx, w, r, code, kind)
+			return routeDownload
 		}
 	}
 	http.NotFound(w, r)
@@ -291,7 +316,7 @@ func unavailable(w http.ResponseWriter) {
 	http.Error(w, "service unavailable", http.StatusServiceUnavailable)
 }
 
-func (s *Server) page(ctx context.Context, w http.ResponseWriter, code string) {
+func (s *Server) page(ctx context.Context, w http.ResponseWriter, r *http.Request, code string) {
 	settings, err := s.loadSettings(ctx)
 	if err != nil {
 		s.renderUnavailable(w)
@@ -323,6 +348,14 @@ func (s *Server) page(ctx context.Context, w http.ResponseWriter, code string) {
 		s.render(w, http.StatusNotFound, base)
 		return
 	}
+	if r.Method == http.MethodGet {
+		if botPattern.MatchString(r.UserAgent()) {
+			s.track(code, stats.Preview)
+		} else {
+			s.track(code, stats.View)
+		}
+	}
+	base.Downloads = tracked(base.Downloads, code)
 	link := settings.BaseURL + "/p/" + code
 	base.CanonicalURL = link
 	if schemePattern.MatchString(settings.AppScheme) {
@@ -377,6 +410,67 @@ func (s *Server) page(ctx context.Context, w http.ResponseWriter, code string) {
 	base.Title = name + " di " + appName
 	base.Description = describe(preview.Body, author.Username)
 	s.render(w, http.StatusOK, base)
+}
+
+func (s *Server) track(code string, e stats.Event) {
+	if s.opts.Stats != nil {
+		s.opts.Stats.Add(code, e)
+	}
+}
+
+func (s *Server) known(ctx context.Context, code string) bool {
+	settings, err := s.loadSettings(ctx)
+	if err != nil || !settings.Ready || !codePattern.MatchString(code) {
+		return false
+	}
+	preview, err := s.loadPreview(ctx, code)
+	return err == nil && preview.Status == "ok"
+}
+
+func (s *Server) open(ctx context.Context, w http.ResponseWriter, code string) {
+	w.Header().Set("Cache-Control", "no-store")
+	if s.known(ctx, code) {
+		s.track(code, stats.Open)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) download(ctx context.Context, w http.ResponseWriter, r *http.Request, code, kind string) {
+	event, ok := downloadEvents[kind]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	settings, err := s.loadSettings(ctx)
+	if err != nil {
+		unavailable(w)
+		return
+	}
+	target := ""
+	for _, link := range downloads(settings) {
+		if link.Kind == kind {
+			target = link.URL
+		}
+	}
+	if target == "" {
+		http.NotFound(w, r)
+		return
+	}
+	if r.Method == http.MethodGet && !botPattern.MatchString(r.UserAgent()) && s.known(ctx, code) {
+		s.track(code, event)
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Location", target)
+	w.WriteHeader(http.StatusFound)
+}
+
+func tracked(links []page.Link, code string) []page.Link {
+	out := make([]page.Link, len(links))
+	for i, link := range links {
+		link.URL = "/p/" + code + "/get/" + link.Kind
+		out[i] = link
+	}
+	return out
 }
 
 func (s *Server) renderUnavailable(w http.ResponseWriter) {
@@ -537,7 +631,12 @@ func (s *Server) Report() heartbeat.Report {
 	s.settingsMu.Lock()
 	ready := s.settings.Ready
 	s.settingsMu.Unlock()
-	report := heartbeat.Report{Status: heartbeat.StatusOK, Detail: map[string]any{"ready": ready, "store_failures": failures}}
+	detail := map[string]any{"ready": ready, "store_failures": failures}
+	if s.opts.Stats != nil {
+		detail["stats_pending"] = s.opts.Stats.Pending()
+		detail["stats_dropped"] = s.opts.Stats.Dropped()
+	}
+	report := heartbeat.Report{Status: heartbeat.StatusOK, Detail: detail}
 	if failures >= 3 {
 		report.Status = heartbeat.StatusDegraded
 		report.Error = "database API unavailable"
@@ -568,6 +667,12 @@ func (s *Server) WriteMetrics(w http.ResponseWriter, lastHeartbeat time.Time) {
 	s.previewMu.Unlock()
 	fmt.Fprintf(&b, "# HELP share_link_preview_cache_entries Cached post previews.\n# TYPE share_link_preview_cache_entries gauge\nshare_link_preview_cache_entries %d\n", cached)
 	fmt.Fprintf(&b, "# HELP share_link_store_consecutive_failures Consecutive failed database API calls (3 or more = degraded).\n# TYPE share_link_store_consecutive_failures gauge\nshare_link_store_consecutive_failures %d\n", s.failures.Load())
+	if t := s.opts.Stats; t != nil {
+		fmt.Fprintf(&b, "# HELP share_link_stats_pending_codes Share codes with counts not yet sent to the database.\n# TYPE share_link_stats_pending_codes gauge\nshare_link_stats_pending_codes %d\n", t.Pending())
+		fmt.Fprintf(&b, "# HELP share_link_stats_sent_rows_total Stat rows sent to the database.\n# TYPE share_link_stats_sent_rows_total counter\nshare_link_stats_sent_rows_total %d\n", t.Sent())
+		fmt.Fprintf(&b, "# HELP share_link_stats_failed_flushes_total Failed attempts to send stats.\n# TYPE share_link_stats_failed_flushes_total counter\nshare_link_stats_failed_flushes_total %d\n", t.Failed())
+		fmt.Fprintf(&b, "# HELP share_link_stats_dropped_total Events dropped because too many codes were pending.\n# TYPE share_link_stats_dropped_total counter\nshare_link_stats_dropped_total %d\n", t.Dropped())
+	}
 	last := int64(0)
 	if !lastHeartbeat.IsZero() {
 		last = lastHeartbeat.Unix()

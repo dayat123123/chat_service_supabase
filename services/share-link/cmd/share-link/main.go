@@ -17,12 +17,13 @@ import (
 	"olt-social/share-link/internal/config"
 	"olt-social/share-link/internal/heartbeat"
 	"olt-social/share-link/internal/server"
+	"olt-social/share-link/internal/stats"
 	"olt-social/share-link/internal/store"
 )
 
 const (
 	service = "share-link"
-	version = "0.1.4"
+	version = "0.1.5"
 )
 
 func main() {
@@ -47,6 +48,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 	defer stop()
 
 	client := store.New(cfg.PostgRESTURL, cfg.StorageURL, cfg.JWTSecret, cfg.JWTIssuer, cfg.RequestTimeout)
+	tracker := stats.New(cfg.StatsMaxCodes)
 	site := server.New(server.Options{
 		Log:              log,
 		Source:           client,
@@ -56,6 +58,7 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		MaxImageBytes:    cfg.MaxImageBytes,
 		ImageWidth:       cfg.ImageWidth,
 		RequestTimeout:   cfg.RequestTimeout,
+		Stats:            tracker,
 	})
 	beats := heartbeat.New(heartbeat.Options{
 		Store:     client,
@@ -120,6 +123,12 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		defer wg.Done()
 		beats.Run(beatCtx)
 	}()
+	statsCtx, stopStats := context.WithCancel(context.Background())
+	statsDone := make(chan struct{})
+	go func() {
+		defer close(statsDone)
+		tracker.Run(statsCtx, client, cfg.StatsInterval, cfg.RequestTimeout, log)
+	}()
 
 	var failure error
 	select {
@@ -134,6 +143,8 @@ func run(cfg config.Config, log *slog.Logger, startedAt time.Time) error {
 		log.Warn("Shutdown timeout reached; closing requests still in flight", "timeout", cfg.ShutdownTimeout.String())
 		_ = webServer.Close()
 	}
+	stopStats()
+	<-statsDone
 	stopBeats()
 	wg.Wait()
 	opsDone, cancelOps := context.WithTimeout(context.Background(), 5*time.Second)
