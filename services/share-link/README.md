@@ -1,6 +1,6 @@
 # share-link
 
-Halaman publik untuk tautan berbagi post (versi **0.1.1**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql` dan `0208_share_links_macos.sql` (tautan unduh Mac), tes `184_post_share_links_test.sql` dan `185_share_links_macos_test.sql`.
+Halaman publik untuk tautan berbagi post (versi **0.1.1**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql`, `0208_share_links_macos.sql` (tautan unduh Mac), dan `0209_app_identity.sql` (identitas aplikasi dipindah ke Integrasi aplikasi), tes `184_post_share_links_test.sql` dan `185_app_identity_test.sql`.
 
 ```
 Tautan diklik ──▶ HP dengan aplikasi terpasang: Android App Links / iOS Universal Links langsung membuka aplikasi
@@ -36,7 +36,9 @@ File `.well-known` tetap dilayani walau tautan dimatikan, supaya verifikasi apli
 
 | Objek | Isi |
 |---|---|
-| `cs.cs_settings` `share.links` | `enabled`, `base_url` (http/https + host [+ port], tanpa path), `preview`, `app_name`, `app_scheme`, `android` (maks. 5 × package + 1–5 fingerprint), `ios_app_ids` (maks. 5 × `TEAMID.bundle`, untuk app iOS dan Mac), `android_store_url`, `ios_store_url`, `windows_download_url`, `macos_download_url` (https) |
+| `cs.cs_settings` `share.links` | `enabled`, `base_url` (http/https + host [+ port], tanpa path), `preview`. Diatur di Hub **Tautan berbagi** |
+| `cs.cs_settings` `app.identity` | `app_name`, `android` (maks. 5 × package + 1–5 fingerprint), `ios_app_ids` (maks. 5 × `TEAMID.bundle`, untuk app iOS dan Mac), `android_store_url`, `ios_store_url`, `windows_download_url`, `macos_download_url` (https). Diatur di Hub **Integrasi aplikasi → Identitas aplikasi** (`cs_api.app_identity` / `cs_api.admin_save_app_identity`, audit `setting.app_identity`) |
+| Skema aplikasi | Skema pertama di `banners.deep_link_schemes` (Hub **Integrasi aplikasi → Skema aplikasi**; urutan dipertahankan). Kosong = tanpa tombol **Buka di aplikasi** dan `app_url` `null` |
 | `private.post_share_codes` | `code` (10 alfanumerik) ↔ `post_id` (unik), `created_by`, `created_at`. Ikut terhapus bila post dihapus permanen |
 | `public.post_share_link(p_post_id)` | Untuk pengguna login. Mengembalikan `{code, url, app_url}`. Error `share_links_disabled` (403) atau `post_not_found` (404) |
 | `public.resolve_post_share(p_code)` | Untuk pengguna login. Mengembalikan `post_id`, atau `null` bila post tidak tersedia |
@@ -75,4 +77,4 @@ Isi **Domain tautan** di Hub dengan alamat yang sama, mis. `https://share.perusa
 
 ## Tes
 
-`make test-share-link`, atau di Windows `.\make.ps1 test-share-link`. Tes halaman memeriksa escape, CSP hash yang cocok dengan blok yang dirender, kode/post tidak tersedia (404 tanpa isi), saklar pratinjau, skema tidak valid, cache, database mati (pengaturan lama tetap dipakai, heartbeat `degraded`), gambar (bukan gambar, terlalu besar, redirect tidak diikuti), `assetlinks.json`, dan AASA. Tes database: `supabase/tests/184_post_share_links_test.sql` dan `185_share_links_macos_test.sql`.
+`make test-share-link`, atau di Windows `.\make.ps1 test-share-link`. Tes halaman memeriksa escape, CSP hash yang cocok dengan blok yang dirender, kode/post tidak tersedia (404 tanpa isi), saklar pratinjau, skema tidak valid, cache, database mati (pengaturan lama tetap dipakai, heartbeat `degraded`), gambar (bukan gambar, terlalu besar, redirect tidak diikuti), `assetlinks.json`, dan AASA. Tes database: `supabase/tests/184_post_share_links_test.sql` dan `185_app_identity_test.sql`.

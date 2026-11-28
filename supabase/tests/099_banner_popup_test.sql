@@ -108,7 +108,7 @@ select throws_ok($$select cs_api.admin_set_banner_link_schemes('{olt,a,b,c,d,e}'
   'Maksimal 5 skema');
 select throws_ok($$select cs_api.admin_set_banner_link_schemes('{"9olt"}')$$, 'PT400', 'invalid_link_schemes',
   'Skema harus diawali huruf');
-select is(cs_api.admin_set_banner_link_schemes('{" OLT ",mitra}') -> 'deep_link_schemes', '["mitra", "olt"]'::jsonb,
+select is(cs_api.admin_set_banner_link_schemes('{" OLT ",mitra}') -> 'deep_link_schemes', '["olt", "mitra"]'::jsonb,
   'Super Admin menambah skema deep link');
 select lives_ok($$select cs_api.admin_save_banner(null, 'Mitra', p_link_url => 'mitra://order/BBCA')$$,
   'Skema yang baru didaftarkan diterima');
@@ -219,7 +219,7 @@ select is(:'edited'::jsonb ->> 'image_url', null, 'Gambar bisa dilepas dari popu
 select ok(exists (select 1 from private.storage_cleanup_queue where bucket_id = 'app-banners' and prefix = :'img' || '/' and done_at is null),
   'Gambar lama masuk antrean pembersihan');
 select is((select count(*)::integer from cs.cs_audit_log where action = 'banner.link_schemes'
-           and details -> 'after' = '["mitra", "olt"]'::jsonb), 1, 'Perubahan skema deep link tercatat di audit');
+           and details -> 'after' = '["olt", "mitra"]'::jsonb), 1, 'Perubahan skema deep link tercatat di audit');
 select is((select details #>> '{before,image_path}' from cs.cs_audit_log
            where action = 'banner.save' and details ->> 'id' = :'popup'::jsonb ->> 'id' and details -> 'before' <> 'null'::jsonb),
   :'img', 'Audit menyimpan isi popup sebelum diubah');

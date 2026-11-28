@@ -1,9 +1,12 @@
 begin;
-select plan(47);
+select plan(41);
 
 update private.rate_limits set max_count = 1000 where action in ('post', 'post_share_link');
 update private.settings set value = '0' where key = 'safety.new_account_days';
 update cs.cs_settings set value = private.share_links_defaults() where key = 'share.links';
+update cs.cs_settings set value = private.app_identity_defaults() where key = 'app.identity';
+select private.app_identity_defaults() as identity_defaults \gset
+update cs.cs_settings set value = '["olt"]' where key = 'banners.deep_link_schemes';
 
 select tests.create_agent('Sinta', '{cs_super_admin}', '{}') as sinta \gset
 select tests.create_agent('Nadia', '{cs_agent}', '{"general": 2}') as nadia \gset
@@ -46,40 +49,20 @@ reset role;
 
 select tests.authenticate_agent(:'sinta');
 select is(cs_api.share_links() -> 'config' ->> 'enabled', 'false', 'Tautan berbagi mati secara bawaan');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": true, "preview": true, "base_url": "", "app_name": "OLT", "app_scheme": "olt"}')$$,
+select throws_ok($$select cs_api.admin_save_share_links('{"enabled": true, "preview": true, "base_url": ""}')$$,
   'PT400', 'share_base_url_required', 'Mengaktifkan tanpa domain ditolak');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "https://share.olt.test/p", "app_name": "OLT", "app_scheme": "olt"}')$$,
+select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "https://share.olt.test/p"}')$$,
   'PT400', 'invalid_share_base_url', 'Domain dengan path ditolak');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "ftp://share.olt.test", "app_name": "OLT", "app_scheme": "olt"}')$$,
+select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "ftp://share.olt.test"}')$$,
   'PT400', 'invalid_share_base_url', 'Domain selain http/https ditolak');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "", "app_name": "OLT", "app_scheme": "https"}')$$,
-  'PT400', 'invalid_share_app_scheme', 'Skema https tidak boleh dipakai sebagai skema aplikasi');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "", "app_name": "<b>", "app_scheme": "olt"}')$$,
-  'PT400', 'invalid_share_app_name', 'Nama aplikasi berisi tag ditolak');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": "ya", "base_url": "", "app_name": "OLT", "app_scheme": "olt"}')$$,
+select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": "ya", "base_url": ""}')$$,
   'PT400', 'invalid_share_links', 'Saklar pratinjau harus boolean');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "", "app_name": "OLT", "app_scheme": "olt", "android": [{"package": "olt", "sha256": ["AA"]}]}')$$,
-  'PT400', 'invalid_share_android_package', 'Package name tanpa titik ditolak');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "", "app_name": "OLT", "app_scheme": "olt", "android": [{"package": "co.olt.app", "sha256": ["AA:BB"]}]}')$$,
-  'PT400', 'invalid_share_android_fingerprint', 'Fingerprint SHA-256 pendek ditolak');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "", "app_name": "OLT", "app_scheme": "olt", "ios_app_ids": ["co.olt.app"]}')$$,
-  'PT400', 'invalid_share_ios_app_id', 'App ID iOS tanpa Team ID ditolak');
-select throws_ok($$select cs_api.admin_save_share_links('{"enabled": false, "preview": true, "base_url": "", "app_name": "OLT", "app_scheme": "olt", "ios_store_url": "http://apps.apple.com/x"}')$$,
-  'PT400', 'invalid_share_store_url', 'Tautan unduh tanpa https ditolak');
 
 select is(cs_api.admin_save_share_links(jsonb_build_object(
-    'enabled', true, 'preview', true, 'base_url', 'https://share.olt.test/', 'app_name', ' OLT ', 'app_scheme', 'OLT',
-    'android', jsonb_build_array(jsonb_build_object('package', 'co.olt.app',
-      'sha256', jsonb_build_array(lower(repeat('ab:', 31) || 'ab'), repeat('AB:', 31) || 'AB'))),
-    'ios_app_ids', jsonb_build_array('ABCDE12345.co.olt.app'),
-    'android_store_url', 'https://play.google.com/store/apps/details?id=co.olt.app')) -> 'config',
-  jsonb_build_object(
-    'enabled', true, 'preview', true, 'base_url', 'https://share.olt.test', 'app_name', 'OLT', 'app_scheme', 'olt',
-    'android', jsonb_build_array(jsonb_build_object('package', 'co.olt.app', 'sha256', jsonb_build_array(repeat('AB:', 31) || 'AB'))),
-    'ios_app_ids', jsonb_build_array('ABCDE12345.co.olt.app'),
-    'android_store_url', 'https://play.google.com/store/apps/details?id=co.olt.app',
-    'ios_store_url', '', 'windows_download_url', '', 'macos_download_url', ''),
-  'Pengaturan dinormalisasi: garis miring akhir, spasi, huruf skema, fingerprint duplikat');
+    'enabled', true, 'preview', true, 'base_url', 'https://share.olt.test/', 'app_name', 'Diabaikan')) -> 'config',
+  jsonb_build_object('enabled', true, 'base_url', 'https://share.olt.test', 'preview', true, 'app_scheme', 'olt')
+    || :'identity_defaults'::jsonb,
+  'Domain dinormalisasi; nama, skema, dan identitas aplikasi diambil dari Integrasi aplikasi');
 select is(cs_api.share_links() ->> 'ready', 'true', 'Hub melihat tautan berbagi siap');
 reset role;
 
