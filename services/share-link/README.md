@@ -1,6 +1,6 @@
 # share-link
 
-Halaman publik untuk tautan berbagi post (versi **0.1.0**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql`, tes `184_post_share_links_test.sql`.
+Halaman publik untuk tautan berbagi post (versi **0.1.1**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql` dan `0208_share_links_macos.sql` (tautan unduh Mac), tes `184_post_share_links_test.sql` dan `185_share_links_macos_test.sql`.
 
 ```
 Tautan diklik ──▶ HP dengan aplikasi terpasang: Android App Links / iOS Universal Links langsung membuka aplikasi
@@ -15,7 +15,7 @@ Tautan diklik ──▶ HP dengan aplikasi terpasang: Android App Links / iOS Un
 
 | Path | Isi |
 |---|---|
-| `GET /p/<kode>` | Halaman HTML berbahasa Indonesia. Isinya kartu post (nama, @username, label Resmi/Terverifikasi, tanggal WIB, cuplikan teks maks. 300 karakter, gambar pertama, jumlah suka/komentar), tombol **Buka di aplikasi** (`<skema>://p/<kode>`), dan tombol unduh (Play Store, App Store, Windows) yang diisi di Hub. Tag Open Graph dan Twitter Card dipakai untuk kartu pratinjau di WhatsApp, Telegram, X, dan lainnya. Di Windows desktop, halaman langsung mencoba membuka aplikasi lewat skema itu, lalu browser menanyakan "Buka aplikasi?" |
+| `GET /p/<kode>` | Halaman HTML berbahasa Indonesia. Isinya kartu post (nama, @username, label Resmi/Terverifikasi, tanggal WIB, cuplikan teks maks. 300 karakter, gambar pertama, jumlah suka/komentar), tombol **Buka di aplikasi** (`<skema>://p/<kode>`), dan tombol unduh (Play Store, App Store, Windows, Mac) yang diisi di Hub. Tag Open Graph dan Twitter Card dipakai untuk kartu pratinjau di WhatsApp, Telegram, X, dan lainnya. Di Windows dan Mac (Chrome, Edge, Firefox), halaman langsung mencoba membuka aplikasi lewat skema itu, lalu browser menanyakan "Buka aplikasi?". Di Safari Mac pengguna mengetuk tombolnya sendiri, karena Safari menampilkan error bila aplikasinya belum terpasang. HP dan iPad tidak dibuka otomatis |
 | `GET /p/<kode>/image` | Gambar pertama post. Diambil dari bucket privat `attachments` lewat `render/image/authenticated` dengan lebar maks. `IMAGE_WIDTH`, lalu di-cache 1 jam |
 | `GET /p/<kode>/avatar` | Avatar penulis 160×160 dari bucket publik `avatars` |
 | `GET /.well-known/assetlinks.json` | Digital Asset Links Android (package + fingerprint SHA-256). Jawabannya 404 bila belum ada aplikasi Android |
@@ -36,7 +36,7 @@ File `.well-known` tetap dilayani walau tautan dimatikan, supaya verifikasi apli
 
 | Objek | Isi |
 |---|---|
-| `cs.cs_settings` `share.links` | `enabled`, `base_url` (http/https + host [+ port], tanpa path), `preview`, `app_name`, `app_scheme`, `android` (maks. 5 × package + 1–5 fingerprint), `ios_app_ids` (maks. 5 × `TEAMID.bundle`), `android_store_url`, `ios_store_url`, `windows_download_url` (https) |
+| `cs.cs_settings` `share.links` | `enabled`, `base_url` (http/https + host [+ port], tanpa path), `preview`, `app_name`, `app_scheme`, `android` (maks. 5 × package + 1–5 fingerprint), `ios_app_ids` (maks. 5 × `TEAMID.bundle`, untuk app iOS dan Mac), `android_store_url`, `ios_store_url`, `windows_download_url`, `macos_download_url` (https) |
 | `private.post_share_codes` | `code` (10 alfanumerik) ↔ `post_id` (unik), `created_by`, `created_at`. Ikut terhapus bila post dihapus permanen |
 | `public.post_share_link(p_post_id)` | Untuk pengguna login. Mengembalikan `{code, url, app_url}`. Error `share_links_disabled` (403) atau `post_not_found` (404) |
 | `public.resolve_post_share(p_code)` | Untuk pengguna login. Mengembalikan `post_id`, atau `null` bila post tidak tersedia |
@@ -75,4 +75,4 @@ Isi **Domain tautan** di Hub dengan alamat yang sama, mis. `https://share.perusa
 
 ## Tes
 
-`make test-share-link`, atau di Windows `.\make.ps1 test-share-link`. Tes halaman memeriksa escape, CSP hash yang cocok dengan blok yang dirender, kode/post tidak tersedia (404 tanpa isi), saklar pratinjau, skema tidak valid, cache, database mati (pengaturan lama tetap dipakai, heartbeat `degraded`), gambar (bukan gambar, terlalu besar, redirect tidak diikuti), `assetlinks.json`, dan AASA. Tes database: `supabase/tests/184_post_share_links_test.sql`.
+`make test-share-link`, atau di Windows `.\make.ps1 test-share-link`. Tes halaman memeriksa escape, CSP hash yang cocok dengan blok yang dirender, kode/post tidak tersedia (404 tanpa isi), saklar pratinjau, skema tidak valid, cache, database mati (pengaturan lama tetap dipakai, heartbeat `degraded`), gambar (bukan gambar, terlalu besar, redirect tidak diikuti), `assetlinks.json`, dan AASA. Tes database: `supabase/tests/184_post_share_links_test.sql` dan `185_share_links_macos_test.sql`.

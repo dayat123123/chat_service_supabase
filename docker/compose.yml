@@ -27,7 +27,9 @@ services:
 
   traefik:
     <<: *base
-    labels: ["olt.autoheal=true"]
+    # The route files are bind-mounted single files, so a git pull leaves the running container on
+    # the old copy. make up passes a hash of them here, which recreates Traefik when routes change.
+    labels: ["olt.autoheal=true", "olt.routes-hash=${TRAEFIK_ROUTES_HASH:-}"]
     image: traefik:v3.7.16@sha256:1336e85aaed293bd63d005086e0dd013b04078b26aaeb1c18b26a2f928af7e65
     user: "65532:65532"
     networks: [edge, egress]
@@ -1207,7 +1209,7 @@ services:
     labels: ["olt.autoheal=true"]
     build:
       context: ../services/share-link
-    image: olt-social/share-link:0.1.0
+    image: olt-social/share-link:0.1.1
     networks: [edge, app]
     depends_on:
       migrate:

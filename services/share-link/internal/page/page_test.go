@@ -28,6 +28,14 @@ func TestCSPHashesMatchTheRenderedInlineBlocks(t *testing.T) {
 	}
 }
 
+func TestAutoOpenCoversWindowsAndMacButNotSafariOrPhones(t *testing.T) {
+	for _, want := range []string{`/Windows NT/`, `/Macintosh/`, `Chrome|Chromium|Edg|Firefox|OPR`, `Mobile|Android|iPhone|iPad`, `maxTouchPoints>1`} {
+		if !strings.Contains(script, want) {
+			t.Errorf("auto-open script is missing %q", want)
+		}
+	}
+}
+
 func TestNoScriptWithoutAppLink(t *testing.T) {
 	out, err := Render(Data{Title: "t", SiteName: "OLT", Heading: "h", Message: "m"})
 	if err != nil {

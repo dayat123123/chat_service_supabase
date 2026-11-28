@@ -78,7 +78,7 @@ select is(cs_api.admin_save_share_links(jsonb_build_object(
     'android', jsonb_build_array(jsonb_build_object('package', 'co.olt.app', 'sha256', jsonb_build_array(repeat('AB:', 31) || 'AB'))),
     'ios_app_ids', jsonb_build_array('ABCDE12345.co.olt.app'),
     'android_store_url', 'https://play.google.com/store/apps/details?id=co.olt.app',
-    'ios_store_url', '', 'windows_download_url', ''),
+    'ios_store_url', '', 'windows_download_url', '', 'macos_download_url', ''),
   'Pengaturan dinormalisasi: garis miring akhir, spasi, huruf skema, fingerprint duplikat');
 select is(cs_api.share_links() ->> 'ready', 'true', 'Hub melihat tautan berbagi siap');
 reset role;

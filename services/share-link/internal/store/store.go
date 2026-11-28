@@ -46,6 +46,7 @@ type Settings struct {
 	AndroidStoreURL    string       `json:"android_store_url"`
 	IOSStoreURL        string       `json:"ios_store_url"`
 	WindowsDownloadURL string       `json:"windows_download_url"`
+	MacDownloadURL     string       `json:"macos_download_url"`
 }
 
 type Author struct {

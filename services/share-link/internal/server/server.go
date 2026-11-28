@@ -477,6 +477,7 @@ func downloads(settings store.Settings) []page.Link {
 		{Label: "Unduh di Google Play", URL: settings.AndroidStoreURL},
 		{Label: "Unduh di App Store", URL: settings.IOSStoreURL},
 		{Label: "Unduh untuk Windows", URL: settings.WindowsDownloadURL},
+		{Label: "Unduh untuk Mac", URL: settings.MacDownloadURL},
 	} {
 		if strings.HasPrefix(item.URL, "https://") {
 			links = append(links, item)
