@@ -112,6 +112,16 @@ function Invoke-Docker {
 
 function Assert-Hub { if (-not $HubFound) { throw $HubMissing } }
 
+function Get-TraefikRoutesHash {
+    $files = Get-ChildItem (Join-Path $PSScriptRoot 'docker/volumes/traefik') -Filter '*.yml' | Sort-Object Name
+    $text = ($files | ForEach-Object { [IO.File]::ReadAllText($_.FullName) }) -join ''
+    $sha = [Security.Cryptography.SHA256]::Create()
+    $hash = $sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($text.Replace("`r", '')))
+    (-join ($hash | ForEach-Object { $_.ToString('x2') })).Substring(0, 16)
+}
+
+$env:TRAEFIK_ROUTES_HASH = Get-TraefikRoutesHash
+
 function Invoke-Compose { param([string[]]$Arguments) Invoke-Docker ($Compose + $Arguments) }
 
 function Invoke-Tools { param([string[]]$Arguments) Invoke-Compose (@('run', '--rm', 'tools') + $Arguments) }

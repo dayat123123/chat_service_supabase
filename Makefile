@@ -25,6 +25,7 @@ FILES_cluster := -f docker/compose.yml -f docker/compose.prod.yml
 CS_dev        := --profile cs
 CS_single     := $(if $(CS),--profile cs)
 COMPOSE       := docker compose $(FILES_$(PROFILE)) $(CS_$(PROFILE))
+export TRAEFIK_ROUTES_HASH := $(shell cat docker/volumes/traefik/*.yml 2>/dev/null | tr -d '\r' | sha256sum | cut -c1-16)
 DUMMY_COMPOSE := docker compose -f docker/compose.yml -f docker/compose.dev.yml -f docker/compose.dummy-olt.yml --profile cs
 STACK         := olt-social
 TOOLS         := $(COMPOSE) run --rm tools

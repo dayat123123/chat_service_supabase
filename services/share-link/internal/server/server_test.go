@@ -84,6 +84,7 @@ func readySettings() store.Settings {
 		IOSAppIDs:       []string{"ABCDE12345.co.olt.app"},
 		AndroidStoreURL: "https://play.google.com/store/apps/details?id=co.olt.app",
 		IOSStoreURL:     "http://not-https.example",
+		MacDownloadURL:  "https://unduh.olt.test/OLT.dmg",
 	}
 }
 
@@ -139,6 +140,7 @@ func TestPublicPostPageCarriesPreviewAndEscapesContent(t *testing.T) {
 		`12 suka · 3 komentar`,
 		`src="/p/` + code + `/avatar"`,
 		`Unduh di Google Play`,
+		`<a class="btn secondary" href="https://unduh.olt.test/OLT.dmg" rel="noopener">Unduh untuk Mac</a>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page is missing %q", want)

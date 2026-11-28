@@ -6,12 +6,13 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
 
 ## 28 November 2026
 
-### Tautan berbagi post (migrasi `0207`, layanan baru `share-link` 0.1.0, Hub, `rendezvous_community` 1.66.0)
+### Tautan berbagi post (migrasi `0207` dan `0208`, layanan baru `share-link` 0.1.1, Hub, `rendezvous_community` 1.66.0)
 
 - **Fitur.** Nasabah bisa menyalin atau membagikan tautan post ke luar aplikasi (WhatsApp, Telegram, email), bentuknya `https://<domain tautan>/p/<kode>`.
   - Di HP yang sudah memasang aplikasi OLT, tautan langsung membuka aplikasi (Android App Links, iOS Universal Links).
   - Selain itu tampil halaman pratinjau: nama penulis, cuplikan teks, gambar pertama, tombol **Buka di aplikasi** (`olt://p/<kode>`), dan tombol unduh.
-  - Di Windows, halaman itu langsung mencoba membuka aplikasi, lalu browser menanyakan "Buka OLT?".
+  - Di Windows dan Mac, halaman itu langsung mencoba membuka aplikasi, lalu browser menanyakan "Buka OLT?". Di Safari Mac, pengguna mengetuk tombol **Buka di aplikasi**.
+  - Tombol unduh tersedia untuk Google Play, App Store, Windows, dan Mac (migrasi `0208`).
 - **Privasi.** Post yang dihapus, ditahan moderasi, atau milik akun terhapus/di-ban tidak pernah ditampilkan. Halaman tidak diindeks mesin pencari. Pratinjau isi bisa dimatikan dari Hub. Membuka post di aplikasi tetap butuh login.
 - **Hub, menu baru Pengaturan → Tautan berbagi (Super Admin).** Isinya: aktif/mati, domain tautan, nama dan skema aplikasi, pratinjau isi, package name + fingerprint SHA-256 Android, App ID iOS, serta tautan Google Play, App Store, dan Windows. Perubahan tercatat di jejak audit (sebelum/sesudah). Bawaannya **mati**: menu Salin tautan di aplikasi baru muncul setelah diaktifkan dan domain diisi.
 - **Layanan baru `share-link`.** Traefik merutekan `/p/*`, `/.well-known/assetlinks.json`, dan `/.well-known/apple-app-site-association` ke layanan ini. Di produksi hanya di host `SHARE_DOMAIN` (opsional; kosong = `PROXY_DOMAIN`), dengan sertifikat Let's Encrypt otomatis lewat port 443. Tidak ada port baru.
@@ -21,6 +22,7 @@ Rilis yang tidak tercantum di sini cukup mengikuti langkah update biasa.
   3. Di Hub **Pengaturan → Tautan berbagi**: isi **Domain tautan** dengan alamat yang sama (`https://share.<domain>`, atau `https://<PROXY_DOMAIN>`), lalu aktifkan. Di server dev/LAN: `http://<IP server>:8000`.
   4. Setelah app OLT siap: isi package name + fingerprint Android dan App ID iOS. Cek `https://<domain>/.well-known/assetlinks.json` (Hub menampilkan alamatnya).
   5. App OLT perlu `rendezvous_community` 1.66.0 dan penerusan tautan masuk ke paket. Di Windows juga perlu registrasi skema `olt` di installer dan app satu instance. Detail: `doc/integration.md` di repo library.
+- **Traefik dibuat ulang otomatis bila file rutenya berubah.** Sebelumnya rute baru (seperti `/p/...`) baru terbaca setelah `docker restart olt-social-traefik-1`. Gejalanya: membuka `/p/...` memunculkan dialog login Studio. Kini `make up` dan `.\make.ps1 up` mengirim hash file rute ke label Traefik, jadi Traefik dibuat ulang sendiri saat rutenya berubah (jeda ±2 detik).
 - **Cek setelah pasang.** **Sistem → Kesehatan sistem** menampilkan layanan "Tautan berbagi". Lalu buka `https://<domain>/p/abcdefghij`; harus tampil "Tautan tidak tersedia" (404).
 
 ## 27 November 2026

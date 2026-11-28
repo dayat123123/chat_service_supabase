@@ -470,8 +470,8 @@ Bila aktif, nasabah bisa menyalin atau membagikan tautan post (`https://<domain>
 - **Domain tautan**: alamat publik dari IT, mis. `https://share.perusahaan.co.id`, tanpa path.
 - **Nama aplikasi** dan **Skema aplikasi** (bawaan `OLT` dan `olt`): dipakai judul halaman dan tombol **Buka di aplikasi**.
 - **Tampilkan isi postingan di pratinjau**: nama penulis, cuplikan teks, dan gambar pertama tampil di halaman dan kartu WhatsApp. Post yang dihapus atau disembunyikan tidak pernah ditampilkan. Matikan bila isi post tidak boleh terlihat tanpa login.
-- **Android (App Links)** dan **iOS (Universal Links)**: diisi tim aplikasi, satu aplikasi per baris. Tanpa ini tautan tetap jalan, tetapi HP membukanya di browser dulu.
-- **Tautan unduh**: tombol Google Play, App Store, dan Windows di halaman pratinjau (harus `https://`).
+- **Android (App Links)** dan **iOS & Mac (Universal Links)**: diisi tim aplikasi, satu aplikasi per baris. Tanpa ini tautan tetap jalan, tetapi perangkat membukanya di browser dulu.
+- **Tautan unduh**: tombol Google Play, App Store, Windows, dan Mac di halaman pratinjau (harus `https://`).
 - **Status**: jumlah post yang sudah punya tautan, contoh tautan, dan alamat file verifikasi untuk dicek tim aplikasi.
 
 #### API Integrasi
