@@ -50,6 +50,13 @@ http:
       middlewares: [rate-limit, body-api, security-headers]
       priority: 80
 
+    share-link:
+      entryPoints: [web]
+      rule: PathPrefix(`/p/`) || Path(`/.well-known/assetlinks.json`) || Path(`/.well-known/apple-app-site-association`)
+      service: share-link
+      middlewares: [rate-limit, body-api, security-headers-share]
+      priority: 70
+
     studio:
       entryPoints: [web]
       rule: PathPrefix(`/`)

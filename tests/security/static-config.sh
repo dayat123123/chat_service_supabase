@@ -30,7 +30,11 @@ echo "== public routers (prod.yml, websecure entrypoint)"
 while IFS=$'\t' read -r name rule; do
   ep=$(entry_of "$PROD" "$name")
   [[ "$ep" == *websecure* ]] || continue
-  check high "router $name restricted to Host(PROXY_DOMAIN)" '[[ "$rule" == *"Host(\`{{ env \"PROXY_DOMAIN\" }}\`)"* ]]' "$rule"
+  if [ "$name" = share-link ]; then
+    check high "router share-link restricted to Host(SHARE_DOMAIN or PROXY_DOMAIN), /p/, and the two app link files" '[[ "$rule" == "Host(\`{{ env \"SHARE_DOMAIN\" | default (env \"PROXY_DOMAIN\") }}\`) && (PathPrefix(\`/p/\`) || Path(\`/.well-known/assetlinks.json\`) || Path(\`/.well-known/apple-app-site-association\`))" ]]' "$rule"
+  else
+    check high "router $name restricted to Host(PROXY_DOMAIN)" '[[ "$rule" == *"Host(\`{{ env \"PROXY_DOMAIN\" }}\`)"* ]]' "$rule"
+  fi
   for p in /auth/v1 /pg/ /graphql/v1 /project /api/mcp /mcp /functions/v1; do
     check high "router $name does not expose $p" '[[ "$rule" != *"\`$p"* ]]' "$rule"
   done
@@ -164,7 +168,7 @@ check medium "cluster sentinel does not read healer state (no false healer:stale
 autoheal=$(tr -d '\r' < $D/compose.yml | awk '/^  [a-z0-9-]+:$/{svc=$1} /olt\.autoheal=true/ && !/^ *#/{sub(":","",svc); print svc}' | sort -u)
 bad_autoheal=$(grep -xE "db|valkey|sentinel|healer|migrate|tools|volume-init|studio|meta" <<< "$autoheal" || true)
 check high "db, valkey, sentinel, healer, and one-shot services are not labeled olt.autoheal" '[ -z "$bad_autoheal" ]' "$(tr '\n' ' ' <<< "$bad_autoheal")"
-check medium "stateless services with healthchecks are labeled olt.autoheal (rest, realtime, kong, auth, pgbouncer, traefik, ...)" '[ "$(grep -cxE "traefik|kong|auth|rest|realtime|storage|imgproxy|functions|pgbouncer|auth-bridge|notifier|janitor|classifier|media|backup|integration|research|link-preview|cs-console|nasabah-gateway" <<< "$autoheal")" -eq 20 ]' "$(tr '\n' ' ' <<< "$autoheal")"
+check medium "stateless services with healthchecks are labeled olt.autoheal (rest, realtime, kong, auth, pgbouncer, traefik, ...)" '[ "$(grep -cxE "traefik|kong|auth|rest|realtime|storage|imgproxy|functions|pgbouncer|auth-bridge|notifier|janitor|classifier|media|backup|integration|research|link-preview|share-link|cs-console|nasabah-gateway" <<< "$autoheal")" -eq 21 ]' "$(tr '\n' ' ' <<< "$autoheal")"
 
 echo
 echo "static-config: $pass ok, $fail findings, $info notes  (detail: ${OUT#/olt/}/static-config.tsv)"

@@ -1,8 +1,8 @@
 # Single (and cluster) routers: HTTPS on the `websecure` entrypoint.
 #
 # Only the paths the OLT app uses are public: REST/RPC, Realtime, Storage, media upload
-# (/media/v1), auth-bridge, and the OLT integration gateway (/integration/v1, server-to-server
-# with an API key). /auth/v1 (GoTrue is not used by clients), /functions/v1 (cs-admin is for the
+# (/media/v1), auth-bridge, the OLT integration gateway (/integration/v1, server-to-server
+# with an API key), and post share pages (/p/*, /.well-known app link files) on SHARE_DOMAIN. /auth/v1 (GoTrue is not used by clients), /functions/v1 (cs-admin is for the
 # web CS only, see cs.yml), /graphql/v1, /pg, and Studio are NOT published; other paths are 404.
 #
 # Staff API: on the public domain the cs_api schema only serves the customer-app CS chat RPCs
@@ -114,6 +114,17 @@ http:
       tls:
         certResolver: le
       priority: 80
+
+    # Post share links: HTML preview pages, their images, and the App Links / Universal Links files.
+    # The share-link service sets its own CSP and robots headers (security-headers-share has no CSP).
+    share-link:
+      entryPoints: [websecure]
+      rule: Host(`{{ env "SHARE_DOMAIN" | default (env "PROXY_DOMAIN") }}`) && (PathPrefix(`/p/`) || Path(`/.well-known/assetlinks.json`) || Path(`/.well-known/apple-app-site-association`))
+      service: share-link
+      middlewares: [rate-limit, body-api, hsts, security-headers-share]
+      tls:
+        certResolver: le
+      priority: 70
 
     admin:
       entryPoints: [admin]

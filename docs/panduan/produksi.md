@@ -21,7 +21,7 @@ Internet ──443─▶ Traefik (TLS Let's Encrypt, TLS ≥ 1.2, rate limit per
  127.0.0.1:8000 ─┘ entrypoint admin: Studio & semua path (SSH tunnel / WireGuard)
 
 Latar belakang: notifier (push FCM), janitor (bersihkan file), sentinel (pantau + alert),
-link-preview (pratinjau link, aman SSRF), backup (WAL + backup penuh ──restic──▶ S3 di luar server, atau folder lokal bila S3 belum ada)
+link-preview (pratinjau link, aman SSRF), share-link (halaman tautan berbagi post), backup (WAL + backup penuh ──restic──▶ S3 di luar server, atau folder lokal bila S3 belum ada)
 ```
 
 - Network dipisah: `edge` (Traefik ↔ Kong), `app`, dan `data` (Postgres, PgBouncer, Valkey). Ketiganya tanpa akses internet. Yang tersambung ke network `egress` hanya Traefik, Edge Functions, notifier (push ke Google FCM), sentinel (alert ke Telegram/SMTP), link-preview (mengambil halaman untuk pratinjau link), backup (S3), dan clamav (unduh signature virus dari `database.clamav.net`). auth-bridge tidak memanggil OLT, jadi tidak butuh akses keluar.
@@ -53,6 +53,8 @@ SUPABASE_PUBLIC_URL=https://social-api.domain.com
 API_EXTERNAL_URL=https://social-api.domain.com/auth/v1
 # auth-bridge mode jwt (default): tidak ada alamat OLT yang perlu diisi.
 # OLT_JWT_ISSUER / OLT_JWT_AUDIENCE hanya diubah bila OLT memakai nilai lain (docs/olt-integration.md).
+# Opsional: domain tautan berbagi post (DNS A ke server ini). Kosong = tautan di PROXY_DOMAIN.
+# SHARE_DOMAIN=share.domain.com
 ```
 
 ```bash
@@ -125,6 +127,12 @@ Catatan:
 - **Kill switch & versi minimum**: Super Admin atau peran Fitur & Banner (migrasi `0121`) dapat mematikan fitur sosial seketika (wajib alasan; chat CS tetap jalan), membuka fitur bertahap lewat feature flag, dan mewajibkan update aplikasi di **Komunitas → Fitur & versi**. Selama kill switch aktif, tulis konten dan chat non-CS dari nasabah ditolak dengan **`403 social_disabled`** (SQLSTATE `PT403`, migrasi `0109`; sebelumnya `503`, lihat T24 di bawah). Paket Flutter mengenali kode `social_disabled`, bukan statusnya. Detail: [docs/social](../social/README.md).
 - **Gateway integrasi OLT** (`/integration/v1`, layanan `integration`): notifEngine OLT mengirim notifikasi transaksi per `cust_id`; server memetakan ke pemilik rekening dari klaim `accounts` di token sosial OLT. API key dibuat Super Admin di **Pengaturan → Integrasi OLT** (ditampilkan sekali). Batasi sumbernya dengan CIDR pada key. Spesifikasi untuk tim OLT: [docs/integration](../integration/README.md).
 - **Pratinjau link**: layanan `link-preview` (satu-satunya yang mengambil URL internet sembarang, dengan proteksi SSRF) membuat pratinjau link di postingan dan chat. Detail: [services/link-preview](../../services/link-preview/README.md).
+- **Tautan berbagi post** (migrasi `0207`, layanan `share-link`):
+  - **Isi halaman.** Halaman publik `https://<SHARE_DOMAIN>/p/<kode>` (kosong = `PROXY_DOMAIN`) menampilkan pratinjau post dengan tag Open Graph, tombol buka aplikasi, dan tombol unduh. Layanan ini juga melayani `/.well-known/assetlinks.json` dan `/.well-known/apple-app-site-association`. Hanya path itu yang dirutekan di host tersebut.
+  - **Bila memakai domain sendiri.** `SHARE_DOMAIN` butuh DNS A ke server, dan port 443 harus terjangkau dari internet (sertifikat TLS-ALPN-01).
+  - **Pengaturan di Hub.** Super Admin mengatur semuanya di **Pengaturan → Tautan berbagi**; bawaannya mati.
+  - **Privasi.** Post yang dihapus atau ditahan tidak pernah tampil, dan halaman tidak diindeks.
+  - Detail: [services/share-link](../../services/share-link/README.md).
 - **Pembersihan file storage**: layanan `janitor` menghapus file milik akun yang dihapus (avatar, lampiran postingan dan chat, dokumen CS) serta surat yang lewat masa simpan, dari antrean `private.storage_cleanup_queue`. Tidak perlu konfigurasi. Folder yang gagal dicoba ulang dengan jeda sampai 6 jam. Cek antrean: `select bucket_id, prefix, failures, error from private.storage_cleanup_queue where done_at is null;`. Detail: [services/janitor](../../services/janitor/README.md).
 - **Karantina bukti** (migrasi `0095`): konten yang dilaporkan atau dihapus moderator/sistem disimpan utuh (teks, konteks, sidik SHA-256) dan file-nya disalin `janitor` ke bucket privat `evidence` sebelum aslinya dibersihkan. Bukti append-only, disimpan 730 hari (`private.settings` kunci `retention.evidence_days`) kecuali Kepatuhan memasang legal hold, lalu dihapus job `evidence-purge`. Akses hanya Kepatuhan (dan Super Admin baca saja) di **Kepatuhan → Bukti**, setiap buka/periksa/ekspor tercatat. Hitung ukuran bucket `evidence` dalam kapasitas disk storage. Cek salinan yang tertahan: `select status, count(*) from private.evidence_files group by 1;`. Detail: [docs/evidence](../evidence/README.md).
 

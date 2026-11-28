@@ -11,7 +11,7 @@ Aplikasi OLT (nasabah)            Rendezvous Hub (staf, jaringan internal)
 [ PINTU ]    Traefik (HTTPS, batas per IP) → Kong (gerbang API)
         │
 [ LAYANAN ]  REST (PostgREST) · Realtime (chat live) · Storage + media (upload, cek NSFW)
-             auth-bridge (tukar token OLT) · integration (API notifEngine) · link-preview
+             auth-bridge (tukar token OLT) · integration (API notifEngine) · link-preview · share-link
         │
 [ DATA ]     PgBouncer → Postgres (aturan bisnis: migrasi SQL di supabase/migrations)
              Valkey (penghitung rate limit) · volume file storage
@@ -48,6 +48,7 @@ Setiap kartu di **Pengaturan → Sistem → Kesehatan sistem → Peta layanan** 
 | `notifier` | Pengirim push notification ke HP nasabah lewat Firebase. | Push ke HP tertunda. Notifikasi tetap ada di kotak notifikasi aplikasi dan dikirim setelah layanan menyala. |
 | `janitor` | Pembersih file. Menghapus file yang sudah tidak dipakai, misalnya lampiran dari akun yang dihapus. | Tidak terasa langsung; file sisa menumpuk sampai layanan menyala lagi. |
 | `link-preview` | Pembuat pratinjau tautan. Menampilkan judul dan gambar saat nasabah membagikan link, dengan pengamanan dari link berbahaya. | Tautan tampil tanpa pratinjau. |
+| `share-link` | Halaman tautan berbagi post. Melayani tautan `/p/<kode>` yang dibagikan nasabah ke WhatsApp dan lainnya, serta file verifikasi supaya HP membuka aplikasi langsung. | Tautan yang dibagikan menampilkan error di browser. Tautan yang dibuka di HP yang sudah terverifikasi tetap membuka aplikasi. |
 | `trade-relay` | Relay Berbagi Trade. Mendengarkan order dan trade realtime dari OLT. Saat ini sengaja dimatikan karena fitur dijeda. | Tidak ada dampak selama Berbagi Trade dijeda. |
 | `pgbouncer` | Pengatur antrean koneksi database. Membagi koneksi supaya database tidak kewalahan saat ramai. | Layanan tidak bisa menghubungi database; sebagian besar fitur gagal. |
 | `db` | Database. Menyimpan semua data (akun, chat, tiket, postingan) beserta aturan bisnisnya. Bagian paling penting di sistem. | Seluruh sistem berhenti. Data tetap aman di disk dan di backup. |

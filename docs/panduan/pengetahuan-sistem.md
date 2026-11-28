@@ -35,7 +35,7 @@ SERVER SOSIAL (Docker)  ◀── HTTPS ke domain CS (LAN kantor / VPN saja) ─
     ├─ Layanan    REST · Realtime · Storage · media · auth-bridge
     │             integration · research · nasabah-gateway · functions
     ├─ Data       PgBouncer → Postgres 17 (semua data + aturan bisnis) · Valkey
-    ├─ Latar      notifier · sentinel · healer · backup · janitor · link-preview
+    ├─ Latar      notifier · sentinel · healer · backup · janitor · link-preview · share-link
     │
     ├──▶ Google FCM          (push ke HP)
     ├──▶ S3 / folder lokal   (backup)
@@ -79,7 +79,7 @@ Hubungan versinya:
 | Pool koneksi | PgBouncer | 1.24 | Membatasi koneksi ke Postgres saat layanan direplika |
 | Cache | Valkey (pengganti Redis, open source) | 9.0 | Penghitung rate limit login |
 | Antivirus | ClamAV | 1.5.4 | Memindai dokumen dan video chat CS |
-| Layanan buatan sendiri | Go | 1.24 / 1.26 | auth-bridge, media, classifier, notifier, sentinel, healer, backup, janitor, integration, research, nasabah-gateway, link-preview, trade-relay |
+| Layanan buatan sendiri | Go | 1.24 / 1.26 | auth-bridge, media, classifier, notifier, sentinel, healer, backup, janitor, integration, research, nasabah-gateway, link-preview, share-link, trade-relay |
 | Backup | pg_receivewal + pg_basebackup + restic | — | WAL terus-menerus + backup penuh terenkripsi ke S3 atau folder lokal |
 | Push | Firebase Cloud Messaging (FCM) | — | Push ke Android dan iOS |
 | Web staf | React, TypeScript, Vite, TanStack Query/Router, Tailwind, Radix UI, Zod | React 19, Node 24 | Hub cepat, terketik, dan teruji (±900 tes) |
@@ -123,6 +123,7 @@ Setiap node adalah satu container. Kartu yang sama tampil di Hub, **Pengaturan �
 | `nasabah-gateway` | Jembatan menu **Akun Nasabah** di Hub ke csAdmin OLT dengan token integrasi Ed25519. Khusus staf, dan memeriksa 2FA |
 | `notifier` | Mengambil antrean push di database dan mengirimnya ke HP lewat FCM. Kunci Firebase diunggah Super Admin di Hub (disimpan di Vault) |
 | `link-preview` | Mengambil judul dan gambar untuk pratinjau tautan, dengan pengaman SSRF (tidak bisa diarahkan ke jaringan internal) |
+| `share-link` | Halaman publik tautan berbagi post (`/p/<kode>`): pratinjau, tombol buka aplikasi, dan file verifikasi App Links / Universal Links. Diatur di Hub **Pengaturan → Tautan berbagi** |
 | `janitor` | Menghapus file yang sudah tidak dipakai, misalnya lampiran akun yang dihapus (antrean `storage_cleanup_queue`) |
 | `sentinel` | Memantau semua layanan, disk, dan database setiap ±30 detik, membuat alert, mengirimnya ke Telegram/email, dan mengisi Peta layanan |
 | `healer` | Me-restart otomatis layanan yang hidup tetapi macet, satu replika demi satu |
