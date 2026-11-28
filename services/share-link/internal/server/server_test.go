@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"olt-social/share-link/internal/stats"
 	"olt-social/share-link/internal/store"
 )
 
@@ -145,7 +146,7 @@ func TestPublicPostPageCarriesPreviewAndEscapesContent(t *testing.T) {
 		`Buka di OLT</a>`,
 		`src="/p/` + code + `/avatar"`,
 		`Unduh di Google Play`,
-		`<a href="https://unduh.olt.test/OLT.dmg" rel="noopener" title="Unduh untuk Mac">Mac</a>`,
+		`<a href="/p/` + code + `/get/mac" rel="noopener" title="Unduh untuk Mac">Mac</a>`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page is missing %q", want)
@@ -356,5 +357,80 @@ func TestPreviewCacheStaysBounded(t *testing.T) {
 	}
 	if n := len(s.previews); n > 10 {
 		t.Fatalf("cache size = %d", n)
+	}
+}
+
+type statsSink struct{ rows []stats.Row }
+
+func (k *statsSink) RecordStats(_ context.Context, rows []stats.Row) error {
+	k.rows = append(k.rows, rows...)
+	return nil
+}
+
+func send(t *testing.T, s *Server, method, path, agent string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(method, path, nil)
+	req.Header.Set("User-Agent", agent)
+	rec := httptest.NewRecorder()
+	s.ServeHTTP(rec, req)
+	return rec
+}
+
+const browser = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/131.0 Safari/537.36"
+
+func TestStatsCountViewsPreviewsOpensAndDownloads(t *testing.T) {
+	src := &fakeSource{settings: readySettings(), previews: map[string]store.Preview{code: publicPost()}}
+	s := newServer(src)
+	s.opts.Stats = stats.New(100)
+
+	send(t, s, http.MethodGet, "/p/"+code, browser)
+	send(t, s, http.MethodGet, "/p/"+code, browser)
+	send(t, s, http.MethodHead, "/p/"+code, browser)
+	send(t, s, http.MethodGet, "/p/"+code, "WhatsApp/2.23.20.0")
+	send(t, s, http.MethodGet, "/p/"+code, "TelegramBot (like TwitterBot)")
+	if rec := send(t, s, http.MethodPost, "/p/"+code+"/open", browser); rec.Code != http.StatusNoContent {
+		t.Fatalf("open status = %d", rec.Code)
+	}
+	if rec := send(t, s, http.MethodGet, "/p/"+code+"/open", browser); rec.Code != http.StatusMethodNotAllowed || rec.Header().Get("Allow") != "POST" {
+		t.Fatalf("GET open status = %d", rec.Code)
+	}
+	rec := send(t, s, http.MethodGet, "/p/"+code+"/get/mac", browser)
+	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "https://unduh.olt.test/OLT.dmg" {
+		t.Fatalf("download status = %d location = %q", rec.Code, rec.Header().Get("Location"))
+	}
+	if rec := send(t, s, http.MethodGet, "/p/"+code+"/get/ios", browser); rec.Code != http.StatusNotFound {
+		t.Fatalf("download without an https link status = %d", rec.Code)
+	}
+	if rec := send(t, s, http.MethodGet, "/p/"+code+"/get/linux", browser); rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown platform status = %d", rec.Code)
+	}
+	send(t, s, http.MethodPost, "/p/ZZZZZZZZZZ/open", browser)
+	send(t, s, http.MethodGet, "/p/ZZZZZZZZZZ/get/android", browser)
+	send(t, s, http.MethodGet, "/p/ZZZZZZZZZZ", browser)
+
+	sink := &statsSink{}
+	if err := s.opts.Stats.Flush(context.Background(), sink); err != nil {
+		t.Fatal(err)
+	}
+	want := []stats.Row{{Code: code, Views: 2, Previews: 2, Opens: 1, Mac: 1}}
+	if len(sink.rows) != 1 || sink.rows[0] != want[0] {
+		t.Fatalf("rows = %+v, want %+v", sink.rows, want)
+	}
+	metrics := httptest.NewRecorder()
+	s.WriteMetrics(metrics, time.Time{})
+	if !strings.Contains(metrics.Body.String(), "share_link_stats_sent_rows_total 1") {
+		t.Fatalf("metrics = %s", metrics.Body.String())
+	}
+}
+
+func TestNotFoundPageLinksDownloadsDirectly(t *testing.T) {
+	s := newServer(&fakeSource{settings: readySettings(), previews: map[string]store.Preview{}})
+	s.opts.Stats = stats.New(100)
+	body := send(t, s, http.MethodGet, "/p/ZZZZZZZZZZ", browser).Body.String()
+	if !strings.Contains(body, `href="https://unduh.olt.test/OLT.dmg"`) || strings.Contains(body, "/get/") {
+		t.Fatalf("404 page should link downloads directly: %s", body)
+	}
+	if s.opts.Stats.Pending() != 0 {
+		t.Fatal("unknown codes must not be counted")
 	}
 }

@@ -30,6 +30,8 @@ type Config struct {
 	RequestTimeout    time.Duration
 	HeartbeatInterval time.Duration
 	ShutdownTimeout   time.Duration
+	StatsInterval     time.Duration
+	StatsMaxCodes     int
 }
 
 func Load() (Config, error) {
@@ -49,6 +51,8 @@ func Load() (Config, error) {
 		RequestTimeout:    durationEnv("REQUEST_TIMEOUT", 10*time.Second, &errs),
 		HeartbeatInterval: durationEnv("HEARTBEAT_INTERVAL", 30*time.Second, &errs),
 		ShutdownTimeout:   durationEnv("SHUTDOWN_TIMEOUT", 15*time.Second, &errs),
+		StatsInterval:     durationEnv("STATS_INTERVAL", 30*time.Second, &errs),
+		StatsMaxCodes:     intEnv("STATS_MAX_CODES", 20000, &errs),
 		JWTSecret:         []byte(secretEnv("JWT_SECRET", &errs)),
 	}
 	if err := cfg.LogLevel.UnmarshalText([]byte(stringEnv("LOG_LEVEL", "info"))); err != nil {
@@ -71,6 +75,8 @@ func Load() (Config, error) {
 		{within(cfg.RequestTimeout, time.Second, time.Minute), "REQUEST_TIMEOUT must be between 1s and 60s"},
 		{within(cfg.HeartbeatInterval, 5*time.Second, time.Minute), "HEARTBEAT_INTERVAL must be between 5s and 60s"},
 		{within(cfg.ShutdownTimeout, time.Second, 5*time.Minute), "SHUTDOWN_TIMEOUT must be between 1s and 5m"},
+		{within(cfg.StatsInterval, 5*time.Second, 5*time.Minute), "STATS_INTERVAL must be between 5s and 5m"},
+		{cfg.StatsMaxCodes >= 100 && cfg.StatsMaxCodes <= 200000, "STATS_MAX_CODES must be between 100 and 200000"},
 	}
 	for _, rule := range rules {
 		if !rule.ok {

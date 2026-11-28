@@ -1,6 +1,6 @@
 # share-link
 
-Halaman publik untuk tautan berbagi post (versi **0.1.4**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql`, `0208_share_links_macos.sql` (tautan unduh Mac), dan `0209_app_identity.sql` (identitas aplikasi dipindah ke Integrasi aplikasi), tes `184_post_share_links_test.sql` dan `185_app_identity_test.sql`.
+Halaman publik untuk tautan berbagi post (versi **0.1.5**). Setiap post yang dibagikan mendapat kode pendek 10 karakter. Tautannya berbentuk `https://<domain tautan>/p/<kode>`. Layanan ini hanya memakai Go standard library, berjalan di image distroless nonroot, dan punya subcommand `healthcheck`. Migrasi: `0207_post_share_links.sql`, `0208_share_links_macos.sql` (tautan unduh Mac), `0209_app_identity.sql` (identitas aplikasi dipindah ke Integrasi aplikasi), dan `0212_share_link_stats.sql` (statistik), tes `184_post_share_links_test.sql`, `185_app_identity_test.sql`, dan `188_share_link_stats_test.sql`.
 
 ```
 Tautan diklik ──▶ HP dengan aplikasi terpasang: Android App Links / iOS Universal Links langsung membuka aplikasi
@@ -18,10 +18,12 @@ Tautan diklik ──▶ HP dengan aplikasi terpasang: Android App Links / iOS Un
 | `GET /p/<kode>` | Halaman HTML berbahasa Indonesia. Isinya kartu post (nama, @username, label Resmi/Terverifikasi, tanggal WIB, cuplikan teks maks. 300 karakter, gambar pertama, jumlah suka/komentar), tombol **Buka di aplikasi** (`<skema>://p/<kode>`), dan tombol unduh (Play Store, App Store, Windows, Mac) yang diisi di Hub. Tag Open Graph dan Twitter Card dipakai untuk kartu pratinjau di WhatsApp, Telegram, X, dan lainnya. Di Windows dan Mac (Chrome, Edge, Firefox), halaman langsung mencoba membuka aplikasi lewat skema itu, lalu browser menanyakan "Buka aplikasi?". Di Safari Mac pengguna mengetuk tombolnya sendiri, karena Safari menampilkan error bila aplikasinya belum terpasang. HP dan iPad tidak dibuka otomatis |
 | `GET /p/<kode>/image` | Gambar pertama post. Diambil dari bucket privat `attachments` lewat `render/image/authenticated` dengan lebar maks. `IMAGE_WIDTH`, lalu di-cache 1 jam |
 | `GET /p/<kode>/avatar` | Avatar penulis 160×160 dari bucket publik `avatars` |
+| `GET /p/<kode>/get/<platform>` | `android`, `ios`, `windows`, atau `mac`. Mencatat satu unduhan lalu redirect 302 ke tautan unduh dari Hub. Tautan unduh di halaman post mengarah ke sini; halaman 404 tetap memakai tautan langsung |
+| `POST /p/<kode>/open` | Dikirim script halaman (`navigator.sendBeacon`) saat tombol **Buka di …**, **Baca selengkapnya**, atau chip saham diketuk. Dijawab 204. Percobaan buka otomatis di Windows/Mac tidak dihitung |
 | `GET /.well-known/assetlinks.json` | Digital Asset Links Android (package + fingerprint SHA-256). Jawabannya 404 bila belum ada aplikasi Android |
 | `GET /.well-known/apple-app-site-association` | Universal Links iOS (`appIDs`, path `/p/*`, format lama dan baru). Jawabannya 404 bila belum ada App ID |
 
-File `.well-known` tetap dilayani walau tautan dimatikan, supaya verifikasi aplikasi yang sudah terpasang tidak gagal. Metode selain `GET`/`HEAD` dijawab 405, path lain 404.
+File `.well-known` tetap dilayani walau tautan dimatikan, supaya verifikasi aplikasi yang sudah terpasang tidak gagal. Metode selain `GET`/`HEAD` dijawab 405 (kecuali `POST /p/<kode>/open`), path lain 404.
 
 ## Privasi
 
@@ -30,6 +32,7 @@ File `.well-known` tetap dilayani walau tautan dimatikan, supaya verifikasi apli
 - **Indeks mesin pencari.** Halaman mengirim `X-Robots-Tag: noindex, nofollow, noarchive` dan meta robots, jadi tidak diindeks. `robots.txt` tidak memblokir apa pun, karena crawler pratinjau X mematuhi robots.txt.
 - **Escape dan CSP.** Semua teks di-escape oleh `html/template`. CSP berbasis hash: hanya satu blok style dan satu script bawaan, gambar hanya dari host sendiri, tanpa form, frame, maupun base. Skema aplikasi divalidasi ulang di layanan sebelum dijadikan link.
 - **Yang tidak dibuka di sini.** Kode di tautan tidak membocorkan ID post. Membuka post di aplikasi tetap butuh login, dan RLS (blokir, moderasi) berlaku seperti biasa.
+- **Statistik tanpa data pribadi.** Yang disimpan hanya hitungan per post per hari (WIB): dilihat, dipratinjau aplikasi chat/bot (dikenali dari User-Agent), tombol buka diketuk, dibuka lewat aplikasi (`resolve_post_share`), dan unduhan per platform. Tidak ada IP, User-Agent, atau cookie yang disimpan. Hitungan dikumpulkan di memori lalu dikirim ke database tiap `STATS_INTERVAL`. Bila database mati, hitungan disimpan untuk percobaan berikutnya. Data harian dihapus setelah 400 hari (cron `share-stats-purge`).
 - **Pembuatan kode** (`post_share_link`) hanya untuk pengguna login, dengan batas `post_share_link` 120 kode baru per jam. Post yang sama selalu mendapat kode yang sama.
 
 ## Database (0207)
@@ -44,6 +47,9 @@ File `.well-known` tetap dilayani walau tautan dimatikan, supaya verifikasi apli
 | `public.resolve_post_share(p_code)` | Untuk pengguna login. Mengembalikan `post_id`, atau `null` bila post tidak tersedia |
 | `public.share_link_config()` / `public.share_post_preview(p_code)` | Khusus `service_role` (layanan ini) |
 | `cs_api.share_links()` / `cs_api.admin_save_share_links(p_config)` | Khusus Super Admin (Hub), divalidasi dan tercatat di audit `setting.share_links` (sebelum/sesudah) |
+| `private.post_share_daily` (0212) | Hitungan per `post_id` per hari: `views`, `previews`, `opens`, `app_opens`, `android`, `ios`, `windows`, `mac`. Ikut terhapus bila post dihapus permanen |
+| `public.share_link_record_stats(p_rows)` (0212) | Khusus `service_role`. Maks. 5000 baris `{code, views, previews, opens, android, ios, windows, mac}`. Kode tak dikenal diabaikan, nilai negatif dianggap 0 |
+| `cs_api.share_link_stats(p_days)` (0212) | Khusus Super Admin. `p_days` 7/30/90: total, deret harian, dan 10 post teratas. Tampil di Hub **Tautan berbagi → Statistik** |
 | `get_client_config` | Flag `post_links` = tautan aktif dan domain sudah diisi. Library hanya menampilkan menu tautan bila flag ini menyala |
 
 ## Konfigurasi
@@ -60,6 +66,8 @@ File `.well-known` tetap dilayani walau tautan dimatikan, supaya verifikasi apli
 | `MAX_IMAGE_BYTES` | `5242880` | Gambar yang lebih besar dijawab 404 |
 | `REQUEST_TIMEOUT` | `10s` | |
 | `HEARTBEAT_INTERVAL` / `SHUTDOWN_TIMEOUT` | `30s` / `15s` | Heartbeat `share-link`. Statusnya `degraded` setelah 3 kegagalan database berturut-turut |
+| `STATS_INTERVAL` | `30s` | Jeda pengiriman statistik ke database (5s–5m). Juga dikirim sekali saat berhenti |
+| `STATS_MAX_CODES` | `20000` | Batas kode yang hitungannya ditahan di memori (100–200000). Kejadian untuk kode baru di atas batas dibuang dan dihitung di `share_link_stats_dropped_total` |
 | `LOG_LEVEL` | `info` | |
 
 Gambar diambil paling banyak 16 sekaligus per instance. Replika diatur lewat `SHARE_LINK_REPLICAS` (dev/single) atau `stack.cluster.yml` (2).
@@ -73,7 +81,7 @@ Isi **Domain tautan** di Hub dengan alamat yang sama, mis. `https://share.perusa
 
 ## Metrik
 
-`share_link_requests_total{route,status}` (`page`, `image`, `avatar`, `assetlinks`, `apple_app_site_association`, `other`), `share_link_preview_cache_entries`, `share_link_store_consecutive_failures`, `share_link_last_heartbeat_timestamp_seconds`.
+`share_link_requests_total{route,status}` (`page`, `image`, `avatar`, `open`, `download`, `assetlinks`, `apple_app_site_association`, `other`), `share_link_preview_cache_entries`, `share_link_store_consecutive_failures`, `share_link_stats_pending_codes`, `share_link_stats_sent_rows_total`, `share_link_stats_failed_flushes_total`, `share_link_stats_dropped_total`, `share_link_last_heartbeat_timestamp_seconds`.
 
 ## Tes
 

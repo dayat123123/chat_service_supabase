@@ -36,6 +36,17 @@ func TestAutoOpenCoversWindowsAndMacButNotSafariOrPhones(t *testing.T) {
 	}
 }
 
+func TestOpenClicksSendABeaconToTheSameOrigin(t *testing.T) {
+	for _, want := range []string{`navigator.sendBeacon(b)`, `+"/open"`, `x.getAttribute("href")===h`} {
+		if !strings.Contains(script, want) {
+			t.Errorf("script is missing %q", want)
+		}
+	}
+	if !strings.Contains(ContentSecurityPolicy(), "connect-src 'self'") {
+		t.Error("the beacon needs connect-src 'self'")
+	}
+}
+
 func TestPageIsLightOnly(t *testing.T) {
 	out, err := Render(Data{Title: "t", SiteName: "Rendezvous OLT", AppURL: "rendezvous-olt://p/Ab12Cd34Ef",
 		Downloads: []Link{

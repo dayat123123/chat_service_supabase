@@ -12,8 +12,8 @@ select tests.authenticate_as(:'budi');
 select is((select count(*) from jsonb_array_elements(public.get_notification_prefs() -> 'types') e
            where e ->> 'type' in ('trade_activity', 'trade_share')), 0::bigint,
   'Pengaturan notifikasi nasabah tidak menampilkan Berbagi Trade saat fitur mati');
-select is(jsonb_array_length(public.get_notification_prefs() -> 'types'), 15,
-  'Pengaturan notifikasi memuat lima belas jenis saat fitur mati');
+select is(jsonb_array_length(public.get_notification_prefs() -> 'types'), 16,
+  'Pengaturan notifikasi memuat enam belas jenis saat fitur mati');
 select ok(not (public.get_client_config() #> '{config,notification_types}') ?| array['trade_activity', 'trade_share'],
   'Konfigurasi klien tidak mengumumkan jenis Berbagi Trade saat fitur mati');
 select throws_ok($$select public.set_notification_prefs('{"types": [{"type": "trade_activity", "push": false}]}')$$,

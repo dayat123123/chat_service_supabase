@@ -166,6 +166,12 @@ postingan yang memuat `$KODE` (komentar dan pesan room tidak dihitung). Sinyal (
 | `mention_spike` | mention 1 jam terakhir > 5× rata-rata per jam 7 hari sebelumnya, minimal 20 |
 | `new_account_concentration` | > 60% mention 1 jam terakhir dari akun < 7 hari (atau trust 0), minimal 10 |
 | `coordinated_posts` | posting mirip (`pg_trgm` similarity ≥ 0,8) dari ≥ 5 penulis berbeda dalam 30 menit |
+| `one_sided_sentiment` (0213) | ≥ 90% postingan berlabel sentimen 1 jam terakhir searah (semua bullish atau semua bearish), minimal 15 berlabel dari ≥ 8 penulis searah, dan mention > 3× rata-rata per jam periode dasar. Skor = porsi searah; bukti memuat `direction` |
+
+Sejak `0213`, bukti semua jenis alert memuat `post_ids` (maks. 50 terbaru; untuk sentimen seragam hanya yang searah) dan
+`author_ids` (maks. 50). `cs_api.community_manipulation_accounts(p_days, p_min_alerts)` mendaftar akun yang muncul di
+≥ 2 alert dalam 30 hari (alert yang ditolak tidak dihitung), untuk ditinjau moderator di **Komunitas → Moderasi →
+Indikasi manipulasi → Akun yang berulang muncul**.
 
 Hasil di `cs.manipulation_alerts` (`stock`, `kind`, `score`, `evidence`, `status` open/reviewed/dismissed,
 `auto_actions`); satu alert terbuka per saham + jenis (deteksi ulang memperbarui bukti). Aksi otomatis:
@@ -243,7 +249,7 @@ diklasifikasi saat link muncul lagi.
 | Ambang gambar NSFW (upload media dan gambar pratinjau link) | Kepatuhan | `compliance_image_thresholds`, `compliance_set_image_thresholds` (0079) |
 | Ambang deteksi manipulasi, aksi otomatis, jam ramai | Kepatuhan | `compliance_manipulation_settings`, `compliance_set_manipulation_settings` |
 | Antrean konten ditahan | `community.moderate` | `community_held_content` + `community_resolve_report` |
-| Alert manipulasi | `community.moderate` | `community_manipulation_alerts`, `community_manipulation_review` |
+| Alert manipulasi | `community.moderate` | `community_manipulation_alerts`, `community_manipulation_review`, `community_manipulation_accounts` |
 | Slow mode & pin room saham | `community.moderate` | `community_room_state`, `community_room_settings`, `community_pin_message` |
 | Banding konten / sanksi | `community.moderate` / `community.sanction` | `community_appeals`, `community_appeal_decide` |
 | Toleransi nol (CSAM) | `community.sanction` | `community_zero_tolerance` |

@@ -16,6 +16,7 @@ import (
 
 	"olt-social/share-link/internal/heartbeat"
 	"olt-social/share-link/internal/jwt"
+	"olt-social/share-link/internal/stats"
 )
 
 const (
@@ -135,6 +136,11 @@ func (c *Client) Preview(ctx context.Context, code string) (Preview, error) {
 		return out, fmt.Errorf("%w: decode share_post_preview: %v", ErrUnavailable, err)
 	}
 	return out, nil
+}
+
+func (c *Client) RecordStats(ctx context.Context, rows []stats.Row) error {
+	_, err := c.call(ctx, "share_link_record_stats", map[string]any{"p_rows": rows})
+	return err
 }
 
 func (c *Client) Heartbeat(ctx context.Context, beat heartbeat.Beat) error {

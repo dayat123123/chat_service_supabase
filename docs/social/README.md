@@ -130,6 +130,16 @@ Hanya staf (lewat `cs_api.community_save_post`) yang bisa melampirkannya. Server
 - Notifikasi tetap tipe `like` dan dikelompokkan per post. Payload membawa `reaction` (`like` atau emoji) dan `emoji` (`👍` untuk like). Mengganti emoji hanya memperbarui `payload.emoji` di notifikasi yang sama tanpa menambah kejadian atau push. Push reaksi selain jempol berbunyi "X menanggapi konten Anda dengan ❤️".
 - Masih bisa lewat REST: `INSERT`/`DELETE` `public.reactions`, dan `UPDATE reactions set type` memakai aturan yang sama.
 
+### Kutip post (`0214`)
+
+- `create_post(..., p_quoted_post_id uuid = null)` membuat post yang mengutip post lain. Isi teks tetap wajib, polling tidak boleh (`400 invalid_quote`). Post yang dikutip harus tampil (tidak dihapus atau ditahan moderasi), penulisnya tidak terhapus, tidak di-ban, dan tidak saling blokir dengan pengutip (`404 quoted_post_not_found`). Bila pemilik post membatasi siapa yang bisa membalas (`comment_audience` atau saklar semua komentar mati) dan pengutip tidak termasuk, kutipan ditolak `403 quote_not_allowed`. Post milik sendiri selalu bisa dikutip. `quoted_post_id` tidak bisa diubah setelah post dibuat.
+- `feed_post` mendapat tiga kolom baru:
+  - `quoted_post` (`jsonb`): `{id, available: true, author_id, username, display_name, avatar_url, is_verified, is_official, body, sentiment, attachments, stocks, created_at, edited_at}`. Bila post asli dihapus, disembunyikan, penulisnya terhapus/di-ban, atau saling blokir dengan pembaca, isinya hanya `{id, available: false}`. Bila post asli dihapus permanen, `quoted_post` menjadi `null`.
+  - `quote_count`: jumlah kutipan yang tampil (kutipan yang dihapus atau disembunyikan tidak dihitung).
+  - `can_quote`: tombol **Kutip** boleh ditampilkan untuk pembaca ini.
+- `post_quotes(p_post_id, p_cursor = null, p_limit = 20)` → `setof feed_post`, kutipan terbaru dulu (keyset `cursor`, `p_limit` 1–50). Visibilitas mengikuti RLS feed.
+- Notifikasi baru `quote` untuk penulis post asli: payload `{post_id, quote_post_id, snippet}`, digabung per post (`group_key` `quotes:post:<id>`) selama belum dibaca. Jenis `quote` ikut di preferensi notifikasi (`notification_pref_types`).
+
 ### Info pesan (`0122`)
 
 - Seperti "Info pesan" WhatsApp: pengirim melihat kapan pesannya **terkirim** ke perangkat dan **dibaca** tiap penerima. Ada di DM, grup, dan chat CS; room saham tidak.
